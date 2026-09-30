@@ -338,3 +338,16 @@ func BenchmarkKeypressToFrame(b *testing.B) {
 		b.Fatalf("keypress to frame p95 %v exceeds the 16ms budget", p95)
 	}
 }
+
+func TestCountsUseTheSingularForOne(t *testing.T) {
+	st := fixture(1, 1)
+	out := screen(newModel(&st, nil))
+	for _, want := range []string{"1 worktree ", "1 session · 1 worktree"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("missing %q in\n%s", want, out)
+		}
+	}
+	if strings.Contains(out, "1 worktrees") || strings.Contains(out, "1 sessions") {
+		t.Errorf("plural after one:\n%s", out)
+	}
+}
