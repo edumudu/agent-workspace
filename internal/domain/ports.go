@@ -86,20 +86,3 @@ func KillGroups(worktrees []Worktree, requested []int, self int) []int {
 	}
 	return out
 }
-
-// WithoutGroups returns w without the ports served by the given process
-// groups; w itself is left as it was.
-func (w Worktree) WithoutGroups(groups []int) Worktree {
-	var kept []Port
-	for _, p := range w.Ports {
-		drop := false
-		for _, g := range groups {
-			drop = drop || p.PGID == g
-		}
-		if !drop {
-			kept = append(kept, p)
-		}
-	}
-	w.Ports = kept
-	return w
-}

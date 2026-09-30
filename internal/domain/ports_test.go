@@ -94,20 +94,3 @@ func TestKillGroupsOnlyForListedPorts(t *testing.T) {
 		}
 	}
 }
-
-func TestDropGroupsRemovesTheirPorts(t *testing.T) {
-	w := Worktree{ID: "/w/api", Ports: []Port{
-		{Port: 8081, PID: 101, PGID: 100},
-		{Port: 3000, PID: 201, PGID: 200},
-	}}
-	got := w.WithoutGroups([]int{100})
-	if want := []Port{{Port: 3000, PID: 201, PGID: 200}}; !reflect.DeepEqual(got.Ports, want) {
-		t.Errorf("got %+v, want %+v", got.Ports, want)
-	}
-	if len(w.Ports) != 2 {
-		t.Errorf("the original was changed: %+v", w.Ports)
-	}
-	if got := w.WithoutGroups([]int{100, 200}); got.Ports != nil {
-		t.Errorf("got %+v, want no ports", got.Ports)
-	}
-}
