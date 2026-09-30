@@ -10,4 +10,6 @@ import (
 
 type noPRs struct{}
 
-func (noPRs) PRs(context.Context, string) ([]domain.PullRequest, error) { return nil, nil }
+func (noPRs) PRs(context.Context, []string) (map[string][]domain.PullRequest, error) {
+	return nil, nil
+}
