@@ -76,7 +76,7 @@ func setup(env *testscript.Env, fakes string) error {
 		"AGENTWS_HOME":         home,
 		"AGENTWS_E2E":          work,
 		"AGENTWS_TMUX_SOCKET":  socket,
-		"AGENTWS_TEST_CLOCK":   "+2h",
+		"AGENTWS_TEST_CLOCK":   "+5h",
 		"AGENTWS_TEST_PR_POLL": "100ms",
 		"GIT_CONFIG_GLOBAL":    "/dev/null",
 		"GIT_CONFIG_SYSTEM":    "/dev/null",

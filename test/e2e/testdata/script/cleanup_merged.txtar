@@ -1,6 +1,6 @@
 # The fake gh marks one PR merged. The next cleanup removes only that
 # worktree, and keeps its branch. The daemon's cleanup clock runs 2 h ahead
-# (AGENTWS_TEST_CLOCK), past the 1 h activity grace.
+# (AGENTWS_TEST_CLOCK), past the 4 h activity grace.
 repo api
 exec agentws workspace add api
 exec agentws new --workspace api 'ship two parts'
