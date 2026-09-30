@@ -49,6 +49,8 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return runStatusLine(args[1:], os.Stdin, stdout, home, os.Getenv("TMUX_PANE"))
 	case cmd == "daemon":
 		return runDaemon(args[1:], stdout, stderr)
+	case cmd == "setup-worktree":
+		return runSetupWorktree(args[1:], stdout, stderr)
 	case cmd == "workspace":
 		return runWorkspace(args[1:], stdout, stderr)
 	case slices.Contains(stubs, cmd):
@@ -76,5 +78,5 @@ func buildCommit() string {
 }
 
 func usage(w io.Writer) {
-	fmt.Fprintln(w, "usage: agentws [daemon|workspace|setup|tui|debug|hook|statusline|new|cleanup|version]")
+	fmt.Fprintln(w, "usage: agentws [daemon|workspace|setup|setup-worktree|tui|debug|hook|statusline|new|cleanup|version]")
 }
