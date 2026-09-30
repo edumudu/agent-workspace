@@ -28,6 +28,10 @@ func (m Model) openPicker(kind domain.SwitchKind) Model {
 		return m
 	}
 	s := m.entries[i].session
+	if !domain.SwitchSupported(s.Harness) {
+		m.status = fmt.Sprintf("switching is not supported for %s", s.Harness)
+		return m
+	}
 	m.picker = &picker{sessionID: s.ID, harness: s.Harness, kind: kind, choices: domain.SwitchChoices(s.Harness, kind)}
 	return m
 }

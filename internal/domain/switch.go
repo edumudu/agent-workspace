@@ -23,12 +23,14 @@ type Switch struct {
 
 func (sw Switch) sent() bool { return !sw.SentAt.IsZero() }
 
+// SwitchSupported is false for Codex: its `/model` opens an interactive picker
+// and it has no `/effort` command, so typing either changes nothing.
+func SwitchSupported(h Harness) bool { return h == HarnessClaude }
+
 func SwitchChoices(h Harness, kind SwitchKind) []string {
 	switch {
-	case h == HarnessCodex && kind == SwitchModel:
-		return []string{"gpt-5-codex", "gpt-5"}
-	case h == HarnessCodex:
-		return []string{"minimal", "low", "medium", "high"}
+	case !SwitchSupported(h):
+		return nil
 	case kind == SwitchModel:
 		return []string{"opus", "sonnet", "haiku"}
 	}
@@ -57,9 +59,7 @@ func (s Session) RequestSwitch(kind SwitchKind, value string) Session {
 // only while the agent is not in a turn or is waiting on the user. Typing into
 // a running agent, or into a permission prompt, would land in the wrong place.
 func (s Session) Dispatch(now time.Time) (Session, []Switch) {
-	switch s.State {
-	case StateIdle, StateDone, StateWaiting:
-	default:
+	if !s.AcceptsSwitch() {
 		return s, nil
 	}
 	var out []Switch
@@ -72,6 +72,29 @@ func (s Session) Dispatch(now time.Time) (Session, []Switch) {
 	}
 	s.Switches = next
 	return s, out
+}
+
+// AcceptsSwitch is true when typing into the pane cannot land in a tool run
+// or answer a permission prompt.
+func (s Session) AcceptsSwitch() bool {
+	switch s.State {
+	case StateIdle, StateDone, StateWaiting:
+		return true
+	}
+	return false
+}
+
+// Requeue takes back switches that were dispatched but not typed, because the
+// session stopped accepting them in between.
+func (s Session) Requeue(unsent []Switch) Session {
+	next := slices.Clone(s.Switches)
+	for i, sw := range next {
+		if slices.Contains(unsent, sw) {
+			next[i].SentAt = time.Time{}
+		}
+	}
+	s.Switches = next
+	return s
 }
 
 func (s Session) SwitchFailed(failed []Switch) Session {

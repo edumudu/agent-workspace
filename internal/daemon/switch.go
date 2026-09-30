@@ -30,12 +30,34 @@ func (d *Daemon) switchSession(req rpc.Request) (*rpc.Response, bool) {
 			resp = errorResponse(req.ID, rpc.CodeNotFound, "no session "+p.SessionID)
 			return
 		}
+		if !domain.SwitchSupported(session.Harness) {
+			resp = errorResponse(req.ID, rpc.CodeBadRequest, "model and effort switching is not supported for "+string(session.Harness))
+			return
+		}
 		next, toSend := session.RequestSwitch(p.Kind, p.Value).Dispatch(time.Now())
 		s.emit(SessionChanged{Session: next})
 		s.sendSwitches(next, toSend)
 		resp = result(req.ID, next)
 	})
 	return resp, ok
+}
+
+// stillAccepts asks the loop whether the session can still take the switches,
+// since it may have started a turn while the worker waited its turn. If not,
+// they go back to the queue for the next Dispatch.
+func (d *Daemon) stillAccepts(sessionID string, sws []domain.Switch) bool {
+	accepted := false
+	d.query(func(s *state) {
+		current, ok := s.sessions[sessionID]
+		switch {
+		case !ok:
+		case current.AcceptsSwitch():
+			accepted = true
+		default:
+			s.emit(SessionChanged{Session: current.Requeue(sws)})
+		}
+	})
+	return accepted
 }
 
 // sendSwitches types the switches into the session's pane on a worker, since
@@ -50,6 +72,9 @@ func (d *Daemon) sendSwitches(session domain.Session, sws []domain.Switch) {
 		defer d.hs.sendMu.Unlock()
 		ctx, cancel := context.WithTimeout(context.Background(), sendSwitchTimeout)
 		defer cancel()
+		if !d.stillAccepts(session.ID, sws) {
+			return
+		}
 		err := app.SendSwitches(ctx, d.hs.host, app.PaneID(session.Pane), session.Harness, sws, app.PasteSettle)
 		if err == nil {
 			return
