@@ -194,11 +194,12 @@ func (d *Daemon) endAndRefill(session domain.Session) (domain.Session, bool, err
 	ok := d.query(func(s *state) {
 		if cur, found := s.sessions[ended.ID]; found {
 			wasInView = cur.Focused
-			ended = cur.End()
-			s.emit(SessionChanged{Session: ended})
 			if wasInView {
+				// why: the ended session leaves the sidebar, so its row must be found before it goes.
 				next, hasNext = domain.NextInView(sorted(s.tasks), sorted(s.sessions), ended.ID)
 			}
+			ended = cur.End()
+			s.emit(SessionChanged{Session: ended})
 		}
 	})
 	if ok && wasInView {
