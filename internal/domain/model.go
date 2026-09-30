@@ -89,6 +89,9 @@ type Worktree struct {
 	SubtaskSlug string
 	// SessionID is empty when unassigned.
 	SessionID string
+	// Ports are the dev servers listening from inside the worktree. They are
+	// live process state: the daemon does not persist them.
+	Ports []Port
 }
 
 // Usage is what the harness last reported. LimitUsedPercent is the fullest

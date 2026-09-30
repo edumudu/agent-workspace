@@ -35,7 +35,20 @@ const (
 	// unread marker and blurring the session that was in view.
 	MethodSessionFocus   = "session.focus"
 	MethodWorktreeAssign = "worktree.assign"
+	// MethodPortsKill terminates the process groups behind worktree ports.
+	MethodPortsKill = "ports.kill"
 )
+
+// PortsKillParams names process groups by PGID, as a domain.Port carries it.
+// The daemon kills only groups that serve a port it lists on some worktree.
+type PortsKillParams struct {
+	PGIDs []int `json:"pgids"`
+}
+
+// PortsKilled is the groups that are gone.
+type PortsKilled struct {
+	Killed []int `json:"killed"`
+}
 
 type SessionMuteParams struct {
 	ID    string `json:"id"`

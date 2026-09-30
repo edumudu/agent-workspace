@@ -17,6 +17,7 @@ import (
 	wsfs "github.com/giovaniif/agent-workspace/internal/adapters/fs"
 	gitadapter "github.com/giovaniif/agent-workspace/internal/adapters/git"
 	"github.com/giovaniif/agent-workspace/internal/adapters/github"
+	"github.com/giovaniif/agent-workspace/internal/adapters/procs"
 	"github.com/giovaniif/agent-workspace/internal/adapters/sqlite"
 	"github.com/giovaniif/agent-workspace/internal/daemon"
 	"github.com/giovaniif/agent-workspace/internal/domain"
@@ -97,6 +98,7 @@ func start(t *testing.T, poll, prPoll time.Duration) env {
 		daemon.WithWorkspaces(wsfs.FS{}, gitadapter.Inspector{}),
 		daemon.WithWorktrees(gitadapter.Worktrees{}, github.Finder{Bin: gh}),
 		daemon.WithWorktreePoll(poll, prPoll),
+		daemon.WithProcessTable(procs.Table{}),
 	)
 	if err != nil {
 		t.Fatal(err)

@@ -44,6 +44,7 @@ Dependency rule: `domain` ← `app` ← `adapters`/`daemon`, and `tui` → `rpc`
 - `Quotas(sessions)`, `Quota.Low`/`Stale`, `Advise(quotas, harness)`: the usage bar and the low-quota warning. See [docs/adr/0017-usage-and-limits-bar.md](docs/adr/0017-usage-and-limits-bar.md).
 - Discovery rules: `KindOfRoot`, `ReposIn`, `SingleRepo`, `MergeRepoState`, `LastUsedWorkspace`. See [Workspaces](#workspaces).
 - Worktree rules: `IsWorktreeAdd`, `SubagentParent`, `AttributeWorktree`, `ReconcileWorktrees`, `RollupChecks`, `PRForBranch`. See [Worktrees](#worktrees).
+- Ports rules: `PortsByWorktree`, `KillGroups`. See [Ports](#ports).
 
 Everything here is table-tested, with no mocks.
 
@@ -144,6 +145,16 @@ See [docs/adr/0012-worktree-detection.md](docs/adr/0012-worktree-detection.md). 
 - **PRs.** Every 60 s, one `gh pr list --state all --json ...` per repo (`adapters/github`), matched by head branch: the open PR, else the newest. A diff goes out only when the PR or its checks changed.
 - Hooks are parsed on the loop (a small JSON decode); all git and gh calls run on the scanner goroutine.
 
+## Ports
+
+See [docs/adr/0022-ports-view.md](docs/adr/0022-ports-view.md). Each worktree carries `Ports`: the dev servers whose cwd is inside it.
+
+- **Read.** `adapters/procs` (`app.ProcessTable`) runs `netstat -anv -p tcp` for listening sockets, then one `lsof -a -d cwd -p <pids>` for their group, command and cwd. One goroutine does this every 5 s, and only while a worktree exists.
+- **Map.** The loop maps listeners to the deepest worktree containing the cwd (`domain.PortsByWorktree`) and emits a `worktree` diff where the ports changed. Ports are never stored.
+- **Kill.** `ports.kill` takes process group ids. `domain.KillGroups` keeps those that serve a listed port, minus group 1 and the daemon's own; `Terminate` sends SIGTERM to the group, then SIGKILL after 3 s. The port leaves the view on the next refresh.
+- **TUI.** Ports show on worktree rows, the session's second row and the status line. `K` asks before killing the selected session's servers.
+- **Budget.** A refresh (both commands) must cost under 50 ms; `BenchmarkPortsRefresh` fails above that. Measured 19 ms.
+
 ## Staying fast
 
 Clean layers must not cost latency, so these rules apply:
@@ -165,3 +176,4 @@ Clean layers must not cost latency, so these rules apply:
 | Switch session (swap pane) | < 60 ms |
 | Open review for a 50-file diff | < 300 ms |
 | Daemon idle CPU | < 0.5% |
+| Ports refresh (netstat + lsof) | < 50 ms, at most every 5 s |

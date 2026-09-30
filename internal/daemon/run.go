@@ -14,6 +14,7 @@ import (
 	gitadapter "github.com/giovaniif/agent-workspace/internal/adapters/git"
 	"github.com/giovaniif/agent-workspace/internal/adapters/github"
 	"github.com/giovaniif/agent-workspace/internal/adapters/notify"
+	"github.com/giovaniif/agent-workspace/internal/adapters/procs"
 	"github.com/giovaniif/agent-workspace/internal/adapters/sqlite"
 	"github.com/giovaniif/agent-workspace/internal/adapters/tmux"
 	"github.com/giovaniif/agent-workspace/internal/rpc"
@@ -48,7 +49,8 @@ func Run(ctx context.Context, home string) (err error) {
 		WithWorkspaces(wsfs.FS{}, gitadapter.Inspector{}),
 		WithHarnesses(host, claude.Adapter{}, codex.Adapter{}),
 		WithNotifier(banners, banners, sounds),
-		WithWorktrees(gitadapter.Worktrees{}, github.Finder{}))
+		WithWorktrees(gitadapter.Worktrees{}, github.Finder{}),
+		WithProcessTable(procs.Table{}))
 	if err != nil {
 		return err
 	}

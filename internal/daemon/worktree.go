@@ -203,6 +203,7 @@ func (s *state) sessionHints() []domain.SessionHint {
 // owner changed.
 func (s *state) putWorktree(w domain.Worktree) {
 	prev := s.worktrees[w.ID].SessionID
+	w.Ports = s.portsOf(w)
 	s.emit(WorktreeChanged{Worktree: w})
 	if prev == w.SessionID {
 		return

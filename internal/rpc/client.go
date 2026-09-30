@@ -116,6 +116,14 @@ func (c *Client) WorktreeAssign(ctx context.Context, id, session string) error {
 	return c.Call(ctx, MethodWorktreeAssign, WorktreeAssignParams{ID: id, Session: session}, nil)
 }
 
+// KillPorts terminates the given process groups and returns the ones that
+// went. It fails with not_found when none of them serves a listed port.
+func (c *Client) KillPorts(ctx context.Context, pgids []int) ([]int, error) {
+	var out PortsKilled
+	err := c.Call(ctx, MethodPortsKill, PortsKillParams{PGIDs: pgids}, &out)
+	return out.Killed, err
+}
+
 func (c *Client) WorkspaceRemove(ctx context.Context, root string) error {
 	return c.Call(ctx, MethodWorkspaceRemove, WorkspaceRemoveParams{Root: root}, nil)
 }
