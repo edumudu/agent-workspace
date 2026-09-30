@@ -58,7 +58,7 @@ func newCleanupRig(t *testing.T) cleanupRig {
 	r := cleanupRig{tmp: tmp, repo: filepath.Join(tmp, "api"), home: filepath.Join(tmp, "home")}
 	r.trash = wsfs.NewTrash(filepath.Join(r.home, "trash"), 4)
 	later := func() time.Time { return time.Now().Add(domain.CleanupGrace + time.Hour) }
-	r.cleanup = app.NewCleanup(gitadapter.Worktrees{}, procs.Lsof{}, r.trash,
+	r.cleanup = app.NewCleanup(gitadapter.Worktrees{}, procs.Table{}, r.trash,
 		&wsfs.AuditLog{Path: filepath.Join(r.home, "cleanup.log")}, filepath.Join(r.home, "backups"), later)
 	return r
 }

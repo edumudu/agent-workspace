@@ -14,7 +14,7 @@ import (
 	"github.com/giovaniif/agent-workspace/internal/app"
 )
 
-var _ app.ProcessTable = procs.Lsof{}
+var _ app.WorktreeHolders = procs.Table{}
 
 func TestCleanupHoldersFindsASleepingProcessInsideTheWorktree(t *testing.T) {
 	if _, err := exec.LookPath("lsof"); err != nil {
@@ -34,7 +34,7 @@ func TestCleanupHoldersFindsASleepingProcessInsideTheWorktree(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = sleeper.Process.Kill(); _ = sleeper.Wait() })
 
-	got, err := procs.Lsof{}.Holders(context.Background(), []string{held, free})
+	got, err := procs.Table{}.Holders(context.Background(), []string{held, free})
 	if err != nil {
 		t.Fatal(err)
 	}

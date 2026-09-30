@@ -31,8 +31,8 @@ type CleanupGit interface {
 	Prune(ctx context.Context, repo string) error
 }
 
-// ProcessTable maps each of paths to the processes whose cwd is inside it.
-type ProcessTable interface {
+// WorktreeHolders maps each of paths to the processes whose cwd is inside it.
+type WorktreeHolders interface {
 	Holders(ctx context.Context, paths []string) (map[string][]string, error)
 }
 
@@ -70,7 +70,7 @@ type CleanupResult struct {
 // already backed up, so a dirty worktree is not backed up on every run.
 type Cleanup struct {
 	git        CleanupGit
-	procs      ProcessTable
+	procs      WorktreeHolders
 	trash      Trash
 	audit      CleanupAudit
 	backupRoot string
@@ -81,7 +81,7 @@ type Cleanup struct {
 	usedDirs map[string]bool
 }
 
-func NewCleanup(git CleanupGit, procs ProcessTable, trash Trash, audit CleanupAudit, backupRoot string, now func() time.Time) *Cleanup {
+func NewCleanup(git CleanupGit, procs WorktreeHolders, trash Trash, audit CleanupAudit, backupRoot string, now func() time.Time) *Cleanup {
 	return &Cleanup{git: git, procs: procs, trash: trash, audit: audit, backupRoot: backupRoot, now: now, backedUp: map[string]string{}, usedDirs: map[string]bool{}}
 }
 

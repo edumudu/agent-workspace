@@ -1,4 +1,3 @@
-// Package procs implements app.ProcessTable with lsof.
 package procs
 
 import (
@@ -13,13 +12,11 @@ import (
 	"github.com/giovaniif/agent-workspace/internal/app"
 )
 
-var _ app.ProcessTable = Lsof{}
-
-type Lsof struct{}
+var _ app.WorktreeHolders = Table{}
 
 // Holders runs one lsof over every process's cwd. Shells in tmux panes,
 // editors and dev servers all show up this way.
-func (Lsof) Holders(ctx context.Context, paths []string) (map[string][]string, error) {
+func (Table) Holders(ctx context.Context, paths []string) (map[string][]string, error) {
 	out, err := exec.CommandContext(ctx, "lsof", "-n", "-P", "-w", "-d", "cwd", "-F", "pcn").Output()
 	if err != nil {
 		var exit *exec.ExitError
