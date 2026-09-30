@@ -111,7 +111,9 @@ func (s Session) SwitchFailed(failed []Switch) Session {
 // confirmSwitches judges every sent switch against the report. A report that
 // says nothing about a switch's kind leaves it pending; one that shows the
 // old value raises the warning but keeps the switch, so a later report that
-// shows the new value still clears it.
+// shows the new value still clears it. A report stamped before the switch was
+// sent cannot show it yet: Codex's rollout only has the new values once a
+// turn starts after the switch.
 func (s Session) confirmSwitches(r StatusReport) Session {
 	if len(s.Switches) == 0 {
 		return s
@@ -127,6 +129,8 @@ func (s Session) confirmSwitches(r StatusReport) Session {
 		case !sw.sent() || reported == "":
 			kept = append(kept, sw)
 		case switchShows(sw, reported):
+		case !r.At.IsZero() && r.At.Before(sw.SentAt):
+			kept = append(kept, sw)
 		default:
 			kept = append(kept, sw)
 			warn = true
