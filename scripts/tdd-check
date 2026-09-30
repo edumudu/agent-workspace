@@ -22,7 +22,7 @@ is_test_path() {
 }
 
 non_test_paths() {
-  git diff --name-only --no-renames "$base...$head" | while IFS= read -r f; do
+  git diff --name-only -z --no-renames "$base...$head" | while IFS= read -r -d '' f; do
     is_test_path "$f" || echo "$f"
   done
 }
