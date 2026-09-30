@@ -40,6 +40,7 @@ func Run(ctx context.Context, home string) (err error) {
 		Socket:     os.Getenv("AGENTWS_TMUX_SOCKET"),
 		ConfigPath: filepath.Join(home, "tmux.conf"),
 	})
+	// why: TODO(#17) passes the setup recipe runner here; until it lands a new worktree gets no setup.
 	sounds, err := notify.LoadSounds(filepath.Join(home, "notify.json"))
 	if err != nil {
 		log.Printf("notify.json ignored: %v", err)
@@ -48,6 +49,7 @@ func Run(ctx context.Context, home string) (err error) {
 	d, err := New(store, os.Getpid(),
 		WithWorkspaces(wsfs.FS{}, gitadapter.Inspector{}),
 		WithHarnesses(host, claude.Adapter{}, codex.Adapter{}),
+		WithSessions(gitadapter.Adder{}, nil, filepath.Join(home, "worktrees")),
 		WithNotifier(banners, banners, sounds),
 		WithWorktrees(gitadapter.Worktrees{}, github.Finder{}),
 		WithProcessTable(procs.Table{}))

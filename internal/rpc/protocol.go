@@ -32,9 +32,12 @@ const (
 	// MethodSessionMute sets whether a session's banners are silenced.
 	MethodSessionMute = "session.mute"
 	// MethodSessionFocus marks the session as the one in view, clearing its
-	// unread marker and blurring the session that was in view.
+	// unread marker and blurring the session that was in view. With a client
+	// layout open it also swaps the session's pane into the main slot.
 	MethodSessionFocus   = "session.focus"
 	MethodWorktreeAssign = "worktree.assign"
+	MethodNewSession     = "session.new"
+	MethodEndSession     = "session.end"
 	// MethodPortsKill terminates the process groups behind worktree ports.
 	MethodPortsKill = "ports.kill"
 )
@@ -56,6 +59,23 @@ type SessionMuteParams struct {
 }
 
 type SessionFocusParams struct {
+	ID string `json:"id"`
+}
+
+// NewSessionParams starts Harness on WorkItem in the workspace rooted at
+// Workspace, or the last used one when it is empty. The result is the new
+// domain.Session.
+type NewSessionParams struct {
+	Workspace string `json:"workspace,omitempty"`
+	WorkItem  string `json:"work_item"`
+	Harness   string `json:"harness"`
+	Model     string `json:"model,omitempty"`
+	Effort    string `json:"effort,omitempty"`
+}
+
+// SessionRef names one session. session.end answers with the ended
+// domain.Session.
+type SessionRef struct {
 	ID string `json:"id"`
 }
 
