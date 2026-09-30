@@ -176,3 +176,23 @@ func TestDiskSizesRetryAFailedMeasurementOnceItIsStale(t *testing.T) {
 		t.Errorf("Get after the retry = %d, %v; want 500, true", size, known)
 	}
 }
+
+func TestDiskSizesForgetDuringAMeasurementDoesNotTrustItsResult(t *testing.T) {
+	sizer := newGatedSizer(map[string]int64{"/w/a": 500})
+	d := app.NewDiskSizes(sizer, 2, time.Hour, time.Now)
+	d.Get("/w/a")
+	time.Sleep(20 * time.Millisecond)
+
+	d.Forget("/w/a")
+	sizer.mu.Lock()
+	sizer.sizes["/w/a"] = 10
+	sizer.mu.Unlock()
+	close(sizer.release)
+	d.Wait()
+
+	d.Get("/w/a")
+	d.Wait()
+	if size, _ := d.Get("/w/a"); size != 10 {
+		t.Errorf("size = %d, want the 10 measured after the change", size)
+	}
+}
