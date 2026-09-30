@@ -61,3 +61,14 @@ func TestCleanupPlanActivityExactlyAtGraceIsIdle(t *testing.T) {
 		t.Errorf("at the grace edge = %+v, want remove", got)
 	}
 }
+
+func TestCleanupKeepsAMergedWorktreeTouchedWithinFourHours(t *testing.T) {
+	now := time.Date(2026, 9, 30, 12, 0, 0, 0, time.UTC)
+	wt := Worktree{ID: "/w/api-feat", Path: "/w/api-feat", Branch: "feat", PR: &PullRequest{Number: 42, Head: "feat", State: PRMerged}}
+	if got := PlanCleanup(wt, CleanupFacts{LastActivity: now.Add(-3*time.Hour - 59*time.Minute)}, now); got.Action != CleanupKeep {
+		t.Fatalf("touched 3h59m ago: got %v, want keep", got.Action)
+	}
+	if got := PlanCleanup(wt, CleanupFacts{LastActivity: now.Add(-4 * time.Hour)}, now); got.Action != CleanupRemove {
+		t.Fatalf("touched 4h ago: got %v, want remove", got.Action)
+	}
+}
