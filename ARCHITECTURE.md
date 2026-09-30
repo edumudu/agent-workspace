@@ -40,7 +40,7 @@ Dependency rule: `domain` ← `app` ← `adapters`/`daemon`, and `tui` → `rpc`
 - `Session.Apply(event) (Session, []Effect)`: the state machine. Adapters map hooks to harness-neutral events (`session_start`, `user_prompt_submit`, `pre_tool_use`, `post_tool_use`, `permission_request`, `waiting_for_input`, `stop`, `session_end`, `subagent_start`, `subagent_stop`). Subagent events count as progress inside the turn, like tool events. Tool, permission and waiting events that arrive while `idle` or `done` are stale and ignored. `done` marks the session unread only when it is not focused; `Focus()` clears it.
 - `NameFor(task, prs)`: naming precedence.
 - `BannerFor(session, name, effect)` and `Coalescer`: which notify effects become a banner (not for muted sessions) and the one-per-10-s rule per session.
-- `PlanCleanup(worktrees, facts)`: the cleanup decision.
+- `PlanCleanup(worktree, facts, now)`: the cleanup decision (`remove`, `backup_then_ask` or `keep` with a reason). See [Cleanup](#cleanup).
 - `Quotas(sessions)`, `Quota.Low`/`Stale`, `Advise(quotas, harness)`: the usage bar and the low-quota warning. See [docs/adr/0017-usage-and-limits-bar.md](docs/adr/0017-usage-and-limits-bar.md).
 - `OfferFallback(quotas, cfg, request)` and `OfferFallbacks(quotas, cfg, queue)`: a mapped Codex start for a Claude one when Claude's shortest window is under the configured threshold. See [docs/adr/0027-codex-fallback.md](docs/adr/0027-codex-fallback.md).
 - Discovery rules: `KindOfRoot`, `ReposIn`, `SingleRepo`, `MergeRepoState`, `LastUsedWorkspace`. See [Workspaces](#workspaces).
@@ -180,6 +180,15 @@ See [docs/adr/0023-review-pane.md](docs/adr/0023-review-pane.md). In the TUI, `r
 - **Building.** `review.open` runs on the connection goroutine through `app.Reviewer`, at most 4 worktrees at once, and caches parsed diffs by base commit and tree hash. The TUI highlights and lays out the answer in the command that fetched it.
 - **Viewer.** File tree grouped by worktree with its PR, unified or split diff, hunk headers, a `✓` per viewed file. Keys: `[`/`]` scope, `w` worktree (all, then each), `n`/`p` file, `j`/`k` scroll, `u` split, `v` viewed, `r` or `esc` close. Viewed marks are stored per worktree, path and blob, and reset when the file changes.
 - **Budget.** `BenchmarkReviewOpen50Files` (`adapters/git`, `-tags integration`) fails if a cold 50-file, 3,000-line review takes over 300 ms (about 60 ms on an M3); `BenchmarkReviewScroll` (`tui`) fails if a frame takes over 16 ms p95 (about 2 ms).
+
+## Cleanup
+
+See [docs/adr/0021-worktree-cleanup.md](docs/adr/0021-worktree-cleanup.md). `agentws cleanup --dry-run` prints the plan; `agentws cleanup` runs it.
+
+- **Facts.** Per worktree: one `git status`, the `origin/HEAD` lookup and `git merge-base --is-ancestor` (`adapters/git`, at most 4 in flight), plus one `lsof -d cwd` for all of them (`adapters/procs`). The daemon adds whether the owning session is live and its newest event time.
+- **Execute** (`app.Cleanup`): plan, back up `backup_then_ask` worktrees under `~/.agentws/backups/<ts>/<name>/`, check lsof once more, rename `remove` worktrees into `~/.agentws/trash/`, then `git worktree prune` per repo. The trash is emptied in the background, 4 at a time.
+- **When.** Every 10 min and when the PR poll first sees a PR merged, on a daemon goroutine (never the loop). Each action is appended to `~/.agentws/cleanup.log`.
+- Branches are never deleted. A detached HEAD with commits not in the default branch gets `backup/wt-<name>` first.
 
 ## Staying fast
 
