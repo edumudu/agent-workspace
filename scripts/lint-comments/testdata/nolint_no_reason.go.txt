@@ -1,0 +1,6 @@
+package fixture
+
+func c() int {
+	//nolint:gosec
+	return 1
+}

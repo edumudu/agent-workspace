@@ -1,0 +1,9 @@
+package fixture
+
+func noop() {
+	//go:noinline
+	f := func() {
+		/* block comment */
+	}
+	f()
+}
