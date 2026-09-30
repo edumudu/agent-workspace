@@ -1,6 +1,7 @@
 // Command lint-comments enforces the comment rules in AGENTS.md: inside
 // function bodies only "// why:" comments and tool directives are allowed,
-// and every to-do marker references an issue number.
+// every to-do marker references an issue number, a declaration's doc comment
+// says more than its name, and there are no section banners.
 package main
 
 import (
@@ -13,6 +14,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 )
 
@@ -103,6 +105,9 @@ func checkFile(name string, src []byte) ([]finding, error) {
 			}
 		}
 	}
+	findings = append(findings, restatingDocs(fset, name, file)...)
+	findings = append(findings, banners(fset, name, file)...)
+	slices.SortStableFunc(findings, func(a, b finding) int { return a.line - b.line })
 	return findings, nil
 }
 
