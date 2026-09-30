@@ -49,7 +49,7 @@ func prompt(t *testing.T, path string) {
 	}
 }
 
-func waitFor(t *testing.T, what string, ok func() bool) {
+func waitUntil(t *testing.T, what string, ok func() bool) {
 	t.Helper()
 	deadline := time.Now().Add(2 * time.Second)
 	for !ok() {
@@ -64,7 +64,7 @@ func TestReviewPromptSnapshotsTheSessionsWorktrees(t *testing.T) {
 	env := startReview(t, time.Hour)
 	prompt(t, env.path)
 	ref := domain.TurnRef("s1", "/solo-feat", 1)
-	waitFor(t, "turn snapshot", func() bool { return env.git.refsOf("/solo-feat")[ref] == "t1" })
+	waitUntil(t, "turn snapshot", func() bool { return env.git.refsOf("/solo-feat")[ref] == "t1" })
 }
 
 func TestReviewOpenShowsTheLastTurnAndResetsViewedMarksOnChange(t *testing.T) {
@@ -72,7 +72,7 @@ func TestReviewOpenShowsTheLastTurnAndResetsViewedMarksOnChange(t *testing.T) {
 	c := dial(t, env.path)
 	ctx := context.Background()
 	prompt(t, env.path)
-	waitFor(t, "turn snapshot", func() bool { return len(env.git.refsOf("/solo-feat")) == 1 })
+	waitUntil(t, "turn snapshot", func() bool { return len(env.git.refsOf("/solo-feat")) == 1 })
 	env.git.set(func(g *fakeReviewGit) {
 		g.trees["/solo-feat"] = "t2"
 		g.diffs["t1..t2"] = reviewDiff
@@ -147,7 +147,7 @@ func TestReviewRemovedWorktreeDropsItsTurns(t *testing.T) {
 		g.refs["/solo"] = map[string]string{domain.TurnRef("s1", "/solo-feat", 3): "t", keep: "t"}
 	})
 	env.lister.set("/solo")
-	waitFor(t, "turns dropped", func() bool {
+	waitUntil(t, "turns dropped", func() bool {
 		refs := env.git.refsOf("/solo")
 		_, kept := refs[keep]
 		return len(refs) == 1 && kept

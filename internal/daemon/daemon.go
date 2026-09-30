@@ -104,6 +104,9 @@ type state struct {
 	sendSwitches func(session domain.Session, sws []domain.Switch)
 	hints        worktreeHints
 	listeners    []domain.Listener
+	// requestTurn is set by WithReview and must not block.
+	requestTurn func(session string, dirs []string)
+	viewed      map[string]domain.ViewedMark
 }
 
 type Daemon struct {
@@ -121,6 +124,7 @@ type Daemon struct {
 	sess    sessionDeps
 	// restored is the sessions loaded from the store, checked once against tmux on Serve.
 	restored []domain.Session
+	rv       review
 }
 
 // New restores state from store. pid is what status reports.
@@ -139,6 +143,10 @@ func New(store app.Store, pid int, opts ...Option) (*Daemon, error) {
 		subs:       map[*conn]uint64{},
 		usage:      map[string]*usageJob{},
 		hints:      newWorktreeHints(),
+		viewed:     map[string]domain.ViewedMark{},
+	}
+	for _, m := range snap.Viewed {
+		st.viewed[m.Key()] = m
 	}
 	for _, w := range snap.Workspaces {
 		st.workspaces[w.Root] = w
@@ -208,6 +216,7 @@ func (d *Daemon) Serve(ctx context.Context, ln net.Listener) error {
 	go d.watchWorktrees(ctx)
 	go d.watchPorts(ctx)
 	go d.reconcilePanes(ctx)
+	go d.snapshotTurns(ctx)
 	loopDone := make(chan struct{})
 	go func() {
 		d.loop(ctx)
@@ -301,6 +310,9 @@ func (s *state) hook(h rpc.Hook, now time.Time) {
 	s.trackSubagents(session.ID, kind, at, h.Payload)
 	s.announce(next, effects)
 	s.sendSwitches(next, toSend)
+	if kind == domain.EventUserPromptSubmit {
+		s.promptSubmitted(session.ID)
+	}
 }
 
 // trackSubagents follows a subagent start or stop, and stops what a session
@@ -403,7 +415,9 @@ func (d *Daemon) dispatch(c *conn, line []byte) (*rpc.Response, bool) {
 			return resp, ok
 		}
 		return errorResponse(req.ID, rpc.CodeUnknownMethod, "unknown method "+req.Method), true
-	case rpc.MethodOpenClient, rpc.MethodFocusMain:
+	case rpc.MethodReviewOpen, rpc.MethodReviewViewed:
+		return d.dispatchReview(req)
+	case rpc.MethodOpenClient, rpc.MethodFocusMain, rpc.MethodClientReview:
 		return d.dispatchClient(req), true
 	case rpc.MethodDebugSeed:
 		var p rpc.DebugSeedParams
