@@ -1,0 +1,76 @@
+# A recipe with copy, link, deps clone and run brings a linked worktree up.
+env GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null
+env GIT_AUTHOR_NAME=t GIT_AUTHOR_EMAIL=t@example.com GIT_COMMITTER_NAME=t GIT_COMMITTER_EMAIL=t@example.com
+
+cd api
+exec git init -q -b main
+exec git add package-lock.json .gitignore
+exec git commit -q -m init
+exec git worktree add -q -b feature ../api-feature
+cd ..
+
+exec agentws setup-worktree api-feature
+stdout '^copy \.env\.example$'
+stdout '^link \.cache$'
+stdout '^deps clone node_modules$'
+stdout '^run echo ready > ran\.txt$'
+stdout '^done in \S+, disk used \S+ \S+$'
+grep '^TOKEN=changeme$' api-feature/.env.example
+exists api-feature/.cache/warm
+grep 'module.exports' api-feature/node_modules/left-pad/index.js
+grep '^ready$' api-feature/ran.txt
+
+# Running it again changes nothing.
+exec agentws setup-worktree api-feature
+stdout '^skip copy \.env\.example: already in the worktree$'
+stdout '^deps skip: node_modules already in the worktree$'
+
+# A lockfile that differs from main's falls back to install and says why.
+cd api
+exec git worktree add -q -b other ../api-other
+cd ..
+cp changed-lock.json api-other/package-lock.json
+mkdir bin
+cp fake-npm bin/npm
+chmod 0755 bin/npm
+env PATH=$WORK/bin:$PATH
+exec agentws setup-worktree api-other
+stdout '^deps install: package-lock\.json differs from the main checkout \(npm ci\)$'
+grep '^ci$' api-other/npm-args
+! exists api-other/node_modules
+
+# The main checkout is not a worktree to set up.
+! exec agentws setup-worktree api
+stderr 'agentws setup-worktree: .*is the main checkout'
+
+! exec agentws setup-worktree
+stderr '^usage: agentws setup-worktree <path>$'
+
+! exec agentws setup-worktree elsewhere
+stderr '^agentws setup-worktree: .*elsewhere'
+
+-- api/package-lock.json --
+{}
+-- api/.gitignore --
+node_modules
+.env.example
+.cache
+-- api/.env.example --
+TOKEN=changeme
+-- api/.cache/warm --
+warm
+-- api/node_modules/left-pad/index.js --
+module.exports = 1
+-- api/.agentws.toml --
+[setup]
+copy = [".env.example"]
+link = [".cache"]
+deps = "clone"
+run = ["echo ready > ran.txt"]
+-- changed-lock.json --
+{"changed":true}
+-- fake-npm --
+#!/bin/sh
+echo "$@" > npm-args
+-- elsewhere/README.md --
+not a repo
