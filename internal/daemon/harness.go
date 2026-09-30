@@ -80,6 +80,13 @@ func (d *Daemon) launch(req rpc.Request) (*rpc.Response, bool) {
 		Effort:  p.Effort,
 		State:   domain.StateIdle,
 	}
+	if p.Name != "" {
+		task := domain.Task{ID: newID(), Source: domain.TaskText, Text: p.Name}
+		session.TaskID = task.ID
+		if !d.commit(TaskChanged{Task: task}) {
+			return nil, false
+		}
+	}
 	if !d.commit(SessionChanged{Session: session}) {
 		return nil, false
 	}
