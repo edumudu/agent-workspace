@@ -67,6 +67,10 @@ func Run(ctx context.Context, home string) (err error) {
 	if err != nil {
 		log.Printf("linear token ignored: %v", err)
 	}
+	maxParallel, err := LoadMaxParallel(filepath.Join(home, "config.toml"))
+	if err != nil {
+		log.Printf("launcher max_parallel ignored: %v", err)
+	}
 	banners := notify.New()
 	trash := wsfs.NewTrash(filepath.Join(home, "trash"), 4)
 	audit := &wsfs.AuditLog{Path: filepath.Join(home, "cleanup.log")}
@@ -76,6 +80,7 @@ func Run(ctx context.Context, home string) (err error) {
 		WithWorkspaces(wsfs.FS{}, gitadapter.Inspector{}),
 		WithHarnesses(host, claude.Adapter{}, codex.Adapter{}),
 		WithSessions(gitadapter.Adder{}, runRecipe, worktreeHome),
+		WithLauncher(maxParallel),
 		WithNotifier(banners, banners, sounds),
 		WithWorktrees(gitadapter.Worktrees{}, &github.Finder{}),
 		WithTitles(app.TitleResolvers{linear.Client{Token: linearToken}, github.Titles{}}),

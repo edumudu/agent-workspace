@@ -257,6 +257,10 @@ type fakeHost struct {
 	typed    []string
 	failText string
 	gates    map[app.PaneID]chan struct{}
+	// distinct gives each pane its own ID, %7 then %8 and so on.
+	distinct bool
+	// failFirst makes the next Create fail once.
+	failFirst bool
 }
 
 func (h *fakeHost) holdPane(pane app.PaneID) (release func()) {
@@ -324,7 +328,14 @@ func (h *fakeHost) Create(_ context.Context, spec app.PaneSpec) (app.PaneID, err
 	if h.err != nil {
 		return "", h.err
 	}
+	if h.failFirst {
+		h.failFirst = false
+		return "", errors.New("tmux down")
+	}
 	h.specs = append(h.specs, spec)
+	if h.distinct {
+		return app.PaneID(fmt.Sprintf("%%%d", 6+len(h.specs))), nil
+	}
 	return "%7", nil
 }
 

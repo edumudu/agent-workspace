@@ -119,6 +119,10 @@ type Model struct {
 	paint    *painter
 	renaming *renamePrompt
 
+	queue     []domain.LaunchItem
+	launching *launchInput
+	launches  int
+
 	dialog  *dialog
 	dialogs int
 	// ending is the session an open end confirmation is about.
@@ -195,6 +199,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.rv.open {
 			return m.reviewKey(msg.String())
 		}
+		if m.launching != nil {
+			return m.launcherKey(msg)
+		}
 		if m.renaming != nil {
 			return m.renameKey(msg)
 		}
@@ -206,6 +213,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.dialog != nil {
 			return m.dialogPaste(msg.Content), nil
 		}
+		if m.launching != nil {
+			return m.launcherPaste(msg.Content), nil
+		}
 		if m.renaming != nil {
 			return m.renamePaste(msg.Content), nil
 		}
@@ -216,6 +226,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.pending = msg.session.ID
 		m.choosePending()
 		return m, m.showNew(msg.session.ID)
+	case launchSentMsg:
+		if m.launching != nil && m.launching.seq == msg.seq {
+			m.launching = nil
+		}
+	case launchFailedMsg:
+		if m.launching != nil && m.launching.seq == msg.seq {
+			in := *m.launching
+			in.busy, in.err = false, msg.err.Error()
+			m.launching = &in
+		}
 	case startFailedMsg:
 		if m.dialog == nil || m.dialog.seq != msg.seq {
 			m.status = msg.err.Error()
@@ -238,6 +258,7 @@ func (m *Model) load(st rpc.State) {
 	m.events = map[string][]domain.SessionEvent{}
 	m.subagents = map[string][]domain.Subagent{}
 	m.taskOrder = nil
+	m.queue = st.Queue
 	for _, t := range st.Tasks {
 		m.putTask(t)
 	}
@@ -285,6 +306,9 @@ func (m *Model) apply(d rpc.Diff) {
 		m.sessions[d.Session.ID] = *d.Session
 	case d.Subagent != nil:
 		m.putSubagent(*d.Subagent)
+		return
+	case d.Queue != nil:
+		m.queue = *d.Queue
 		return
 	default:
 		return
@@ -401,6 +425,14 @@ func (m Model) key(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		if m.opts.Calls != nil {
 			return m.openDialog(), nil
 		}
+	case "L":
+		if m.opts.Calls != nil {
+			return m.openLauncher(), nil
+		}
+	case "c":
+		return m, m.takeQueueOffers()
+	case "X":
+		return m, m.clearQueue()
 	case "x":
 		if cur >= 0 && m.opts.Calls != nil {
 			m.ending = m.selected

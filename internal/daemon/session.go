@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"sync"
 
 	"github.com/giovaniif/agent-workspace/internal/app"
 	"github.com/giovaniif/agent-workspace/internal/domain"
@@ -14,6 +15,7 @@ type sessionDeps struct {
 	worktrees    app.WorktreeAdder
 	setup        app.SetupFunc
 	worktreeHome string
+	addMu        sync.Mutex
 }
 
 // WithSessions enables session.new: worktrees are added under worktreeHome
@@ -26,7 +28,21 @@ func WithSessions(worktrees app.WorktreeAdder, setup app.SetupFunc, worktreeHome
 }
 
 func (d *Daemon) sessions() app.Sessions {
-	return app.Sessions{Host: d.hs.host, Worktrees: d.sess.worktrees, Setup: d.sess.setup}
+	return app.Sessions{Host: d.hs.host, Worktrees: serialAdder{mu: &d.sess.addMu, inner: d.sess.worktrees}, Setup: d.sess.setup}
+}
+
+// serialAdder keeps two `git worktree add` runs from overlapping: they race
+// on the repo's config file and one fails with "unable to write upstream
+// branch configuration". The launcher starts several sessions at once.
+type serialAdder struct {
+	mu    *sync.Mutex
+	inner app.WorktreeAdder
+}
+
+func (a serialAdder) AddWorktree(ctx context.Context, repo, path, branch, base string) (app.AddedWorktree, error) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return a.inner.AddWorktree(ctx, repo, path, branch, base)
 }
 
 type newSessionInput struct {
@@ -37,26 +53,37 @@ type newSessionInput struct {
 	missing string
 }
 
-// why: git, the setup recipe and tmux all run here on the connection goroutine; the loop only reads and commits.
 func (d *Daemon) newSession(req rpc.Request) (*rpc.Response, bool) {
 	var p rpc.NewSessionParams
 	if err := json.Unmarshal(req.Params, &p); err != nil {
 		return errorResponse(req.ID, rpc.CodeBadRequest, "session.new params: "+err.Error()), true
 	}
+	session, rerr, ok := d.startSession(p)
+	if !ok {
+		return nil, false
+	}
+	if rerr != nil {
+		return errorResponse(req.ID, rerr.Code, rerr.Message), true
+	}
+	return result(req.ID, session), true
+}
+
+// why: git, the setup recipe and tmux all run here on the caller's goroutine (a connection's or a launcher worker's); the loop only reads and commits.
+func (d *Daemon) startSession(p rpc.NewSessionParams) (domain.Session, *rpc.Error, bool) {
 	adapter, ok := d.hs.adapters[domain.Harness(p.Harness)]
 	if !ok || d.hs.host == nil || d.sess.worktrees == nil {
-		return errorResponse(req.ID, rpc.CodeBadRequest, "no harness "+p.Harness), true
+		return domain.Session{}, &rpc.Error{Code: rpc.CodeBadRequest, Message: "no harness " + p.Harness}, true
 	}
 	parsed := domain.ParseWorkItem(p.WorkItem)
 	var in newSessionInput
 	if !d.query(func(s *state) { in = s.newSessionInput(p.Workspace, parsed) }) {
-		return nil, false
+		return domain.Session{}, nil, false
 	}
 	switch {
 	case in.missing != "" && p.Workspace == "":
-		return errorResponse(req.ID, rpc.CodeBadRequest, in.missing), true
+		return domain.Session{}, &rpc.Error{Code: rpc.CodeBadRequest, Message: in.missing}, true
 	case in.missing != "":
-		return errorResponse(req.ID, rpc.CodeNotFound, in.missing), true
+		return domain.Session{}, &rpc.Error{Code: rpc.CodeNotFound, Message: in.missing}, true
 	}
 	if in.isNew {
 		in.task.ID = newID()
@@ -73,9 +100,9 @@ func (d *Daemon) newSession(req rpc.Request) (*rpc.Response, bool) {
 	})
 	if err != nil {
 		if started.Worktree != nil && !d.query(func(s *state) { s.putWorktree(*started.Worktree) }) {
-			return nil, false
+			return domain.Session{}, nil, false
 		}
-		return errorResponse(req.ID, rpc.CodeFailed, err.Error()), true
+		return domain.Session{}, &rpc.Error{Code: rpc.CodeFailed, Message: err.Error()}, true
 	}
 	ok = d.query(func(s *state) {
 		if in.isNew {
@@ -91,7 +118,7 @@ func (d *Daemon) newSession(req rpc.Request) (*rpc.Response, bool) {
 			s.emit(WorkspaceChanged{Workspace: ws})
 		}
 	})
-	return result(req.ID, started.Session), ok
+	return started.Session, nil, ok
 }
 
 func (s *state) newSessionInput(root string, parsed domain.Task) newSessionInput {

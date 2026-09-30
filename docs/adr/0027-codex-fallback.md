@@ -29,6 +29,6 @@ Status: accepted, 2026-09-30.
 
 ## Limits
 
-- The launcher does not exist yet (#27). This change ships the queue rule and its tests; #27 must call `OfferFallbacks` and show the offer. The issue's "launcher queue" criterion is met at the rule level only.
+- The launcher (#27, ADR 0031) calls `OfferFallbacks` and shows the offer under each queued issue; `c` takes it.
 - Quotas come from running sessions' reports. With no Codex session reporting, there is no Codex figure and no offer.
 - Staleness of a figure is not considered; the dialog offers on the last report.

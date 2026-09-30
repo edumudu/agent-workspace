@@ -56,19 +56,19 @@ type liveDaemon struct {
 	cancel func()
 }
 
-func serveLive(t *testing.T, home, socket, fakeAgent string) liveDaemon {
+func serveLive(t *testing.T, home, socket, fakeAgent string, extra ...daemon.Option) liveDaemon {
 	t.Helper()
 	store, err := sqlite.Open(filepath.Join(home, "state.db"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	host := tmux.New(tmux.Config{Socket: socket, ConfigPath: filepath.Join(home, "tmux.conf")})
-	d, err := daemon.New(store, os.Getpid(),
+	d, err := daemon.New(store, os.Getpid(), append([]daemon.Option{
 		daemon.WithWorkspaces(wsfs.FS{}, gitadapter.Inspector{}),
 		daemon.WithHarnesses(host, claude.Adapter{Binary: fakeAgent}, codex.Adapter{Binary: fakeAgent}),
 		daemon.WithSessions(gitadapter.Adder{}, nil, filepath.Join(home, "worktrees")),
 		daemon.WithWorktrees(gitadapter.Worktrees{}, noPRs{}),
-		daemon.WithWorktreePoll(50*time.Millisecond, 0))
+		daemon.WithWorktreePoll(50*time.Millisecond, 0)}, extra...)...)
 	if err != nil {
 		t.Fatal(err)
 	}

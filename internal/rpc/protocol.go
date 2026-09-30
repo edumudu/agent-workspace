@@ -42,6 +42,12 @@ const (
 	// takes it off, so the name is automatic again.
 	MethodSessionRename = "session.rename"
 	MethodSessionUnpin  = "session.unpin"
+	// MethodLauncherEnqueue queues the Linear issues in a pasted text;
+	// MethodLauncherDrop takes a waiting one off the queue and
+	// MethodLauncherRetarget changes the harness, model and effort it starts with.
+	MethodLauncherEnqueue  = "launcher.enqueue"
+	MethodLauncherDrop     = "launcher.drop"
+	MethodLauncherRetarget = "launcher.retarget"
 	// MethodPortsKill terminates the process groups behind worktree ports.
 	MethodPortsKill    = "ports.kill"
 	MethodReviewOpen   = "review.open"
@@ -177,6 +183,36 @@ type NewSessionParams struct {
 	Effort    string `json:"effort,omitempty"`
 }
 
+// LauncherEnqueueParams queues every Linear issue URL found in Input, split
+// on whitespace, to start with Harness, Model and Effort in the workspace
+// rooted at Workspace (the last used one when empty).
+type LauncherEnqueueParams struct {
+	Workspace string `json:"workspace,omitempty"`
+	Input     string `json:"input"`
+	Harness   string `json:"harness"`
+	Model     string `json:"model,omitempty"`
+	Effort    string `json:"effort,omitempty"`
+}
+
+// LauncherEnqueued lists the refs that joined the queue and the input words
+// that were not Linear issue URLs. An issue already queued or running is in
+// neither.
+type LauncherEnqueued struct {
+	Queued   []string `json:"queued"`
+	Rejected []string `json:"rejected"`
+}
+
+type LauncherItemRef struct {
+	ID string `json:"id"`
+}
+
+type LauncherRetargetParams struct {
+	ID      string `json:"id"`
+	Harness string `json:"harness"`
+	Model   string `json:"model,omitempty"`
+	Effort  string `json:"effort,omitempty"`
+}
+
 // session.end answers a SessionRef with the ended domain.Session.
 type SessionRef struct {
 	ID string `json:"id"`
@@ -309,6 +345,8 @@ type State struct {
 	Events []domain.SessionEvent `json:"events"`
 	// Subagents are every session's tracked subagents, in the order they started.
 	Subagents []domain.Subagent `json:"subagents"`
+	// Queue is the launcher's issues that have not become sessions yet.
+	Queue []domain.LaunchItem `json:"queue"`
 }
 
 // Diff is one change: exactly one field besides Seq is set, except that a hook
@@ -316,7 +354,8 @@ type State struct {
 // replaces the entity with the same key; RemovedWorkspace is the root of a
 // workspace to drop, RemovedWorktree the ID of a worktree, and Event is
 // appended to its session's events. A subagent change is a diff of its own,
-// replacing the subagent with the same session and ID.
+// replacing the subagent with the same session and ID. Queue replaces the
+// whole launcher queue.
 type Diff struct {
 	Seq              uint64               `json:"seq"`
 	RemovedWorkspace string               `json:"removed_workspace,omitempty"`
@@ -327,6 +366,7 @@ type Diff struct {
 	Session          *domain.Session      `json:"session,omitempty"`
 	Event            *domain.SessionEvent `json:"event,omitempty"`
 	Subagent         *domain.Subagent     `json:"subagent,omitempty"`
+	Queue            *[]domain.LaunchItem `json:"queue,omitempty"`
 }
 
 // Home is $AGENTWS_HOME, or ~/.agentws.
