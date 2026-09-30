@@ -3,7 +3,21 @@ package domain
 import (
 	"reflect"
 	"testing"
+	"time"
 )
+
+func TestUsageReportStampsWhenTheLimitsWereReported(t *testing.T) {
+	at := time.Date(2026, 9, 29, 12, 0, 0, 0, time.UTC)
+	s := Session{LimitsAt: at.Add(-time.Hour), Limits: []RateLimit{{Window: "five_hour", UsedPercent: 10}}}
+	got := s.Report(StatusReport{ContextLeft: 50, HasContext: true, At: at})
+	if !got.LimitsAt.Equal(s.LimitsAt) {
+		t.Fatalf("a report without limits moved LimitsAt to %s", got.LimitsAt)
+	}
+	got = s.Report(StatusReport{Limits: []RateLimit{{Window: "five_hour", UsedPercent: 20}}, At: at})
+	if !got.LimitsAt.Equal(at) {
+		t.Fatalf("LimitsAt = %s, want %s", got.LimitsAt, at)
+	}
+}
 
 func TestReportSetsModelEffortAndUsage(t *testing.T) {
 	limits := []RateLimit{{Window: "five_hour", UsedPercent: 57}, {Window: "seven_day", UsedPercent: 71}, {Window: "seven_day_opus", UsedPercent: 12}}

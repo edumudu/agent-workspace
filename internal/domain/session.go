@@ -1,5 +1,7 @@
 package domain
 
+import "time"
+
 type AgentState string
 
 const (
@@ -56,6 +58,8 @@ type Session struct {
 	WorktreeIDs []string
 	Usage       Usage
 	Limits      []RateLimit
+	// LimitsAt is when Limits were reported; zero when they never were.
+	LimitsAt time.Time
 }
 
 // Apply is the agent state machine. Events that no longer fit the current
