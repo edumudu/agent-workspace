@@ -147,6 +147,23 @@ func TestCleanupExecBacksUpDirtyAndKeepsIt(t *testing.T) {
 	}
 }
 
+func TestCleanupExecSameNamedWorktreesGetTheirOwnBackupDirs(t *testing.T) {
+	old := cleanupNow.Add(-2 * time.Hour)
+	w := newCleanupWorld(map[string]app.WorktreeGitFacts{
+		"/w/api/agent-x": {Uncommitted: 1, ModifiedAt: old, Fingerprint: "f1"},
+		"/w/web/agent-x": {Uncommitted: 1, ModifiedAt: old, Fingerprint: "f2"},
+	})
+	wts := []domain.Worktree{merged("/w/api/agent-x", "a", 1), merged("/w/web/agent-x", "b", 2)}
+	w.c.Execute(context.Background(), wts, idle)
+	w.git.facts["/w/api/agent-x"] = app.WorktreeGitFacts{Uncommitted: 2, ModifiedAt: old, Fingerprint: "f3"}
+	w.c.Execute(context.Background(), wts, idle)
+	dir := "/h/backups/20260930-120000/agent-x"
+	want := []string{"backup /w/api/agent-x " + dir, "backup /w/web/agent-x " + dir + "-2", "backup /w/api/agent-x " + dir + "-3"}
+	if !reflect.DeepEqual(w.git.ops, want) {
+		t.Errorf("ops = %v, want %v", w.git.ops, want)
+	}
+}
+
 func TestCleanupExecDetachedGetsBackupBranchAndIsKept(t *testing.T) {
 	w := newCleanupWorld(map[string]app.WorktreeGitFacts{"/w/x": {ModifiedAt: cleanupNow.Add(-2 * time.Hour), Fingerprint: "f"}})
 	w.git.taken["backup/wt-x"] = true
