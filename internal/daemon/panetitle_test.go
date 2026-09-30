@@ -6,6 +6,7 @@ import (
 	"github.com/giovaniif/agent-workspace/internal/app"
 	"github.com/giovaniif/agent-workspace/internal/daemon"
 	"github.com/giovaniif/agent-workspace/internal/domain"
+	"github.com/giovaniif/agent-workspace/internal/rpc"
 )
 
 func TestAgentPanesGetATitleThatFollowsTheirSession(t *testing.T) {
@@ -19,5 +20,16 @@ func TestAgentPanesGetATitleThatFollowsTheirSession(t *testing.T) {
 	waitUntil(t, "the title to follow the state", func() bool { return r.host.title("%3") == "◐ claude │ api:x no PR" })
 	if n := r.host.titleSets(app.PaneID("%3")); n != 2 {
 		t.Fatalf("title set %d times; want once per change", n)
+	}
+}
+
+func TestTheShellPaneGetsATitle(t *testing.T) {
+	r := startTerm(t, []domain.Session{termSession}, termWTs)
+	out, err := r.toggle(t, rpc.ShellParams{Session: "s1"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := r.term.title(app.PaneID(out.Pane)); got != "shell · w-api · /wt/api · t hide · s type · T popup" {
+		t.Fatalf("shell title %q", got)
 	}
 }
