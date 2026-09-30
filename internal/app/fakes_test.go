@@ -192,6 +192,7 @@ func (f *fakeFinder) PRs(_ context.Context, repo string) ([]domain.PullRequest, 
 		return nil, errors.New("gh failed")
 	}
 	return prs, nil
+}
 
 type typingHost struct {
 	app.TerminalHost
