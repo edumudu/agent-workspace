@@ -14,7 +14,7 @@ var (
 	commit  = ""
 )
 
-var stubs = []string{"daemon", "tui", "hook", "new", "cleanup"}
+var stubs = []string{"tui", "hook", "new", "cleanup"}
 
 func main() {
 	os.Exit(run(os.Args[1:], os.Stdout, os.Stderr))
@@ -29,6 +29,8 @@ func run(args []string, stdout, stderr io.Writer) int {
 	case cmd == "version":
 		fmt.Fprintf(stdout, "agentws %s (commit %s)\n", version, buildCommit())
 		return 0
+	case cmd == "daemon":
+		return runDaemon(args[1:], stdout, stderr)
 	case slices.Contains(stubs, cmd):
 		fmt.Fprintf(stderr, "agentws %s: not implemented yet\n", cmd)
 		return 1

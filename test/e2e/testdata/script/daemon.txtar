@@ -1,0 +1,26 @@
+# daemon start detaches, and only one daemon runs at a time.
+exec agentws daemon start
+stdout '^agentws daemon started \(pid [0-9]+\)$'
+exists $AGENTWS_HOME/agentws.pid
+
+exec agentws daemon status
+stdout '^pid [0-9]+$'
+stdout '^uptime '
+stdout '^sessions 0$'
+stdout '^worktrees 0$'
+
+! exec agentws daemon
+stderr '^agentws daemon: already running \(pid [0-9]+\)$'
+
+exec agentws daemon start
+stdout '^agentws daemon already running \(pid [0-9]+\)$'
+
+# Any client restarts a stopped daemon.
+exec agentws daemon stop
+stdout '^agentws daemon stopped \(pid [0-9]+\)$'
+exec agentws daemon status
+stdout '^sessions 0$'
+
+exec agentws daemon stop
+! exec agentws daemon stop
+stderr 'not running'
