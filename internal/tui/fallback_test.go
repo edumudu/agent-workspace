@@ -91,6 +91,35 @@ func TestFallbackDialogHonoursTheConfiguredThreshold(t *testing.T) {
 	}
 }
 
+func TestFallbackDialogRestoresTheClaudeStartWhenTheUserGoesBack(t *testing.T) {
+	opts := tui.Options{
+		Defaults: map[domain.Harness]tui.Defaults{domain.HarnessClaude: {Model: "opus", Effort: "high"}},
+		Fallback: domain.FallbackConfig{Models: map[string]string{"opus": "gpt-5"}, Efforts: map[string]string{"high": "medium"}},
+	}
+	m, c := fallbackDialog(t, lowClaudeState(), opts)
+	m = pressCmd(m, keyCtrlS)
+	m = pressCmd(pressCmd(pressCmd(m, keyTab), keyTab), keyLeft)
+	got := startedParams(t, m, c)
+	if got.Harness != "claude" || got.Model != "opus" || got.Effort != "high" {
+		t.Fatalf("params %+v", got)
+	}
+}
+
+func TestFallbackDialogKeepsAMappedEffortThePickerDoesNotList(t *testing.T) {
+	opts := tui.Options{
+		Defaults: map[domain.Harness]tui.Defaults{domain.HarnessClaude: {Effort: "high"}},
+		Fallback: domain.FallbackConfig{Efforts: map[string]string{"high": "xhigh"}},
+	}
+	m, c := fallbackDialog(t, lowClaudeState(), opts)
+	m = pressCmd(m, keyCtrlS)
+	if out := screen(m); !strings.Contains(out, "‹ xhigh ›") {
+		t.Fatalf("mapped effort not shown:\n%s", out)
+	}
+	if got := startedParams(t, m, c); got.Effort != "xhigh" {
+		t.Fatalf("params %+v", got)
+	}
+}
+
 func TestFallbackDialogDoesNotOfferAnExhaustedCodex(t *testing.T) {
 	st := lowClaudeState()
 	st.Sessions[1].Limits[0].UsedPercent = 97
