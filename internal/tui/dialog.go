@@ -47,11 +47,21 @@ type dialog struct {
 	ws       int
 	harness  int
 	effort   int
+	// efforts is effortChoices plus any mapped effort a fallback brought that the picker lacks.
+	efforts []string
+	// fallback remembers the Claude start a fallback replaced, so going back restores it.
+	fallback *fallbackTrace
 	err      string
 	busy     bool
 	// seq tells this dialog's start reply from one sent by a dialog closed earlier.
 	seq      int
 	defaults map[domain.Harness]Defaults
+}
+
+type fallbackTrace struct {
+	fromModel, model string
+	fromEffort       int
+	effort           int
 }
 
 type sessionStartedMsg struct {
@@ -66,9 +76,9 @@ type startFailedMsg struct {
 
 func (m Model) openDialog() Model {
 	m.dialogs++
-	d := &dialog{seq: m.dialogs, defaults: m.opts.Defaults}
+	d := &dialog{seq: m.dialogs, defaults: m.opts.Defaults, efforts: slices.Clone(effortChoices)}
 	start := m.opts.Defaults[domain.HarnessClaude]
-	d.model, d.effort = start.Model, effortIndex(start.Effort)
+	d.model, d.effort = start.Model, effortIndex(d.efforts, start.Effort)
 	all := sorted(m.workspaces)
 	last, found := domain.LastUsedWorkspace(all)
 	for i, w := range all {
@@ -91,8 +101,8 @@ func sorted(ws map[string]domain.Workspace) []domain.Workspace {
 	return out
 }
 
-func effortIndex(effort string) int {
-	return max(slices.Index(effortChoices, effort), 0)
+func effortIndex(choices []string, effort string) int {
+	return max(slices.Index(choices, effort), 0)
 }
 
 // cycleHarness moves to the next harness and carries the model and effort over
@@ -101,21 +111,39 @@ func (d *dialog) cycleHarness(delta int) {
 	prev := d.defaults[domain.Harness(harnessChoices[d.harness])]
 	d.harness = cycle(d.harness, delta, len(harnessChoices))
 	next := d.defaults[domain.Harness(harnessChoices[d.harness])]
-	if d.model == prev.Model {
+	restoredModel, restoredEffort := false, false
+	if f := d.fallback; f != nil {
+		d.fallback = nil
+		if d.model == f.model {
+			d.model, restoredModel = f.fromModel, true
+		}
+		if d.effort == f.effort {
+			d.effort, restoredEffort = f.fromEffort, true
+		}
+	}
+	if !restoredModel && d.model == prev.Model {
 		d.model = next.Model
 	}
-	if effortChoices[d.effort] == prev.Effort {
-		d.effort = effortIndex(next.Effort)
+	if !restoredEffort && d.efforts[d.effort] == prev.Effort {
+		d.effort = effortIndex(d.efforts, next.Effort)
 	}
 }
 
 // takeFallback moves the dialog to the Codex start the offer proposes; a field
-// the mapping leaves empty gets Codex's own default.
+// the mapping leaves empty gets Codex's own default. An effort the picker does
+// not list is added to it so it survives to submission.
 func (d *dialog) takeFallback(req domain.StartRequest) {
+	trace := &fallbackTrace{fromModel: d.model, fromEffort: d.effort}
 	d.harness = slices.Index(harnessChoices, string(req.Harness))
 	defaults := d.defaults[req.Harness]
 	d.model = cmp.Or(req.Model, defaults.Model)
-	d.effort = effortIndex(cmp.Or(req.Effort, defaults.Effort))
+	effort := cmp.Or(req.Effort, defaults.Effort)
+	if !slices.Contains(d.efforts, effort) {
+		d.efforts = append(slices.Clone(d.efforts), effort)
+	}
+	d.effort = effortIndex(d.efforts, effort)
+	trace.model, trace.effort = d.model, d.effort
+	d.fallback = trace
 }
 
 func cycle(i, delta, n int) int {
@@ -142,7 +170,7 @@ func (d *dialog) change(delta int) {
 	case fieldHarness:
 		d.cycleHarness(delta)
 	case fieldEffort:
-		d.effort = cycle(d.effort, delta, len(effortChoices))
+		d.effort = cycle(d.effort, delta, len(d.efforts))
 	}
 }
 
@@ -227,7 +255,7 @@ func (m Model) submit() tea.Cmd {
 		WorkItem:  strings.TrimSpace(d.workItem),
 		Harness:   harnessChoices[d.harness],
 		Model:     strings.TrimSpace(d.model),
-		Effort:    effortChoices[d.effort],
+		Effort:    d.efforts[d.effort],
 	}
 	return func() tea.Msg {
 		ctx, cancel := context.WithTimeout(context.Background(), startTimeout)
@@ -296,7 +324,7 @@ func (m Model) fallbackOffer() (domain.FallbackOffer, bool) {
 	return domain.OfferFallback(m.quotas(), m.opts.Fallback, domain.StartRequest{
 		Harness: m.chosenHarness(),
 		Model:   strings.TrimSpace(d.model),
-		Effort:  effortChoices[d.effort],
+		Effort:  d.efforts[d.effort],
 	})
 }
 
@@ -352,7 +380,7 @@ func (m Model) dialogLines() ([]string, int) {
 	if len(d.roots) > 0 {
 		ws = append(choice(filepath.Base(d.roots[d.ws])), piece{s.dim, "  " + string(d.kinds[d.ws])})
 	}
-	effort := effortChoices[d.effort]
+	effort := d.efforts[d.effort]
 	if effort == "" {
 		effort = "default"
 	}
