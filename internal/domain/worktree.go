@@ -150,12 +150,15 @@ func ReclaimWorktrees(known []Worktree, claims []WorktreeClaim, now time.Time) [
 		return nil
 	}
 	repoOf := func(cwd string) string {
+		repo, depth := "", -1
 		for _, w := range known {
-			if cwd != "" && (within(cwd, w.Path) || within(cwd, w.Repo)) {
-				return w.Repo
+			for _, dir := range []string{w.Path, w.Repo} {
+				if cwd != "" && within(cwd, dir) && len(dir) > depth {
+					repo, depth = w.Repo, len(dir)
+				}
 			}
 		}
-		return ""
+		return repo
 	}
 	var changed []Worktree
 	for _, w := range known {
