@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Times 200 runs of `agentws hook` with the daemon up and down and prints
 # p50/p95. Fails if p95 is over budget: 20 ms up, 60 ms down.
-# Usage: scripts/bench-hook.sh [path/to/agentws]
+# BUDGET_SCALE multiplies both budgets, for slow shared CI runners.
+# Usage: [BUDGET_SCALE=2] scripts/bench-hook.sh [path/to/agentws]
 set -euo pipefail
 bin="${1:-./bin/agentws}"
 [ -x "$bin" ] || make build >/dev/null
@@ -14,7 +15,9 @@ trap '"$bin" daemon stop >/dev/null 2>&1 || true; rm -rf "$home"' EXIT
 measure() {
   python3 - "$bin" "$1" "$2" <<'PY'
 import subprocess, sys, time
-bin, label, budget = sys.argv[1], sys.argv[2], float(sys.argv[3])
+import os
+bin, label = sys.argv[1], sys.argv[2]
+budget = float(sys.argv[3]) * float(os.environ.get("BUDGET_SCALE", "1"))
 payload = b'{"session_id":"bench","tool_name":"Bash","tool_input":{"command":"ls"}}'
 runs = []
 for _ in range(200):

@@ -19,7 +19,7 @@
 - `make test`, `make bench` and `make e2e` pass `GO_TEST_FLAGS` (default `-p 2`) to keep local runs light.
 - Integration tests use `-tags integration`. They need `git` and `tmux` installed, and use a temporary `AGENTWS_HOME`. The tmux ones also use a unique tmux socket each. Run them with `go test -p 2 -tags integration ./internal/adapters/tmux/...`; CI does too.
 - `agentws daemon [start|status|stop]` runs or controls the daemon. Tests that start one use a short `AGENTWS_HOME` under `/tmp`: macOS caps Unix socket paths at 104 bytes.
-- `scripts/bench-hook.sh [bin]`: times 200 `agentws hook` runs with the daemon up and down, prints p50/p95, and fails over budget (20 ms / 60 ms p95). CI runs it. Keep `cmd/agentws` startup light: heavy package init there costs every hook.
+- `scripts/bench-hook.sh [bin]`: times 200 `agentws hook` runs with the daemon up and down, prints p50/p95, and fails over budget (20 ms / 60 ms p95). CI runs it with `BUDGET_SCALE=2` because its runners start processes about 3x slower. Keep `cmd/agentws` startup light: package init costs every hook, and `modernc.org/sqlite` init is already about 4.5 of the 5 ms locally.
 - `domain`, `app`, `tui`, `rpc` and `daemon` may not import `os/exec` (depguard). `internal/adapters/tmux` is the only code that runs tmux, and only `internal/daemon` may import it.
 
 ## Rules

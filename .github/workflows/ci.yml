@@ -20,7 +20,8 @@ jobs:
       - run: make build
       - run: ./bin/agentws version
       - run: make lint
-      - run: scripts/bench-hook.sh ./bin/agentws
+      # why: shared macOS runners start processes about 3x slower than a dev Mac; the real budget is checked locally.
+      - run: BUDGET_SCALE=2 scripts/bench-hook.sh ./bin/agentws
       - run: go test ./...
       - run: brew list tmux >/dev/null 2>&1 || brew install tmux
       - run: go test -p 2 -tags integration ./internal/adapters/tmux/...
