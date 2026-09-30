@@ -73,10 +73,11 @@ type Daemon struct {
 	queries chan func(*state)
 	stopped chan struct{}
 	st      *state
+	ws      workspaces
 }
 
 // New restores state from store. pid is what status reports.
-func New(store app.Store, pid int) (*Daemon, error) {
+func New(store app.Store, pid int, opts ...Option) (*Daemon, error) {
 	snap, err := store.Load()
 	if err != nil {
 		return nil, err
@@ -101,14 +102,19 @@ func New(store app.Store, pid int) (*Daemon, error) {
 	for _, x := range snap.Sessions {
 		st.sessions[x.ID] = x
 	}
-	return &Daemon{
+	d := &Daemon{
 		pid:     pid,
 		started: time.Now(),
 		events:  make(chan Event, 256),
 		queries: make(chan func(*state)),
 		stopped: make(chan struct{}),
 		st:      st,
-	}, nil
+		ws:      workspaces{now: time.Now, refreshEvery: defaultRefreshInterval, ctx: context.Background()},
+	}
+	for _, o := range opts {
+		o(d)
+	}
+	return d, nil
 }
 
 // Post hands an event to the loop. It blocks only while the loop's queue is
@@ -135,6 +141,8 @@ func (d *Daemon) query(f func(*state)) bool {
 // Serve runs the loop and accepts connections on ln until ctx is done, then
 // closes every connection and flushes the store.
 func (d *Daemon) Serve(ctx context.Context, ln net.Listener) error {
+	d.ws.ctx = ctx
+	go d.refreshWorkspacesEvery(ctx)
 	loopDone := make(chan struct{})
 	go func() {
 		d.loop(ctx)
@@ -221,6 +229,12 @@ func (s *state) hook(h rpc.Hook) {
 	s.emit(SessionChanged{Session: next})
 }
 
+// commit applies e on the loop and returns once it has taken effect, so a
+// query issued afterwards sees it. It reports false if the daemon stopped.
+func (d *Daemon) commit(e Event) bool {
+	return d.query(func(s *state) { s.emit(e) })
+}
+
 func (d *Daemon) handle(c *conn) {
 	defer func() {
 		c.kill()
@@ -271,6 +285,11 @@ func (d *Daemon) dispatch(c *conn, line []byte) (*rpc.Response, bool) {
 		}
 		ok := d.query(func(s *state) { s.hook(h) })
 		return result(req.ID, rpc.HookReply{}), ok
+	case rpc.MethodWorkspaceAdd, rpc.MethodWorkspaceList, rpc.MethodWorkspaceRemove:
+		if resp, ok, handled := d.workspaceMethod(req); handled {
+			return resp, ok
+		}
+		return errorResponse(req.ID, rpc.CodeUnknownMethod, "unknown method "+req.Method), true
 	default:
 		return errorResponse(req.ID, rpc.CodeUnknownMethod, "unknown method "+req.Method), true
 	}

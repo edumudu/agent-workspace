@@ -16,9 +16,12 @@ import (
 const Version = 1
 
 const (
-	MethodStatus    = "status"
-	MethodSubscribe = "subscribe"
-	MethodHook      = "hook"
+	MethodStatus          = "status"
+	MethodSubscribe       = "subscribe"
+	MethodHook            = "hook"
+	MethodWorkspaceAdd    = "workspace.add"
+	MethodWorkspaceList   = "workspace.list"
+	MethodWorkspaceRemove = "workspace.remove"
 )
 
 // Hook is one harness hook event as `agentws hook` received it. Payload is
@@ -41,7 +44,25 @@ const (
 	CodeUnsupportedVersion = "unsupported_version"
 	CodeUnknownMethod      = "unknown_method"
 	CodeBadRequest         = "bad_request"
+	CodeNotFound           = "not_found"
 )
+
+// WorkspaceAddParams.Path must be absolute. Adding a known root again
+// refreshes it and marks it last used.
+type WorkspaceAddParams struct {
+	Path string `json:"path"`
+}
+
+type WorkspaceRemoveParams struct {
+	Root string `json:"root"`
+}
+
+// WorkspaceList is every registered workspace by root; LastUsed is the root
+// of the most recently used one, empty when there are none.
+type WorkspaceList struct {
+	Workspaces []domain.Workspace `json:"workspaces"`
+	LastUsed   string             `json:"last_used"`
+}
 
 type Request struct {
 	V      int             `json:"v"`
@@ -84,11 +105,13 @@ type State struct {
 	Sessions   []domain.Session   `json:"sessions"`
 }
 
-// Diff is one change: exactly one field besides Seq is set, and it replaces
-// the entity with the same key.
+// Diff is one change: exactly one field besides Seq is set. Every field but
+// RemovedWorkspace replaces the entity with the same key; RemovedWorkspace is
+// the root of a workspace to drop.
 type Diff struct {
-	Seq       uint64            `json:"seq"`
-	Workspace *domain.Workspace `json:"workspace,omitempty"`
+	Seq              uint64            `json:"seq"`
+	RemovedWorkspace string            `json:"removed_workspace,omitempty"`
+	Workspace        *domain.Workspace `json:"workspace,omitempty"`
 	Task      *domain.Task      `json:"task,omitempty"`
 	Worktree  *domain.Worktree  `json:"worktree,omitempty"`
 	Session   *domain.Session   `json:"session,omitempty"`
