@@ -139,7 +139,9 @@ func TestSubscribersAllGetEveryDiffInTheSameOrder(t *testing.T) {
 	}
 	for i := range n {
 		da, db := next(t, a.Diffs), next(t, b.Diffs)
-		if fmt.Sprint(da) != fmt.Sprint(db) {
+		ja, _ := json.Marshal(da)
+		jb, _ := json.Marshal(db)
+		if string(ja) != string(jb) {
 			t.Fatalf("diff %d differs: %+v vs %+v", i, da, db)
 		}
 		if da.Seq != a.State.Seq+uint64(i)+1 {
