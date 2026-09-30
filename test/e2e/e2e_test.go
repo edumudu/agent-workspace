@@ -97,7 +97,11 @@ func setup(env *testscript.Env, fakes string) error {
 		_ = stop.Run()
 		_ = exec.Command("tmux", "-L", socket, "kill-server").Run()
 		// why: kill-server leaves the socket file behind.
-		_ = os.Remove(filepath.Join("/tmp", fmt.Sprintf("tmux-%d", os.Getuid()), socket))
+		dir := os.Getenv("TMUX_TMPDIR")
+		if dir == "" {
+			dir = "/tmp"
+		}
+		_ = os.Remove(filepath.Join(dir, fmt.Sprintf("tmux-%d", os.Getuid()), socket))
 		_ = os.RemoveAll(home)
 	})
 	return nil
