@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Worktrees and disk</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'JetBrains Mono',ui-monospace,Menlo,monospace;color:#4c4f69;background:#eff1f5}
+a{color:#1e66f5}a:hover{color:#1550c4}
+</style>
+</helmet>
+<div style="width: 1440px; height: 900px; box-sizing: border-box; display: flex; flex-direction: column; background: #eff1f5; font-size: 13px; line-height: 20px; font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace; color: #4c4f69">
+
+  <div style="height: 30px; flex-shrink: 0; display: flex; align-items: center; gap: 28px; padding: 0 14px; background: #e6e9ef; border-bottom: 1px solid #ccd0da">
+    <div style="display: flex; align-items: center; gap: 8px; font-weight: 700; color: #1e66f5">
+      <div style="width: 8px; height: 16px; background: #1e66f5"></div>
+      <span>agentws</span>
+    </div>
+    <span style="font-weight: 700; letter-spacing: 1px">WORKTREES</span>
+    <div style="flex-grow: 1"></div>
+    <span style="font-weight: 700">21:50</span>
+  </div>
+
+  <div style="display: flex; align-items: center; gap: 40px; padding: 18px 20px; border-bottom: 1px solid #ccd0da">
+    <div style="display: flex; flex-direction: column; gap: 6px; width: 420px">
+      <div style="display: flex; justify-content: space-between">
+        <span style="font-weight: 700">Disk</span>
+        <span>40G free of 460G</span>
+      </div>
+      <div style="display: flex; height: 10px; background: #ccd0da">
+        <div style="width: 4%; background: #1e66f5"></div>
+        <div style="width: 2%; background: #fe640b"></div>
+        <div style="width: 85%; background: #9ca0b0"></div>
+      </div>
+      <div style="display: flex; gap: 16px; color: #5c5f77">
+        <span><span style="color: #1e66f5">■</span> worktrees 18.4G</span>
+        <span><span style="color: #fe640b">■</span> reclaimable 7.9G</span>
+        <span><span style="color: #9ca0b0">■</span> other</span>
+      </div>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 2px">
+      <span style="font-weight: 700">Auto-cleanup on</span>
+      <span style="color: #5c5f77">merged + clean + no session → removed</span>
+      <span style="color: #5c5f77">merged + dirty → backup, then asks</span>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 2px">
+      <span style="font-weight: 700">Shared deps store</span>
+      <span style="color: #5c5f77">web 3.1G once, cloned per worktree</span>
+    </div>
+  </div>
+
+  <div style="display: grid; grid-template-columns: 150px 300px 90px 1fr 110px 110px 90px 80px; gap: 0 12px; padding: 8px 20px; color: #5c5f77; border-bottom: 1px solid #ccd0da">
+    <span>state</span><span>task</span><span>repo</span><span>branch</span><span>PR</span><span>session</span><span>port</span><span style="text-align: right">size</span>
+  </div>
+  <sc-for list="{{rows}}" as="w" hint-placeholder-count="10">
+    <div style="{{w.style}}">
+      <span style="{{w.stateStyle}}">{{w.state}}</span>
+      <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{w.task}}</span>
+      <span>{{w.repo}}</span>
+      <span style="color: #5c5f77; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{w.branch}}</span>
+      <span>{{w.pr}}</span>
+      <span>{{w.session}}</span>
+      <span>{{w.port}}</span>
+      <span style="text-align: right">{{w.size}}</span>
+    </div>
+  </sc-for>
+
+  <div style="margin: 14px 20px 0; display: flex; align-items: center; gap: 14px; padding: 10px 14px; border: 1px solid #fe640b; background: #fdeee4">
+    <span style="font-weight: 700; color: #b3470a">!</span>
+    <span style="flex-grow: 1"><b>web · delete-account</b> · PR #5702 merged, 2 uncommitted files (tasks/lessons.md, bun.lock)</span>
+    <button type="button" style="font-family: inherit; font-size: 13px; padding: 5px 12px; border: none; background: #b3470a; color: #ffffff; font-weight: 700">b backup + remove</button>
+    <button type="button" style="font-family: inherit; font-size: 13px; padding: 5px 12px; border: 1px solid #b3470a; background: transparent; color: #b3470a">o open shell</button>
+  </div>
+
+  <div style="flex-grow: 1"></div>
+  <div style="display: flex; flex-direction: column; gap: 2px; padding: 12px 20px; border-top: 1px solid #ccd0da; color: #5c5f77">
+    <span style="font-weight: 700; color: #4c4f69">Recently cleaned</span>
+    <span>21:31  removed api/acme-107  · PR #3602 merged · clean · 0.4G</span>
+    <span>20:58  removed web/one-click-resume  · PR #5688 merged · clean · 2.6G</span>
+    <span>20:12  backed up + removed web/acme-108  · 2 files → ~/.agentws/backups/20260929-2012</span>
+  </div>
+
+  <div style="height: 24px; flex-shrink: 0; display: flex; align-items: center; gap: 20px; padding: 0 14px; background: #dce0e8; color: #5c5f77">
+    <span><b style="color: #4c4f69">d</b> remove</span>
+    <span><b style="color: #4c4f69">b</b> backup + remove</span>
+    <span><b style="color: #4c4f69">o</b> shell here</span>
+    <span><b style="color: #4c4f69">k</b> kill port</span>
+    <span><b style="color: #4c4f69">g</b> go to session</span>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const C = { active: '#1e66f5', idle: '#5c5f77', merged: '#2f7a1f', dirty: '#b3470a' };
+    const row = (kind, state, task, repo, branch, pr, session, port, size, sel) => ({ state, task, repo, branch, pr, session, port, size,
+      stateStyle: 'font-weight: 700; color: ' + C[kind],
+      style: 'display: grid; grid-template-columns: 150px 300px 90px 1fr 110px 110px 90px 80px; gap: 0 12px; padding: 5px 20px; ' + (sel ? 'background: #ccd0da; box-shadow: inset 3px 0 0 #1e66f5' : '') });
+    const rows = [
+      row('active', '◐ in use', 'public GraphQL org leak', 'api', 'feat/acme-101-public-graphql-fields-org-scope', '#3611 open', '1 claude', '8084', '1.9G', true),
+      row('active', '✳ in use', 'public GraphQL org leak', 'web', 'feat/acme-101-invoice-share-token', '#5731 open', '1 claude', '8081', '3.2G', false),
+      row('active', '● in use', 'api latency pool cap', 'api', 'feat/acme-104-request-db-totals', '#3598 open', '4 claude', '—', '1.8G', false),
+      row('active', '● in use', 'api latency pool cap', 'infra', 'feat/acme-103-api-app-pool-30', '#412 open', '4 claude', '—', '0.2G', false),
+      row('active', '✳ in use', 'custom domains emails', 'api', 'feat/acme-102-emails-shares', '#3604 open', '3 claude', '8090', '1.9G', false),
+      row('idle', '○ idle', 'custom domains emails', 'web', 'feat/custom-domains-one-click-resume', '#5690 draft', '—', '—', '2.9G', false),
+      row('merged', '✓ merged', 'invoice share token', 'web', 'feat/acme-105-proposal-share-token', '#5712 merged', '—', '—', '2.8G', false),
+      row('merged', '✓ merged', 'org scope follow-up', 'api', 'feat/acme-101-legacy-removal', '#3609 merged', '—', '—', '0.3G', false),
+      row('dirty', '! merged, dirty', 'delete-account', 'web', 'feat/acme-106-field-crew-delete-own-account', '#5702 merged', '—', '—', '2.4G', false),
+    ];
+    return { rows };
+  }
+}
+</script>
+</body>
+</html>

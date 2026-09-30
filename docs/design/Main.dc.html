@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Sessions</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'JetBrains Mono',ui-monospace,Menlo,monospace;color:#4c4f69;background:#eff1f5}
+a{color:#1e66f5}a:hover{color:#1550c4}
+</style>
+</helmet>
+<div style="width: 1440px; height: 900px; box-sizing: border-box; display: flex; flex-direction: column; background: #eff1f5; font-size: 13px; line-height: 20px; font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace; color: #4c4f69">
+
+  <div style="height: 30px; flex-shrink: 0; display: flex; align-items: center; gap: 28px; padding: 0 14px; background: #e6e9ef; border-bottom: 1px solid #ccd0da">
+    <div style="display: flex; align-items: center; gap: 8px; font-weight: 700; color: #1e66f5">
+      <div style="width: 8px; height: 16px; background: #1e66f5"></div>
+      <span>agentws</span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 10px">
+      <span style="font-weight: 700">claude</span>
+      <span style="color: #5c5f77">5h</span>
+      <div style="width: 72px; height: 8px; background: #ccd0da"><div style="width: 38%; height: 8px; background: #1e66f5"></div></div>
+      <span>38%</span>
+      <span style="color: #5c5f77">↻ 17:00</span>
+      <span style="color: #5c5f77">7d</span>
+      <span>59%</span>
+      <span style="color: #d20f39; font-weight: 700">fable 7d 14%</span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 10px">
+      <span style="font-weight: 700">codex</span>
+      <span style="color: #5c5f77">5h</span>
+      <div style="width: 72px; height: 8px; background: #ccd0da"><div style="width: 81%; height: 8px; background: #179299"></div></div>
+      <span>81%</span>
+      <span style="color: #5c5f77">wk</span>
+      <span>55%</span>
+    </div>
+    <div style="flex-grow: 1"></div>
+    <span style="color: #5c5f77">disk 40G free</span>
+    <span style="font-weight: 700">21:42</span>
+  </div>
+
+  <div style="flex-grow: 1; display: flex; min-height: 0">
+
+    <div style="width: 336px; flex-shrink: 0; display: flex; flex-direction: column; background: #e6e9ef; border-right: 1px solid #ccd0da">
+      <div style="display: flex; justify-content: space-between; padding: 10px 14px 6px">
+        <span style="font-weight: 700; letter-spacing: 1px">SESSIONS</span>
+        <span style="color: #b3470a; font-weight: 700">2 need you</span>
+      </div>
+      <sc-for list="{{tasks}}" as="task" hint-placeholder-count="4">
+        <div style="display: flex; flex-direction: column; padding: 6px 0 8px">
+          <div style="display: flex; justify-content: space-between; gap: 8px; padding: 2px 14px; color: #5c5f77">
+            <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{task.id}}</span>
+            <span style="flex-shrink: 0">{{task.repos}}</span>
+          </div>
+          <sc-for list="{{task.sessions}}" as="s" hint-placeholder-count="2">
+            <div style="{{s.rowStyle}}">
+              <div style="display: flex; align-items: center; gap: 10px">
+                <span style="width: 14px; text-align: center; font-weight: 700; {{s.glyphStyle}}">{{s.glyph}}</span>
+                <span style="color: #5c5f77">{{s.n}}</span>
+                <span style="flex-grow: 1; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{s.name}}</span>
+                <span style="{{s.tagStyle}}">{{s.harness}}</span>
+              </div>
+              <div style="display: flex; gap: 12px; padding-left: 24px; color: #5c5f77">
+                <span>{{s.model}}</span>
+                <span>ctx {{s.ctx}}</span>
+                <span>{{s.wtCount}}</span>
+              </div>
+              <sc-for list="{{s.wts}}" as="w" hint-placeholder-count="2">
+                <div style="display: flex; gap: 8px; padding-left: 24px; {{w.rowStyle}}">
+                  <span style="color: #9ca0b0">{{w.branchGlyph}}</span>
+                  <span style="flex-grow: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{w.name}}</span>
+                  <span>{{w.pr}}</span>
+                  <span style="width: 14px; text-align: center; font-weight: 700; {{w.ciStyle}}">{{w.ci}}</span>
+                </div>
+              </sc-for>
+            </div>
+          </sc-for>
+        </div>
+      </sc-for>
+      <div style="flex-grow: 1"></div>
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px 12px; padding: 10px 14px; border-top: 1px solid #ccd0da; color: #5c5f77">
+        <span><b style="color: #4c4f69">n</b> new session</span>
+        <span><b style="color: #4c4f69">r</b> review</span>
+        <span><b style="color: #4c4f69">t</b> shell</span>
+        <span><b style="color: #4c4f69">e</b> nvim</span>
+        <span><b style="color: #4c4f69">w</b> worktrees</span>
+        <span><b style="color: #4c4f69">␣</b> next waiting</span>
+      </div>
+    </div>
+
+    <div style="flex-grow: 1; display: flex; flex-direction: column; min-width: 0">
+      <div style="display: flex; align-items: center; gap: 18px; padding: 8px 16px; border-bottom: 1px solid #ccd0da; background: #eff1f5">
+        <span style="font-weight: 700; color: #1e66f5">◐</span>
+        <span style="color: #5c5f77">claude · opus-5.5 · high</span>
+        <span style="color: #5c5f77">cwd platform</span>
+        <div style="flex-grow: 1"></div>
+        <div style="display: flex; gap: 8px">
+          <span style="padding: 0 8px; background: #ccd0da; box-shadow: inset 0 -2px 0 #1e66f5">api:org-scope #3611 <span style="color: #1e66f5">◐ 12/14</span></span>
+          <span style="padding: 0 8px; background: #dce0e8">web:share-token #5731 <span style="color: #2f7a1f">✓</span></span>
+          <span style="padding: 0 8px; background: #dce0e8">api:legacy-removal <span style="color: #5c5f77">no PR</span></span>
+        </div>
+      </div>
+
+      <div style="flex-grow: 1; display: flex; flex-direction: column; gap: 6px; padding: 16px 20px; min-height: 0; overflow: hidden">
+        <div style="color: #5c5f77">&gt; scope the public GraphQL fields to the share token's org, then babysit the PR</div>
+        <div style="height: 6px"></div>
+        <sc-for list="{{lines}}" as="l" hint-placeholder-count="8">
+          <div style="display: flex; gap: 10px">
+            <span style="{{l.dotStyle}}">●</span>
+            <span style="font-weight: 700; flex-shrink: 0">{{l.tool}}</span>
+            <span style="color: #5c5f77; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{l.detail}}</span>
+          </div>
+        </sc-for>
+        <div style="height: 6px"></div>
+        <div style="display: flex; gap: 10px; color: #1e66f5">
+          <span>◐</span>
+          <span>Waiting on e2e and typecheck · polling every 60s</span>
+        </div>
+        <div style="flex-grow: 1"></div>
+        <div style="display: flex; gap: 10px; padding: 8px 12px; border: 1px solid #bcc0cc; color: #5c5f77">
+          <span style="color: #4c4f69; font-weight: 700">&gt;</span>
+          <span>message the agent…</span>
+        </div>
+      </div>
+
+      <div style="height: 190px; flex-shrink: 0; display: flex; flex-direction: column; border-top: 1px solid #1e66f5; background: #eff1f5">
+        <div style="display: flex; gap: 16px; padding: 4px 16px; background: #dce0e8">
+          <span style="font-weight: 700">shell</span>
+          <span style="padding: 0 6px; background: #ccd0da">api:org-scope ▾</span>
+          <span style="color: #5c5f77">workspace/.worktrees/api-acme-101</span>
+          <div style="flex-grow: 1"></div>
+          <span style="color: #5c5f77">t hide · T popup</span>
+        </div>
+        <div style="display: flex; flex-direction: column; padding: 8px 16px">
+          <span><span style="color: #2f7a1f">$</span> bun test src/graphql/public</span>
+          <span style="color: #5c5f77">src/graphql/public/resolvers.test.ts</span>
+          <span><span style="color: #2f7a1f">✓</span> rejects tokens from another org</span>
+          <span><span style="color: #2f7a1f">✓</span> returns only the token org's projects</span>
+          <span style="color: #5c5f77">42 pass · 0 fail · 1.84s</span>
+          <span><span style="color: #2f7a1f">$</span> <span style="display: inline-block; width: 8px; height: 16px; vertical-align: -3px; background: #1e66f5"></span></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="height: 24px; flex-shrink: 0; display: flex; align-items: center; gap: 20px; padding: 0 14px; background: #dce0e8; color: #5c5f77">
+    <span style="padding: 0 8px; background: #1e66f5; color: #eff1f5; font-weight: 700">SESSION</span>
+    <span>C-hjkl move · ? keys · : command</span>
+    <div style="flex-grow: 1"></div>
+    <span>5 sessions · 10 worktrees · ports 8081 8084</span>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const row = (sel) => 'display: flex; flex-direction: column; padding: 4px 14px; ' + (sel ? 'background: #ccd0da; box-shadow: inset 3px 0 0 #1e66f5' : '');
+    const glyph = { run: 'color: #1e66f5', wait: 'color: #b3470a', done: 'color: #b3470a', idle: 'color: #6c6f85' };
+    const tag = (h) => 'padding: 0 6px; font-size: 11px; font-weight: 700; ' + (h === 'CC' ? 'background: #dce0e8; color: #1e66f5' : 'background: #dce0e8; color: #117a80');
+    const CI = { ok: ['✓', 'color: #2f7a1f'], run: ['◐', 'color: #1e66f5'], fail: ['✗', 'color: #d20f39'], merged: ['⇡', 'color: #8839ef'], none: ['', ''] };
+    const wt = (name, pr, ci, gone) => ({ name, pr, ci: CI[ci][0], ciStyle: CI[ci][1], branchGlyph: '└',
+      rowStyle: gone ? 'color: #6c6f85; text-decoration: line-through' : 'color: #4c4f69' });
+    const s = (n, st, g, name, h, model, ctx, wts, sel) => ({ n, glyph: g, glyphStyle: glyph[st], name, harness: h, tagStyle: tag(h), model, ctx,
+      wts: wts || [], wtCount: wts && wts.length ? wts.length + ' worktrees' : 'root only', rowStyle: row(sel) });
+    const tasks = [
+      { id: 'ACME-101 · public GraphQL org leak', repos: 'api web', sessions: [
+        s(1, 'run', '◐', 'public GraphQL org leak', 'CC', 'opus-5.5 high', '64%', [
+          wt('api:org-scope', '#3611', 'run'), wt('web:share-token', '#5731', 'ok'), wt('api:legacy-removal', '—', 'none') ], true),
+        s(2, 'wait', '✳', 'proposal share token', 'CX', 'gpt-6-sol med', '71%', [ wt('web:proposal-token', '#5733', 'fail') ], false) ] },
+      { id: 'ACME-102 · custom domains emails', repos: 'api web', sessions: [
+        s(3, 'wait', '✳', 'custom domains emails', 'CC', 'sonnet-5 med', '48%', [
+          wt('api:foundation', '#3601', 'merged', true), wt('api:shares', '#3604', 'ok'),
+          wt('api:client-portal', '#3606', 'run'), wt('web:email-card', '#5720', 'fail') ], false) ] },
+      { id: 'ACME-103 · api latency pool cap', repos: 'api infra', sessions: [
+        s(4, 'done', '●', 'api latency pool cap', 'CC', 'opus-5 high', '22%', [
+          wt('api:db-totals', '#3598', 'ok'), wt('infra:pool-30', '#412', 'ok') ], false) ] },
+      { id: 'agent workspace tool', repos: 'www', sessions: [
+        s(5, 'idle', '○', 'agent workspace tool', 'CC', 'opus-5.5 high', '51%', [], false) ] },
+    ];
+    const done = 'color: #2f7a1f', run = 'color: #1e66f5';
+    const lines = [
+      { tool: 'Read', detail: 'src/graphql/public/resolvers.ts', dotStyle: done },
+      { tool: 'Edit', detail: 'src/graphql/public/resolvers.ts  +18 −4', dotStyle: done },
+      { tool: 'Edit', detail: 'src/graphql/public/resolvers.test.ts  +41', dotStyle: done },
+      { tool: 'Bash', detail: 'bun test src/graphql/public  ·  42 pass', dotStyle: done },
+      { tool: 'Bash', detail: 'git push -u origin feat/acme-101-public-graphql-fields-org-scope', dotStyle: done },
+      { tool: 'Bash', detail: 'gh pr create  →  #3611', dotStyle: done },
+      { tool: 'Skill', detail: 'babysit-pr #3611', dotStyle: run },
+    ];
+    return { tasks, lines };
+  }
+}
+</script>
+</body>
+</html>

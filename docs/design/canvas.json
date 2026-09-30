@@ -1,0 +1,60 @@
+{
+  "v": 3,
+  "attachments": {},
+  "boards": {
+    "Main.dc.html": {
+      "h": 900,
+      "title": "1 · Sessions",
+      "w": 1440,
+      "x": 0,
+      "y": 0
+    },
+    "NewSession.dc.html": {
+      "h": 900,
+      "title": "3 · New session",
+      "w": 1440,
+      "x": 0,
+      "y": 1020
+    },
+    "Review.dc.html": {
+      "h": 900,
+      "title": "2 · Review pane",
+      "w": 1440,
+      "x": 1520,
+      "y": 0
+    },
+    "Worktrees.dc.html": {
+      "h": 900,
+      "title": "4 · Worktrees & disk",
+      "w": 1440,
+      "x": 1520,
+      "y": 1020
+    }
+  },
+  "createdOnFiles": {
+    "at": "2026-09-30T01:06:23Z",
+    "v": 1
+  },
+  "designSystems": [],
+  "launch": {
+    "view": "canvas"
+  },
+  "notes": {
+    "head": {
+      "kind": "title1",
+      "maxW": 2960,
+      "text": "Agent workspace — v1 TUI (Catppuccin Latte, JetBrains Mono)",
+      "w": 240,
+      "x": 0,
+      "y": -300
+    }
+  },
+  "order": [
+    "Main.dc.html",
+    "Review.dc.html",
+    "NewSession.dc.html",
+    "Worktrees.dc.html"
+  ],
+  "pages": [],
+  "title": "Agent Workspace TUI"
+}
