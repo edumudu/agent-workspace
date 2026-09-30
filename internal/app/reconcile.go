@@ -1,27 +1,16 @@
 package app
 
-import "context"
+import (
+	"context"
 
-// PaneBinding and PaneBindingStore are the narrow slice of the session store
-// that reconcile needs; the full Store port replaces them once it exists.
-type PaneBinding struct {
-	SessionID string
-	Pane      PaneID
-}
+	"github.com/giovaniif/agent-workspace/internal/domain"
+)
 
-type PaneBindingStore interface {
-	PaneBindings(ctx context.Context) ([]PaneBinding, error)
-	MarkIdle(ctx context.Context, sessionID string) error
-}
-
-// ReconcilePanes idles every session whose pane no longer exists or has died,
-// and returns their IDs. It changes nothing if the host cannot be listed.
-func ReconcilePanes(ctx context.Context, host TerminalHost, store PaneBindingStore) ([]string, error) {
+// ReconcilePanes returns every session whose pane no longer exists or has
+// died, ended. Sessions already off a pane are skipped. It ends nothing if
+// the host cannot be listed.
+func ReconcilePanes(ctx context.Context, host TerminalHost, sessions []domain.Session) ([]domain.Session, error) {
 	panes, err := host.List(ctx)
-	if err != nil {
-		return nil, err
-	}
-	bindings, err := store.PaneBindings(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -29,15 +18,12 @@ func ReconcilePanes(ctx context.Context, host TerminalHost, store PaneBindingSto
 	for _, p := range panes {
 		alive[p.ID] = p.Alive
 	}
-	var idled []string
-	for _, b := range bindings {
-		if alive[b.Pane] {
+	var ended []domain.Session
+	for _, s := range sessions {
+		if s.Pane == "" || alive[PaneID(s.Pane)] {
 			continue
 		}
-		if err := store.MarkIdle(ctx, b.SessionID); err != nil {
-			return idled, err
-		}
-		idled = append(idled, b.SessionID)
+		ended = append(ended, s.End())
 	}
-	return idled, nil
+	return ended, nil
 }
