@@ -41,8 +41,9 @@ func (Review) WorkingTree(ctx context.Context, dir string) (string, error) {
 	return strings.TrimSpace(string(tree)), err
 }
 
-// copyInto fills dst with src and closes it; a missing src (a repo with
-// nothing staged yet) leaves dst empty, which git reads as an empty index.
+// copyInto fills dst with src, closes it and gives it src's mtime; a missing
+// src (a repo with nothing staged yet) leaves dst empty, which git reads as
+// an empty index.
 func copyInto(dst *os.File, src string) error {
 	in, err := os.Open(src)
 	if errors.Is(err, os.ErrNotExist) {
@@ -53,8 +54,17 @@ func copyInto(dst *os.File, src string) error {
 		return err
 	}
 	defer func() { _ = in.Close() }()
+	info, err := in.Stat()
+	if err != nil {
+		_ = dst.Close()
+		return err
+	}
 	_, err = io.Copy(dst, in)
-	return errors.Join(err, dst.Close())
+	if err = errors.Join(err, dst.Close()); err != nil {
+		return err
+	}
+	// why: git re-hashes entries not older than the index file (its racy-git check); a fresh mtime would hide same-size edits made in the second of the last commit.
+	return os.Chtimes(dst.Name(), info.ModTime(), info.ModTime())
 }
 
 func (Review) PointRef(ctx context.Context, dir, ref, tree string) error {
