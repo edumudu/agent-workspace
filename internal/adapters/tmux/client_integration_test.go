@@ -6,9 +6,11 @@ import (
 	"context"
 	"os/exec"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 
+	"github.com/giovaniif/agent-workspace/internal/adapters/tmux"
 	"github.com/giovaniif/agent-workspace/internal/app"
 )
 
@@ -41,6 +43,14 @@ func TestClientLayoutCanBeFoundFocusedAndAttached(t *testing.T) {
 	}
 	if got := strings.TrimSpace(string(out)); got != "1" {
 		t.Fatalf("active pane index = %q after FocusSlot; want the main slot, 1", got)
+	}
+	width := append(slices.Clone(attach[:len(attach)-3]), "display-message", "-p", "-t", string(slot)+".0", "#{pane_width}")
+	out, err = exec.Command(width[0], width[1:]...).Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := strings.TrimSpace(string(out)); got != strconv.Itoa(tmux.SidebarWidth) {
+		t.Fatalf("sidebar pane is %s columns wide, want %d", got, tmux.SidebarWidth)
 	}
 
 	if _, err := exec.Command(active[0], append(slices.Clone(attach[1:len(attach)-3]), "kill-window", "-t", string(slot))...).CombinedOutput(); err != nil {
