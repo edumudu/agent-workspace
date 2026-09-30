@@ -56,14 +56,16 @@ func TestNotifyReturnsRunnerError(t *testing.T) {
 
 func TestNotifyTerminalFrontmostRecognizesTerminalApps(t *testing.T) {
 	cases := map[string]bool{
-		"Terminal\n":  true,
-		"iTerm2\n":    true,
-		"Ghostty\n":   true,
-		"WezTerm\n":   true,
-		"Safari\n":    false,
-		"Slack\n":     false,
-		"":            false,
-		"Terminal2\n": false,
+		"Terminal\n":    true,
+		"iTerm2\n":      true,
+		"Ghostty\n":     true,
+		"WezTerm\n":     true,
+		"ghostty\n":     true,
+		"wezterm-gui\n": true,
+		"Safari\n":      false,
+		"Slack\n":       false,
+		"":              false,
+		"Terminal2\n":   false,
 	}
 	for out, want := range cases {
 		o := notify.Osascript{Run: (&recorder{out: out}).run}
