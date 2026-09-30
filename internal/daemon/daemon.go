@@ -79,6 +79,7 @@ type Daemon struct {
 	st      *state
 	ws      workspaces
 	clients clients
+	hs      harnesses
 }
 
 // New restores state from store. pid is what status reports.
@@ -219,15 +220,11 @@ func (s *state) emit(e Event) {
 // no session owns, and hook names the harness adapter does not know, are
 // ignored.
 func (s *state) hook(h rpc.Hook) {
-	kind, ok := domain.HookEvent(domain.Harness(h.Harness), h.Event)
+	kind, ok := hookEvent(h)
 	if !ok {
 		return
 	}
-	sessions := make([]domain.Session, 0, len(s.sessions))
-	for _, x := range s.sessions {
-		sessions = append(sessions, x)
-	}
-	session, ok := domain.SessionOnPane(sessions, h.Pane)
+	session, ok := domain.SessionOnPane(s.sessionList(), h.Pane)
 	if !ok {
 		return
 	}
@@ -295,6 +292,15 @@ func (d *Daemon) dispatch(c *conn, line []byte) (*rpc.Response, bool) {
 		}
 		ok := d.query(func(s *state) { s.hook(h) })
 		return result(req.ID, rpc.HookReply{}), ok
+	case rpc.MethodStatusLine:
+		var sl rpc.StatusLine
+		if err := json.Unmarshal(req.Params, &sl); err != nil {
+			return errorResponse(req.ID, rpc.CodeBadRequest, "statusline params: "+err.Error()), true
+		}
+		ok := d.query(func(s *state) { s.statusLine(sl) })
+		return result(req.ID, struct{}{}), ok
+	case rpc.MethodLaunch:
+		return d.launch(req)
 	case rpc.MethodWorkspaceAdd, rpc.MethodWorkspaceList, rpc.MethodWorkspaceRemove:
 		if resp, ok, handled := d.workspaceMethod(req); handled {
 			return resp, ok

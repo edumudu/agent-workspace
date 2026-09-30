@@ -26,8 +26,27 @@ const (
 	MethodOpenClient = "client.open"
 	MethodFocusMain  = "client.focus_main"
 	// MethodDebugSeed adds fake tasks, sessions and worktrees for manual testing.
-	MethodDebugSeed = "debug.seed"
+	MethodDebugSeed  = "debug.seed"
+	MethodStatusLine = "statusline"
+	MethodLaunch     = "session.launch"
 )
+
+// StatusLine is one harness status-line update from the session on Pane.
+type StatusLine struct {
+	Pane   string              `json:"pane"`
+	Report domain.StatusReport `json:"report"`
+}
+
+// LaunchParams starts Harness in a new pane in Dir. The result is the new
+// domain.Session.
+type LaunchParams struct {
+	Harness string `json:"harness"`
+	Name    string `json:"name,omitempty"`
+	Dir     string `json:"dir"`
+	Model   string `json:"model,omitempty"`
+	Effort  string `json:"effort,omitempty"`
+	Prompt  string `json:"prompt,omitempty"`
+}
 
 // Hook is one harness hook event as `agentws hook` received it. Payload is
 // the hook's stdin JSON, untouched.
@@ -52,6 +71,7 @@ const (
 	CodeNotFound           = "not_found"
 	CodeUnavailable        = "unavailable"
 	CodeFailed             = "failed"
+	CodeLaunchFailed       = "launch_failed"
 )
 
 // WorkspaceAddParams.Path must be absolute. Adding a known root again
