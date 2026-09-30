@@ -71,7 +71,7 @@ func withSnapshot(s domain.Session, snap codex.Snapshot) domain.Session {
 	s = s.Report(domain.StatusReport{Model: snap.Model, Effort: snap.Effort, At: snap.TurnAt})
 	usage := snap.Usage()
 	if snap.ContextLeftPercent != codex.UnknownPercent {
-		s.Usage.ContextLeftPercent = usage.ContextLeftPercent
+		s.Usage.ContextLeftPercent, s.Usage.HasContext = usage.ContextLeftPercent, true
 	}
 	if len(snap.Limits) > 0 {
 		s.Usage.LimitUsedPercent = usage.LimitUsedPercent

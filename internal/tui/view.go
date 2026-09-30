@@ -3,6 +3,7 @@ package tui
 import (
 	"fmt"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
@@ -233,7 +234,13 @@ func (m Model) sessionLines(e entry, sel bool) []string {
 	if label := portLabel(e.ports()); label != "" {
 		open = []piece{{s.teal, label}, {s.text, " "}}
 	}
-	out = append(out, m.line(sel, []piece{bar, {s.sub, fmt.Sprintf("    %s  ctx %d%%  %s", detail, x.Usage.ContextLeftPercent, trees)}}, append(open, m.switchMarks(x)...)))
+	facts := []string{detail}
+	if x.Usage.HasContext {
+		facts = append(facts, fmt.Sprintf("ctx %d%%", x.Usage.ContextLeftPercent))
+	}
+	facts = append(facts, trees)
+	row := strings.Join(slices.DeleteFunc(facts, func(f string) bool { return f == "" }), "  ")
+	out = append(out, m.line(sel, []piece{bar, {s.sub, "    " + row}}, append(open, m.switchMarks(x)...)))
 	if m.collapsed[x.ID] {
 		return out
 	}
