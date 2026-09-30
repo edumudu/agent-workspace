@@ -259,3 +259,33 @@ func TestRestoredSessionsWhosePaneIsGoneAreEnded(t *testing.T) {
 			byID["alive"].State == domain.StateRunning && byID["alive"].Pane == "%1"
 	})
 }
+
+func TestNewSessionRetryAfterAFailedSetupGetsAFreshWorktree(t *testing.T) {
+	fail := true
+	r := startSessions(t, &memStore{}, func(context.Context, string) error {
+		if fail {
+			return errors.New("recipe broke")
+		}
+		return nil
+	})
+	p := rpc.NewSessionParams{Workspace: "/src/api", WorkItem: "fix it", Harness: "claude"}
+	var rerr *rpc.Error
+	if err := r.c.Call(context.Background(), rpc.MethodNewSession, p, nil); !errors.As(err, &rerr) || rerr.Code != rpc.CodeFailed {
+		t.Fatalf("failed setup: %v", err)
+	}
+	fail = false
+	var s domain.Session
+	if err := r.c.Call(context.Background(), rpc.MethodNewSession, p, &s); err != nil {
+		t.Fatal(err)
+	}
+	if len(r.wts.added) != 2 || r.wts.added[1].path != "/h/worktrees/api/fix-it-2" {
+		t.Fatalf("added %+v", r.wts.added)
+	}
+	owners := map[string]string{}
+	for _, w := range r.state(t).Worktrees {
+		owners[w.Path] = w.SessionID
+	}
+	if want := map[string]string{"/h/worktrees/api/fix-it": "", "/h/worktrees/api/fix-it-2": s.ID}; !reflect.DeepEqual(owners, want) {
+		t.Fatalf("worktree owners %v, want %v", owners, want)
+	}
+}

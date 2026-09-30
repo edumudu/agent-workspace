@@ -1,6 +1,7 @@
 package tui_test
 
 import (
+	"context"
 	"errors"
 	"reflect"
 	"slices"
@@ -215,5 +216,75 @@ func TestNewSessionDialogWarnsWithoutASwitchWhenTheOtherHarnessIsUnknown(t *test
 	}
 	if out := screen(pressCmd(m, keyCtrlS)); !strings.Contains(out, "‹ claude ›") {
 		t.Fatalf("ctrl+s switched with nothing to switch to:\n%s", out)
+	}
+}
+
+// slowCaller never answers session.new until release is closed.
+type slowCaller struct {
+	fakeCaller
+	release chan struct{}
+}
+
+func (c *slowCaller) Call(ctx context.Context, method string, params, out any) error {
+	if method == rpc.MethodNewSession {
+		<-c.release
+	}
+	return c.fakeCaller.Call(ctx, method, params, out)
+}
+
+func TestNewSessionDialogStillQuitsAndClosesWhileStarting(t *testing.T) {
+	c := &slowCaller{release: make(chan struct{})}
+	defer close(c.release)
+	m := tui.New(tui.Options{Theme: tui.Latte(), Now: clock, Calls: c})
+	m = update(m, tui.StateMsg(withWorkspaces(rpc.State{})))
+	m = typeText(press(m, "n"), "x")
+	next, _ := m.Update(keyEnter)
+	m = next.(tui.Model)
+	if !strings.Contains(screen(m), "starting") {
+		t.Fatalf("not starting:\n%s", screen(m))
+	}
+	_, cmd := m.Update(tea.KeyPressMsg{Code: 'c', Mod: tea.ModCtrl})
+	if cmd == nil {
+		t.Fatal("ctrl+c while starting did nothing")
+	}
+	if _, ok := cmd().(tea.QuitMsg); !ok {
+		t.Fatal("ctrl+c while starting did not quit")
+	}
+	if out := screen(update(m, keyEsc)); strings.Contains(out, "NEW SESSION") {
+		t.Fatalf("esc while starting did not close the dialog:\n%s", out)
+	}
+}
+
+func TestEndConfirmationEndsTheSessionItWasAskedAbout(t *testing.T) {
+	st := withWorkspaces(fixture(2, 0))
+	m, c := dialogModel(t, st)
+	m = pressCmd(typeText(m, "x"), keyEnter)
+	asked := m.Selected()
+	m = press(m, "x")
+	started := domain.Session{ID: "new1", Pane: "%5", State: domain.StateIdle}
+	m = update(m, tui.DiffMsg(rpc.Diff{Seq: 1, Session: &started}))
+	if m.Selected() != "new1" {
+		t.Fatalf("the late diff did not select the new session: %q", m.Selected())
+	}
+	pressCmd(m, key("y"))
+	last := c.calls[len(c.calls)-1]
+	if last.method != rpc.MethodEndSession || !reflect.DeepEqual(last.params, rpc.SessionRef{ID: asked}) {
+		t.Fatalf("ended %+v, want %s", last, asked)
+	}
+}
+
+func TestNewSessionDialogScrollsToTheActiveFieldOnAShortTerminal(t *testing.T) {
+	m, _ := dialogModel(t, withWorkspaces(rpc.State{}))
+	m = update(m, tea.WindowSizeMsg{Width: 48, Height: 16})
+	for range 4 {
+		m = pressCmd(m, keyTab)
+	}
+	if out := screen(m); !strings.Contains(out, "Effort") {
+		t.Fatalf("the active Effort row is off screen:\n%s", out)
+	}
+	m = pressCmd(m, keyTab)
+	m = pressCmd(m, keyEnter)
+	if out := screen(m); !strings.Contains(out, "work item is empty") {
+		t.Fatalf("the error is off screen:\n%s", out)
 	}
 }

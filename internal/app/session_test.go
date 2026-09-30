@@ -84,26 +84,30 @@ func TestStartSessionWithoutSetupStillLaunches(t *testing.T) {
 
 func TestStartSessionStopsAtTheFirstFailure(t *testing.T) {
 	boom := errors.New("boom")
+	leftover := &domain.Worktree{ID: "/real/h/api/eng-1", Repo: "/real/src/api", Path: "/real/h/api/eng-1", Branch: "eng-1"}
 	cases := []struct {
-		name    string
-		wts     *fakeWorktrees
-		setup   app.SetupFunc
-		hostErr error
-		created int
+		name     string
+		wts      *fakeWorktrees
+		setup    app.SetupFunc
+		hostErr  error
+		leftover *domain.Worktree
 	}{
-		{"worktree add", &fakeWorktrees{err: boom}, nil, nil, 0},
-		{"setup", &fakeWorktrees{}, func(context.Context, string) error { return boom }, nil, 0},
-		{"pane", &fakeWorktrees{}, nil, boom, 0},
+		{"worktree add", &fakeWorktrees{err: boom}, nil, nil, nil},
+		{"setup", &fakeWorktrees{}, func(context.Context, string) error { return boom }, nil, leftover},
+		{"pane", &fakeWorktrees{}, nil, boom, leftover},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			host := &fakeHost{createErr: c.hostErr}
 			s := app.Sessions{Host: host, Worktrees: c.wts, Setup: c.setup}
 			got, err := s.Start(context.Background(), newSession(singlePlan))
-			if !errors.Is(err, boom) || got.Session.ID != "" || got.Worktree != nil {
+			if !errors.Is(err, boom) || got.Session.ID != "" {
 				t.Fatalf("started %+v, err %v", got, err)
 			}
-			if len(host.created) != c.created {
+			if !reflect.DeepEqual(got.Worktree, c.leftover) {
+				t.Fatalf("after the %s failed the worktree is %+v, want %+v unowned", c.name, got.Worktree, c.leftover)
+			}
+			if len(host.created) != 0 {
 				t.Fatalf("a pane was created after the %s failed", c.name)
 			}
 		})
