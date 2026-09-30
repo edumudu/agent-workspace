@@ -40,6 +40,7 @@ func TestCleanupPlan(t *testing.T) {
 		{"detached, dirty, unique commits", detached, CleanupFacts{Uncommitted: 2, LastActivity: idle}, CleanupBackupThenAsk, "detached with commits not in the default branch", "backup/wt-api-x"},
 		{"detached in default and clean", detached, CleanupFacts{InDefault: true, LastActivity: idle}, CleanupRemove, "merged into the default branch", ""},
 		{"detached in use", detached, CleanupFacts{Holders: []string{"node (pid 9)"}, LastActivity: idle}, CleanupKeep, "in use by node (pid 9)", ""},
+		{"main checkout", Worktree{ID: "/w/api", Repo: "/w/api", Path: "/w/api", Branch: "feat", PR: merged}, CleanupFacts{LastActivity: idle}, CleanupKeep, "the main checkout", ""},
 		{"facts unknown", onBranch(merged), CleanupFacts{Unknown: "git status failed", LastActivity: idle}, CleanupKeep, "facts unavailable: git status failed", ""},
 	}
 	for _, c := range cases {
