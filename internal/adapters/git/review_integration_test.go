@@ -164,6 +164,20 @@ func TestReviewTurnRefsStayOutOfBranchesAndGoWithTheWorktree(t *testing.T) {
 	}
 }
 
+// A same-size edit in the same second as the commit leaves the index entry's
+// stat unchanged at git's one-second granularity; only git's racy-entry check
+// catches it, and that check needs the index file's own mtime.
+func TestReviewSeesASameSizeEditRightAfterACommit(t *testing.T) {
+	repo := reviewRepo(t)
+	put(t, filepath.Join(repo, "a.txt"), "x\n")
+	gitOut(t, repo, "commit", "-q", "-am", "x")
+	put(t, filepath.Join(repo, "a.txt"), "y\n")
+	time.Sleep(1100 * time.Millisecond)
+	if got := reviewPaths(t, app.NewReviewer(git.Review{}), domain.ScopeUncommitted, "s1", repo); !reflect.DeepEqual(got, []string{"M a.txt"}) {
+		t.Fatalf("uncommitted = %v, want the same-size edit", got)
+	}
+}
+
 // BenchmarkReviewOpen50Files builds a cold review (no cache) of a 50-file,
 // 3,000-line diff and fails above the 300 ms budget.
 func BenchmarkReviewOpen50Files(b *testing.B) {
