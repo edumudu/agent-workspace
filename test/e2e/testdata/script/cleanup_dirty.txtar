@@ -10,7 +10,7 @@ eventually '/api-c\s+feat-c\s+'$SID'\s' agentws worktree list
 capture C '^(\S+/api-c)\s'
 
 cp prs-merged.json prs.json
-eventually '/api-c\s+feat-c\s+'$SID'\s+#8 merged' agentws worktree list
+eventually '/api-c\s+feat-c\s+'$SID'\s+#8 MERGED' agentws worktree list
 exec agentws cleanup
 stdout '^backup_then_ask\s+\S+/api-c\s+feat-c\s+1 uncommitted changes'
 exists $C/wip.txt

@@ -10,18 +10,21 @@ mkdir $AGENTWS_E2E/gates/end
 eventually ' state=idle ' agentws debug session --once $SID
 eventually '/api-b\s+feat-b\s+'$SID'\s' agentws worktree list
 capture A '^(\S+/api-a)\s'
+capture B '^(\S+/api-b)\s'
 
+# Seeing the PR merged kicks a cleanup run, so wait for its log line.
 cp prs-merged.json prs.json
-eventually '/api-a\s+feat-a\s+'$SID'\s+#7 merged' agentws worktree list
-exec agentws cleanup
+eventually '/api-a","branch":"feat-a","action":"remove",.*"outcome":"removed"' cat $AGENTWS_HOME/cleanup.log
 ! exists $A
-exists $A/../api-b
+exists $B/b.txt
 exec git -C api branch --list feat-a
 stdout 'feat-a'
 exec agentws worktree list
 ! stdout '/api-a\s'
 stdout '/api-b\s+feat-b\s+'$SID'\s'
-grep 'feat-a' $AGENTWS_HOME/cleanup.log
+exec agentws cleanup
+stdout '^keep\s+\S+/api-b\s+feat-b\s+not merged\s+kept$'
+! stdout 'api-a'
 
 -- claude.steps --
 hook UserPromptSubmit {"prompt":"ship two parts"}

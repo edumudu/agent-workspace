@@ -73,18 +73,18 @@ func setup(env *testscript.Env, fakes string) error {
 	}
 	socket := fmt.Sprintf("agentws-e2e-%d-%d", os.Getpid(), time.Now().UnixNano())
 	for k, v := range map[string]string{
-		"AGENTWS_HOME":        home,
-		"AGENTWS_E2E":         work,
-		"AGENTWS_TMUX_SOCKET": socket,
-		"AGENTWS_TEST_CLOCK":  "+2h",
-		"AGENTWS_TEST_POLL":   "100ms",
-		"GIT_CONFIG_GLOBAL":   "/dev/null",
-		"GIT_CONFIG_SYSTEM":   "/dev/null",
-		"GIT_AUTHOR_NAME":     "t",
-		"GIT_AUTHOR_EMAIL":    "t@example.com",
-		"GIT_COMMITTER_NAME":  "t",
-		"GIT_COMMITTER_EMAIL": "t@example.com",
-		"GIT_TERMINAL_PROMPT": "0",
+		"AGENTWS_HOME":         home,
+		"AGENTWS_E2E":          work,
+		"AGENTWS_TMUX_SOCKET":  socket,
+		"AGENTWS_TEST_CLOCK":   "+2h",
+		"AGENTWS_TEST_PR_POLL": "100ms",
+		"GIT_CONFIG_GLOBAL":    "/dev/null",
+		"GIT_CONFIG_SYSTEM":    "/dev/null",
+		"GIT_AUTHOR_NAME":      "t",
+		"GIT_AUTHOR_EMAIL":     "t@example.com",
+		"GIT_COMMITTER_NAME":   "t",
+		"GIT_COMMITTER_EMAIL":  "t@example.com",
+		"GIT_TERMINAL_PROMPT":  "0",
 	} {
 		env.Setenv(k, v)
 	}
@@ -96,6 +96,8 @@ func setup(env *testscript.Env, fakes string) error {
 		stop.Env = append(os.Environ(), "AGENTWS_HOME="+home)
 		_ = stop.Run()
 		_ = exec.Command("tmux", "-L", socket, "kill-server").Run()
+		// why: kill-server leaves the socket file behind.
+		_ = os.Remove(filepath.Join("/tmp", fmt.Sprintf("tmux-%d", os.Getuid()), socket))
 		_ = os.RemoveAll(home)
 	})
 	return nil
