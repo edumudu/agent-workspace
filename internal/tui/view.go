@@ -165,6 +165,9 @@ func (m Model) body() ([]string, int) {
 	if m.help {
 		return m.helpLines(), 0
 	}
+	if m.picker != nil {
+		return m.pickerLines(), 0
+	}
 	if len(m.entries) == 0 {
 		return []string{
 			"",
@@ -222,7 +225,7 @@ func (m Model) sessionLines(e entry, sel bool) []string {
 	if label := portLabel(e.ports()); label != "" {
 		open = []piece{{s.teal, label}, {s.text, " "}}
 	}
-	out = append(out, m.line(sel, []piece{bar, {s.sub, fmt.Sprintf("    %s  ctx %d%%  %s", detail, x.Usage.ContextLeftPercent, trees)}}, open))
+	out = append(out, m.line(sel, []piece{bar, {s.sub, fmt.Sprintf("    %s  ctx %d%%  %s", detail, x.Usage.ContextLeftPercent, trees)}}, append(open, m.switchMarks(x)...)))
 	if m.collapsed[x.ID] {
 		return out
 	}
@@ -272,6 +275,7 @@ func (m Model) helpLines() []string {
 		{"o", "expand / collapse worktrees"},
 		{"m", "mute session"},
 		{"K", "kill the session's dev servers"},
+		{"M / E", "switch model / effort"},
 		{"enter", "focus agent pane"},
 		{"n", "new session"},
 		{"x", "end session"},

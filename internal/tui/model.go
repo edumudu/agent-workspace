@@ -45,6 +45,8 @@ type Options struct {
 	Kill Killer
 	// Calls may be nil, which turns off n and x.
 	Calls Caller
+	// Switch applies model and effort switches; nil turns M and E off.
+	Switch Switcher
 }
 
 // Caller makes daemon calls such as session.new; *rpc.Client is one.
@@ -99,6 +101,7 @@ type Model struct {
 	selected string
 	last     string
 	help     bool
+	picker   *picker
 	frame    int
 	top      TopBarMsg
 	status   string
@@ -342,6 +345,9 @@ func (m Model) key(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 	}
+	if m.picker != nil {
+		return m.pickerKey(k)
+	}
 	cur := m.index(m.selected)
 	if m.ending != "" {
 		id := m.ending
@@ -365,6 +371,10 @@ func (m Model) key(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return m, tea.Quit
 	case "?":
 		m.help = !m.help
+	case "M":
+		m = m.openPicker(domain.SwitchModel)
+	case "E":
+		m = m.openPicker(domain.SwitchEffort)
 	case "j", "down":
 		m.choose(cur + 1)
 	case "k", "up":

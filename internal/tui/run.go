@@ -24,7 +24,7 @@ func Run(ctx context.Context, subscriber, caller *rpc.Client, theme Theme) error
 	if err != nil {
 		return err
 	}
-	m := New(Options{Theme: theme, Tick: TickInterval, Focus: caller, Attend: caller, Kill: caller, Calls: caller})
+	m := New(Options{Theme: theme, Tick: TickInterval, Focus: caller, Attend: caller, Kill: caller, Calls: caller, Switch: caller})
 	next, _ := m.Update(StateMsg(sub.State))
 	p := tea.NewProgram(next, tea.WithContext(ctx), tea.WithFPS(FPS))
 	go func() {
