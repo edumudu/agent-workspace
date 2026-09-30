@@ -104,7 +104,8 @@ type Model struct {
 	status   string
 	confirm  *killPrompt
 
-	dialog *dialog
+	dialog  *dialog
+	dialogs int
 	// ending is the session an open end confirmation is about.
 	ending string
 	// pending is a session just started, selected once its diff arrives.
@@ -169,15 +170,19 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.dialogPaste(msg.Content), nil
 		}
 	case sessionStartedMsg:
-		m.dialog = nil
+		if m.dialog != nil && m.dialog.seq == msg.seq {
+			m.dialog = nil
+		}
 		m.pending = msg.session.ID
 		m.choosePending()
 		return m, m.showNew(msg.session.ID)
 	case startFailedMsg:
-		if m.dialog != nil {
-			d := m.own()
-			d.busy, d.err = false, msg.err.Error()
+		if m.dialog == nil || m.dialog.seq != msg.seq {
+			m.status = msg.err.Error()
+			break
 		}
+		d := m.own()
+		d.busy, d.err = false, msg.err.Error()
 	}
 	return m, nil
 }

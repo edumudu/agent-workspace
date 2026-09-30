@@ -47,14 +47,23 @@ type dialog struct {
 	effort   int
 	err      string
 	busy     bool
+	// seq tells this dialog's start reply from one sent by a dialog closed earlier.
+	seq int
 }
 
-type sessionStartedMsg struct{ session domain.Session }
+type sessionStartedMsg struct {
+	seq     int
+	session domain.Session
+}
 
-type startFailedMsg struct{ err error }
+type startFailedMsg struct {
+	seq int
+	err error
+}
 
 func (m Model) openDialog() Model {
-	d := &dialog{}
+	m.dialogs++
+	d := &dialog{seq: m.dialogs}
 	all := sorted(m.workspaces)
 	last, found := domain.LastUsedWorkspace(all)
 	for i, w := range all {
@@ -178,6 +187,7 @@ func (m Model) submit() tea.Cmd {
 		return nil
 	}
 	d.err, d.busy = "", true
+	seq := d.seq
 	p := rpc.NewSessionParams{
 		Workspace: d.roots[d.ws],
 		WorkItem:  strings.TrimSpace(d.workItem),
@@ -190,9 +200,9 @@ func (m Model) submit() tea.Cmd {
 		defer cancel()
 		var s domain.Session
 		if err := c.Call(ctx, rpc.MethodNewSession, p, &s); err != nil {
-			return startFailedMsg{err}
+			return startFailedMsg{seq, err}
 		}
-		return sessionStartedMsg{s}
+		return sessionStartedMsg{seq, s}
 	}
 }
 
