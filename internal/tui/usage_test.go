@@ -52,8 +52,8 @@ func TestTopBarShowsEachWindowWithPercentLeftAndTimeToReset(t *testing.T) {
 	)
 	got := limitLines(newModel(&st, nil))
 	want := []string{
-		" CC  5h 43% 2h10m  7d 29% 3d  7d opus 88% 45m",
-		" CX  5h 59%",
+		" CC 5h 43% 2h10m  7d 29% 3d  7d opus 88% 45m",
+		" CX 5h 59% <1m",
 	}
 	if strings.Join(got, "\n") != strings.Join(want, "\n") {
 		t.Fatalf("got\n%s\nwant\n%s", strings.Join(got, "\n"), strings.Join(want, "\n"))

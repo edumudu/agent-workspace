@@ -2,6 +2,7 @@ package daemon
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/giovaniif/agent-workspace/internal/domain"
 )
@@ -13,10 +14,26 @@ var seedStates = []domain.AgentState{
 
 var seedRepos = []string{"api", "web", "infra"}
 
+func seedLimits(h domain.Harness, now time.Time) []domain.RateLimit {
+	resets := func(d time.Duration) int64 { return now.Add(d).Unix() }
+	if h == domain.HarnessCodex {
+		return []domain.RateLimit{
+			{Window: "five_hour", UsedPercent: 41, ResetsAt: resets(3*time.Hour + 20*time.Minute)},
+			{Window: "seven_day", UsedPercent: 12, ResetsAt: resets(5 * 24 * time.Hour)},
+		}
+	}
+	return []domain.RateLimit{
+		{Window: "five_hour", UsedPercent: 57, ResetsAt: resets(2*time.Hour + 10*time.Minute)},
+		{Window: "seven_day", UsedPercent: 71, ResetsAt: resets(3 * 24 * time.Hour)},
+		{Window: "seven_day_opus", UsedPercent: 88, ResetsAt: resets(3 * 24 * time.Hour)},
+	}
+}
+
 // seed makes n fake sessions, two per task, each with one to three
 // worktrees. IDs are prefixed "seed-" so a second seed replaces the first.
 func seed(n int) []Event {
 	var events []Event
+	now := time.Now()
 	for i := range n {
 		taskID := fmt.Sprintf("seed-task-%d", i/2+1)
 		if i%2 == 0 {
@@ -37,6 +54,7 @@ func seed(n int) []Event {
 		if i%3 == 1 {
 			s.Harness, s.Model, s.Effort = domain.HarnessCodex, "gpt-6", "med"
 		}
+		s.Limits, s.LimitsAt = seedLimits(s.Harness, now), now
 		s.Unread = s.State == domain.StateDone
 		for w := range i%3 + 1 {
 			repo := seedRepos[w]

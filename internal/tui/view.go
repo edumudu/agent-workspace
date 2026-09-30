@@ -96,7 +96,9 @@ func (m Model) line(sel bool, left, right []piece) string {
 func (m Model) View() tea.View {
 	s := m.styles
 	var lines []string
-	lines = append(lines, m.topBar(), "")
+	lines = append(lines, m.topBar())
+	lines = append(lines, m.limitLines()...)
+	lines = append(lines, "")
 
 	need := 0
 	for _, e := range m.entries {
