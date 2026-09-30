@@ -122,7 +122,7 @@ func TestPRBoardTextShowsBlockersAndLinksFailingChecks(t *testing.T) {
 	writePRText(&out, report)
 	for _, want := range []string{
 		"#12", "Add login", "blocked: checks failing, changes requested, merge conflicts, 2 unresolved threads",
-		"test  https://github.com/o/api/actions/runs/1/job/2",
+		"test       https://github.com/o/api/actions/runs/1/job/2",
 		"ci/deploy  https://ci.example.com/deploy/9",
 		"bot comments since push: 4",
 		"#13", "ready to merge",
