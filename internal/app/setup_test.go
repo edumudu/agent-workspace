@@ -1,4 +1,4 @@
-package app
+package app_test
 
 import (
 	"context"
@@ -10,76 +10,6 @@ import (
 
 	"github.com/giovaniif/agent-workspace/internal/domain"
 )
-
-type fakeSetupWorld struct {
-	recipe   *domain.Recipe
-	main     string
-	existing map[string]bool
-	locks    map[string]domain.Lockfile
-	free     []int64
-	runErr   map[string]error
-	ops      []string
-	ticks    int
-}
-
-func (w *fakeSetupWorld) Load(string) (domain.Recipe, bool, error) {
-	if w.recipe == nil {
-		return domain.Recipe{}, false, nil
-	}
-	return *w.recipe, true, nil
-}
-
-func (w *fakeSetupWorld) MainCheckout(context.Context, string) (string, error) { return w.main, nil }
-
-func (w *fakeSetupWorld) Exists(p string) bool { return w.existing[p] }
-
-func (w *fakeSetupWorld) Copy(src, dst string) error {
-	w.ops = append(w.ops, "copy "+src+" "+dst)
-	return nil
-}
-
-func (w *fakeSetupWorld) Symlink(target, link string) error {
-	w.ops = append(w.ops, "symlink "+target+" "+link)
-	return nil
-}
-
-func (w *fakeSetupWorld) CloneTree(_ context.Context, src, dst string) error {
-	w.ops = append(w.ops, "clone "+src+" "+dst)
-	return nil
-}
-
-func (w *fakeSetupWorld) Lockfile(dir string) (domain.Lockfile, error) { return w.locks[dir], nil }
-
-func (w *fakeSetupWorld) FreeBytes(string) (int64, error) {
-	v := w.free[0]
-	w.free = w.free[1:]
-	return v, nil
-}
-
-func (w *fakeSetupWorld) Run(_ context.Context, dir string, argv ...string) error {
-	line := "run " + strings.Join(argv, " ") + " in " + dir
-	w.ops = append(w.ops, line)
-	return w.runErr[strings.Join(argv, " ")]
-}
-
-func (w *fakeSetupWorld) now() time.Time {
-	w.ticks++
-	return time.Unix(0, 0).Add(time.Duration(w.ticks) * 1500 * time.Millisecond)
-}
-
-func (w *fakeSetupWorld) setup() WorktreeSetup {
-	return WorktreeSetup{Recipes: w, FS: w, Runner: w, Git: w, Now: w.now}
-}
-
-func newWorld(recipe *domain.Recipe) *fakeSetupWorld {
-	return &fakeSetupWorld{
-		recipe:   recipe,
-		main:     "/repos/api",
-		existing: map[string]bool{},
-		locks:    map[string]domain.Lockfile{},
-		free:     []int64{10_000_000_000, 9_990_000_000},
-	}
-}
 
 func TestRecipeSetupWithoutRecipeDoesNothing(t *testing.T) {
 	w := newWorld(nil)

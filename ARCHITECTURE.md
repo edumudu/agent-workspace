@@ -112,7 +112,7 @@ Colors are Catppuccin Latte, overridden per key in the `[theme]` table of `$AGEN
 
 ## Worktree setup
 
-`agentws setup-worktree <path>` applies a repo's recipe to a new worktree. See [docs/adr/0009-setup-recipes.md](docs/adr/0009-setup-recipes.md).
+`agentws setup-worktree <path>` applies a repo's recipe to a new worktree. See [docs/adr/0013-setup-recipes.md](docs/adr/0013-setup-recipes.md).
 
 - **Recipe.** The `[setup]` table of `<main checkout>/.agentws.toml`: `copy`, `link`, `run` and `deps` (`clone`, `link` or `install`). Order: copy, link, deps, run; the first failure stops. Paths already in the worktree are never overwritten.
 - **Deps.** `clone` is `cp -c -R` (APFS clonefile). A lockfile that differs from main's, or a main without `node_modules`, falls back to a frozen install (`bun`, `pnpm`, `yarn` or `npm ci`, chosen by lockfile) and logs why.

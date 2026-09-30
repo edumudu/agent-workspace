@@ -1,4 +1,4 @@
-# ADR 0009: Setup recipes and shared dependencies
+# ADR 0013: Setup recipes and shared dependencies
 
 Status: accepted, 2026-09-29.
 
