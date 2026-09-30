@@ -90,6 +90,8 @@ type StatusReport struct {
 	ContextLeft int
 	HasContext  bool
 	Limits      []RateLimit
+	// At is when the harness reported, used to stamp Limits.
+	At time.Time
 }
 
 func (s Session) Report(r StatusReport) Session {
@@ -104,6 +106,7 @@ func (s Session) Report(r StatusReport) Session {
 	}
 	if len(r.Limits) > 0 {
 		s.Limits = r.Limits
+		s.LimitsAt = r.At
 		s.Usage.LimitUsedPercent = 0
 		for _, l := range r.Limits {
 			s.Usage.LimitUsedPercent = max(s.Usage.LimitUsedPercent, l.UsedPercent)
