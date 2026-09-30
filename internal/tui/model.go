@@ -5,6 +5,7 @@ package tui
 
 import (
 	"context"
+	"fmt"
 	"sort"
 	"time"
 
@@ -42,6 +43,13 @@ type Options struct {
 	Attend Attender
 	// Kill may be nil, which turns off K.
 	Kill Killer
+	// Calls may be nil, which turns off n and x.
+	Calls Caller
+}
+
+// Caller makes daemon calls such as session.new; *rpc.Client is one.
+type Caller interface {
+	Call(ctx context.Context, method string, params, out any) error
 }
 
 // StateMsg replaces the whole state, as a subscribe snapshot does.
@@ -78,14 +86,15 @@ type Model struct {
 	width  int
 	height int
 
-	tasks     map[string]domain.Task
-	taskOrder []string
-	worktrees map[string]domain.Worktree
-	sessions  map[string]domain.Session
-	events    map[string][]domain.SessionEvent
-	subagents map[string][]domain.Subagent
-	entries   []entry
-	collapsed map[string]bool
+	workspaces map[string]domain.Workspace
+	tasks      map[string]domain.Task
+	taskOrder  []string
+	worktrees  map[string]domain.Worktree
+	sessions   map[string]domain.Session
+	events     map[string][]domain.SessionEvent
+	subagents  map[string][]domain.Subagent
+	entries    []entry
+	collapsed  map[string]bool
 
 	selected string
 	last     string
@@ -94,6 +103,11 @@ type Model struct {
 	top      TopBarMsg
 	status   string
 	confirm  *killPrompt
+
+	dialog     *dialog
+	confirmEnd bool
+	// pending is a session just started, selected once its diff arrives.
+	pending string
 }
 
 func New(opts Options) Model {
@@ -101,16 +115,17 @@ func New(opts Options) Model {
 		opts.Now = time.Now
 	}
 	return Model{
-		opts:      opts,
-		styles:    newStyles(opts.Theme),
-		width:     40,
-		height:    24,
-		tasks:     map[string]domain.Task{},
-		worktrees: map[string]domain.Worktree{},
-		sessions:  map[string]domain.Session{},
-		events:    map[string][]domain.SessionEvent{},
-		subagents: map[string][]domain.Subagent{},
-		collapsed: map[string]bool{},
+		opts:       opts,
+		styles:     newStyles(opts.Theme),
+		width:      40,
+		height:     24,
+		workspaces: map[string]domain.Workspace{},
+		tasks:      map[string]domain.Task{},
+		worktrees:  map[string]domain.Worktree{},
+		sessions:   map[string]domain.Session{},
+		events:     map[string][]domain.SessionEvent{},
+		subagents:  map[string][]domain.Subagent{},
+		collapsed:  map[string]bool{},
 	}
 }
 
@@ -144,12 +159,33 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case errMsg:
 		m.status = msg.err.Error()
 	case tea.KeyPressMsg:
+		if m.dialog != nil {
+			return m.dialogKey(msg)
+		}
 		return m.key(msg)
+	case tea.PasteMsg:
+		if m.dialog != nil {
+			return m.dialogPaste(msg.Content), nil
+		}
+	case sessionStartedMsg:
+		m.dialog = nil
+		m.pending = msg.session.ID
+		m.choosePending()
+		return m, m.showNew(msg.session.ID)
+	case startFailedMsg:
+		if m.dialog != nil {
+			d := m.own()
+			d.busy, d.err = false, msg.err.Error()
+		}
 	}
 	return m, nil
 }
 
 func (m *Model) load(st rpc.State) {
+	m.workspaces = map[string]domain.Workspace{}
+	for _, w := range st.Workspaces {
+		m.workspaces[w.Root] = w
+	}
 	m.tasks = map[string]domain.Task{}
 	m.worktrees = map[string]domain.Worktree{}
 	m.sessions = map[string]domain.Session{}
@@ -187,6 +223,12 @@ func (m *Model) apply(d rpc.Diff) {
 		m.addEvent(*d.Event)
 	}
 	switch {
+	case d.Workspace != nil:
+		m.workspaces[d.Workspace.Root] = *d.Workspace
+		return
+	case d.RemovedWorkspace != "":
+		delete(m.workspaces, d.RemovedWorkspace)
+		return
 	case d.Task != nil:
 		m.putTask(*d.Task)
 	case d.Worktree != nil:
@@ -252,6 +294,14 @@ func (m *Model) rebuild() {
 	if m.index(m.last) < 0 {
 		m.last = ""
 	}
+	m.choosePending()
+}
+
+func (m *Model) choosePending() {
+	if i := m.index(m.pending); i >= 0 {
+		m.choose(i)
+		m.pending = ""
+	}
 }
 
 func (m Model) index(id string) int {
@@ -287,7 +337,23 @@ func (m Model) key(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 	cur := m.index(m.selected)
+	if m.confirmEnd {
+		m.confirmEnd, m.status = false, ""
+		if k == "y" {
+			return m, m.endSelected()
+		}
+		return m, nil
+	}
 	switch k {
+	case "n":
+		if m.opts.Calls != nil {
+			return m.openDialog(), nil
+		}
+	case "x":
+		if cur >= 0 && m.opts.Calls != nil {
+			m.confirmEnd = true
+			m.status = fmt.Sprintf("end session %d? y/n", m.entries[cur].num)
+		}
 	case "q", "ctrl+c":
 		return m, tea.Quit
 	case "?":
