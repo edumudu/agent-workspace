@@ -10,7 +10,6 @@ import (
 	"github.com/giovaniif/agent-workspace/internal/rpc"
 )
 
-// TODO(#11): debug launch stands in for the new-session dialog until it lands.
 const debugUsage = "usage: agentws debug seed <count>\n       agentws debug launch --harness claude --dir <dir> [--model m] [--effort e] [--name n]\n       agentws debug session [--once] <id>"
 
 func runDebug(args []string, stdout, stderr io.Writer) int {
