@@ -132,6 +132,36 @@ func TestModelSwitchRequestErrors(t *testing.T) {
 	}
 }
 
+func TestModelSwitchSupersededWhileWaitingForTheSendLockIsNeverTyped(t *testing.T) {
+	host := &fakeHost{}
+	d, path := start(t, &memStore{}, daemon.WithHarnesses(host, claude.Adapter{}))
+	c := dial(t, path)
+	sub, err := c.Subscribe(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, s := range []domain.Session{
+		{ID: "a", Harness: domain.HarnessClaude, Pane: "%3", State: domain.StateIdle},
+		{ID: "b", Harness: domain.HarnessClaude, Pane: "%4", State: domain.StateIdle},
+	} {
+		d.Post(daemon.SessionChanged{Session: s})
+		next(t, sub.Diffs)
+	}
+	release := host.holdPane("%3")
+	for _, req := range [][2]string{{"a", "opus"}, {"b", "sonnet"}, {"b", "haiku"}} {
+		if _, err := c.SwitchSession(context.Background(), req[0], domain.SwitchModel, req[1]); err != nil {
+			t.Fatal(err)
+		}
+		next(t, sub.Diffs)
+	}
+	release()
+
+	want := []string{"%3 paste=true /model opus", "%3 keys Enter", "%4 paste=true /model haiku", "%4 keys Enter"}
+	if typed := host.waitTyped(t, len(want)); !reflect.DeepEqual(typed, want) {
+		t.Fatalf("typed %q", typed)
+	}
+}
+
 func TestModelSwitchIsRefusedForCodex(t *testing.T) {
 	host := &fakeHost{}
 	d, path := start(t, &memStore{}, daemon.WithHarnesses(host, claude.Adapter{}))
