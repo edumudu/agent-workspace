@@ -25,7 +25,7 @@ func Run(ctx context.Context, subscriber, caller *rpc.Client, theme Theme, defau
 	if err != nil {
 		return err
 	}
-	m := New(Options{Theme: theme, Tick: TickInterval, Focus: caller, Attend: caller, Kill: caller, Calls: caller, Switch: caller, Defaults: defaults})
+	m := New(Options{Theme: theme, Tick: TickInterval, Focus: caller, Attend: caller, Kill: caller, Calls: caller, Switch: caller, Defaults: defaults, Review: caller})
 	next, _ := m.Update(StateMsg(sub.State))
 	p := tea.NewProgram(next, tea.WithContext(ctx), tea.WithFPS(FPS))
 	go func() {

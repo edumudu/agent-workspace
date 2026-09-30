@@ -112,7 +112,7 @@ func TestReviewOpensForTheSelectedSessionAndCollapsesTheSidebar(t *testing.T) {
 		t.Errorf("asked %+v, want %+v", rv.asked, want)
 	}
 	out := screen(m)
-	for _, want := range []string{"REVIEW", "last turn", "uncommitted", "branch vs base", "3 files", "+7", "-3", "0/3 viewed",
+	for _, want := range []string{"REVIEW", "last turn", "uncommitted", "branch vs base", "3 files", "+6", "-3", "0/3 viewed",
 		"worktree", "all", "api:part-1 #3600", "web:part-2", "resolvers.ts", "resolvers.test.ts", "ShareSheet.tsx",
 		"src/graphql/public/resolvers.ts", "@@ -41,6 +41,7 @@", "verifyShareToken"} {
 		if !strings.Contains(out, want) {
@@ -174,7 +174,7 @@ func TestReviewViewedMarkTogglesAndResetsWhenTheFileChanges(t *testing.T) {
 		t.Errorf("a file that changed again is no longer viewed:\n%s", out)
 	}
 
-	m = drive(m, key("v"), key("v"))
+	drive(m, key("v"), key("v"))
 	if last := rv.marked[len(rv.marked)-1]; last.viewed {
 		t.Errorf("v twice clears the mark; last call %+v", last)
 	}

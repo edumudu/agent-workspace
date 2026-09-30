@@ -1,0 +1,40 @@
+▌agentws                                                                                                                                         21:42
+▌ ◐  │ REVIEW   last turn   uncommitted   branch vs base                                                                  3 files  +6  -3  1/3 viewed 
+▌ 1  │ worktree   all   api:part-1 #3600   web:part-2                                                                                                 
+     │────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+     │ api:part-1                 #3600 │  api:part-1   src/graphql/public/resolvers.ts  +3  -2                                      unified   split  
+     │ ✓ M resolvers.ts           +3 -2 │ @@ -41,6 +41,7 @@ export const publicResolvers                                                              
+     │   A resolvers.test.ts         +2 │   41    41    export const publicResolvers = {                                                              
+     │                                  │   42    42      Query: {                                                                                    
+     │ web:part-2                       │   43    43        sharedProject: async (_, { id }, ctx) => {                                                
+     │   M ShareSheet.tsx         +1 -1 │   44       -        const orgId = ctx.user?.orgId;                                                          
+     │                                  │   45       -        return ctx.db.project.findFirst({ where: { id } });                                     
+     │                                  │         44 +        const token = await verifyShareToken(ctx.shareToken);                                   
+     │                                  │         45 +        if (!token) throw new ForbiddenError('invalid share token');                            
+     │                                  │         46 +        return ctx.db.project.findFirst({ where: { id, orgId: token.orgId } });                 
+     │                                  │   46    47        },                                                                                        
+     │                                  │   47    48      },                                                                                          
+     │                                  │                                                                                                             
+     │                                  │                                                                                                             
+     │                                  │                                                                                                             
+     │                                  │                                                                                                             
+     │                                  │                                                                                                             
+     │                                  │                                                                                                             
+     │                                  │                                                                                                             
+     │                                  │                                                                                                             
+     │                                  │                                                                                                             
+     │                                  │                                                                                                             
+     │                                  │                                                                                                             
+     │                                  │                                                                                                             
+     │                                  │                                                                                                             
+     │                                  │                                                                                                             
+     │                                  │                                                                                                             
+     │                                  │                                                                                                             
+     │                                  │                                                                                                             
+     │                                  │                                                                                                             
+     │                                  │                                                                                                             
+     │                                  │                                                                                                             
+     │                                  │                                                                                                             
+     │                                  │                                                                                                             
+     │                                  │                                                                                                             
+     │ v viewed   u split   [ ] scope   w worktree   n/p file   j/k scroll   r close                                                                  

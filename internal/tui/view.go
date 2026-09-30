@@ -94,6 +94,11 @@ func (m Model) line(sel bool, left, right []piece) string {
 }
 
 func (m Model) View() tea.View {
+	if m.rv.open {
+		v := tea.NewView(m.reviewView())
+		v.AltScreen = true
+		return v
+	}
 	s := m.styles
 	var lines []string
 	lines = append(lines, m.topBar())
