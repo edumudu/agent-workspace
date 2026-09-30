@@ -239,3 +239,23 @@ func TestPRBoardFinderReportsAFailedRequest(t *testing.T) {
 		t.Errorf("err = %v, want it to carry gh's stderr", err)
 	}
 }
+
+func TestPRBoardFinderFailsThePollWhenNoRepoResolvedAndGHFailed(t *testing.T) {
+	bin, _ := fakeGH(t, `{"data":{"r0":null,"r1":null},"errors":[{"message":"Bad credentials"}]}`, 1)
+	f := &Finder{Bin: bin, Remote: remotes(map[string]string{"/w/a": "https://github.com/o/a", "/w/b": "https://github.com/o/b"})}
+	if _, err := f.PRs(context.Background(), []string{"/w/a", "/w/b"}); err == nil {
+		t.Error("want an error so the daemon backs off")
+	}
+}
+
+func TestPRBoardFinderKeepsAnEmptyRepoAsASuccess(t *testing.T) {
+	bin, _ := fakeGH(t, `{"data":{"r0":{"pullRequests":{"nodes":[]}}}}`, 0)
+	f := &Finder{Bin: bin, Remote: remotes(map[string]string{"/w/a": "https://github.com/o/a"})}
+	got, err := f.PRs(context.Background(), []string{"/w/a"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if prs, ok := got["/w/a"]; !ok || len(prs) != 0 {
+		t.Errorf("got %v, want an empty answer for the repo", got)
+	}
+}
