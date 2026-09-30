@@ -13,7 +13,7 @@ This covers how `agentws` is built. What it does is in [FEATURES.md](FEATURES.md
 - **Config:** `github.com/BurntSushi/toml` reads the per-repo `.agentws.toml` setup recipe.
 - **Storage:** SQLite via `modernc.org/sqlite` (no cgo), with embedded migrations and write-behind. Stored at `~/.agentws/state.db` (`$AGENTWS_HOME/state.db` if set). See [docs/adr/0004-sqlite-store.md](docs/adr/0004-sqlite-store.md).
 - **IPC:** a Unix socket at `~/.agentws/agentws.sock` carrying newline-delimited JSON. Request/response calls, plus a subscribe stream for state updates. See [Daemon and RPC](#daemon-and-rpc) and [docs/adr/0005-daemon-rpc.md](docs/adr/0005-daemon-rpc.md).
-- **Notifications:** `osascript` in v1. A native helper can replace it later behind the same port.
+- **Notifications:** `osascript` in v1, behind the `app.Notifier` and `app.Foreground` ports. A native helper can replace it later. See [Attention](#attention) and [docs/adr/0016-notifications-and-attention.md](docs/adr/0016-notifications-and-attention.md).
 - **nvim:** a small Lua plugin in `nvim/` that talks to the daemon through `agentws` CLI calls.
 - **Tooling:** `go test`, `golangci-lint`, `testscript` for the e2e suite, `gremlins` for mutation testing, a `tdd` CI job that runs new tests against the base branch, `scripts/lint-comments`, GitHub Actions on macOS, and goreleaser later. Rules: [AGENTS.md](AGENTS.md).
 
@@ -39,6 +39,7 @@ Dependency rule: `domain` ← `app` ← `adapters`/`daemon`, and `tui` → `rpc`
 **Domain** (`internal/domain`): `Workspace`, `Repo`, `Task`, `Session`, `Worktree`, `Harness`, `AgentState`, `Usage`, `ReviewDraft`, `Comment`, `CleanupPlan`. Rules live here as plain functions:
 - `Session.Apply(event) (Session, []Effect)`: the state machine. Adapters map hooks to harness-neutral events (`session_start`, `user_prompt_submit`, `pre_tool_use`, `post_tool_use`, `permission_request`, `waiting_for_input`, `stop`, `session_end`). Tool, permission and waiting events that arrive while `idle` or `done` are stale and ignored. `done` marks the session unread only when it is not focused; `Focus()` clears it.
 - `NameFor(task, prs)`: naming precedence.
+- `BannerFor(session, name, effect)` and `Coalescer`: which notify effects become a banner (not for muted sessions) and the one-per-10-s rule per session.
 - `PlanCleanup(worktrees, facts)`: the cleanup decision.
 - `Quotas(sessions)`, `Quota.Low`/`Stale`, `Advise(quotas, harness)`: the usage bar and the low-quota warning. See [docs/adr/0017-usage-and-limits-bar.md](docs/adr/0017-usage-and-limits-bar.md).
 - Discovery rules: `KindOfRoot`, `ReposIn`, `SingleRepo`, `MergeRepoState`, `LastUsedWorkspace`. See [Workspaces](#workspaces).
@@ -77,8 +78,8 @@ Everything here is table-tested, with no mocks.
 - `hook` carries one harness hook: `{"harness","event","pane","at","payload"}`, with the hook's stdin JSON as `payload`. The daemon maps `pane` to the session whose `Pane` matches (`domain.SessionOnPane`) and the name to a harness event (`domain.HookEvent`), then applies it; unknown panes and names are ignored. The result is a `HookReply` whose optional `output` the hook prints for the harness.
 - A diff may instead set `removed_workspace` (a root): drop that workspace.
 - `statusline` carries one status-line update: `{"pane","report"}`. The daemon applies it with `Session.Report` to the session on that pane. `session.launch` (`{"harness","dir","model","effort","name","prompt"}` → `Session`) opens a pane through the harness adapter and adds an `idle` session on it. It exists only with `WithHarnesses`, and fails with `launch_failed` if the pane cannot be created.
-- Methods: `status`, `subscribe`, `hook`, `statusline`, `session.launch`, and `workspace.add` (`{"path": abs}` → `Workspace`), `workspace.list` (→ `{"workspaces": [...], "last_used": root}`), `workspace.remove` (`{"root": …}`). The workspace methods exist only when the daemon is built with `WithWorkspaces`; otherwise they answer `unknown_method`.
-- Error codes: `unsupported_version` (missing or other `v`), `unknown_method`, `bad_request` (not JSON, bad params, or a path that is not a directory; `id` 0 when not JSON), `not_found` (removing an unknown workspace), `unavailable` and `failed` (below), `launch_failed`.
+- Methods: `status`, `subscribe`, `hook`, `statusline`, `session.launch`, `session.mute` (`{"id","muted"}`), `session.focus` (`{"id"}`), and `workspace.add` (`{"path": abs}` → `Workspace`), `workspace.list` (→ `{"workspaces": [...], "last_used": root}`), `workspace.remove` (`{"root": …}`). The workspace methods exist only when the daemon is built with `WithWorkspaces`; otherwise they answer `unknown_method`.
+- Error codes: `unsupported_version` (missing or other `v`), `unknown_method`, `bad_request` (not JSON, bad params, or a path that is not a directory; `id` 0 when not JSON), `not_found` (removing an unknown workspace, or muting or focusing an unknown session), `unavailable` and `failed` (below), `launch_failed`.
 - `client.open` `{"command":[…],"env":{…}}` returns `{"slot","attach"}`: the client window (TUI pane on the left running `command`, main slot on the right), created on the first call and reused while it exists, plus the argv that attaches a terminal to it. `client.focus_main` makes that window's main slot the active pane. Both run tmux on the connection goroutine, never on the loop. Without a terminal host they return `unavailable`; a tmux failure returns `failed`.
 - `debug.seed` `{"count":N}` adds N fake sessions (two per task, one to three worktrees each) for manual testing; `agentws debug seed N` calls it.
 - Adding a method or an optional field keeps `v:1`. Removing or changing the meaning of a field bumps `v`.
@@ -103,6 +104,15 @@ Everything here is table-tested, with no mocks.
 `agentws tui` (`internal/tui`) opens two connections: one subscribes and feeds diffs to the Bubble Tea program, the other makes calls such as `client.focus_main`, so a burst of diffs never delays a keypress. The model keeps the snapshot in maps and rebuilds the sidebar rows only when a diff arrives; grouping and order come from `domain.Sidebar` (sessions that need you first in each task group). Keys only move the selection, and `View` renders from memory. The selected session's card (task, PR chips, last 3 tool calls, what it waits on) is built by `domain.BuildSessionCard` from the events the model holds; see [docs/adr/0014-session-card.md](docs/adr/0014-session-card.md). Under the top bar, one row per harness shows its quota windows (percent left, time to reset), derived from the sessions' `Limits` by `domain.Quotas`; red below 20% left, dimmed with an age when older than 15 minutes, absent without data. See [docs/adr/0017-usage-and-limits-bar.md](docs/adr/0017-usage-and-limits-bar.md). One 200 ms ticker drives every running spinner and the clock. The renderer runs at 120 fps: at the default 60 a key can wait a whole 16 ms frame before it is drawn.
 
 Colors are Catppuccin Latte, overridden per key in the `[theme]` table of `$AGENTWS_HOME/config.toml` (`text`, `subtext`, `overlay`, `surface`, `mantle`, `base`, `blue`, `peach`, `green`, `red`, `teal`, `mauve`, `selected`), read once at startup.
+
+## Attention
+
+The daemon performs the effects `Session.Apply` returns. `EffectNotify` becomes a `domain.Banner` on the loop (`BannerFor`, then `Coalescer`), with no IO. A worker reads a bounded queue and calls `app.Notifier`; for a focused session it first asks `app.Foreground` whether a terminal app is in front, and drops the banner if so. `adapters/notify` implements both with `osascript`. Muted sessions get no banner and still go unread.
+
+- Title is the session name (`NameFor`, else the harness), body is `needs permission`, `waiting` or `done`. At most one banner per session per 10 s.
+- `$AGENTWS_HOME/notify.json` sets an optional macOS sound per event: `{"sounds":{"permission":"Glass"}}`.
+- `session.mute` sets `Session.Muted` (the TUI's `m`). `session.focus` sets `Session.Focused` and clears unread (the TUI's `enter`); focus is cleared on daemon start.
+- Claude and Codex share one path, and a fixture-driven daemon test covers both. See [docs/adr/0016-notifications-and-attention.md](docs/adr/0016-notifications-and-attention.md).
 
 ## Harness adapters
 
