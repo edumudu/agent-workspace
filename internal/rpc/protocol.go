@@ -45,6 +45,10 @@ const (
 	// MethodClientReview widens the client's sidebar pane for the review, or
 	// puts it back.
 	MethodClientReview = "client.review"
+	// MethodCleanupPlan returns the cleanup plan without acting on it;
+	// MethodCleanupRun executes it. Both answer []CleanupItem.
+	MethodCleanupPlan = "cleanup.plan"
+	MethodCleanupRun  = "cleanup.run"
 )
 
 // ReviewParams asks for Session's review in Scope, of one worktree ID or,
@@ -83,6 +87,15 @@ type PortsKillParams struct {
 // PortsKilled is the groups that are gone.
 type PortsKilled struct {
 	Killed []int `json:"killed"`
+}
+
+// CleanupItem is one worktree's cleanup decision. Outcome is empty in a plan.
+type CleanupItem struct {
+	Path    string               `json:"path"`
+	Branch  string               `json:"branch,omitempty"`
+	Action  domain.CleanupAction `json:"action"`
+	Reason  string               `json:"reason"`
+	Outcome string               `json:"outcome,omitempty"`
 }
 
 type SessionMuteParams struct {

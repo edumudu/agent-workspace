@@ -244,6 +244,9 @@ func (d *Daemon) refreshWorktreePRs(ctx context.Context) {
 			if !ok {
 				continue
 			}
+			if w.PR != nil && w.PR.State == domain.PRMerged && (cur.PR == nil || cur.PR.State != domain.PRMerged) {
+				d.cl.wake()
+			}
 			cur.PR = w.PR
 			s.emit(WorktreeChanged{Worktree: cur})
 		}
