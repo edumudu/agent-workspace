@@ -17,7 +17,8 @@ func TestHookEventNamesMapToHarnessEvents(t *testing.T) {
 		{HarnessClaude, "Notification", EventWaitingForInput, true},
 		{HarnessClaude, "Stop", EventStop, true},
 		{HarnessClaude, "SessionEnd", EventSessionEnd, true},
-		{HarnessClaude, "SubagentStop", "", false},
+		{HarnessClaude, "SubagentStop", EventPostToolUse, true},
+		{HarnessClaude, "StatusLine", "", false},
 		{HarnessCodex, "SessionStart", EventSessionStart, true},
 		{HarnessCodex, "UserPromptSubmit", EventUserPromptSubmit, true},
 		{HarnessCodex, "PreToolUse", EventPreToolUse, true},
@@ -58,6 +59,26 @@ func TestSessionOnPaneFindsOnlyThatPane(t *testing.T) {
 	for _, pane := range []string{"%9", ""} {
 		if _, ok := SessionOnPane(append(sessions, Session{ID: "c"}), pane); ok {
 			t.Fatalf("pane %q matched", pane)
+		}
+	}
+}
+
+func TestClaudeNotificationTypeDecidesPermissionOrWaiting(t *testing.T) {
+	cases := []struct {
+		notificationType string
+		want             HarnessEventKind
+		ok               bool
+	}{
+		{"permission_prompt", EventPermissionRequest, true},
+		{"idle_prompt", EventWaitingForInput, true},
+		{"elicitation_dialog", EventWaitingForInput, true},
+		{"", EventWaitingForInput, true},
+		{"auth_success", "", false},
+	}
+	for _, c := range cases {
+		got, ok := ClaudeNotification(c.notificationType)
+		if got != c.want || ok != c.ok {
+			t.Errorf("ClaudeNotification(%q) = %q, %v; want %q, %v", c.notificationType, got, ok, c.want, c.ok)
 		}
 	}
 }
