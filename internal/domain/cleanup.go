@@ -52,6 +52,8 @@ func PlanCleanup(w Worktree, f CleanupFacts, now time.Time) CleanupDecision {
 	d := CleanupDecision{Worktree: w, Action: CleanupKeep}
 	prMerged := w.PR != nil && w.PR.State == PRMerged
 	switch {
+	case filepath.Clean(w.Path) == filepath.Clean(w.Repo):
+		d.Reason = "the main checkout"
 	case f.Unknown != "":
 		d.Reason = "facts unavailable: " + f.Unknown
 	case len(f.Holders) > 0:
