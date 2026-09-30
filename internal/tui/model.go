@@ -359,9 +359,9 @@ func (m *Model) rebuild() {
 					continue
 				}
 				e.worktrees = append(e.worktrees, w)
-				if !seen[w.Repo] {
-					seen[w.Repo] = true
-					repos = append(repos, w.Repo)
+				if name := repoName(w); !seen[name] {
+					seen[name] = true
+					repos = append(repos, name)
 				}
 			}
 			m.entries = append(m.entries, e)
