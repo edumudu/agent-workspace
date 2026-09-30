@@ -214,6 +214,11 @@ func (m Model) scopeBar(width int) string {
 	labels := make([]string, len(domain.ReviewScopes))
 	for i, s := range domain.ReviewScopes {
 		labels[i] = scopeLabel(s)
+		if s == domain.ScopeBranch {
+			if b := m.sharedDefaultBranch(); b != "" {
+				labels[i] = "branch vs " + b
+			}
+		}
 		if s == m.rv.scope {
 			active = i
 		}
@@ -229,6 +234,31 @@ func (m Model) scopeBar(width int) string {
 		right = append([]seg{{text: "loading…  ", fg: t.Overlay}}, right...)
 	}
 	return m.chips(seg{text: " REVIEW  ", fg: t.Subtext, bold: true}, labels, active, t.Blue, right, width)
+}
+
+// sharedDefaultBranch is the default branch of every repo the reviewed
+// session works in, or "" when they differ or one is unknown.
+func (m Model) sharedDefaultBranch() string {
+	defaults := map[string]string{}
+	for _, ws := range m.workspaces {
+		for _, r := range ws.Repos {
+			defaults[r.Path] = r.DefaultBranch
+		}
+	}
+	shared := ""
+	for _, e := range m.entries {
+		if e.session.ID != m.rv.session {
+			continue
+		}
+		for _, w := range e.worktrees {
+			b := defaults[w.Repo]
+			if b == "" || (shared != "" && b != shared) {
+				return ""
+			}
+			shared = b
+		}
+	}
+	return shared
 }
 
 func (m Model) worktreeBar(width int) string {
