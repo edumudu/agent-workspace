@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/giovaniif/agent-workspace/internal/app"
@@ -125,4 +126,31 @@ func newWorld(recipe *domain.Recipe) *fakeSetupWorld {
 		locks:    map[string]domain.Lockfile{},
 		free:     []int64{10_000_000_000, 9_990_000_000},
 	}
+}
+
+type fakeLister map[string]domain.RepoListing
+
+func (f fakeLister) ListWorktrees(_ context.Context, dir string) (domain.RepoListing, error) {
+	l, ok := f[dir]
+	if !ok {
+		return domain.RepoListing{}, errors.New("not a git repo")
+	}
+	return l, nil
+}
+
+type fakeFinder struct {
+	mu    sync.Mutex
+	prs   map[string][]domain.PullRequest
+	calls map[string]int
+}
+
+func (f *fakeFinder) PRs(_ context.Context, repo string) ([]domain.PullRequest, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.calls[repo]++
+	prs, ok := f.prs[repo]
+	if !ok {
+		return nil, errors.New("gh failed")
+	}
+	return prs, nil
 }

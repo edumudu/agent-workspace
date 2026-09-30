@@ -46,6 +46,18 @@ func (s *memStore) PutWorktree(w domain.Worktree) {
 	s.snap.Worktrees = append(s.snap.Worktrees, w)
 }
 
+func (s *memStore) DeleteWorktree(id string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	kept := s.snap.Worktrees[:0]
+	for _, w := range s.snap.Worktrees {
+		if w.ID != id {
+			kept = append(kept, w)
+		}
+	}
+	s.snap.Worktrees = kept
+}
+
 func (s *memStore) PutSession(x domain.Session) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -188,3 +200,41 @@ func (n *fakeNotifier) Notify(_ context.Context, b domain.Banner) error {
 type fakeForeground struct{ terminal atomic.Bool }
 
 func (f *fakeForeground) TerminalFrontmost(context.Context) bool { return f.terminal.Load() }
+
+type fakeLister struct {
+	mu       sync.Mutex
+	listings map[string]domain.RepoListing
+}
+
+func (f *fakeLister) ListWorktrees(_ context.Context, dir string) (domain.RepoListing, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	l, ok := f.listings[dir]
+	if !ok {
+		return domain.RepoListing{}, errors.New("not a git repo")
+	}
+	return l, nil
+}
+
+func (f *fakeLister) set(dir string, wts ...domain.ListedWorktree) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.listings[dir] = domain.RepoListing{Main: dir, Worktrees: wts}
+}
+
+type fakeFinder struct {
+	mu  sync.Mutex
+	prs map[string][]domain.PullRequest
+}
+
+func (f *fakeFinder) PRs(_ context.Context, repo string) ([]domain.PullRequest, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.prs[repo], nil
+}
+
+func (f *fakeFinder) set(repo string, prs ...domain.PullRequest) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.prs[repo] = prs
+}

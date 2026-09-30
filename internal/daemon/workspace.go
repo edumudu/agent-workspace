@@ -86,6 +86,7 @@ func (d *Daemon) workspaceAdd(req rpc.Request) (*rpc.Response, bool) {
 		return nil, false
 	}
 	go d.refreshWorkspace(root)
+	d.st.hints.wake()
 	return result(req.ID, ws), true
 }
 

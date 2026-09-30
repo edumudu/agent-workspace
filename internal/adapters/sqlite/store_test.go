@@ -109,6 +109,23 @@ func TestDeleteWorkspaceRemovesTheRowAndBeatsAnUnflushedPut(t *testing.T) {
 	}
 }
 
+func TestWorktreeDetectDeleteWorktreeRemovesTheRow(t *testing.T) {
+	s, path := openTemp(t)
+	s.PutWorktree(domain.Worktree{ID: "/a"})
+	s.PutWorktree(domain.Worktree{ID: "/b"})
+	if err := s.Flush(); err != nil {
+		t.Fatal(err)
+	}
+	s.DeleteWorktree("/a")
+	snap, err := reopen(t, s, path).Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(snap.Worktrees) != 1 || snap.Worktrees[0].ID != "/b" {
+		t.Errorf("worktrees = %+v, want only /b", snap.Worktrees)
+	}
+}
+
 func TestWritesReachDiskWithoutExplicitFlush(t *testing.T) {
 	s, path := openTemp(t)
 	s.PutTask(domain.Task{ID: "t1"})

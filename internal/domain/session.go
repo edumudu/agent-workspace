@@ -120,3 +120,24 @@ func (s Session) Blur() Session {
 	s.Focused = false
 	return s
 }
+
+func (s Session) AttachWorktree(id string) Session {
+	for _, w := range s.WorktreeIDs {
+		if w == id {
+			return s
+		}
+	}
+	s.WorktreeIDs = append(append([]string(nil), s.WorktreeIDs...), id)
+	return s
+}
+
+func (s Session) DetachWorktree(id string) Session {
+	kept := make([]string, 0, len(s.WorktreeIDs))
+	for _, w := range s.WorktreeIDs {
+		if w != id {
+			kept = append(kept, w)
+		}
+	}
+	s.WorktreeIDs = kept
+	return s
+}

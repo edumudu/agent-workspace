@@ -33,7 +33,8 @@ const (
 	MethodSessionMute = "session.mute"
 	// MethodSessionFocus marks the session as the one in view, clearing its
 	// unread marker and blurring the session that was in view.
-	MethodSessionFocus = "session.focus"
+	MethodSessionFocus   = "session.focus"
+	MethodWorktreeAssign = "worktree.assign"
 )
 
 type SessionMuteParams struct {
@@ -122,6 +123,13 @@ type DebugSeedParams struct {
 	Count int `json:"count"`
 }
 
+// WorktreeAssignParams gives worktree ID to session Session; an empty
+// Session unassigns it.
+type WorktreeAssignParams struct {
+	ID      string `json:"id"`
+	Session string `json:"session"`
+}
+
 type Request struct {
 	V      int             `json:"v"`
 	ID     uint64          `json:"id"`
@@ -166,12 +174,14 @@ type State struct {
 }
 
 // Diff is one change: exactly one field besides Seq is set, except that a hook
-// sets Session and Event together. Every field but RemovedWorkspace and Event
+// sets Session and Event together. Every field but the Removed ones and Event
 // replaces the entity with the same key; RemovedWorkspace is the root of a
-// workspace to drop, and Event is appended to its session's events.
+// workspace to drop, RemovedWorktree the ID of a worktree, and Event is
+// appended to its session's events.
 type Diff struct {
 	Seq              uint64               `json:"seq"`
 	RemovedWorkspace string               `json:"removed_workspace,omitempty"`
+	RemovedWorktree  string               `json:"removed_worktree,omitempty"`
 	Workspace        *domain.Workspace    `json:"workspace,omitempty"`
 	Task             *domain.Task         `json:"task,omitempty"`
 	Worktree         *domain.Worktree     `json:"worktree,omitempty"`

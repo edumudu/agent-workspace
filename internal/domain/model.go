@@ -45,10 +45,32 @@ type Task struct {
 	PinnedName string
 }
 
+type PRState string
+
+const (
+	PROpen   PRState = "OPEN"
+	PRMerged PRState = "MERGED"
+	PRClosed PRState = "CLOSED"
+)
+
+// CheckState is a PR's check rollup. CheckNone also stands for a single
+// check that neither passed nor failed, such as a skipped one.
+type CheckState string
+
+const (
+	CheckNone    CheckState = ""
+	CheckPending CheckState = "pending"
+	CheckPassing CheckState = "passing"
+	CheckFailing CheckState = "failing"
+)
+
 type PullRequest struct {
 	Number int
 	Title  string
 	URL    string
+	Head   string
+	State  PRState
+	Checks CheckState
 }
 
 type Harness string
@@ -65,6 +87,8 @@ type Worktree struct {
 	Branch      string
 	PR          *PullRequest
 	SubtaskSlug string
+	// SessionID is empty when unassigned.
+	SessionID string
 }
 
 // Usage is what the harness last reported. LimitUsedPercent is the fullest
