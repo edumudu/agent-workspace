@@ -129,7 +129,7 @@ See [docs/adr/0015-session-lifecycle.md](docs/adr/0015-session-lifecycle.md).
 - **Low quota.** Under the harness row the dialog shows `domain.Advise`'s warning; `ctrl+s` switches to the other harness when it has reported limits.
 - **Focus.** `enter`, and every new session, calls `session.focus`, which swaps the pane into the main slot.
 - **Back to the sidebar.** `ctrl+\` (`tmux.FocusSidebarKey`) moves focus from an agent pane to the sidebar. It is bound on the `agentws` tmux server only. See [docs/adr/0025-focus-return-key.md](docs/adr/0025-focus-return-key.md).
-- **End.** `x` then `y` calls `session.end`: the pane is killed and the session goes `idle` with no pane. It and its worktrees stay listed until cleanup. If it was the session in view, the next session in sidebar order (`domain.NextInView`) is shown, or an empty-state pane when none is left.
+- **End.** `x` then `y` calls `session.end`: the pane is killed and the session goes `idle` with no pane. It and its worktrees stay listed until cleanup. If it was the session in view, the next session in sidebar order (`domain.NextInView`) is shown, or an empty-state pane when none is left. An agent that exits by itself is handled the same way: a 2 s worker notices the slot lost its pane and ends the session in view.
 - **Survival.** The daemon and the tmux server own sessions, so quitting the TUI or detaching changes nothing. On daemon start, restored sessions whose pane is gone are ended (`app.ReconcilePanes`), off the loop.
 - **Budget.** `session.new` plus `session.focus`, excluding the setup recipe, must finish in < 1 s; the `NewSession` integration test checks it.
 

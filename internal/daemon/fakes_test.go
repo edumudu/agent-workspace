@@ -159,6 +159,31 @@ type fakeClientHost struct {
 	focused []app.Slot
 	wide    []bool
 	ensured []app.Slot
+	gone    bool
+	// duringCheck runs inside the SlotHasPane call that reports the pane missing.
+	duringCheck func()
+}
+
+// SlotHasPane reports the slot pane as missing once after loseSlotPane.
+func (h *fakeClientHost) SlotHasPane(context.Context, app.Slot) bool {
+	h.mu.Lock()
+	had := !h.gone
+	h.gone = false
+	during := h.duringCheck
+	if !had {
+		h.duringCheck = nil
+	}
+	h.mu.Unlock()
+	if during != nil && !had {
+		during()
+	}
+	return had
+}
+
+func (h *fakeClientHost) loseSlotPane() {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.gone = true
 }
 
 func (h *fakeClientHost) EnsureSlot(_ context.Context, slot app.Slot) error {

@@ -283,6 +283,7 @@ func (m Model) helpLines() []string {
 		{"K", "kill the session's dev servers"},
 		{"M / E", "switch model / effort"},
 		{"enter", "focus agent pane"},
+		{`ctrl+\`, "in an agent pane: back to the sidebar"},
 		{"n", "new session"},
 		{"x", "end session"},
 		{"?", "close help"},

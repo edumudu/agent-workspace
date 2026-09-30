@@ -19,6 +19,7 @@ type ClientHost interface {
 	FocusSlot(ctx context.Context, slot app.Slot) error
 	WidenSidebar(ctx context.Context, slot app.Slot, wide bool) error
 	EnsureSlot(ctx context.Context, slot app.Slot) error
+	SlotHasPane(ctx context.Context, slot app.Slot) bool
 }
 
 const clientName = "main"
@@ -29,6 +30,8 @@ type clients struct {
 	mu   sync.Mutex
 	host ClientHost
 	slot app.Slot
+	// watchEvery is how often watchMainSlot looks; zero disables it.
+	watchEvery time.Duration
 }
 
 // SetClientHost enables client.open and client.focus_main. Call it before Serve.

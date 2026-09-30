@@ -91,6 +91,14 @@ func (h *Host) swapIntoSlot(ctx context.Context, pane app.PaneID, slot app.Slot)
 	return err
 }
 
+// SlotHasPane is false once the pane shown in the slot has exited: tmux drops
+// it and the sidebar is the only pane left. An unreadable window counts as
+// having one, so a tmux hiccup never triggers a refill.
+func (h *Host) SlotHasPane(ctx context.Context, slot app.Slot) bool {
+	count, err := h.paneCount(ctx, slot)
+	return err != nil || count > 1
+}
+
 func (h *Host) paneCount(ctx context.Context, slot app.Slot) (int, error) {
 	out, err := h.run(ctx, "", "list-panes", "-t", string(slot), "-F", "#{pane_id}")
 	if err != nil {

@@ -248,6 +248,14 @@ func TestEnterFocusesTheAgentPane(t *testing.T) {
 	}
 }
 
+func TestHelpListsTheKeyBackFromAnAgentPane(t *testing.T) {
+	st := fixture(1, 0)
+	out := screen(press(newModel(&st, nil), "?"))
+	if !strings.Contains(out, `ctrl+\`) || !strings.Contains(out, "back to the sidebar") {
+		t.Fatalf("help missing the focus-return key:\n%s", out)
+	}
+}
+
 func TestQuestionMarkTogglesHelp(t *testing.T) {
 	st := fixture(1, 0)
 	m := press(newModel(&st, nil), "?")

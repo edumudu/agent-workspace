@@ -145,15 +145,25 @@ func (d *Daemon) endSession(req rpc.Request) (*rpc.Response, bool) {
 	if resp != nil || !ok {
 		return resp, ok
 	}
+	ended, ok, err := d.endAndRefill(session)
+	if err != nil {
+		return errorResponse(req.ID, rpc.CodeFailed, err.Error()), true
+	}
+	return result(req.ID, ended), ok
+}
+
+// endAndRefill ends the session and, if it was the one in view, fills the main
+// slot again so it never goes blank.
+func (d *Daemon) endAndRefill(session domain.Session) (domain.Session, bool, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), clientTimeout)
 	defer cancel()
 	ended, err := d.sessions().End(ctx, session)
 	if err != nil {
-		return errorResponse(req.ID, rpc.CodeFailed, err.Error()), true
+		return domain.Session{}, true, err
 	}
 	var next domain.Session
 	var hasNext, wasInView bool
-	ok = d.query(func(s *state) {
+	ok := d.query(func(s *state) {
 		if cur, found := s.sessions[ended.ID]; found {
 			wasInView = cur.Focused
 			ended = cur.End()
@@ -166,7 +176,7 @@ func (d *Daemon) endSession(req rpc.Request) (*rpc.Response, bool) {
 	if ok && wasInView {
 		d.refillMain(next, hasNext)
 	}
-	return result(req.ID, ended), ok
+	return ended, ok, nil
 }
 
 // refillMain keeps the main slot from going blank after the session in it
