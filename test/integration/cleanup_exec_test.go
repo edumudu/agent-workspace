@@ -109,7 +109,7 @@ func TestCleanupExecTwentyWorktreesInMixedStates(t *testing.T) {
 	}
 
 	var mergedBranches []domain.Worktree
-	for i := range 6 {
+	for i := range 8 {
 		w := r.add(t, fmt.Sprintf("merged-%d", i), "-b", fmt.Sprintf("merged-%d", i))
 		commitIn(t, w.Path, fmt.Sprintf("m%d.txt", i))
 		mergedBranches = append(mergedBranches, w)
@@ -119,7 +119,7 @@ func TestCleanupExecTwentyWorktreesInMixedStates(t *testing.T) {
 	}
 	git(t, r.repo, "push", "-q", "origin", "main")
 	git(t, r.repo, "fetch", "-q")
-	for _, w := range mergedBranches[:4] {
+	for _, w := range mergedBranches[:6] {
 		expect(w, "removed")
 	}
 	for i := range 3 {
@@ -147,7 +147,7 @@ func TestCleanupExecTwentyWorktreesInMixedStates(t *testing.T) {
 		commitIn(t, w.Path, fmt.Sprintf("d%d.txt", i))
 		expect(w, "backed up")
 	}
-	for _, w := range mergedBranches[4:] {
+	for _, w := range mergedBranches[6:] {
 		sleeper := exec.Command("sleep", "60")
 		sleeper.Dir = w.Path
 		if err := sleeper.Start(); err != nil {
@@ -211,8 +211,8 @@ func TestCleanupExecTwentyWorktreesInMixedStates(t *testing.T) {
 		t.Errorf("trash not emptied: %v", trash)
 	}
 	log, err := os.ReadFile(filepath.Join(r.home, "cleanup.log"))
-	if err != nil || strings.Count(string(log), "\n") != 12 {
-		t.Errorf("audit log has %d lines, want 12 (7 removed, 5 backed up): %v", strings.Count(string(log), "\n"), err)
+	if err != nil || strings.Count(string(log), "\n") != 14 {
+		t.Errorf("audit log has %d lines, want 14 (9 removed, 5 backed up): %v", strings.Count(string(log), "\n"), err)
 	}
 }
 
