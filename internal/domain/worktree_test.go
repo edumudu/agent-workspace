@@ -137,6 +137,7 @@ func TestWorktreeDetectReclaimSeenBeforeItsClaim(t *testing.T) {
 		{ID: "/w/api-c", Repo: "/w/api", Path: "/w/api-c", Branch: "feat-c", SessionID: "s2"},
 		{ID: "/w/api-old", Repo: "/w/api", Path: "/w/api-old", Branch: "old"},
 		{ID: "/w/api-z", Repo: "/w/api", Path: "/w/api-z", Branch: "z"},
+		{ID: "/w/api-hand", Repo: "/w/api", Path: "/w/api-hand", Branch: "old"},
 	}
 	claims := []WorktreeClaim{
 		{SessionID: "s1", Command: "git worktree add -q -b feat-a ../api-a", At: recent},
@@ -145,6 +146,7 @@ func TestWorktreeDetectReclaimSeenBeforeItsClaim(t *testing.T) {
 		{SessionID: "s1", Command: "git worktree add ../api-old", At: now.Add(-ClaimWindow - time.Second)},
 		{SessionID: "s1", Command: "git worktree add ../api-z", At: recent},
 		{SessionID: "s3", Command: "git worktree add -b z ../elsewhere", At: recent},
+		{SessionID: "s1", Command: "git worktree add /var/folders/x/api-hand-2", At: recent},
 	}
 	got := ReclaimWorktrees(known, claims, now)
 	want := []Worktree{
