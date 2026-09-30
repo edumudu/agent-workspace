@@ -6,6 +6,8 @@ import (
 	"os"
 	"runtime/debug"
 	"slices"
+
+	"github.com/giovaniif/agent-workspace/internal/rpc"
 )
 
 // Set at build time with -ldflags "-X main.version=... -X main.commit=...".
@@ -14,7 +16,7 @@ var (
 	commit  = ""
 )
 
-var stubs = []string{"tui", "hook", "new", "cleanup"}
+var stubs = []string{"tui", "new", "cleanup"}
 
 func main() {
 	os.Exit(run(os.Args[1:], os.Stdout, os.Stderr))
@@ -29,6 +31,9 @@ func run(args []string, stdout, stderr io.Writer) int {
 	case cmd == "version":
 		fmt.Fprintf(stdout, "agentws %s (commit %s)\n", version, buildCommit())
 		return 0
+	case cmd == "hook":
+		home, _ := rpc.Home()
+		return runHook(args[1:], os.Stdin, stdout, home, os.Getenv("TMUX_PANE"))
 	case cmd == "daemon":
 		return runDaemon(args[1:], stdout, stderr)
 	case slices.Contains(stubs, cmd):

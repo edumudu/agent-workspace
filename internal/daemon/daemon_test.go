@@ -296,6 +296,50 @@ func TestASlowSubscriberDoesNotStallTheLoop(t *testing.T) {
 	waitStatus(t, dial(t, path), func(s rpc.Status) bool { return s.Sessions == 5000 })
 }
 
+func TestHookEventUpdatesTheSessionOnItsPane(t *testing.T) {
+	d, path := start(t, &memStore{})
+	c := dial(t, path)
+	ctx := context.Background()
+	sub, err := c.Subscribe(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	d.Post(daemon.SessionChanged{Session: domain.Session{ID: "a", Pane: "%3", State: domain.StateRunning}})
+	next(t, sub.Diffs)
+	hook := rpc.Hook{Harness: "claude", Event: "Stop", Pane: "%3", At: time.Now(), Payload: json.RawMessage(`{}`)}
+	if err := c.Call(ctx, rpc.MethodHook, hook, nil); err != nil {
+		t.Fatal(err)
+	}
+	diff := next(t, sub.Diffs)
+	if diff.Session == nil || diff.Session.ID != "a" || diff.Session.State != domain.StateDone {
+		t.Fatalf("diff %+v", diff)
+	}
+}
+
+func TestHookFromAnUnknownPaneOrEventIsIgnored(t *testing.T) {
+	d, path := start(t, &memStore{})
+	c := dial(t, path)
+	ctx := context.Background()
+	sub, err := c.Subscribe(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	d.Post(daemon.SessionChanged{Session: domain.Session{ID: "a", Pane: "%3", State: domain.StateRunning}})
+	next(t, sub.Diffs)
+	for _, h := range []rpc.Hook{
+		{Harness: "claude", Event: "Stop", Pane: "%9"},
+		{Harness: "claude", Event: "Bogus", Pane: "%3"},
+	} {
+		if err := c.Call(ctx, rpc.MethodHook, h, nil); err != nil {
+			t.Fatal(err)
+		}
+	}
+	d.Post(daemon.WorktreeChanged{Worktree: domain.Worktree{ID: "w"}})
+	if diff := next(t, sub.Diffs); diff.Worktree == nil {
+		t.Fatalf("hook produced %+v", diff)
+	}
+}
+
 func TestOnlyOneDaemonHoldsTheLock(t *testing.T) {
 	home := shortDir(t)
 	first, err := daemon.Acquire(home)

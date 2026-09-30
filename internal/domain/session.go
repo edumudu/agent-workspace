@@ -47,7 +47,8 @@ type Session struct {
 	ID          string
 	TaskID      string
 	Harness     Harness
-	Model       string
+	Pane        string
+	Model      string
 	Effort      string
 	State       AgentState
 	Unread      bool
