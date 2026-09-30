@@ -20,12 +20,12 @@ const FPS = 120
 // Run subscribes to the daemon and runs the TUI until the user quits or ctx
 // ends. Diffs are read on a second connection so a slow frame never delays
 // FocusMain.
-func Run(ctx context.Context, subscriber, caller *rpc.Client, theme Theme, defaults map[domain.Harness]Defaults) error {
+func Run(ctx context.Context, subscriber, caller *rpc.Client, theme Theme, defaults map[domain.Harness]Defaults, fallback domain.FallbackConfig) error {
 	sub, err := subscriber.Subscribe(ctx)
 	if err != nil {
 		return err
 	}
-	m := New(Options{Theme: theme, Tick: TickInterval, Focus: caller, Attend: caller, Kill: caller, Calls: caller, Switch: caller, Defaults: defaults, Review: caller})
+	m := New(Options{Theme: theme, Tick: TickInterval, Focus: caller, Attend: caller, Kill: caller, Calls: caller, Switch: caller, Defaults: defaults, Fallback: fallback, Review: caller})
 	next, _ := m.Update(StateMsg(sub.State))
 	p := tea.NewProgram(next, tea.WithContext(ctx), tea.WithFPS(FPS))
 	go func() {

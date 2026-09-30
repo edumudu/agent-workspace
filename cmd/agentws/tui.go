@@ -86,6 +86,10 @@ func tuiIn(home string) error {
 	if err != nil {
 		return err
 	}
+	fallback, err := tui.LoadFallback(filepath.Join(home, "config.toml"))
+	if err != nil {
+		return err
+	}
 	subscriber, err := connect(ctx, home)
 	if err != nil {
 		return err
@@ -96,7 +100,7 @@ func tuiIn(home string) error {
 		return err
 	}
 	defer func() { _ = caller.Close() }()
-	err = tui.Run(ctx, subscriber, caller, theme, defaults)
+	err = tui.Run(ctx, subscriber, caller, theme, defaults, fallback)
 	if errors.Is(err, context.Canceled) {
 		return nil
 	}

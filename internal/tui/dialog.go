@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"cmp"
 	"context"
 	"fmt"
 	"path/filepath"
@@ -108,6 +109,15 @@ func (d *dialog) cycleHarness(delta int) {
 	}
 }
 
+// takeFallback moves the dialog to the Codex start the offer proposes; a field
+// the mapping leaves empty gets Codex's own default.
+func (d *dialog) takeFallback(req domain.StartRequest) {
+	d.harness = slices.Index(harnessChoices, string(req.Harness))
+	defaults := d.defaults[req.Harness]
+	d.model = cmp.Or(req.Model, defaults.Model)
+	d.effort = effortIndex(cmp.Or(req.Effort, defaults.Effort))
+}
+
 func cycle(i, delta, n int) int {
 	if n == 0 {
 		return 0
@@ -175,7 +185,9 @@ func (m Model) dialogKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	case "right":
 		d.change(1)
 	case "ctrl+s":
-		if advice, ok := m.advice(); ok && advice.OtherShortest != nil {
+		if offer, ok := m.fallbackOffer(); ok {
+			d.takeFallback(offer.Request)
+		} else if advice, ok := m.advice(); ok && advice.OtherShortest != nil && advice.Other != domain.HarnessCodex {
 			d.cycleHarness(1)
 		}
 	case "enter":
@@ -256,12 +268,36 @@ func (m Model) endSession(id string) tea.Cmd {
 	return m.call(rpc.MethodEndSession, rpc.SessionRef{ID: id})
 }
 
-func (m Model) advice() (domain.SwitchAdvice, bool) {
+func (m Model) quotas() []domain.Quota {
 	sessions := make([]domain.Session, 0, len(m.sessions))
 	for _, x := range m.sessions {
 		sessions = append(sessions, x)
 	}
-	return domain.Advise(domain.Quotas(sessions), domain.Harness(harnessChoices[m.dialog.harness]))
+	return domain.Quotas(sessions)
+}
+
+func (m Model) chosenHarness() domain.Harness {
+	return domain.Harness(harnessChoices[m.dialog.harness])
+}
+
+func (m Model) advice() (domain.SwitchAdvice, bool) {
+	return domain.AdviseAt(m.quotas(), m.chosenHarness(), m.warnThreshold())
+}
+
+func (m Model) warnThreshold() int {
+	if t := m.opts.Fallback.Threshold; t > 0 {
+		return t
+	}
+	return domain.WarnQuotaLeft
+}
+
+func (m Model) fallbackOffer() (domain.FallbackOffer, bool) {
+	d := m.dialog
+	return domain.OfferFallback(m.quotas(), m.opts.Fallback, domain.StartRequest{
+		Harness: m.chosenHarness(),
+		Model:   strings.TrimSpace(d.model),
+		Effort:  effortChoices[d.effort],
+	})
 }
 
 func (m Model) adviceLine() (string, bool) {
@@ -272,7 +308,9 @@ func (m Model) adviceLine() (string, bool) {
 	s := m.styles
 	low := advice.Low
 	left := []piece{{s.peach, fmt.Sprintf(" ⚠ %s %s %d%% left", low.Harness, domain.WindowLabel(low.Window), low.LeftPercent)}}
-	if o := advice.OtherShortest; o != nil {
+	if offer, ok := m.fallbackOffer(); ok {
+		left = append(left, piece{s.dim, " · "}, piece{s.bold, "ctrl+s"}, piece{s.sub, strings.TrimRight(fmt.Sprintf(" %s %d%% %s", offer.Request.Harness, offer.Advice.OtherShortest.LeftPercent, offer.Request.Model), " ")})
+	} else if o := advice.OtherShortest; o != nil && advice.Other != domain.HarnessCodex {
 		left = append(left, piece{s.dim, " · "}, piece{s.bold, "ctrl+s"}, piece{s.sub, fmt.Sprintf(" %s %d%%", advice.Other, o.LeftPercent)})
 	}
 	return m.line(false, left, nil), true
