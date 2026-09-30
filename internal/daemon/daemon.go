@@ -33,6 +33,13 @@ type TaskChanged struct{ Task domain.Task }
 type WorktreeChanged struct{ Worktree domain.Worktree }
 type SessionChanged struct{ Session domain.Session }
 
+// SessionHooked is a session change together with the hook event that caused
+// it, published as one diff so a subscriber never sees one without the other.
+type SessionHooked struct {
+	Session domain.Session
+	Event   domain.SessionEvent
+}
+
 func (e WorkspaceChanged) apply(s *state) rpc.Diff {
 	s.workspaces[e.Workspace.Root] = e.Workspace
 	s.store.PutWorkspace(e.Workspace)
@@ -57,6 +64,18 @@ func (e SessionChanged) apply(s *state) rpc.Diff {
 	return rpc.Diff{Session: &e.Session}
 }
 
+func (e SessionHooked) apply(s *state) rpc.Diff {
+	s.sessions[e.Session.ID] = e.Session
+	s.store.PutSession(e.Session)
+	kept := append(s.events[e.Event.SessionID], e.Event)
+	if len(kept) > app.EventsPerSession {
+		kept = kept[len(kept)-app.EventsPerSession:]
+	}
+	s.events[e.Event.SessionID] = kept
+	s.store.PutEvent(e.Event)
+	return rpc.Diff{Session: &e.Session, Event: &e.Event}
+}
+
 type state struct {
 	store      app.Store
 	seq        uint64
@@ -64,6 +83,7 @@ type state struct {
 	tasks      map[string]domain.Task
 	worktrees  map[string]domain.Worktree
 	sessions   map[string]domain.Session
+	events     map[string][]domain.SessionEvent
 	subs       map[*conn]uint64
 	usage      map[string]*usageJob
 	// requestUsage is set by New; state cannot reach the Daemon that owns it.
@@ -94,6 +114,7 @@ func New(store app.Store, pid int, opts ...Option) (*Daemon, error) {
 		tasks:      map[string]domain.Task{},
 		worktrees:  map[string]domain.Worktree{},
 		sessions:   map[string]domain.Session{},
+		events:     map[string][]domain.SessionEvent{},
 		subs:       map[*conn]uint64{},
 		usage:      map[string]*usageJob{},
 	}
@@ -108,6 +129,9 @@ func New(store app.Store, pid int, opts ...Option) (*Daemon, error) {
 	}
 	for _, x := range snap.Sessions {
 		st.sessions[x.ID] = x
+	}
+	for _, ev := range snap.Events {
+		st.events[ev.SessionID] = append(st.events[ev.SessionID], ev)
 	}
 	d := &Daemon{
 		pid:     pid,
@@ -233,7 +257,13 @@ func (s *state) hook(h rpc.Hook) {
 	if domain.Harness(h.Harness) == domain.HarnessCodex {
 		next = s.codexObservation(h, kind, session, next)
 	}
-	s.emit(SessionChanged{Session: next})
+	at := h.At
+	if at.IsZero() {
+		at = time.Now()
+	}
+	ev := domain.SessionEventFromHook(kind, at, h.Payload)
+	ev.SessionID = session.ID
+	s.emit(SessionHooked{Session: next, Event: ev})
 }
 
 // commit applies e on the loop and returns once it has taken effect, so a
@@ -331,7 +361,16 @@ func (s *state) snapshot() rpc.State {
 		Tasks:      sorted(s.tasks),
 		Worktrees:  sorted(s.worktrees),
 		Sessions:   sorted(s.sessions),
+		Events:     flatten(s.events),
 	}
+}
+
+func flatten(bySession map[string][]domain.SessionEvent) []domain.SessionEvent {
+	var out []domain.SessionEvent
+	for _, events := range sorted(bySession) {
+		out = append(out, events...)
+	}
+	return out
 }
 
 func sorted[T any](m map[string]T) []T {
