@@ -183,3 +183,32 @@ func TestReviewHunkRunsInTheSessionsWorktreeOnly(t *testing.T) {
 		t.Errorf("a refused hunk reached git: %q", env.hunks.done())
 	}
 }
+
+func TestReviewSendAFailedPasteGoesBackToTheQueueWithCommentsAddedSince(t *testing.T) {
+	env := startSend(t, domain.StateIdle)
+	addComments(t, env.c, commentA)
+	env.host.failOn(domain.ReviewPrompt([]domain.ReviewComment{commentA}))
+	release := env.host.holdPane("%1")
+	if _, err := env.c.SendReview(context.Background(), "s1"); err != nil {
+		t.Fatal(err)
+	}
+	addComments(t, env.c, commentB)
+	release()
+	var rv rpc.Review
+	waitUntil(t, "draft requeued", func() bool {
+		rv, _ = env.c.Review(context.Background(), rpc.ReviewParams{Session: "s1", Scope: domain.ScopeUncommitted})
+		return rv.Draft.Status == domain.DraftQueued
+	})
+	if want := []domain.ReviewComment{commentA, commentB}; !reflect.DeepEqual(rv.Draft.Comments, want) {
+		t.Errorf("requeued comments %+v, want %+v", rv.Draft.Comments, want)
+	}
+	live := 0
+	for _, d := range env.store.drafts() {
+		if d.Status == domain.DraftOpen || d.Status == domain.DraftQueued {
+			live++
+		}
+	}
+	if live != 1 {
+		t.Errorf("stored %d live drafts, want 1: %+v", live, env.store.drafts())
+	}
+}
