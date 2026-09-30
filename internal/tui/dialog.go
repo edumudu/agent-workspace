@@ -138,6 +138,10 @@ func (m Model) dialogKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		d.change(-1)
 	case "right":
 		d.change(1)
+	case "ctrl+s":
+		if advice, ok := m.advice(); ok && advice.OtherShortest != nil {
+			d.harness = cycle(d.harness, 1, len(harnessChoices))
+		}
 	case "enter":
 		return m, m.submit()
 	case "backspace":
@@ -215,6 +219,30 @@ func (m Model) endSelected() tea.Cmd {
 	return m.call(rpc.MethodEndSession, rpc.SessionRef{ID: m.selected})
 }
 
+// advice is the low-quota warning for the chosen harness, from the limits
+// every session last reported.
+func (m Model) advice() (domain.SwitchAdvice, bool) {
+	sessions := make([]domain.Session, 0, len(m.sessions))
+	for _, x := range m.sessions {
+		sessions = append(sessions, x)
+	}
+	return domain.Advise(domain.Quotas(sessions), domain.Harness(harnessChoices[m.dialog.harness]))
+}
+
+func (m Model) adviceLine() (string, bool) {
+	advice, ok := m.advice()
+	if !ok {
+		return "", false
+	}
+	s := m.styles
+	low := advice.Low
+	left := []piece{{s.peach, fmt.Sprintf(" ⚠ %s %s %d%% left", low.Harness, domain.WindowLabel(low.Window), low.LeftPercent)}}
+	if o := advice.OtherShortest; o != nil {
+		left = append(left, piece{s.dim, " · "}, piece{s.bold, "ctrl+s"}, piece{s.sub, fmt.Sprintf(" %s %d%%", advice.Other, o.LeftPercent)})
+	}
+	return m.line(false, left, nil), true
+}
+
 func workItemKind(input string) string {
 	t := domain.ParseWorkItem(input)
 	switch t.Source {
@@ -265,10 +293,15 @@ func (m Model) dialogLines() []string {
 		m.line(false, []piece{{s.dim, fmt.Sprintf(" %-11s%s", "", workItemKind(d.workItem))}}, nil),
 		row(fieldWorkspace, "Workspace", ws),
 		row(fieldHarness, "Harness", choice(harnessChoices[d.harness])),
+	}
+	if line, ok := m.adviceLine(); ok {
+		out = append(out, line)
+	}
+	out = append(out,
 		row(fieldModel, "Model", model),
 		row(fieldEffort, "Effort", choice(effort)),
 		"",
-	}
+	)
 	switch {
 	case d.busy:
 		out = append(out, m.line(false, []piece{{s.sub, " starting…"}}, nil))
