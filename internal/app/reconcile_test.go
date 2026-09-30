@@ -3,65 +3,44 @@ package app_test
 import (
 	"context"
 	"errors"
-	"slices"
+	"reflect"
 	"testing"
 
 	"github.com/giovaniif/agent-workspace/internal/app"
+	"github.com/giovaniif/agent-workspace/internal/domain"
 )
 
-func TestReconcilePanesIdlesSessionsWhosePaneIsGone(t *testing.T) {
+func TestReconcilePanesEndsSessionsWhosePaneIsGone(t *testing.T) {
+	a := domain.Session{ID: "a", Pane: "%1", State: domain.StateRunning}
+	b := domain.Session{ID: "b", Pane: "%2", State: domain.StateWaiting}
+	ended := domain.Session{ID: "c", State: domain.StateIdle}
 	tests := []struct {
-		name     string
-		panes    []app.PaneInfo
-		bindings []app.PaneBinding
-		want     []string
+		name  string
+		panes []app.PaneInfo
+		want  []domain.Session
 	}{
-		{
-			name:     "pane missing",
-			panes:    []app.PaneInfo{{ID: "%1", Alive: true}},
-			bindings: []app.PaneBinding{{SessionID: "a", Pane: "%1"}, {SessionID: "b", Pane: "%2"}},
-			want:     []string{"b"},
-		},
-		{
-			name:     "pane present but dead",
-			panes:    []app.PaneInfo{{ID: "%1", Alive: false}},
-			bindings: []app.PaneBinding{{SessionID: "a", Pane: "%1"}},
-			want:     []string{"a"},
-		},
-		{
-			name:     "all panes alive",
-			panes:    []app.PaneInfo{{ID: "%1", Alive: true}, {ID: "%2", Alive: true}},
-			bindings: []app.PaneBinding{{SessionID: "a", Pane: "%1"}, {SessionID: "b", Pane: "%2"}},
-			want:     nil,
-		},
-		{
-			name:     "tmux server gone",
-			panes:    nil,
-			bindings: []app.PaneBinding{{SessionID: "a", Pane: "%1"}, {SessionID: "b", Pane: "%2"}},
-			want:     []string{"a", "b"},
-		},
+		{"pane missing", []app.PaneInfo{{ID: "%1", Alive: true}}, []domain.Session{b.End()}},
+		{"pane present but dead", []app.PaneInfo{{ID: "%1", Alive: false}, {ID: "%2", Alive: true}}, []domain.Session{a.End()}},
+		{"all panes alive", []app.PaneInfo{{ID: "%1", Alive: true}, {ID: "%2", Alive: true}}, nil},
+		{"tmux server gone", nil, []domain.Session{a.End(), b.End()}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			store := &fakeStore{bindings: tt.bindings}
-			got, err := app.ReconcilePanes(context.Background(), fakeHost{panes: tt.panes}, store)
+			got, err := app.ReconcilePanes(context.Background(), &fakeHost{panes: tt.panes}, []domain.Session{a, b, ended})
 			if err != nil {
 				t.Fatal(err)
 			}
-			if !slices.Equal(got, tt.want) || !slices.Equal(store.idled, tt.want) {
-				t.Fatalf("returned %v, idled %v, want %v", got, store.idled, tt.want)
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Fatalf("ended %+v, want %+v", got, tt.want)
 			}
 		})
 	}
 }
 
 func TestReconcilePanesLeavesSessionsAloneWhenHostUnreadable(t *testing.T) {
-	store := &fakeStore{bindings: []app.PaneBinding{{SessionID: "a", Pane: "%1"}}}
-	_, err := app.ReconcilePanes(context.Background(), fakeHost{listErr: errors.New("boom")}, store)
-	if err == nil {
-		t.Fatal("want error")
-	}
-	if len(store.idled) != 0 {
-		t.Fatalf("idled %v on an unreadable host", store.idled)
+	a := domain.Session{ID: "a", Pane: "%1", State: domain.StateRunning}
+	got, err := app.ReconcilePanes(context.Background(), &fakeHost{listErr: errors.New("boom")}, []domain.Session{a})
+	if err == nil || got != nil {
+		t.Fatalf("ended %v, err %v; want nothing and an error", got, err)
 	}
 }
