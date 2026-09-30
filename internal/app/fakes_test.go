@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -212,4 +214,94 @@ func (h *typingHost) SendText(_ context.Context, pane app.PaneID, text string, b
 func (h *typingHost) SendKeys(_ context.Context, pane app.PaneID, keys ...string) error {
 	h.typed = append(h.typed, fmt.Sprintf("%s keys %s", pane, strings.Join(keys, " ")))
 	return nil
+}
+
+// fakeReviewGit keeps each dir's working tree hash, refs (ref → tree) and
+// canned diffs keyed by "<from>..<tree>".
+type fakeReviewGit struct {
+	mu         sync.Mutex
+	trees      map[string]string
+	refs       map[string]map[string]string
+	revs       map[string]string
+	mergeBases map[string]string
+	diffs      map[string]string
+	diffCalls  int
+}
+
+func newFakeReviewGit() *fakeReviewGit {
+	return &fakeReviewGit{
+		trees:      map[string]string{},
+		refs:       map[string]map[string]string{},
+		revs:       map[string]string{},
+		mergeBases: map[string]string{},
+		diffs:      map[string]string{},
+	}
+}
+
+func (g *fakeReviewGit) WorkingTree(_ context.Context, dir string) (string, error) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	t, ok := g.trees[dir]
+	if !ok {
+		return "", errors.New("not a git repo")
+	}
+	return t, nil
+}
+
+func (g *fakeReviewGit) PointRef(_ context.Context, dir, ref, tree string) error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if g.refs[dir] == nil {
+		g.refs[dir] = map[string]string{}
+	}
+	g.refs[dir][ref] = tree
+	return nil
+}
+
+func (g *fakeReviewGit) TurnRefs(_ context.Context, dir string) ([]string, error) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	var out []string
+	for r := range g.refs[dir] {
+		out = append(out, r)
+	}
+	sort.Strings(out)
+	return out, nil
+}
+
+func (g *fakeReviewGit) DeleteRefs(_ context.Context, dir string, refs []string) error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	for _, r := range refs {
+		delete(g.refs[dir], r)
+	}
+	return nil
+}
+
+func (g *fakeReviewGit) Resolve(_ context.Context, dir, rev string) (string, error) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if t, ok := g.refs[dir][rev]; ok {
+		return t, nil
+	}
+	if h, ok := g.revs[dir+" "+rev]; ok {
+		return h, nil
+	}
+	return "", errors.New("unknown revision " + rev)
+}
+
+func (g *fakeReviewGit) MergeBase(_ context.Context, dir, rev string) (string, error) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if h, ok := g.mergeBases[dir+" "+rev]; ok {
+		return h, nil
+	}
+	return "", errors.New("no merge base with " + rev)
+}
+
+func (g *fakeReviewGit) Diff(_ context.Context, _ string, from, tree string) (string, error) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	g.diffCalls++
+	return g.diffs[from+".."+tree], nil
 }
