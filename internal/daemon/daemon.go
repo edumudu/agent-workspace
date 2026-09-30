@@ -89,6 +89,7 @@ type state struct {
 	attn       *attention
 	// requestUsage is set by New; state cannot reach the Daemon that owns it.
 	requestUsage func(sessionID, path string, force bool)
+	hints        worktreeHints
 }
 
 type Daemon struct {
@@ -101,6 +102,7 @@ type Daemon struct {
 	ws      workspaces
 	clients clients
 	hs      harnesses
+	wt      worktreeScanner
 }
 
 // New restores state from store. pid is what status reports.
@@ -118,6 +120,7 @@ func New(store app.Store, pid int, opts ...Option) (*Daemon, error) {
 		events:     map[string][]domain.SessionEvent{},
 		subs:       map[*conn]uint64{},
 		usage:      map[string]*usageJob{},
+		hints:      newWorktreeHints(),
 	}
 	for _, w := range snap.Workspaces {
 		st.workspaces[w.Root] = w
@@ -143,6 +146,7 @@ func New(store app.Store, pid int, opts ...Option) (*Daemon, error) {
 		stopped: make(chan struct{}),
 		st:      st,
 		ws:      workspaces{now: time.Now, refreshEvery: defaultRefreshInterval, ctx: context.Background()},
+		wt:      worktreeScanner{every: DefaultWorktreePoll, prEvery: DefaultPRPoll, baselined: map[string]bool{}},
 	}
 	st.requestUsage = func(sessionID, path string, force bool) { d.requestUsage(st, sessionID, path, force) }
 	for _, o := range opts {
@@ -180,6 +184,7 @@ func (d *Daemon) Serve(ctx context.Context, ln net.Listener) error {
 	if d.st.attn != nil {
 		go d.st.attn.run(ctx)
 	}
+	go d.watchWorktrees(ctx)
 	loopDone := make(chan struct{})
 	go func() {
 		d.loop(ctx)
@@ -248,7 +253,7 @@ func (s *state) emit(e Event) {
 // hook applies a harness hook to the session on its pane. Hooks from panes
 // no session owns, and hook names the harness adapter does not know, are
 // ignored.
-func (s *state) hook(h rpc.Hook) {
+func (s *state) hook(h rpc.Hook, now time.Time) {
 	kind, ok := hookEvent(h)
 	if !ok {
 		return
@@ -257,6 +262,7 @@ func (s *state) hook(h rpc.Hook) {
 	if !ok {
 		return
 	}
+	s.noteHook(session.ID, kind, h.Payload, now)
 	next, effects := session.Apply(domain.HarnessEvent{Kind: kind})
 	if domain.Harness(h.Harness) == domain.HarnessCodex {
 		next = s.codexObservation(h, kind, session, next)
@@ -325,7 +331,7 @@ func (d *Daemon) dispatch(c *conn, line []byte) (*rpc.Response, bool) {
 		if err := json.Unmarshal(req.Params, &h); err != nil {
 			return errorResponse(req.ID, rpc.CodeBadRequest, "hook params: "+err.Error()), true
 		}
-		ok := d.query(func(s *state) { s.hook(h) })
+		ok := d.query(func(s *state) { s.hook(h, d.ws.now()) })
 		return result(req.ID, rpc.HookReply{}), ok
 	case rpc.MethodStatusLine:
 		var sl rpc.StatusLine
@@ -356,6 +362,8 @@ func (d *Daemon) dispatch(c *conn, line []byte) (*rpc.Response, bool) {
 			}
 		})
 		return result(req.ID, struct{}{}), ok
+	case rpc.MethodWorktreeAssign:
+		return d.worktreeAssign(req)
 	default:
 		return errorResponse(req.ID, rpc.CodeUnknownMethod, "unknown method "+req.Method), true
 	}

@@ -190,6 +190,8 @@ func (s *Store) PutEvent(ev domain.SessionEvent) {
 // unflushed write for the same root.
 func (s *Store) DeleteWorkspace(root string) { s.enqueue(tableWorkspaces, root, nil) }
 
+func (s *Store) DeleteWorktree(id string) { s.enqueue(tableWorktrees, id, nil) }
+
 func (s *Store) put(t table, key string, v any) {
 	data, err := json.Marshal(v)
 	if err != nil {

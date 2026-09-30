@@ -1,0 +1,272 @@
+package daemon
+
+import (
+	"context"
+	"encoding/json"
+	"sort"
+	"strings"
+	"time"
+
+	"github.com/giovaniif/agent-workspace/internal/app"
+	"github.com/giovaniif/agent-workspace/internal/domain"
+	"github.com/giovaniif/agent-workspace/internal/rpc"
+)
+
+const (
+	DefaultWorktreePoll = 10 * time.Second
+	DefaultPRPoll       = 60 * time.Second
+)
+
+// WithWorktrees enables worktree detection and PR lookup. Both do IO, so
+// they run only on the scanner goroutine, never the loop.
+func WithWorktrees(lister app.WorktreeLister, prs app.PRFinder) Option {
+	return func(d *Daemon) { d.wt.lister, d.wt.prs = lister, prs }
+}
+
+func WithWorktreePoll(every, prEvery time.Duration) Option {
+	return func(d *Daemon) { d.wt.every, d.wt.prEvery = every, prEvery }
+}
+
+type worktreeScanner struct {
+	lister  app.WorktreeLister
+	prs     app.PRFinder
+	every   time.Duration
+	prEvery time.Duration
+	// baselined is owned by the scanner goroutine: repos already scanned once.
+	baselined map[string]bool
+}
+
+// worktreeHints is what the loop learns from hooks for attribution. kick
+// wakes the scanner without blocking the loop.
+type worktreeHints struct {
+	cwd    map[string]string
+	claims []domain.WorktreeClaim
+	kick   chan struct{}
+}
+
+func newWorktreeHints() worktreeHints {
+	return worktreeHints{cwd: map[string]string{}, kick: make(chan struct{}, 1)}
+}
+
+func (h *worktreeHints) wake() {
+	select {
+	case h.kick <- struct{}{}:
+	default:
+	}
+}
+
+type WorktreeRemoved struct{ ID string }
+
+func (e WorktreeRemoved) apply(s *state) rpc.Diff {
+	delete(s.worktrees, e.ID)
+	s.store.DeleteWorktree(e.ID)
+	return rpc.Diff{RemovedWorktree: e.ID}
+}
+
+type hookPayload struct {
+	Cwd       string `json:"cwd"`
+	ToolInput struct {
+		Command json.RawMessage `json:"command"`
+	} `json:"tool_input"`
+}
+
+// command reads tool_input.command as Claude's string or Codex's argv.
+func (p hookPayload) command() string {
+	var s string
+	if json.Unmarshal(p.ToolInput.Command, &s) == nil {
+		return s
+	}
+	var argv []string
+	if json.Unmarshal(p.ToolInput.Command, &argv) == nil {
+		return strings.Join(argv, " ")
+	}
+	return ""
+}
+
+// noteHook records where the session works and any `git worktree add` it
+// ran, and wakes the scanner when either gives it something new to look at.
+func (s *state) noteHook(sessionID string, kind domain.HarnessEventKind, payload json.RawMessage, now time.Time) {
+	var p hookPayload
+	if len(payload) == 0 || json.Unmarshal(payload, &p) != nil {
+		return
+	}
+	if p.Cwd != "" && s.hints.cwd[sessionID] != p.Cwd {
+		s.hints.cwd[sessionID] = p.Cwd
+		s.hints.wake()
+	}
+	if kind != domain.EventPostToolUse {
+		return
+	}
+	if cmd := p.command(); domain.IsWorktreeAdd(cmd) {
+		kept := s.hints.claims[:0]
+		for _, c := range s.hints.claims {
+			if now.Sub(c.At) <= domain.ClaimWindow {
+				kept = append(kept, c)
+			}
+		}
+		s.hints.claims = append(kept, domain.WorktreeClaim{SessionID: sessionID, Command: cmd, At: now})
+		s.hints.wake()
+	}
+}
+
+func (d *Daemon) watchWorktrees(ctx context.Context) {
+	if d.wt.lister == nil {
+		return
+	}
+	d.scanWorktrees(ctx)
+	tick, stop := ticker(d.wt.every)
+	defer stop()
+	prTick, prStop := ticker(d.wt.prEvery)
+	defer prStop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-tick:
+			d.scanWorktrees(ctx)
+		case <-d.st.hints.kick:
+			d.scanWorktrees(ctx)
+		case <-prTick:
+			d.refreshWorktreePRs(ctx)
+		}
+	}
+}
+
+// ticker returns a channel that never fires for a non-positive interval.
+func ticker(every time.Duration) (<-chan time.Time, func()) {
+	if every <= 0 {
+		return nil, func() {}
+	}
+	t := time.NewTicker(every)
+	return t.C, t.Stop
+}
+
+// scanWorktrees lists every repo in a registered workspace or under a
+// session's cwd, then reconciles on the loop. A repo seen for the first time
+// is adopted: its worktrees start unassigned.
+func (d *Daemon) scanWorktrees(ctx context.Context) {
+	var dirs []string
+	if !d.query(func(s *state) {
+		for _, ws := range s.workspaces {
+			for _, r := range ws.Repos {
+				dirs = append(dirs, r.Path)
+			}
+		}
+		for _, cwd := range s.hints.cwd {
+			dirs = append(dirs, cwd)
+		}
+	}) {
+		return
+	}
+	listings := app.ScanWorktrees(ctx, d.wt.lister, dirs)
+	adopt := map[string]bool{}
+	for _, l := range listings {
+		if !d.wt.baselined[l.Main] {
+			adopt[l.Main] = true
+			d.wt.baselined[l.Main] = true
+		}
+	}
+	now := d.ws.now()
+	d.query(func(s *state) {
+		known := sorted(s.worktrees)
+		hints := s.sessionHints()
+		for _, l := range listings {
+			attribute := func(w domain.ListedWorktree) string {
+				if adopt[l.Main] {
+					return ""
+				}
+				return domain.AttributeWorktree(w, hints, s.hints.claims, now)
+			}
+			changed, removed := domain.ReconcileWorktrees(known, l, attribute)
+			for _, w := range changed {
+				s.putWorktree(w)
+			}
+			for _, id := range removed {
+				s.removeWorktree(id)
+			}
+		}
+	})
+}
+
+func (s *state) sessionHints() []domain.SessionHint {
+	hints := make([]domain.SessionHint, 0, len(s.hints.cwd))
+	for id, cwd := range s.hints.cwd {
+		if _, ok := s.sessions[id]; ok {
+			hints = append(hints, domain.SessionHint{ID: id, Cwd: cwd})
+		}
+	}
+	sort.Slice(hints, func(i, j int) bool { return hints[i].ID < hints[j].ID })
+	return hints
+}
+
+// putWorktree publishes w and moves it between sessions' WorktreeIDs when its
+// owner changed.
+func (s *state) putWorktree(w domain.Worktree) {
+	prev := s.worktrees[w.ID].SessionID
+	s.emit(WorktreeChanged{Worktree: w})
+	if prev == w.SessionID {
+		return
+	}
+	s.relink(w.ID, prev, w.SessionID)
+}
+
+func (s *state) removeWorktree(id string) {
+	owner := s.worktrees[id].SessionID
+	s.emit(WorktreeRemoved{ID: id})
+	s.relink(id, owner, "")
+}
+
+func (s *state) relink(id, from, to string) {
+	if x, ok := s.sessions[from]; ok && from != "" {
+		s.emit(SessionChanged{Session: x.DetachWorktree(id)})
+	}
+	if x, ok := s.sessions[to]; ok && to != "" {
+		s.emit(SessionChanged{Session: x.AttachWorktree(id)})
+	}
+}
+
+func (d *Daemon) refreshWorktreePRs(ctx context.Context) {
+	if d.wt.prs == nil {
+		return
+	}
+	var wts []domain.Worktree
+	if !d.query(func(s *state) { wts = sorted(s.worktrees) }) {
+		return
+	}
+	changed := app.RefreshPRs(ctx, d.wt.prs, wts)
+	d.query(func(s *state) {
+		for _, w := range changed {
+			cur, ok := s.worktrees[w.ID]
+			if !ok {
+				continue
+			}
+			cur.PR = w.PR
+			s.emit(WorktreeChanged{Worktree: cur})
+		}
+	})
+}
+
+func (d *Daemon) worktreeAssign(req rpc.Request) (*rpc.Response, bool) {
+	var p rpc.WorktreeAssignParams
+	if err := json.Unmarshal(req.Params, &p); err != nil {
+		return errorResponse(req.ID, rpc.CodeBadRequest, "params must be {\"id\": string, \"session\": string}"), true
+	}
+	var msg string
+	ok := d.query(func(s *state) {
+		w, found := s.worktrees[p.ID]
+		if !found {
+			msg = "no worktree " + p.ID
+			return
+		}
+		if _, found := s.sessions[p.Session]; p.Session != "" && !found {
+			msg = "no session " + p.Session
+			return
+		}
+		w.SessionID = p.Session
+		s.putWorktree(w)
+	})
+	if msg != "" {
+		return errorResponse(req.ID, rpc.CodeNotFound, msg), ok
+	}
+	return result(req.ID, struct{}{}), ok
+}

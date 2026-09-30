@@ -23,6 +23,7 @@ type Store interface {
 	DeleteWorkspace(root string)
 	PutTask(domain.Task)
 	PutWorktree(domain.Worktree)
+	DeleteWorktree(id string)
 	PutSession(domain.Session)
 	// PutEvent appends; unlike the Put methods it never replaces an earlier one.
 	PutEvent(domain.SessionEvent)

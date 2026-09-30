@@ -12,6 +12,7 @@ import (
 	"github.com/giovaniif/agent-workspace/internal/adapters/codex"
 	wsfs "github.com/giovaniif/agent-workspace/internal/adapters/fs"
 	gitadapter "github.com/giovaniif/agent-workspace/internal/adapters/git"
+	"github.com/giovaniif/agent-workspace/internal/adapters/github"
 	"github.com/giovaniif/agent-workspace/internal/adapters/notify"
 	"github.com/giovaniif/agent-workspace/internal/adapters/sqlite"
 	"github.com/giovaniif/agent-workspace/internal/adapters/tmux"
@@ -46,7 +47,8 @@ func Run(ctx context.Context, home string) (err error) {
 	d, err := New(store, os.Getpid(),
 		WithWorkspaces(wsfs.FS{}, gitadapter.Inspector{}),
 		WithHarnesses(host, claude.Adapter{}, codex.Adapter{}),
-		WithNotifier(banners, banners, sounds))
+		WithNotifier(banners, banners, sounds),
+		WithWorktrees(gitadapter.Worktrees{}, github.Finder{}))
 	if err != nil {
 		return err
 	}

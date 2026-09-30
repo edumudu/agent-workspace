@@ -53,6 +53,8 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return runSetupWorktree(args[1:], stdout, stderr)
 	case cmd == "workspace":
 		return runWorkspace(args[1:], stdout, stderr)
+	case cmd == "worktree":
+		return runWorktree(args[1:], stdout, stderr)
 	case slices.Contains(stubs, cmd):
 		fmt.Fprintf(stderr, "agentws %s: not implemented yet\n", cmd)
 		return 1
@@ -78,5 +80,5 @@ func buildCommit() string {
 }
 
 func usage(w io.Writer) {
-	fmt.Fprintln(w, "usage: agentws [daemon|workspace|setup|setup-worktree|tui|debug|hook|statusline|new|cleanup|version]")
+	fmt.Fprintln(w, "usage: agentws [daemon|workspace|worktree|setup|setup-worktree|tui|debug|hook|statusline|new|cleanup|version]")
 }

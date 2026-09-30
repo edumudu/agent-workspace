@@ -11,8 +11,6 @@ import (
 
 var _ app.WorktreeLister = Worktrees{}
 
-type Worktrees struct{}
-
 // ListWorktrees runs one `git worktree list --porcelain -z` in dir.
 // Worktrees whose directory is gone (prunable) are left out.
 func (Worktrees) ListWorktrees(ctx context.Context, dir string) (domain.RepoListing, error) {

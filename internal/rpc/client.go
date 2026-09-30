@@ -112,6 +112,10 @@ func (c *Client) WorkspaceList(ctx context.Context) (WorkspaceList, error) {
 	return list, err
 }
 
+func (c *Client) WorktreeAssign(ctx context.Context, id, session string) error {
+	return c.Call(ctx, MethodWorktreeAssign, WorktreeAssignParams{ID: id, Session: session}, nil)
+}
+
 func (c *Client) WorkspaceRemove(ctx context.Context, root string) error {
 	return c.Call(ctx, MethodWorkspaceRemove, WorkspaceRemoveParams{Root: root}, nil)
 }
