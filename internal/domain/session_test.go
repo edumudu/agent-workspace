@@ -1,89 +1,87 @@
-package domain_test
+package domain
 
 import (
 	"fmt"
 	"slices"
 	"testing"
-
-	"github.com/giovaniif/agent-workspace/internal/domain"
 )
 
-var allStates = []domain.AgentState{
-	domain.StateIdle, domain.StateRunning, domain.StateWaiting, domain.StatePermission, domain.StateDone,
+var allStates = []AgentState{
+	StateIdle, StateRunning, StateWaiting, StatePermission, StateDone,
 }
 
-var allEvents = []domain.HarnessEventKind{
-	domain.EventSessionStart, domain.EventUserPromptSubmit, domain.EventPreToolUse,
-	domain.EventPostToolUse, domain.EventPermissionRequest, domain.EventWaitingForInput,
-	domain.EventStop, domain.EventSessionEnd,
+var allEvents = []HarnessEventKind{
+	EventSessionStart, EventUserPromptSubmit, EventPreToolUse,
+	EventPostToolUse, EventPermissionRequest, EventWaitingForInput,
+	EventStop, EventSessionEnd,
 }
 
 type transition struct {
-	next    domain.AgentState
-	effects []domain.Effect
+	next    AgentState
+	effects []Effect
 }
 
-func notify(s domain.AgentState) domain.Effect {
-	return domain.Effect{Kind: domain.EffectNotify, State: s}
+func notify(s AgentState) Effect {
+	return Effect{Kind: EffectNotify, State: s}
 }
 
-var markUnread = domain.Effect{Kind: domain.EffectMarkUnread}
+var markUnread = Effect{Kind: EffectMarkUnread}
 
-var doneEffects = []domain.Effect{notify(domain.StateDone), markUnread}
+var doneEffects = []Effect{notify(StateDone), markUnread}
 
 // expected lists every (state, event) pair for an unfocused session. Tool,
 // permission and waiting events seen while idle or done are stale (hooks can
 // arrive out of order), so they must not revive the session.
-var expected = map[domain.AgentState]map[domain.HarnessEventKind]transition{
-	domain.StateIdle: {
-		domain.EventSessionStart:      {domain.StateIdle, nil},
-		domain.EventUserPromptSubmit:  {domain.StateRunning, nil},
-		domain.EventPreToolUse:        {domain.StateIdle, nil},
-		domain.EventPostToolUse:       {domain.StateIdle, nil},
-		domain.EventPermissionRequest: {domain.StateIdle, nil},
-		domain.EventWaitingForInput:   {domain.StateIdle, nil},
-		domain.EventStop:              {domain.StateDone, doneEffects},
-		domain.EventSessionEnd:        {domain.StateIdle, nil},
+var expected = map[AgentState]map[HarnessEventKind]transition{
+	StateIdle: {
+		EventSessionStart:      {StateIdle, nil},
+		EventUserPromptSubmit:  {StateRunning, nil},
+		EventPreToolUse:        {StateIdle, nil},
+		EventPostToolUse:       {StateIdle, nil},
+		EventPermissionRequest: {StateIdle, nil},
+		EventWaitingForInput:   {StateIdle, nil},
+		EventStop:              {StateDone, doneEffects},
+		EventSessionEnd:        {StateIdle, nil},
 	},
-	domain.StateRunning: {
-		domain.EventSessionStart:      {domain.StateIdle, nil},
-		domain.EventUserPromptSubmit:  {domain.StateRunning, nil},
-		domain.EventPreToolUse:        {domain.StateRunning, nil},
-		domain.EventPostToolUse:       {domain.StateRunning, nil},
-		domain.EventPermissionRequest: {domain.StatePermission, []domain.Effect{notify(domain.StatePermission)}},
-		domain.EventWaitingForInput:   {domain.StateWaiting, []domain.Effect{notify(domain.StateWaiting)}},
-		domain.EventStop:              {domain.StateDone, doneEffects},
-		domain.EventSessionEnd:        {domain.StateIdle, nil},
+	StateRunning: {
+		EventSessionStart:      {StateIdle, nil},
+		EventUserPromptSubmit:  {StateRunning, nil},
+		EventPreToolUse:        {StateRunning, nil},
+		EventPostToolUse:       {StateRunning, nil},
+		EventPermissionRequest: {StatePermission, []Effect{notify(StatePermission)}},
+		EventWaitingForInput:   {StateWaiting, []Effect{notify(StateWaiting)}},
+		EventStop:              {StateDone, doneEffects},
+		EventSessionEnd:        {StateIdle, nil},
 	},
-	domain.StateWaiting: {
-		domain.EventSessionStart:      {domain.StateIdle, nil},
-		domain.EventUserPromptSubmit:  {domain.StateRunning, nil},
-		domain.EventPreToolUse:        {domain.StateRunning, nil},
-		domain.EventPostToolUse:       {domain.StateRunning, nil},
-		domain.EventPermissionRequest: {domain.StatePermission, []domain.Effect{notify(domain.StatePermission)}},
-		domain.EventWaitingForInput:   {domain.StateWaiting, nil},
-		domain.EventStop:              {domain.StateDone, doneEffects},
-		domain.EventSessionEnd:        {domain.StateIdle, nil},
+	StateWaiting: {
+		EventSessionStart:      {StateIdle, nil},
+		EventUserPromptSubmit:  {StateRunning, nil},
+		EventPreToolUse:        {StateRunning, nil},
+		EventPostToolUse:       {StateRunning, nil},
+		EventPermissionRequest: {StatePermission, []Effect{notify(StatePermission)}},
+		EventWaitingForInput:   {StateWaiting, nil},
+		EventStop:              {StateDone, doneEffects},
+		EventSessionEnd:        {StateIdle, nil},
 	},
-	domain.StatePermission: {
-		domain.EventSessionStart:      {domain.StateIdle, nil},
-		domain.EventUserPromptSubmit:  {domain.StateRunning, nil},
-		domain.EventPreToolUse:        {domain.StateRunning, nil},
-		domain.EventPostToolUse:       {domain.StateRunning, nil},
-		domain.EventPermissionRequest: {domain.StatePermission, nil},
-		domain.EventWaitingForInput:   {domain.StateWaiting, []domain.Effect{notify(domain.StateWaiting)}},
-		domain.EventStop:              {domain.StateDone, doneEffects},
-		domain.EventSessionEnd:        {domain.StateIdle, nil},
+	StatePermission: {
+		EventSessionStart:      {StateIdle, nil},
+		EventUserPromptSubmit:  {StateRunning, nil},
+		EventPreToolUse:        {StateRunning, nil},
+		EventPostToolUse:       {StateRunning, nil},
+		EventPermissionRequest: {StatePermission, nil},
+		EventWaitingForInput:   {StateWaiting, []Effect{notify(StateWaiting)}},
+		EventStop:              {StateDone, doneEffects},
+		EventSessionEnd:        {StateIdle, nil},
 	},
-	domain.StateDone: {
-		domain.EventSessionStart:      {domain.StateIdle, nil},
-		domain.EventUserPromptSubmit:  {domain.StateRunning, nil},
-		domain.EventPreToolUse:        {domain.StateDone, nil},
-		domain.EventPostToolUse:       {domain.StateDone, nil},
-		domain.EventPermissionRequest: {domain.StateDone, nil},
-		domain.EventWaitingForInput:   {domain.StateDone, nil},
-		domain.EventStop:              {domain.StateDone, nil},
-		domain.EventSessionEnd:        {domain.StateIdle, nil},
+	StateDone: {
+		EventSessionStart:      {StateIdle, nil},
+		EventUserPromptSubmit:  {StateRunning, nil},
+		EventPreToolUse:        {StateDone, nil},
+		EventPostToolUse:       {StateDone, nil},
+		EventPermissionRequest: {StateDone, nil},
+		EventWaitingForInput:   {StateDone, nil},
+		EventStop:              {StateDone, nil},
+		EventSessionEnd:        {StateIdle, nil},
 	},
 }
 
@@ -95,7 +93,7 @@ func TestApplyCoversEveryStateEventPair(t *testing.T) {
 				if !ok {
 					t.Fatalf("missing expectation for (%s, %s)", state, ev)
 				}
-				got, effects := domain.Session{State: state}.Apply(domain.HarnessEvent{Kind: ev})
+				got, effects := Session{State: state}.Apply(HarnessEvent{Kind: ev})
 				if got.State != want.next {
 					t.Errorf("state = %s, want %s", got.State, want.next)
 				}
@@ -111,38 +109,38 @@ func TestApplyCoversEveryStateEventPair(t *testing.T) {
 }
 
 func TestApplyUnknownEventIsIgnored(t *testing.T) {
-	s := domain.Session{State: domain.StateRunning}
-	got, effects := s.Apply(domain.HarnessEvent{Kind: "bogus"})
+	s := Session{State: StateRunning}
+	got, effects := s.Apply(HarnessEvent{Kind: "bogus"})
 	if got.State != s.State || effects != nil {
 		t.Errorf("got %+v %v, want unchanged", got, effects)
 	}
 }
 
 func TestOutOfOrderStopBeforePreToolUseStaysDone(t *testing.T) {
-	s := domain.Session{State: domain.StateIdle}
-	for _, ev := range []domain.HarnessEventKind{
-		domain.EventUserPromptSubmit, domain.EventStop, domain.EventPreToolUse, domain.EventPostToolUse,
+	s := Session{State: StateIdle}
+	for _, ev := range []HarnessEventKind{
+		EventUserPromptSubmit, EventStop, EventPreToolUse, EventPostToolUse,
 	} {
-		s, _ = s.Apply(domain.HarnessEvent{Kind: ev})
+		s, _ = s.Apply(HarnessEvent{Kind: ev})
 	}
-	if s.State != domain.StateDone || !s.Unread {
+	if s.State != StateDone || !s.Unread {
 		t.Errorf("got %s unread=%v, want done unread", s.State, s.Unread)
 	}
 }
 
 func TestDoneWhileFocusedDoesNotMarkUnread(t *testing.T) {
-	s := domain.Session{State: domain.StateRunning}.Focus()
-	got, effects := s.Apply(domain.HarnessEvent{Kind: domain.EventStop})
+	s := Session{State: StateRunning}.Focus()
+	got, effects := s.Apply(HarnessEvent{Kind: EventStop})
 	if got.Unread {
 		t.Error("focused session marked unread")
 	}
-	if !slices.Equal(effects, []domain.Effect{notify(domain.StateDone)}) {
+	if !slices.Equal(effects, []Effect{notify(StateDone)}) {
 		t.Errorf("effects = %v", effects)
 	}
 }
 
 func TestFocusClearsUnreadAndBlurKeepsItCleared(t *testing.T) {
-	s, _ := domain.Session{State: domain.StateRunning}.Apply(domain.HarnessEvent{Kind: domain.EventStop})
+	s, _ := Session{State: StateRunning}.Apply(HarnessEvent{Kind: EventStop})
 	if !s.Unread {
 		t.Fatal("precondition: unread")
 	}
@@ -154,25 +152,25 @@ func TestFocusClearsUnreadAndBlurKeepsItCleared(t *testing.T) {
 	if s.Unread || s.Focused {
 		t.Errorf("after blur: unread=%v focused=%v", s.Unread, s.Focused)
 	}
-	s, _ = s.Apply(domain.HarnessEvent{Kind: domain.EventUserPromptSubmit})
-	s, _ = s.Apply(domain.HarnessEvent{Kind: domain.EventStop})
+	s, _ = s.Apply(HarnessEvent{Kind: EventUserPromptSubmit})
+	s, _ = s.Apply(HarnessEvent{Kind: EventStop})
 	if !s.Unread {
 		t.Error("blurred session not marked unread")
 	}
 }
 
 func TestUserPromptClearsUnread(t *testing.T) {
-	s := domain.Session{State: domain.StateDone, Unread: true}
-	got, _ := s.Apply(domain.HarnessEvent{Kind: domain.EventUserPromptSubmit})
+	s := Session{State: StateDone, Unread: true}
+	got, _ := s.Apply(HarnessEvent{Kind: EventUserPromptSubmit})
 	if got.Unread {
 		t.Error("prompt left session unread")
 	}
 }
 
 func TestApplyKeepsOtherFields(t *testing.T) {
-	s := domain.Session{ID: "s1", Harness: domain.HarnessCodex, Model: "m", WorktreeIDs: []string{"w"}}
-	got, _ := s.Apply(domain.HarnessEvent{Kind: domain.EventUserPromptSubmit})
-	if got.ID != "s1" || got.Harness != domain.HarnessCodex || got.Model != "m" || len(got.WorktreeIDs) != 1 {
+	s := Session{ID: "s1", Harness: HarnessCodex, Model: "m", WorktreeIDs: []string{"w"}}
+	got, _ := s.Apply(HarnessEvent{Kind: EventUserPromptSubmit})
+	if got.ID != "s1" || got.Harness != HarnessCodex || got.Model != "m" || len(got.WorktreeIDs) != 1 {
 		t.Errorf("fields lost: %+v", got)
 	}
 }
