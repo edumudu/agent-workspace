@@ -42,6 +42,7 @@ Dependency rule: `domain` ← `app` ← `adapters`/`daemon`, and `tui` → `rpc`
 - `BannerFor(session, name, effect)` and `Coalescer`: which notify effects become a banner (not for muted sessions) and the one-per-10-s rule per session.
 - `PlanCleanup(worktrees, facts)`: the cleanup decision.
 - `Quotas(sessions)`, `Quota.Low`/`Stale`, `Advise(quotas, harness)`: the usage bar and the low-quota warning. See [docs/adr/0017-usage-and-limits-bar.md](docs/adr/0017-usage-and-limits-bar.md).
+- `OfferFallback(quotas, cfg, request)` and `OfferFallbacks(quotas, cfg, queue)`: a mapped Codex start for a Claude one when Claude's shortest window is under the configured threshold. See [docs/adr/0027-codex-fallback.md](docs/adr/0027-codex-fallback.md).
 - Discovery rules: `KindOfRoot`, `ReposIn`, `SingleRepo`, `MergeRepoState`, `LastUsedWorkspace`. See [Workspaces](#workspaces).
 - Worktree rules: `IsWorktreeAdd`, `SubagentParent`, `AttributeWorktree`, `ReconcileWorktrees`, `RollupChecks`, `PRForBranch`. See [Worktrees](#worktrees).
 - Ports rules: `PortsByWorktree`, `KillGroups`. See [Ports](#ports).
