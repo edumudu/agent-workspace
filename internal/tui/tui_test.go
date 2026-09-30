@@ -41,7 +41,7 @@ func fixture(sessions, worktreesEach int) rpc.State {
 			ID: fmt.Sprintf("s%02d", i+1), TaskID: taskID,
 			Harness: domain.HarnessClaude, Model: "opus-5.5", Effort: "high",
 			State: fixtureStates[i%len(fixtureStates)],
-			Usage: domain.Usage{ContextLeftPercent: 64 - i},
+			Usage: domain.Usage{ContextLeftPercent: 64 - i, HasContext: true},
 		}
 		if i%2 == 1 {
 			s.Harness, s.Model, s.Effort = domain.HarnessCodex, "gpt-6", "med"
@@ -357,5 +357,17 @@ func TestCountsUseTheSingularForOne(t *testing.T) {
 	}
 	if strings.Contains(out, "1 worktrees") || strings.Contains(out, "1 sessions") {
 		t.Errorf("plural after one:\n%s", out)
+	}
+}
+
+func TestASessionShowsNoContextFigureBeforeItsFirstReport(t *testing.T) {
+	st := rpc.State{Sessions: []domain.Session{{ID: "s1", Harness: domain.HarnessClaude, Model: "opus", Effort: "high"}}}
+	out := screen(newModel(&st, nil))
+	if strings.Contains(out, "ctx") || !strings.Contains(out, "opus high") {
+		t.Fatalf("want the started model and no ctx before a report:\n%s", out)
+	}
+	st.Sessions[0].Usage = domain.Usage{ContextLeftPercent: 0, HasContext: true}
+	if out := screen(newModel(&st, nil)); !strings.Contains(out, "ctx 0%") {
+		t.Fatalf("a reported 0%% is not shown:\n%s", out)
 	}
 }
