@@ -27,6 +27,18 @@ func TestReclaimableLeavesOutSizesNotComputedYetAndCountsThem(t *testing.T) {
 	}
 }
 
+func TestTotalSizeSumsEveryMeasuredWorktreeAndCountsTheRest(t *testing.T) {
+	rows := []DiskRow{
+		{WorktreeID: "a", Size: 100, Action: CleanupKeep},
+		{WorktreeID: "b", Size: SizePending, Action: CleanupRemove},
+		{WorktreeID: "c", Size: 5, Action: CleanupRemove},
+	}
+	total, pending := TotalSize(rows)
+	if total != 105 || pending != 1 {
+		t.Errorf("TotalSize = %d, %d pending; want 105, 1", total, pending)
+	}
+}
+
 func TestDiskStateNamesWhatTheDecisionMeansForTheUser(t *testing.T) {
 	cases := map[CleanupAction]string{
 		CleanupRemove:        "merged",
