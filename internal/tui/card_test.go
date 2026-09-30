@@ -98,3 +98,15 @@ func TestGoldenSessionCard(t *testing.T) {
 	m := selectSession(t, newModel(&st, nil), "s05")
 	golden.RequireEqual(t, screen(m))
 }
+
+func TestTheFooterLeavesTheSessionListItsRows(t *testing.T) {
+	st := cardFixture()
+	out := screen(selectSession(t, newModel(&st, nil), "s05"))
+	lines := strings.Split(out, "\n")
+	for i, line := range lines {
+		if strings.Contains(line, " 5 ") && i+2 < len(lines) && strings.Contains(lines[i+2], "api:part-1") {
+			return
+		}
+	}
+	t.Fatalf("session 5's worktree row is cut off:\n%s", out)
+}
