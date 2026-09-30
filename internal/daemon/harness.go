@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	"time"
 
 	"github.com/giovaniif/agent-workspace/internal/adapters/claude"
 	"github.com/giovaniif/agent-workspace/internal/app"
@@ -42,6 +43,9 @@ func (s *state) statusLine(sl rpc.StatusLine) {
 	session, ok := domain.SessionOnPane(s.sessionList(), sl.Pane)
 	if !ok {
 		return
+	}
+	if sl.Report.At.IsZero() {
+		sl.Report.At = time.Now()
 	}
 	s.emit(SessionChanged{Session: session.Report(sl.Report)})
 }

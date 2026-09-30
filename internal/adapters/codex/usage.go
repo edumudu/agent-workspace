@@ -33,6 +33,22 @@ type Snapshot struct {
 	Effort             string
 	ContextLeftPercent int
 	Limits             []LimitWindow
+	// LimitsAt is the rollout's time for the event that carried Limits, zero
+	// when the rollout has no timestamp.
+	LimitsAt time.Time
+}
+
+// RateLimits is Limits as the session shows them, named like Claude's windows.
+func (s Snapshot) RateLimits() []domain.RateLimit {
+	var out []domain.RateLimit
+	for _, w := range s.Limits {
+		out = append(out, domain.RateLimit{
+			Window:      domain.WindowNameForMinutes(w.WindowMinutes),
+			UsedPercent: int(math.Round(w.UsedPercent)),
+			ResetsAt:    w.ResetsAt.Unix(),
+		})
+	}
+	return out
 }
 
 // Usage folds the limit windows into the highest one, which is the one that
@@ -61,8 +77,9 @@ func ContextLeftPercent(usedTokens, window int) int {
 }
 
 type rolloutLine struct {
-	Type    string          `json:"type"`
-	Payload json.RawMessage `json:"payload"`
+	Timestamp string          `json:"timestamp"`
+	Type      string          `json:"type"`
+	Payload   json.RawMessage `json:"payload"`
 }
 
 type turnContext struct {
@@ -116,7 +133,8 @@ func ReadSnapshot(r io.Reader) (Snapshot, error) {
 		case "event_msg":
 			var ev eventMsg
 			if json.Unmarshal(line.Payload, &ev) == nil && ev.Type == "token_count" {
-				snap.applyTokenCount(ev)
+				at, _ := time.Parse(time.RFC3339Nano, line.Timestamp)
+				snap.applyTokenCount(ev, at)
 			}
 		}
 	}
@@ -130,7 +148,7 @@ func orKeep(next, current string) string {
 	return next
 }
 
-func (s *Snapshot) applyTokenCount(ev eventMsg) {
+func (s *Snapshot) applyTokenCount(ev eventMsg, at time.Time) {
 	if ev.Info != nil && ev.Info.ContextWindow > 0 {
 		s.ContextLeftPercent = ContextLeftPercent(ev.Info.Last.TotalTokens, ev.Info.ContextWindow)
 	}
@@ -138,6 +156,7 @@ func (s *Snapshot) applyTokenCount(ev eventMsg) {
 		return
 	}
 	s.Limits = nil
+	s.LimitsAt = at
 	for _, w := range []*rateWindow{ev.RateLimits.Primary, ev.RateLimits.Secondary} {
 		if w != nil {
 			s.Limits = append(s.Limits, LimitWindow{

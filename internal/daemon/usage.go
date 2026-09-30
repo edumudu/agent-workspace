@@ -1,6 +1,7 @@
 package daemon
 
 import (
+	"reflect"
 	"time"
 
 	"github.com/giovaniif/agent-workspace/internal/adapters/codex"
@@ -51,7 +52,8 @@ func (d *Daemon) readUsage(sessionID, path string) {
 			job := s.usage[sessionID]
 			if current, ok := s.sessions[sessionID]; ok && err == nil {
 				if next := withSnapshot(current, snap); next.Model != current.Model ||
-					next.Effort != current.Effort || next.Usage != current.Usage {
+					next.Effort != current.Effort || next.Usage != current.Usage ||
+					!next.LimitsAt.Equal(current.LimitsAt) {
 					s.emit(SessionChanged{Session: next})
 				}
 			}
@@ -77,6 +79,16 @@ func withSnapshot(s domain.Session, snap codex.Snapshot) domain.Session {
 	}
 	if len(snap.Limits) > 0 {
 		s.Usage.LimitUsedPercent = usage.LimitUsedPercent
+		limits := snap.RateLimits()
+		at := snap.LimitsAt
+		if at.IsZero() {
+			// why: a rollout without timestamps must not look freshly reported on every read.
+			at = time.Now()
+			if reflect.DeepEqual(limits, s.Limits) && !s.LimitsAt.IsZero() {
+				at = s.LimitsAt
+			}
+		}
+		s.Limits, s.LimitsAt = limits, at
 	}
 	return s
 }
