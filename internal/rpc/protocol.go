@@ -147,18 +147,22 @@ type State struct {
 	Tasks      []domain.Task      `json:"tasks"`
 	Worktrees  []domain.Worktree  `json:"worktrees"`
 	Sessions   []domain.Session   `json:"sessions"`
+	// Events are each session's newest hook events, oldest first.
+	Events []domain.SessionEvent `json:"events"`
 }
 
-// Diff is one change: exactly one field besides Seq is set. Every field but
-// RemovedWorkspace replaces the entity with the same key; RemovedWorkspace is
-// the root of a workspace to drop.
+// Diff is one change: exactly one field besides Seq is set, except that a hook
+// sets Session and Event together. Every field but RemovedWorkspace and Event
+// replaces the entity with the same key; RemovedWorkspace is the root of a
+// workspace to drop, and Event is appended to its session's events.
 type Diff struct {
-	Seq              uint64            `json:"seq"`
-	RemovedWorkspace string            `json:"removed_workspace,omitempty"`
-	Workspace        *domain.Workspace `json:"workspace,omitempty"`
-	Task             *domain.Task      `json:"task,omitempty"`
-	Worktree         *domain.Worktree  `json:"worktree,omitempty"`
-	Session          *domain.Session   `json:"session,omitempty"`
+	Seq              uint64               `json:"seq"`
+	RemovedWorkspace string               `json:"removed_workspace,omitempty"`
+	Workspace        *domain.Workspace    `json:"workspace,omitempty"`
+	Task             *domain.Task         `json:"task,omitempty"`
+	Worktree         *domain.Worktree     `json:"worktree,omitempty"`
+	Session          *domain.Session      `json:"session,omitempty"`
+	Event            *domain.SessionEvent `json:"event,omitempty"`
 }
 
 // Home is $AGENTWS_HOME, or ~/.agentws.

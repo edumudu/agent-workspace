@@ -51,6 +51,7 @@ type Store struct {
 
 	mu      sync.Mutex
 	pending map[table]map[string][]byte
+	events  []domain.SessionEvent
 	err     error
 
 	wake    chan struct{}
@@ -178,6 +179,13 @@ func (s *Store) PutTask(t domain.Task)           { s.put(tableTasks, t.ID, t) }
 func (s *Store) PutWorktree(w domain.Worktree)   { s.put(tableWorktrees, w.ID, w) }
 func (s *Store) PutSession(x domain.Session)     { s.put(tableSessions, x.ID, x) }
 
+func (s *Store) PutEvent(ev domain.SessionEvent) {
+	s.mu.Lock()
+	s.events = append(s.events, ev)
+	s.mu.Unlock()
+	s.wakeWriter()
+}
+
 // DeleteWorkspace enqueues a delete; like a put it supersedes any earlier
 // unflushed write for the same root.
 func (s *Store) DeleteWorkspace(root string) { s.enqueue(tableWorkspaces, root, nil) }
@@ -199,6 +207,10 @@ func (s *Store) enqueue(t table, key string, data []byte) {
 	}
 	s.pending[t][key] = data
 	s.mu.Unlock()
+	s.wakeWriter()
+}
+
+func (s *Store) wakeWriter() {
 	select {
 	case s.wake <- struct{}{}:
 	default:
@@ -252,8 +264,10 @@ func (s *Store) write() error {
 	s.mu.Lock()
 	batch := s.pending
 	s.pending = map[table]map[string][]byte{}
+	events := s.events
+	s.events = nil
 	s.mu.Unlock()
-	if len(batch) == 0 {
+	if len(batch) == 0 && len(events) == 0 {
 		return nil
 	}
 	tx, err := s.db.Begin()
@@ -286,7 +300,32 @@ func (s *Store) write() error {
 		_ = stmt.Close()
 		_ = del.Close()
 	}
+	if err := writeEvents(tx, events); err != nil {
+		return err
+	}
 	return tx.Commit()
+}
+
+func writeEvents(tx *sql.Tx, events []domain.SessionEvent) error {
+	touched := map[string]bool{}
+	for _, ev := range events {
+		data, err := json.Marshal(ev)
+		if err != nil {
+			return err
+		}
+		if _, err := tx.Exec(`INSERT INTO session_events(session_id, data) VALUES (?, ?)`, ev.SessionID, string(data)); err != nil {
+			return err
+		}
+		touched[ev.SessionID] = true
+	}
+	for id := range touched {
+		_, err := tx.Exec(`DELETE FROM session_events WHERE session_id = ? AND id NOT IN
+			(SELECT id FROM session_events WHERE session_id = ? ORDER BY id DESC LIMIT ?)`, id, id, app.EventsPerSession)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (s *Store) Flush() error {
@@ -321,8 +360,32 @@ func (s *Store) Load() (app.Snapshot, error) {
 	if snap.Worktrees, err = loadAll[domain.Worktree](s.db, tableWorktrees); err != nil {
 		return snap, err
 	}
-	snap.Sessions, err = loadAll[domain.Session](s.db, tableSessions)
+	if snap.Sessions, err = loadAll[domain.Session](s.db, tableSessions); err != nil {
+		return snap, err
+	}
+	snap.Events, err = loadEvents(s.db)
 	return snap, err
+}
+
+func loadEvents(db *sql.DB) ([]domain.SessionEvent, error) {
+	rows, err := db.Query(`SELECT data FROM session_events ORDER BY id`)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+	var out []domain.SessionEvent
+	for rows.Next() {
+		var data string
+		if err := rows.Scan(&data); err != nil {
+			return nil, err
+		}
+		var ev domain.SessionEvent
+		if err := json.Unmarshal([]byte(data), &ev); err != nil {
+			return nil, fmt.Errorf("session_events row: %w", err)
+		}
+		out = append(out, ev)
+	}
+	return out, rows.Err()
 }
 
 func loadAll[T any](db *sql.DB, t table) ([]T, error) {

@@ -30,10 +30,10 @@
  ✳ 5 session 5 change                        CC 
      opus-5.5 high  ctx 60%  3 worktrees        
       └ api:part-1                      #3604   
-      └ web:part-2                          –   
-      └ infra:part-3                        –   
- ◐ 6 session 6 change                        CX 
-     gpt-6 med  ctx 59%  3 worktrees            
+
+ CARD                                           
+ #40 · task number 1                            
+ PRs #3600                                      
 
  ⏎ focus      ␣ next waiting                    
  ⇥ last       ? keys                            

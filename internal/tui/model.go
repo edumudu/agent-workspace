@@ -67,6 +67,7 @@ type Model struct {
 	taskOrder []string
 	worktrees map[string]domain.Worktree
 	sessions  map[string]domain.Session
+	events    map[string][]domain.SessionEvent
 	entries   []entry
 	collapsed map[string]bool
 
@@ -90,6 +91,7 @@ func New(opts Options) Model {
 		tasks:     map[string]domain.Task{},
 		worktrees: map[string]domain.Worktree{},
 		sessions:  map[string]domain.Session{},
+		events:    map[string][]domain.SessionEvent{},
 		collapsed: map[string]bool{},
 	}
 }
@@ -133,6 +135,7 @@ func (m *Model) load(st rpc.State) {
 	m.tasks = map[string]domain.Task{}
 	m.worktrees = map[string]domain.Worktree{}
 	m.sessions = map[string]domain.Session{}
+	m.events = map[string][]domain.SessionEvent{}
 	m.taskOrder = nil
 	for _, t := range st.Tasks {
 		m.putTask(t)
@@ -143,10 +146,24 @@ func (m *Model) load(st rpc.State) {
 	for _, s := range st.Sessions {
 		m.sessions[s.ID] = s
 	}
+	for _, ev := range st.Events {
+		m.addEvent(ev)
+	}
 	m.rebuild()
 }
 
+func (m *Model) addEvent(ev domain.SessionEvent) {
+	kept := append(m.events[ev.SessionID], ev)
+	if len(kept) > domain.SessionEventsKept {
+		kept = kept[len(kept)-domain.SessionEventsKept:]
+	}
+	m.events[ev.SessionID] = kept
+}
+
 func (m *Model) apply(d rpc.Diff) {
+	if d.Event != nil {
+		m.addEvent(*d.Event)
+	}
 	switch {
 	case d.Task != nil:
 		m.putTask(*d.Task)

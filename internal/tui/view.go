@@ -111,7 +111,7 @@ func (m Model) View() tea.View {
 	lines = append(lines, m.line(false, []piece{{s.header, " SESSIONS"}}, right))
 
 	body, selRow := m.body()
-	footer := m.footer()
+	footer := append(m.cardLines(), m.footer()...)
 	room := m.height - len(lines) - len(footer)
 	if room < 0 {
 		room = 0
@@ -211,7 +211,7 @@ func (m Model) sessionLines(e entry, sel bool) []string {
 	detail := strings.TrimSpace(x.Model + " " + x.Effort)
 	trees := "root only"
 	if n := len(x.WorktreeIDs); n > 0 {
-		trees = fmt.Sprintf("%d worktrees", n)
+		trees = count(n, "worktree")
 	}
 	out = append(out, m.line(sel, []piece{bar, {s.sub, fmt.Sprintf("    %s  ctx %d%%  %s", detail, x.Usage.ContextLeftPercent, trees)}}, nil))
 	if m.collapsed[x.ID] {
@@ -267,7 +267,7 @@ func (m Model) footer() []string {
 	for _, e := range m.entries {
 		worktrees += len(e.session.WorktreeIDs)
 	}
-	right := []piece{{s.sub, fmt.Sprintf("%d sessions · %d worktrees ", len(m.entries), worktrees)}}
+	right := []piece{{s.sub, count(len(m.entries), "session") + " · " + count(worktrees, "worktree") + " "}}
 	if m.status != "" {
 		right = []piece{{s.peach, m.status + " "}}
 	}
@@ -306,4 +306,75 @@ func worktreeLabel(w domain.Worktree) string {
 		return w.Repo
 	}
 	return w.Repo + ":" + part
+}
+
+func count(n int, noun string) string {
+	if n == 1 {
+		return fmt.Sprintf("1 %s", noun)
+	}
+	return fmt.Sprintf("%d %ss", n, noun)
+}
+
+// minCardHeight is the shortest pane that still has room for the card.
+const minCardHeight = 24
+
+func (m Model) cardLines() []string {
+	i := m.index(m.selected)
+	if i < 0 || m.help || m.height < minCardHeight {
+		return nil
+	}
+	s := m.styles
+	e := m.entries[i]
+	card := domain.BuildSessionCard(e.task, e.session, e.worktrees, m.events[e.session.ID])
+	out := []string{"", m.line(false, []piece{{s.header, " CARD"}}, nil)}
+
+	var title []string
+	for _, part := range []string{card.Ref, card.Title} {
+		if part != "" {
+			title = append(title, part)
+		}
+	}
+	label := strings.Join(title, " · ")
+	if label == "" {
+		label = e.session.ID
+	}
+	out = append(out, m.line(false, []piece{{s.bold, " " + label}}, nil))
+
+	if len(card.PRs) > 0 {
+		chips := []piece{{s.dim, " PRs "}}
+		for _, pr := range card.PRs {
+			chips = append(chips, piece{s.blue, fmt.Sprintf("#%d ", pr.Number)})
+		}
+		out = append(out, m.line(false, chips, nil))
+	}
+	for j, action := range card.Actions {
+		lead := "       "
+		if j == 0 {
+			lead = " last  "
+		}
+		out = append(out, m.line(false, []piece{{s.dim, lead}, {s.sub, cleanText(action)}}, nil))
+	}
+	if card.Waiting != "" {
+		reason := "waiting on you"
+		if e.session.State == domain.StatePermission {
+			reason = "asks permission"
+		}
+		out = append(out, m.line(false, []piece{{s.need, " ✳ " + reason}}, nil))
+		for _, line := range strings.Split(card.Waiting, "\n") {
+			out = append(out, m.line(false, []piece{{s.text, "   " + cleanText(line)}}, nil))
+		}
+	}
+	return out
+}
+
+// cleanText drops escape sequences and control characters an agent put in
+// its text, so they cannot repaint the terminal.
+func cleanText(s string) string {
+	s = strings.ReplaceAll(ansi.Strip(s), "\t", "    ")
+	return strings.Map(func(r rune) rune {
+		if r < ' ' || r == 0x7f {
+			return -1
+		}
+		return r
+	}, s)
 }
