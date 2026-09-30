@@ -118,6 +118,7 @@ type Model struct {
 	dk       diskState
 	paint    *painter
 	renaming *renamePrompt
+	comments map[string]domain.DraftComment
 
 	queue     []domain.LaunchItem
 	launching *launchInput
@@ -141,6 +142,7 @@ func New(opts Options) Model {
 		width:      40,
 		height:     24,
 		workspaces: map[string]domain.Workspace{},
+		comments:   map[string]domain.DraftComment{},
 		tasks:      map[string]domain.Task{},
 		worktrees:  map[string]domain.Worktree{},
 		sessions:   map[string]domain.Session{},
@@ -259,6 +261,10 @@ func (m *Model) load(st rpc.State) {
 	m.subagents = map[string][]domain.Subagent{}
 	m.taskOrder = nil
 	m.queue = st.Queue
+	m.comments = map[string]domain.DraftComment{}
+	for _, c := range st.Comments {
+		m.putComment(c)
+	}
 	for _, t := range st.Tasks {
 		m.putTask(t)
 	}
@@ -290,6 +296,9 @@ func (m *Model) apply(d rpc.Diff) {
 		m.addEvent(*d.Event)
 	}
 	switch {
+	case d.Comment != nil:
+		m.putComment(*d.Comment)
+		return
 	case d.Workspace != nil:
 		m.workspaces[d.Workspace.Root] = *d.Workspace
 		return
@@ -472,6 +481,12 @@ func (m Model) key(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return m.openReview()
 	case "w":
 		return m.openDisk()
+	case "t":
+		return m, m.toggleShell(false)
+	case "T":
+		return m, m.toggleShell(true)
+	case "e":
+		return m, m.toggleNvim()
 	default:
 		if len(k) == 1 && k[0] >= '1' && k[0] <= '9' {
 			m.choose(int(k[0] - '1'))
