@@ -127,7 +127,8 @@ See [docs/adr/0015-session-lifecycle.md](docs/adr/0015-session-lifecycle.md).
 - **Start.** `n` in the TUI or `agentws new [--workspace p] [--harness h] [--model m] [--effort e] <work item>` calls `session.new`. The work item is a Linear issue URL, a GitHub PR URL, or text; a URL of neither shape stays text (`domain.ParseWorkItem`). A single repo gets one worktree at `$AGENTWS_HOME/worktrees/<repo>/<slug>` branched from `origin/<default>` and its setup recipe run; an orchestration root starts at the root with no worktree (`domain.PlanSessionStart`). The work item is the agent's first prompt.
 - **Low quota.** Under the harness row the dialog shows `domain.Advise`'s warning; `ctrl+s` switches to the other harness when it has reported limits.
 - **Focus.** `enter`, and every new session, calls `session.focus`, which swaps the pane into the main slot.
-- **End.** `x` then `y` calls `session.end`: the pane is killed and the session goes `idle` with no pane. It and its worktrees stay listed until cleanup.
+- **Back to the sidebar.** `ctrl+\` (`tmux.FocusSidebarKey`) moves focus from an agent pane to the sidebar. It is bound on the `agentws` tmux server only. See [docs/adr/0025-focus-return-key.md](docs/adr/0025-focus-return-key.md).
+- **End.** `x` then `y` calls `session.end`: the pane is killed and the session goes `idle` with no pane. It and its worktrees stay listed until cleanup. If it was the session in view, the next session in sidebar order (`domain.NextInView`) is shown, or an empty-state pane when none is left.
 - **Survival.** The daemon and the tmux server own sessions, so quitting the TUI or detaching changes nothing. On daemon start, restored sessions whose pane is gone are ended (`app.ReconcilePanes`), off the loop.
 - **Budget.** `session.new` plus `session.focus`, excluding the setup recipe, must finish in < 1 s; the `NewSession` integration test checks it.
 

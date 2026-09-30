@@ -199,6 +199,69 @@ func TestEndSessionKillsThePaneAndKeepsTheSessionListed(t *testing.T) {
 	}
 }
 
+func startWithClient(t *testing.T, inView string, sessions ...domain.Session) (sessionRig, *fakeClientHost, app.Slot) {
+	t.Helper()
+	store := &memStore{}
+	store.snap.Sessions = sessions
+	r := startSessions(t, store, nil)
+	clientHost := &fakeClientHost{}
+	r.d.SetClientHost(clientHost)
+	opened, err := r.c.OpenClient(context.Background(), rpc.OpenClientParams{Command: []string{"agentws", "tui"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := r.c.Call(context.Background(), rpc.MethodSessionFocus, rpc.SessionFocusParams{ID: inView}, nil); err != nil {
+		t.Fatal(err)
+	}
+	r.host.shown, clientHost.focused = nil, nil
+	return r, clientHost, app.Slot(opened.Slot)
+}
+
+func endSession(t *testing.T, r sessionRig, id string) {
+	t.Helper()
+	if err := r.c.Call(context.Background(), rpc.MethodEndSession, rpc.SessionRef{ID: id}, nil); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestEndingTheSessionInViewShowsTheNextOne(t *testing.T) {
+	r, clientHost, slot := startWithClient(t, "a",
+		domain.Session{ID: "a", Pane: "%7"},
+		domain.Session{ID: "b", Pane: "%8"})
+	endSession(t, r, "a")
+	if !reflect.DeepEqual(r.host.shown, []shown{{"%8", slot}}) || len(clientHost.ensured) != 0 {
+		t.Fatalf("shown %+v, ensured %v; want b's pane in the slot", r.host.shown, clientHost.ensured)
+	}
+	if len(clientHost.focused) != 0 {
+		t.Fatalf("keyboard focus moved to the agent pane: %v", clientHost.focused)
+	}
+	focused := map[string]bool{}
+	for _, s := range r.state(t).Sessions {
+		focused[s.ID] = s.Focused
+	}
+	if !reflect.DeepEqual(focused, map[string]bool{"a": false, "b": true}) {
+		t.Fatalf("focused %v; want b marked as the one in view", focused)
+	}
+}
+
+func TestEndingTheLastSessionLeavesAnEmptyStateInTheSlot(t *testing.T) {
+	r, clientHost, slot := startWithClient(t, "a", domain.Session{ID: "a", Pane: "%7"})
+	endSession(t, r, "a")
+	if !slices.Equal(clientHost.ensured, []app.Slot{slot}) || len(r.host.shown) != 0 {
+		t.Fatalf("shown %+v, ensured %v; want the slot to get its empty-state pane", r.host.shown, clientHost.ensured)
+	}
+}
+
+func TestEndingASessionNotInViewLeavesTheSlotAlone(t *testing.T) {
+	r, clientHost, _ := startWithClient(t, "a",
+		domain.Session{ID: "a", Pane: "%7"},
+		domain.Session{ID: "b", Pane: "%8"})
+	endSession(t, r, "b")
+	if len(r.host.shown) != 0 || len(clientHost.ensured) != 0 {
+		t.Fatalf("shown %+v, ensured %v; want the slot untouched", r.host.shown, clientHost.ensured)
+	}
+}
+
 func TestFocusSessionShowsItsPaneInTheMainSlot(t *testing.T) {
 	store := &memStore{}
 	store.snap.Sessions = []domain.Session{
