@@ -129,3 +129,56 @@ func (f *fakeSwitcher) SwitchSession(_ context.Context, id string, kind domain.S
 	f.calls = append(f.calls, fmt.Sprintf("%s %s %s", id, kind, value))
 	return domain.Session{ID: id}, f.err
 }
+
+// fakeDisker answers the nth DiskView call with views[n], repeating the
+// last one, and every action with item.
+type fakeDisker struct {
+	mu      sync.Mutex
+	views   []rpc.DiskView
+	fetches int
+	actions []diskAction
+	shells  []string
+	layouts []bool
+	item    rpc.CleanupItem
+	err     error
+}
+
+type diskAction struct {
+	path   string
+	backup bool
+}
+
+func (f *fakeDisker) DiskView(context.Context) (rpc.DiskView, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	i := min(f.fetches, len(f.views)-1)
+	f.fetches++
+	return f.views[i], f.err
+}
+
+func (f *fakeDisker) CleanupWorktree(_ context.Context, path string, backup bool) (rpc.CleanupItem, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.actions = append(f.actions, diskAction{path, backup})
+	return f.item, f.err
+}
+
+func (f *fakeDisker) WorktreeShell(_ context.Context, id string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.shells = append(f.shells, id)
+	return nil
+}
+
+func (f *fakeDisker) ReviewLayout(_ context.Context, open bool) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.layouts = append(f.layouts, open)
+	return nil
+}
+
+func (f *fakeDisker) fetched() int {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.fetches
+}
