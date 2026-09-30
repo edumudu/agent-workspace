@@ -215,11 +215,11 @@ func banners(fset *token.FileSet, file string, f *ast.File) []finding {
 	})
 	var findings []finding
 	for _, group := range f.Comments {
-		if docs[group] || group.Pos() < f.Package || insideDecl(fset, group, f.Decls) {
+		if group.Pos() < f.Package || (!docs[group] && insideDecl(fset, group, f.Decls)) {
 			continue
 		}
 		for _, c := range group.List {
-			if isBanner(c.Text, len(group.List)) {
+			if isSeparator(c.Text) || (!docs[group] && isLabel(c.Text, len(group.List))) {
 				findings = append(findings, finding{file, fset.Position(c.Pos()).Line, "section banner comment; delete it"})
 			}
 		}
@@ -240,13 +240,21 @@ func insideDecl(fset *token.FileSet, group *ast.CommentGroup, decls []ast.Decl) 
 	return false
 }
 
-func isBanner(text string, groupLen int) bool {
+// isSeparator is checked on doc comments too: Go attaches a banner that sits
+// right above a declaration to it as its doc.
+func isSeparator(text string) bool {
+	body, ok := commentBody(text)
+	return ok && bannerRun.MatchString(body) && len(wordPattern.FindAllString(body, -1)) <= 4
+}
+
+func isLabel(text string, groupLen int) bool {
+	body, ok := commentBody(text)
+	return ok && groupLen == 1 && len(strings.Fields(body)) <= 3 && !strings.ContainsAny(body, ":,;().?!")
+}
+
+func commentBody(text string) (string, bool) {
 	if directiveStart.MatchString(text) || !strings.HasPrefix(text, "//") {
-		return false
+		return "", false
 	}
-	body := strings.TrimSpace(strings.TrimPrefix(text, "//"))
-	if bannerRun.MatchString(body) && len(wordPattern.FindAllString(body, -1)) <= 4 {
-		return true
-	}
-	return groupLen == 1 && len(strings.Fields(body)) <= 3 && !strings.ContainsAny(body, ":,;().?!")
+	return strings.TrimSpace(strings.TrimPrefix(text, "//")), true
 }
