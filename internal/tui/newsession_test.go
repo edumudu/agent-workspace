@@ -288,3 +288,26 @@ func TestNewSessionDialogScrollsToTheActiveFieldOnAShortTerminal(t *testing.T) {
 		t.Fatalf("the error is off screen:\n%s", out)
 	}
 }
+
+func TestAStartReplyOnlyTouchesTheDialogThatSentIt(t *testing.T) {
+	c := &fakeCaller{}
+	m := tui.New(tui.Options{Theme: tui.Latte(), Now: clock, Calls: c})
+	m = update(m, tui.StateMsg(withWorkspaces(rpc.State{})))
+	m = typeText(press(m, "n"), "first")
+	next, startA := m.Update(keyEnter)
+	m = update(next.(tui.Model), keyEsc)
+	m = typeText(press(m, "n"), "second")
+	m = run(m, startA)
+	if out := screen(m); !strings.Contains(out, "NEW SESSION") || !strings.Contains(out, "second") {
+		t.Fatalf("the first start's reply closed the second dialog:\n%s", out)
+	}
+	c.err = errors.New("failed: boom")
+	m = typeText(press(update(m, keyEsc), "n"), "third")
+	next, startB := m.Update(keyEnter)
+	m = update(next.(tui.Model), keyEsc)
+	m = typeText(press(m, "n"), "fourth")
+	m = run(m, startB)
+	if out := screen(m); strings.Contains(out, "✗") || strings.Contains(out, "starting") || !strings.Contains(out, "fourth") {
+		t.Fatalf("the third start's failure landed on the fourth dialog:\n%s", out)
+	}
+}
