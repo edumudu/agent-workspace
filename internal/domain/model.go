@@ -68,11 +68,10 @@ type Worktree struct {
 }
 
 // Usage is what the harness last reported. LimitUsedPercent is the fullest
-// of Limits, the one that blocks the session first.
+// of the session's Limits, the one that blocks it first.
 type Usage struct {
 	ContextLeftPercent int
 	LimitUsedPercent   int
-	Limits             []RateLimit
 }
 
 // RateLimit is one usage window, such as five_hour, seven_day, or a
@@ -104,7 +103,7 @@ func (s Session) Report(r StatusReport) Session {
 		s.Usage.ContextLeftPercent = r.ContextLeft
 	}
 	if len(r.Limits) > 0 {
-		s.Usage.Limits = r.Limits
+		s.Limits = r.Limits
 		s.Usage.LimitUsedPercent = 0
 		for _, l := range r.Limits {
 			s.Usage.LimitUsedPercent = max(s.Usage.LimitUsedPercent, l.UsedPercent)

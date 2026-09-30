@@ -55,6 +55,7 @@ type Session struct {
 	Focused     bool
 	WorktreeIDs []string
 	Usage       Usage
+	Limits      []RateLimit
 }
 
 // Apply is the agent state machine. Events that no longer fit the current
