@@ -75,7 +75,9 @@ Everything here is table-tested, with no mocks.
 - `hook` carries one harness hook: `{"harness","event","pane","at","payload"}`, with the hook's stdin JSON as `payload`. The daemon maps `pane` to the session whose `Pane` matches (`domain.SessionOnPane`) and the name to a harness event (`domain.HookEvent`), then applies it; unknown panes and names are ignored. The result is a `HookReply` whose optional `output` the hook prints for the harness.
 - A diff may instead set `removed_workspace` (a root): drop that workspace.
 - Methods: `status`, `subscribe`, `hook`, and `workspace.add` (`{"path": abs}` → `Workspace`), `workspace.list` (→ `{"workspaces": [...], "last_used": root}`), `workspace.remove` (`{"root": …}`). The workspace methods exist only when the daemon is built with `WithWorkspaces`; otherwise they answer `unknown_method`.
-- Error codes: `unsupported_version` (missing or other `v`), `unknown_method`, `bad_request` (not JSON, bad params, or a path that is not a directory; `id` 0 when not JSON), `not_found` (removing an unknown workspace).
+- Error codes: `unsupported_version` (missing or other `v`), `unknown_method`, `bad_request` (not JSON, bad params, or a path that is not a directory; `id` 0 when not JSON), `not_found` (removing an unknown workspace), `unavailable` and `failed` (below).
+- `client.open` `{"command":[…],"env":{…}}` returns `{"slot","attach"}`: the client window (TUI pane on the left running `command`, main slot on the right), created on the first call and reused while it exists, plus the argv that attaches a terminal to it. `client.focus_main` makes that window's main slot the active pane. Both run tmux on the connection goroutine, never on the loop. Without a terminal host they return `unavailable`; a tmux failure returns `failed`.
+- `debug.seed` `{"count":N}` adds N fake sessions (two per task, one to three worktrees each) for manual testing; `agentws debug seed N` calls it.
 - Adding a method or an optional field keeps `v:1`. Removing or changing the meaning of a field bumps `v`.
 
 **Client.** `rpc.Dial(path)` connects; `rpc.Connect(ctx, path, start)` calls `start` once if nothing listens and retries for `rpc.StartTimeout` (2 s). `Client.Call(ctx, method, params, out)` is the generic call and returns `*rpc.Error` for daemon errors; `Status` and `Subscribe` wrap it. `Subscribe` returns the `State` and a `Diffs` channel closed when the connection ends; its diffs share the connection's reader, so a slow consumer should use its own `Client`. `rpc` cannot exec, so the caller supplies `start` (`cmd/agentws` spawns `agentws daemon`).
@@ -90,6 +92,14 @@ Everything here is table-tested, with no mocks.
 - **Background refresh.** `workspace.add` answers from the filesystem alone, publishes the workspace, then refreshes facts off the loop and publishes again only if something changed. The daemon repeats that for every workspace every 30 s. Discovery and git run on connection goroutines and refresh workers, never the event loop.
 - **Last used.** `Workspace.LastUsed` is set on every `add`, stored with the workspace, and `workspace.list` returns the most recent as `last_used`. The new-session dialog defaults to it.
 - **Budget.** Discovery over 15 repos must finish in < 300 ms; `BenchmarkDiscovery` fails above that.
+
+## TUI
+
+`agentws` with no arguments asks the daemon for the client layout (`client.open`) and `exec`s the tmux attach argv it returns. The layout's left pane runs `agentws tui`, 48 columns wide; a `window-resized` hook on the window puts it back to 48 when the terminal resizes. See [docs/adr/0008-tui-shell.md](docs/adr/0008-tui-shell.md).
+
+`agentws tui` (`internal/tui`) opens two connections: one subscribes and feeds diffs to the Bubble Tea program, the other makes calls such as `client.focus_main`, so a burst of diffs never delays a keypress. The model keeps the snapshot in maps and rebuilds the sidebar rows only when a diff arrives; grouping and order come from `domain.Sidebar` (sessions that need you first in each task group). Keys only move the selection, and `View` renders from memory. One 200 ms ticker drives every running spinner and the clock. The renderer runs at 120 fps: at the default 60 a key can wait a whole 16 ms frame before it is drawn.
+
+Colors are Catppuccin Latte, overridden per key in the `[theme]` table of `$AGENTWS_HOME/config.toml` (`text`, `subtext`, `overlay`, `surface`, `mantle`, `base`, `blue`, `peach`, `green`, `red`, `teal`, `mauve`, `selected`), read once at startup.
 
 ## Staying fast
 

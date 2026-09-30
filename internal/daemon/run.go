@@ -10,6 +10,7 @@ import (
 	wsfs "github.com/giovaniif/agent-workspace/internal/adapters/fs"
 	gitadapter "github.com/giovaniif/agent-workspace/internal/adapters/git"
 	"github.com/giovaniif/agent-workspace/internal/adapters/sqlite"
+	"github.com/giovaniif/agent-workspace/internal/adapters/tmux"
 	"github.com/giovaniif/agent-workspace/internal/rpc"
 )
 
@@ -32,6 +33,12 @@ func Run(ctx context.Context, home string) (err error) {
 	if err != nil {
 		return err
 	}
+
+	// why: tests and manual validation point this at a throwaway server so the real one is untouched.
+	d.SetClientHost(tmux.New(tmux.Config{
+		Socket:     os.Getenv("AGENTWS_TMUX_SOCKET"),
+		ConfigPath: filepath.Join(home, "tmux.conf"),
+	}))
 
 	sock := rpc.SocketPath(home)
 	// why: holding the lock means any socket file left here belongs to a dead daemon.

@@ -22,6 +22,11 @@ const (
 	MethodWorkspaceAdd    = "workspace.add"
 	MethodWorkspaceList   = "workspace.list"
 	MethodWorkspaceRemove = "workspace.remove"
+	// MethodOpenClient returns the client layout, creating it if it is gone.
+	MethodOpenClient = "client.open"
+	MethodFocusMain  = "client.focus_main"
+	// MethodDebugSeed adds fake tasks, sessions and worktrees for manual testing.
+	MethodDebugSeed = "debug.seed"
 )
 
 // Hook is one harness hook event as `agentws hook` received it. Payload is
@@ -45,6 +50,8 @@ const (
 	CodeUnknownMethod      = "unknown_method"
 	CodeBadRequest         = "bad_request"
 	CodeNotFound           = "not_found"
+	CodeUnavailable        = "unavailable"
+	CodeFailed             = "failed"
 )
 
 // WorkspaceAddParams.Path must be absolute. Adding a known root again
@@ -62,6 +69,23 @@ type WorkspaceRemoveParams struct {
 type WorkspaceList struct {
 	Workspaces []domain.Workspace `json:"workspaces"`
 	LastUsed   string             `json:"last_used"`
+}
+
+// OpenClientParams is the TUI command the layout's left pane runs.
+type OpenClientParams struct {
+	Command []string          `json:"command"`
+	Env     map[string]string `json:"env,omitempty"`
+}
+
+// OpenClient names the layout's window (Slot) and the argv that attaches the
+// caller's terminal to it.
+type OpenClient struct {
+	Slot   string   `json:"slot"`
+	Attach []string `json:"attach"`
+}
+
+type DebugSeedParams struct {
+	Count int `json:"count"`
 }
 
 type Request struct {

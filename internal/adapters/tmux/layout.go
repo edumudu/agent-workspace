@@ -2,12 +2,16 @@ package tmux
 
 import (
 	"context"
+	"strconv"
 	"strings"
 
 	"github.com/giovaniif/agent-workspace/internal/app"
 )
 
 const slotPaneIndex = "1"
+
+// SidebarWidth is the TUI pane's width in columns; the main slot gets the rest.
+const SidebarWidth = 48
 
 // OpenClient creates the client window: the TUI's pane on the left and an
 // empty main slot on the right. The returned Slot is the window's ID.
@@ -18,6 +22,14 @@ func (h *Host) OpenClient(ctx context.Context, name string, tui app.PaneSpec) (a
 	}
 	slot := app.Slot(id.window)
 	if err := h.addSlotPane(ctx, slot); err != nil {
+		return "", err
+	}
+	resize := "resize-pane -t " + string(slot) + ".0 -x " + strconv.Itoa(SidebarWidth)
+	if _, err := h.run(ctx, "", "resize-pane", "-t", string(slot)+".0", "-x", strconv.Itoa(SidebarWidth)); err != nil {
+		return "", err
+	}
+	// why: tmux spreads a window resize over both panes; the hook puts the sidebar back to its width.
+	if _, err := h.run(ctx, "", "set-hook", "-w", "-t", string(slot), "window-resized", resize); err != nil {
 		return "", err
 	}
 	return slot, nil
@@ -56,6 +68,23 @@ func (h *Host) paneCount(ctx context.Context, slot app.Slot) (int, error) {
 		return 0, err
 	}
 	return len(strings.Fields(out)), nil
+}
+
+func (h *Host) ClientOpen(ctx context.Context, slot app.Slot) bool {
+	out, err := h.run(ctx, "", "display-message", "-p", "-t", string(slot), "#{window_id}")
+	return err == nil && strings.TrimSpace(out) == string(slot)
+}
+
+// FocusSlot makes the slot's pane the active one, so keys go to the agent.
+func (h *Host) FocusSlot(ctx context.Context, slot app.Slot) error {
+	_, err := h.run(ctx, "", "select-pane", "-t", string(slot)+"."+slotPaneIndex)
+	return err
+}
+
+// AttachCommand is the argv that attaches a terminal to the client window.
+// It always ends with "attach-session -t <slot>".
+func (h *Host) AttachCommand(slot app.Slot) []string {
+	return []string{"tmux", "-L", h.socket, "-f", h.configPath, "attach-session", "-t", string(slot)}
 }
 
 // ShownIn returns the pane currently in the slot, or "" if there is none.

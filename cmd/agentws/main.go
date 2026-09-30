@@ -16,7 +16,7 @@ var (
 	commit  = ""
 )
 
-var stubs = []string{"tui", "new", "cleanup"}
+var stubs = []string{"new", "cleanup"}
 
 func main() {
 	os.Exit(run(os.Args[1:], os.Stdout, os.Stderr))
@@ -24,10 +24,13 @@ func main() {
 
 func run(args []string, stdout, stderr io.Writer) int {
 	if len(args) == 0 {
-		usage(stderr)
-		return 2
+		return attach(stderr)
 	}
 	switch cmd := args[0]; {
+	case cmd == "tui":
+		return runTUI(stderr)
+	case cmd == "debug":
+		return runDebug(args[1:], stdout, stderr)
 	case cmd == "version":
 		fmt.Fprintf(stdout, "agentws %s (commit %s)\n", version, buildCommit())
 		return 0
@@ -63,5 +66,5 @@ func buildCommit() string {
 }
 
 func usage(w io.Writer) {
-	fmt.Fprintln(w, "usage: agentws <daemon|workspace|tui|hook|new|cleanup|version>")
+	fmt.Fprintln(w, "usage: agentws [daemon|workspace|tui|debug|hook|new|cleanup|version]")
 }

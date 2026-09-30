@@ -15,13 +15,15 @@
 - `make bench`: benchmarks that guard the performance budgets.
 - `make mutate`: `scripts/mutate` runs `gremlins` on `domain` and `app`, failing below 80% efficacy. A package with no tests is skipped. Install with `go install github.com/go-gremlins/gremlins/cmd/gremlins@v0.6.0`.
 - `make e2e`: the core e2e suite. It builds the binary once and runs the `test/e2e/testdata/script/*.txtar` scripts.
-- `scripts/tdd-check <base> <head>`: what CI's `tdd` job runs. It covers added or changed `*_test.go` files and files under a `testdata/` dir (such as e2e `.txtar` scripts), each counted for the package that owns them. Run it locally on a clean tree to check a branch before pushing; it leaves you on a detached base checkout.
+- `scripts/tdd-check <base> <head>`: what CI's `tdd` job runs. It covers added or changed `*_test.go` files and files under a `testdata/` dir (such as e2e `.txtar` scripts), each counted for the package that owns them. It runs them with `-tags integration`, so integration tests count too. Run it locally on a clean tree to check a branch before pushing; it leaves you on a detached base checkout.
 - `make test`, `make bench` and `make e2e` pass `GO_TEST_FLAGS` (default `-p 2`) to keep local runs light.
 - Integration tests use `-tags integration`. They need `git` and `tmux` installed, and use a temporary `AGENTWS_HOME`. The tmux ones also use a unique tmux socket each. Run them with `go test -p 2 -tags integration ./internal/adapters/...`; CI does too. The git adapter's tests build real repos in temp dirs with `GIT_CONFIG_GLOBAL=/dev/null` so the user's git config never leaks in.
 - `agentws daemon [start|status|stop]` runs or controls the daemon. Tests that start one use a short `AGENTWS_HOME` under `/tmp`: macOS caps Unix socket paths at 104 bytes.
 - `scripts/bench-hook.sh [bin]`: times 200 `agentws hook` runs with the daemon up and down, prints p50/p95, and fails over budget (20 ms / 60 ms p95). CI runs it with `BUDGET_SCALE=2` because its runners start processes about 3x slower. Keep `cmd/agentws` startup light: package init costs every hook, and `modernc.org/sqlite` init is already about 4.5 of the 5 ms locally.
 - `agentws workspace add <path>|list|remove <path>` registers workspaces through the daemon (auto-started). `list` shows `-` for a repo's git facts until the first background refresh lands.
-- `domain`, `app`, `tui`, `rpc` and `daemon` may not import `os/exec` (depguard). `internal/adapters/tmux` is the only code that runs tmux, and only `internal/daemon` may import it.
+- `agentws` attaches to the client layout (creating it and the daemon if needed); `agentws tui` is what runs in its left pane. `agentws debug seed N` adds N fake sessions for trying the TUI.
+- `AGENTWS_TMUX_SOCKET` points the daemon at another tmux server. Use it with a temporary `AGENTWS_HOME` when running the TUI by hand, so the real `agentws` server is untouched.
+- TUI goldens live in `internal/tui/testdata/*.golden`; regenerate with `go test ./internal/tui/ -run Golden -update` and review the diff.- `domain`, `app`, `tui`, `rpc` and `daemon` may not import `os/exec` (depguard). `internal/adapters/tmux` is the only code that runs tmux, and only `internal/daemon` may import it.
 
 ## Rules
 
