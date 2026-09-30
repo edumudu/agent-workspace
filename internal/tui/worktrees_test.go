@@ -104,7 +104,9 @@ func TestWorktreesKeyOpensTheViewWithoutTheKeyPressWaitingOnTheDaemon(t *testing
 
 func TestWorktreesHeaderShowsVolumeTotalsReclaimablePolicyAndDepsStore(t *testing.T) {
 	out := screen(diskModel().open().m)
-	for _, want := range []string{"WORKTREES & DISK", "240 GB free of 994 GB", "deps store 4.1 GB", "worktrees 4.0 GB+ (4)", "reclaimable 2.5 GB", "auto-clean every 10m"} {
+	for _, want := range []string{"WORKTREES & DISK", "Disk", "240 GB free of 994 GB", "worktrees 4.0 GB+", "reclaimable 2.5 GB", "other",
+		"Auto-cleanup every 10m", "merged + clean + no session → removed", "merged + dirty → backup, then asks",
+		"Shared deps store", "deps 4.1 GB once, cloned per worktree"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("header lacks %q:\n%s", want, out)
 		}
@@ -120,18 +122,18 @@ func TestWorktreesTableHasStateTaskRepoBranchPRSessionPortAndSize(t *testing.T) 
 		}
 	}
 	merged := rowOf(t, out, "feat-a")
-	for _, want := range []string{"merged", "#40 · task number 1", "api", "#3600", "1", "2.0 GB"} {
+	for _, want := range []string{"✓ merged", "#40 · task number 1", "api", "#3600", "1 claude", "2.0 GB"} {
 		if !strings.Contains(merged, want) {
 			t.Errorf("merged row %q lacks %q", merged, want)
 		}
 	}
 	live := rowOf(t, out, "feat-c")
-	for _, want := range []string{"keep", ":3000", "1.5 GB", "2"} {
+	for _, want := range []string{"○ idle", ":3000", "1.5 GB", "2 codex"} {
 		if !strings.Contains(live, want) {
 			t.Errorf("live row %q lacks %q", live, want)
 		}
 	}
-	if dirty := rowOf(t, out, "feat-b"); !strings.Contains(dirty, "needs you") || !strings.Contains(dirty, "500 MB") {
+	if dirty := rowOf(t, out, "feat-b"); !strings.Contains(dirty, "! merged, dirty") || !strings.Contains(dirty, "500 MB") {
 		t.Errorf("dirty row = %q", dirty)
 	}
 }
@@ -151,7 +153,7 @@ func TestWorktreesReclaimableIsTheSumOfWhatCleanupWouldRemoveOrBackUp(t *testing
 	if !strings.Contains(out, "reclaimable 2.5 GB") || strings.Contains(out, "reclaimable 2.5 GB+") {
 		t.Errorf("header:\n%s\nwant reclaimable 2.5 GB, complete: the kept rows do not count", out)
 	}
-	if !strings.Contains(out, "worktrees 7.0 GB (4)") {
+	if !strings.Contains(out, "worktrees 7.0 GB ") {
 		t.Errorf("header lacks the measured worktree total:\n%s", out)
 	}
 
