@@ -116,7 +116,7 @@ func (Review) MergeBase(ctx context.Context, dir, rev string) (string, error) {
 // ParseDiff reads.
 func (Review) Diff(ctx context.Context, dir, from, tree string) (string, error) {
 	out, err := output(ctx, dir, "diff", "--no-color", "--no-ext-diff", "--no-textconv",
-		"--find-renames", "--src-prefix=a/", "--dst-prefix=b/", "--no-relative", from, tree, "--")
+		"--find-renames", "--full-index", "--src-prefix=a/", "--dst-prefix=b/", "--no-relative", from, tree, "--")
 	return string(out), err
 }
 

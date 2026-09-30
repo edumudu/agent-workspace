@@ -197,7 +197,7 @@ type Hunk struct {
 	Lines  []DiffLine
 }
 
-// FileDiff.Blob is the new side's abbreviated blob hash from the index line
+// FileDiff.Blob is the new side's blob hash from the index line
 // (zeros for a deletion), which identifies the content a viewed mark saw.
 type FileDiff struct {
 	Path    string

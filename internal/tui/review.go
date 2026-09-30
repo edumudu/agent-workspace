@@ -180,6 +180,8 @@ func (m *Model) gotReview(msg reviewMsg) {
 	m.rv.loading = false
 	if msg.err != nil {
 		m.rv.err = msg.err.Error()
+		m.rv.review, m.rv.prep = rpc.Review{Scope: m.rv.scope}, prepared{}
+		m.rv.cur, m.rv.scroll = 0, 0
 		return
 	}
 	prevPath := ""
