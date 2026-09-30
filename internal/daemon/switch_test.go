@@ -131,3 +131,72 @@ func TestModelSwitchRequestErrors(t *testing.T) {
 		}
 	}
 }
+
+func TestModelSwitchIsRefusedForCodex(t *testing.T) {
+	host := &fakeHost{}
+	d, path := start(t, &memStore{}, daemon.WithHarnesses(host, claude.Adapter{}))
+	c := dial(t, path)
+	sub, err := c.Subscribe(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	d.Post(daemon.SessionChanged{Session: domain.Session{ID: "x", Harness: domain.HarnessCodex, Pane: "%5", State: domain.StateIdle}})
+	next(t, sub.Diffs)
+	_, err = c.SwitchSession(context.Background(), "x", domain.SwitchModel, "gpt-5")
+	var rerr *rpc.Error
+	if !errors.As(err, &rerr) || rerr.Code != rpc.CodeBadRequest {
+		t.Fatalf("err %v", err)
+	}
+	if typed := host.typedNow(); len(typed) != 0 {
+		t.Fatalf("typed %q", typed)
+	}
+}
+
+func TestModelSwitchWaitingBehindAnotherPaneIsHeldIfTheSessionStartsRunning(t *testing.T) {
+	host := &fakeHost{}
+	d, path := start(t, &memStore{}, daemon.WithHarnesses(host, claude.Adapter{}))
+	c := dial(t, path)
+	sub, err := c.Subscribe(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, s := range []domain.Session{
+		{ID: "a", Harness: domain.HarnessClaude, Pane: "%3", State: domain.StateIdle},
+		{ID: "b", Harness: domain.HarnessClaude, Pane: "%4", State: domain.StateIdle},
+	} {
+		d.Post(daemon.SessionChanged{Session: s})
+		next(t, sub.Diffs)
+	}
+	release := host.holdPane("%3")
+	if _, err := c.SwitchSession(context.Background(), "a", domain.SwitchModel, "opus"); err != nil {
+		t.Fatal(err)
+	}
+	next(t, sub.Diffs)
+	if _, err := c.SwitchSession(context.Background(), "b", domain.SwitchModel, "sonnet"); err != nil {
+		t.Fatal(err)
+	}
+	next(t, sub.Diffs)
+	prompt := rpc.Hook{Harness: "claude", Event: "UserPromptSubmit", Pane: "%4"}
+	if err := c.Call(context.Background(), rpc.MethodHook, prompt, nil); err != nil {
+		t.Fatal(err)
+	}
+	next(t, sub.Diffs)
+	release()
+
+	requeued := next(t, sub.Diffs)
+	if requeued.Session == nil || requeued.Session.ID != "b" || len(requeued.Session.Switches) != 1 || !requeued.Session.Switches[0].SentAt.IsZero() {
+		t.Fatalf("diff %+v", requeued.Session)
+	}
+	want := []string{"%3 paste=true /model opus", "%3 keys Enter"}
+	if typed := host.waitTyped(t, len(want)); !reflect.DeepEqual(typed, want) {
+		t.Fatalf("typed %q", typed)
+	}
+	stop := rpc.Hook{Harness: "claude", Event: "Stop", Pane: "%4"}
+	if err := c.Call(context.Background(), rpc.MethodHook, stop, nil); err != nil {
+		t.Fatal(err)
+	}
+	want = append(want, "%4 paste=true /model sonnet", "%4 keys Enter")
+	if typed := host.waitTyped(t, len(want)); !reflect.DeepEqual(typed, want) {
+		t.Fatalf("typed %q", typed)
+	}
+}

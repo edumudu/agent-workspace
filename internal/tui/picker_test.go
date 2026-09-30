@@ -31,8 +31,8 @@ func TestModelSwitchMOpensThePickerWithTheSessionsHarnessModels(t *testing.T) {
 		}
 	}
 	out = screen(press(m, "j", "M"))
-	if !strings.Contains(out, "gpt-5-codex") || strings.Contains(out, "haiku") {
-		t.Fatalf("Codex picker:\n%s", out)
+	if strings.Contains(out, "MODEL") || !strings.Contains(out, "not supported for codex") {
+		t.Fatalf("Codex session:\n%s", out)
 	}
 }
 

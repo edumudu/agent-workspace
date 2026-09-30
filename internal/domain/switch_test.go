@@ -177,8 +177,6 @@ func TestModelSwitchCommandIsTheHarnessesOwnSlashCommand(t *testing.T) {
 	}{
 		{HarnessClaude, Switch{Kind: SwitchModel, Value: "opus"}, "/model opus"},
 		{HarnessClaude, Switch{Kind: SwitchEffort, Value: "high"}, "/effort high"},
-		{HarnessCodex, Switch{Kind: SwitchModel, Value: "gpt-5"}, "/model gpt-5"},
-		{HarnessCodex, Switch{Kind: SwitchEffort, Value: "low"}, "/effort low"},
 	}
 	for _, c := range cases {
 		if got := SwitchCommand(c.h, c.sw); got != c.want {
@@ -187,12 +185,36 @@ func TestModelSwitchCommandIsTheHarnessesOwnSlashCommand(t *testing.T) {
 	}
 }
 
-func TestModelSwitchChoicesExistForBothHarnesses(t *testing.T) {
-	for _, h := range []Harness{HarnessClaude, HarnessCodex} {
-		for _, kind := range []SwitchKind{SwitchModel, SwitchEffort} {
-			if len(SwitchChoices(h, kind)) == 0 {
-				t.Errorf("%s %s: no choices", h, kind)
-			}
+func TestModelSwitchOnlyClaudeIsSupported(t *testing.T) {
+	for _, kind := range []SwitchKind{SwitchModel, SwitchEffort} {
+		if len(SwitchChoices(HarnessClaude, kind)) == 0 {
+			t.Errorf("claude %s: no choices", kind)
+		}
+		if len(SwitchChoices(HarnessCodex, kind)) != 0 {
+			t.Errorf("codex %s: choices offered", kind)
+		}
+	}
+	if !SwitchSupported(HarnessClaude) || SwitchSupported(HarnessCodex) {
+		t.Fatal("support flags")
+	}
+}
+
+func TestModelSwitchRequeuedSwitchIsSentAgainAtTheNextDispatch(t *testing.T) {
+	s := sentSession(SwitchModel, "opus")
+	s = s.Requeue(s.Switches)
+	if len(s.Switches) != 1 || !s.Switches[0].SentAt.IsZero() {
+		t.Fatalf("switches %+v", s.Switches)
+	}
+	if _, sent := s.Dispatch(switchT0.Add(time.Minute)); len(sent) != 1 {
+		t.Fatalf("sent %+v", sent)
+	}
+}
+
+func TestModelSwitchAcceptedOnlyBetweenTools(t *testing.T) {
+	want := map[AgentState]bool{StateIdle: true, StateDone: true, StateWaiting: true, StateRunning: false, StatePermission: false}
+	for state, ok := range want {
+		if got := (Session{State: state}).AcceptsSwitch(); got != ok {
+			t.Errorf("%s: %v", state, got)
 		}
 	}
 }

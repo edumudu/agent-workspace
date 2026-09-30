@@ -189,9 +189,27 @@ type fakeHost struct {
 	shown    []shown
 	typed    []string
 	failText string
+	gates    map[app.PaneID]chan struct{}
+}
+
+func (h *fakeHost) holdPane(pane app.PaneID) (release func()) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if h.gates == nil {
+		h.gates = map[app.PaneID]chan struct{}{}
+	}
+	gate := make(chan struct{})
+	h.gates[pane] = gate
+	return func() { close(gate) }
 }
 
 func (h *fakeHost) SendText(_ context.Context, pane app.PaneID, text string, bracketed bool) error {
+	h.mu.Lock()
+	gate := h.gates[pane]
+	h.mu.Unlock()
+	if gate != nil {
+		<-gate
+	}
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	if text == h.failText {
