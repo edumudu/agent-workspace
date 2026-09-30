@@ -739,3 +739,22 @@ func (g *fakeHunkGit) done() []string {
 	defer g.mu.Unlock()
 	return append([]string(nil), g.calls...)
 }
+
+func (s *memStore) DeleteSession(id string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	kept := s.snap.Sessions[:0]
+	for _, x := range s.snap.Sessions {
+		if x.ID != id {
+			kept = append(kept, x)
+		}
+	}
+	s.snap.Sessions = kept
+	events := s.snap.Events[:0]
+	for _, ev := range s.snap.Events {
+		if ev.SessionID != id {
+			events = append(events, ev)
+		}
+	}
+	s.snap.Events = events
+}

@@ -19,8 +19,8 @@ eventually '/api-a","branch":"feat-a","action":"remove",.*"outcome":"removed"' c
 exists $B/b.txt
 exec git -C api branch --list feat-a
 stdout 'feat-a'
-exec agentws worktree list
-! stdout '/api-a\s'
+# The log line lands before the worktree scan drops api-a from the list.
+! eventually '/api-a\s' agentws worktree list
 stdout '/api-b\s+feat-b\s+'$SID'\s'
 exec agentws cleanup
 stdout '^keep\s+\S+/api-b\s+feat-b\s+not merged\s+kept$'
