@@ -12,6 +12,7 @@ func (nopStore) DeleteWorkspace(string)        {}
 func (nopStore) PutTask(domain.Task)           {}
 func (nopStore) PutWorktree(domain.Worktree)   {}
 func (nopStore) PutSession(domain.Session)     {}
+func (nopStore) PutEvent(domain.SessionEvent)  {}
 func (nopStore) Load() (app.Snapshot, error)   { return app.Snapshot{}, nil }
 func (nopStore) Flush() error                  { return nil }
 func (nopStore) Close() error                  { return nil }
