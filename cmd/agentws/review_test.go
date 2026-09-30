@@ -104,6 +104,14 @@ func TestReviewCommentLandsInTheDaemonsDraft(t *testing.T) {
 	}
 }
 
+func TestReviewScopeWithoutAFlagLeavesTheScopeToTheDaemon(t *testing.T) {
+	t.Setenv("AGENTWS_SESSION", "s1")
+	got, err := parseScopeArgs(nil, io.Discard)
+	if err != nil || got != (rpc.ReviewParams{Session: "s1"}) {
+		t.Fatalf("got %+v, %v; want only the session, so the daemon uses the TUI's scope", got, err)
+	}
+}
+
 func TestReviewScopePrintsEachWorktreesBaseAndFiles(t *testing.T) {
 	home := shortHome(t)
 	t.Setenv("AGENTWS_HOME", home)
