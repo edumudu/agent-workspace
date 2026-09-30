@@ -11,6 +11,7 @@ Status: accepted, 2026-09-30.
 - **Where it runs.** `review.open` builds on the connection goroutine, at most 4 worktrees at once; snapshots and ref cleanup run on workers. Nothing touches git on the loop. The TUI highlights and lays out a review in the command that fetched it, so `View` only paints.
 - **Viewed marks** are `{worktree, path, blob}`, stored in SQLite (`viewed` table, migration 0004). A mark counts only while the file's blob (from the diff's `index` line) is the one that was viewed, so it resets as soon as the file changes again.
 - **Layout.** `r` calls `client.review`, which resizes the sidebar pane to 75% of the window and re-points its `window-resized` hook at that width; closing puts back 48 columns. The sidebar collapses to a rail of glyphs and numbers.
+- **Agent column (#95).** From 120 columns the review draws a column between the rail and the diff, as in `docs/images/review.png`: the session's name and state, its recent actions oldest first, its last message (`SessionCard.Said`, from the latest Stop), and a "Draft review → this session" box counting the draft's comments and worktrees. It is built from the events and drafts the TUI already holds. The key hints run under it, so they keep their width.
 - **Highlighting** uses chroma's lexer engine with a curated set of its XML lexers copied into `internal/tui/syntax/` (MIT, `COPYING` kept) plus its Go rules, built on first use. Colors come from the theme, not chroma's styles.
 
 ## Why
