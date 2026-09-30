@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/giovaniif/agent-workspace/internal/app"
+	"github.com/giovaniif/agent-workspace/internal/domain"
 )
 
 type LaunchRequest struct {
@@ -34,4 +35,13 @@ func LaunchSpec(req LaunchRequest) app.PaneSpec {
 // session's hooks find their way back to it.
 func Launch(ctx context.Context, host app.TerminalHost, req LaunchRequest) (app.PaneID, error) {
 	return host.Create(ctx, LaunchSpec(req))
+}
+
+// Adapter is the app.HarnessAdapter for Codex.
+type Adapter struct{}
+
+func (Adapter) Harness() domain.Harness { return domain.HarnessCodex }
+
+func (Adapter) Launch(req app.LaunchRequest) app.PaneSpec {
+	return LaunchSpec(LaunchRequest(req))
 }
