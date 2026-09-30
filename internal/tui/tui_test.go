@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
+	"slices"
 	"sort"
 	"strings"
 	"testing"
@@ -357,5 +359,21 @@ func TestCountsUseTheSingularForOne(t *testing.T) {
 	}
 	if strings.Contains(out, "1 worktrees") || strings.Contains(out, "1 sessions") {
 		t.Errorf("plural after one:\n%s", out)
+	}
+}
+
+func TestSFocusesTheSelectedSessionsShell(t *testing.T) {
+	st := fixture(1, 0)
+	c := &fakeCaller{}
+	m := tui.New(tui.Options{Theme: tui.Latte(), Now: clock, Calls: c})
+	m = update(m, tea.WindowSizeMsg{Width: 48, Height: 40})
+	m = update(m, tui.StateMsg(st))
+	_, cmd := m.Update(key("s"))
+	if cmd == nil {
+		t.Fatal("s did nothing")
+	}
+	cmd()
+	if !slices.Equal(c.methods(), []string{rpc.MethodShellFocus}) || !reflect.DeepEqual(c.calls[0].params, rpc.ShellParams{Session: "s01"}) {
+		t.Fatalf("calls %+v", c.calls)
 	}
 }
