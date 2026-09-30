@@ -34,23 +34,31 @@ func (d *Daemon) refillLostSlot(ctx context.Context) {
 	d.clients.mu.Lock()
 	host, slot := d.clients.host, d.clients.slot
 	d.clients.mu.Unlock()
-	if host == nil || slot == "" || host.SlotHasPane(ctx, slot) {
+	if host == nil || slot == "" {
 		return
 	}
-	var inView domain.Session
-	var found bool
-	if !d.query(func(s *state) {
-		for _, cur := range sorted(s.sessions) {
-			if cur.Focused {
-				inView, found = cur, true
-			}
-		}
-	}) {
+	// why: read before the pane check, so a session that takes the slot during it is not taken for the one that lost it.
+	inView, found, ok := d.sessionInView()
+	if !ok || host.SlotHasPane(ctx, slot) {
 		return
 	}
 	if !found {
 		d.refillMain(domain.Session{}, false)
 		return
 	}
+	if now, stillFound, ok := d.sessionInView(); !ok || !stillFound || now.ID != inView.ID || now.Pane != inView.Pane {
+		return
+	}
 	_, _, _ = d.endAndRefill(inView)
+}
+
+func (d *Daemon) sessionInView() (session domain.Session, found, ok bool) {
+	ok = d.query(func(s *state) {
+		for _, cur := range sorted(s.sessions) {
+			if cur.Focused {
+				session, found = cur, true
+			}
+		}
+	})
+	return session, found, ok
 }
