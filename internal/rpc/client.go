@@ -116,6 +116,20 @@ func (c *Client) WorkspaceRemove(ctx context.Context, root string) error {
 	return c.Call(ctx, MethodWorkspaceRemove, WorkspaceRemoveParams{Root: root}, nil)
 }
 
+func (c *Client) OpenClient(ctx context.Context, p OpenClientParams) (OpenClient, error) {
+	var out OpenClient
+	err := c.Call(ctx, MethodOpenClient, p, &out)
+	return out, err
+}
+
+func (c *Client) FocusMain(ctx context.Context) error {
+	return c.Call(ctx, MethodFocusMain, nil, nil)
+}
+
+func (c *Client) DebugSeed(ctx context.Context, count int) error {
+	return c.Call(ctx, MethodDebugSeed, DebugSeedParams{Count: count}, nil)
+}
+
 type Subscription struct {
 	State State
 	// Diffs is closed when the connection ends.

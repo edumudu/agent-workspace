@@ -74,6 +74,7 @@ type Daemon struct {
 	stopped chan struct{}
 	st      *state
 	ws      workspaces
+	clients clients
 }
 
 // New restores state from store. pid is what status reports.
@@ -290,6 +291,19 @@ func (d *Daemon) dispatch(c *conn, line []byte) (*rpc.Response, bool) {
 			return resp, ok
 		}
 		return errorResponse(req.ID, rpc.CodeUnknownMethod, "unknown method "+req.Method), true
+	case rpc.MethodOpenClient, rpc.MethodFocusMain:
+		return d.dispatchClient(req), true
+	case rpc.MethodDebugSeed:
+		var p rpc.DebugSeedParams
+		if err := json.Unmarshal(req.Params, &p); err != nil || p.Count < 1 {
+			return errorResponse(req.ID, rpc.CodeBadRequest, "debug_seed needs a count of at least 1"), true
+		}
+		ok := d.query(func(s *state) {
+			for _, e := range seed(p.Count) {
+				s.emit(e)
+			}
+		})
+		return result(req.ID, struct{}{}), ok
 	default:
 		return errorResponse(req.ID, rpc.CodeUnknownMethod, "unknown method "+req.Method), true
 	}
