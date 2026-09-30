@@ -1,5 +1,7 @@
 package domain
 
+import "time"
+
 type WorkspaceKind string
 
 const (
@@ -8,14 +10,20 @@ const (
 )
 
 type Workspace struct {
-	Root  string
-	Kind  WorkspaceKind
-	Repos []Repo
+	Root     string
+	Kind     WorkspaceKind
+	Repos    []Repo
+	LastUsed time.Time
 }
 
+// Repo carries the facts a background refresh fills in; they are empty until
+// the first refresh, or when git cannot answer.
 type Repo struct {
-	Name string
-	Path string
+	Name          string
+	Path          string
+	DefaultBranch string
+	Branch        string
+	ChangedFiles  int
 }
 
 type TaskSource string
