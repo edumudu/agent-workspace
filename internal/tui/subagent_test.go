@@ -14,8 +14,6 @@ func agent(session, id, kind string, state domain.SubagentState, summary string)
 	return domain.Subagent{SessionID: session, ID: id, Type: kind, State: state, Summary: summary}
 }
 
-// subagentFixture is three sessions; s02 spawned three subagents, one of
-// them still running and one nested under it.
 func subagentFixture() rpc.State {
 	st := fixture(3, 1)
 	st.Subagents = []domain.Subagent{

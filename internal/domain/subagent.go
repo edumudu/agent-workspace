@@ -5,8 +5,7 @@ import (
 	"time"
 )
 
-// MaxSubagents is how many subagents of one session are kept; past it the
-// oldest stopped ones are dropped.
+// MaxSubagents caps one session's list; past it the oldest stopped ones go.
 const MaxSubagents = 30
 
 type SubagentState string
@@ -112,15 +111,13 @@ func EndSubagents(subs []Subagent, sessionID string, at time.Time) ([]Subagent, 
 	return subs, changed
 }
 
-// SubagentNode is a subagent placed in the tree, listed parent before
-// children, each level in the order agents started.
 type SubagentNode struct {
 	Subagent
 	Depth int
 }
 
-// SubagentTree orders one session's subagents as a tree. An agent whose
-// parent is unknown is a root.
+// SubagentTree lists one session's subagents parent before children. An agent
+// whose parent is unknown is a root.
 func SubagentTree(subs []Subagent) []SubagentNode {
 	known := map[string]bool{}
 	for _, s := range subs {

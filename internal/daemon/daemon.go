@@ -40,7 +40,6 @@ type SessionHooked struct {
 	Event   domain.SessionEvent
 }
 
-// SubagentChanged replaces one subagent, or adds it.
 type SubagentChanged struct{ Subagent domain.Subagent }
 
 func (e SubagentChanged) apply(s *state) rpc.Diff {
