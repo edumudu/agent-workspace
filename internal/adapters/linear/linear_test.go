@@ -109,6 +109,21 @@ func TestNamingLinearFailures(t *testing.T) {
 	}
 }
 
+func TestNamingLinearDoesNotFollowRedirectsWithTheToken(t *testing.T) {
+	target := newAPI(t, 200, `{"data":{"issue":{"title":"x"}}}`)
+	redirect := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, target.URL, http.StatusTemporaryRedirect)
+	}))
+	defer redirect.Close()
+	title, err := linear.Client{Token: "lin_key", Endpoint: redirect.URL}.Title(context.Background(), linearTask())
+	if err == nil || title != "" {
+		t.Errorf("Title = %q, %v; want an error for the redirect", title, err)
+	}
+	if n := target.requests.Load(); n != 0 {
+		t.Errorf("the redirect target got %d requests carrying the token", n)
+	}
+}
+
 func TestNamingLinearGivesUpWhenTheContextEnds(t *testing.T) {
 	release := make(chan struct{})
 	slow := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { <-release }))
