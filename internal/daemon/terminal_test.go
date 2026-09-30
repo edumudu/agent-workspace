@@ -118,6 +118,19 @@ func TestShellToggleNeverMovesFocusToTheAgentPane(t *testing.T) {
 	}
 }
 
+func TestShellToggleKeepsNvimInTheSlotWhenItIsThere(t *testing.T) {
+	r := startTerm(t, []domain.Session{termSession}, termWTs)
+	if err := r.c.Call(context.Background(), rpc.MethodNvimToggle, rpc.NvimParams{Session: "s1"}, nil); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := r.toggle(t, rpc.ShellParams{Session: "s1"}); err != nil {
+		t.Fatal(err)
+	}
+	if got := r.term.shownPanes(); !slices.Equal(got, []app.PaneID{"%t1"}) {
+		t.Fatalf("shown = %v; want the shell split under nvim, with the agent left parked", got)
+	}
+}
+
 func TestShellToggleStartsAFreshShellWhenTheOldOneExited(t *testing.T) {
 	r := startTerm(t, []domain.Session{termSession}, termWTs)
 	first, _ := r.toggle(t, rpc.ShellParams{Session: "s1"})
