@@ -158,6 +158,14 @@ type fakeClientHost struct {
 	open    map[app.Slot]bool
 	focused []app.Slot
 	wide    []bool
+	ensured []app.Slot
+}
+
+func (h *fakeClientHost) EnsureSlot(_ context.Context, slot app.Slot) error {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.ensured = append(h.ensured, slot)
+	return nil
 }
 
 func (h *fakeClientHost) OpenClient(_ context.Context, name string, tui app.PaneSpec) (app.Slot, error) {
