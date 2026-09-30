@@ -218,6 +218,7 @@ func (d *Daemon) Serve(ctx context.Context, ln net.Listener) error {
 	go d.watchWorktrees(ctx)
 	go d.watchPorts(ctx)
 	go d.reconcilePanes(ctx)
+	go d.watchMainSlot(ctx)
 	go d.snapshotTurns(ctx)
 	go d.cleanupEvery(ctx)
 	loopDone := make(chan struct{})
