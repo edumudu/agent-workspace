@@ -296,7 +296,7 @@ func (d *Daemon) dispatch(c *conn, line []byte) (*rpc.Response, bool) {
 	case rpc.MethodDebugSeed:
 		var p rpc.DebugSeedParams
 		if err := json.Unmarshal(req.Params, &p); err != nil || p.Count < 1 {
-			return errorResponse(req.ID, rpc.CodeBadRequest, "debug_seed needs a count of at least 1"), true
+			return errorResponse(req.ID, rpc.CodeBadRequest, "debug.seed needs a count of at least 1"), true
 		}
 		ok := d.query(func(s *state) {
 			for _, e := range seed(p.Count) {

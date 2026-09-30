@@ -29,7 +29,7 @@ type clients struct {
 	slot app.Slot
 }
 
-// SetClientHost enables open_client and focus_main. Call it before Serve.
+// SetClientHost enables client.open and client.focus_main. Call it before Serve.
 func (d *Daemon) SetClientHost(h ClientHost) {
 	d.clients.mu.Lock()
 	defer d.clients.mu.Unlock()
@@ -50,7 +50,7 @@ func (d *Daemon) dispatchClient(req rpc.Request) *rpc.Response {
 	case rpc.MethodOpenClient:
 		var p rpc.OpenClientParams
 		if err := json.Unmarshal(req.Params, &p); err != nil || len(p.Command) == 0 {
-			return errorResponse(req.ID, rpc.CodeBadRequest, "open_client needs a command")
+			return errorResponse(req.ID, rpc.CodeBadRequest, "client.open needs a command")
 		}
 		if d.clients.slot == "" || !h.ClientOpen(ctx, d.clients.slot) {
 			slot, err := h.OpenClient(ctx, clientName, app.PaneSpec{Name: clientName, Command: p.Command, Env: p.Env})
