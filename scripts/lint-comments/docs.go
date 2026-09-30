@@ -23,7 +23,7 @@ var fillerWords = map[string]bool{
 }
 
 var (
-	wordPattern    = regexp.MustCompile(`[A-Za-z][A-Za-z0-9]*`)
+	wordPattern    = regexp.MustCompile(`[A-Za-z][A-Za-z0-9]*|[0-9]+`)
 	bannerRun      = regexp.MustCompile(`[-=*#/~_]{3,}`)
 	directiveStart = regexp.MustCompile(`^//(go:|nolint|lint:|\s*\+build)`)
 )
@@ -248,5 +248,5 @@ func isBanner(text string, groupLen int) bool {
 	if bannerRun.MatchString(body) && len(wordPattern.FindAllString(body, -1)) <= 4 {
 		return true
 	}
-	return groupLen == 1 && len(strings.Fields(body)) <= 3 && !strings.ContainsAny(body, ":,;()")
+	return groupLen == 1 && len(strings.Fields(body)) <= 3 && !strings.ContainsAny(body, ":,;().?!")
 }
