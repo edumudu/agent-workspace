@@ -314,6 +314,9 @@ func (m *Model) apply(d rpc.Diff) {
 		delete(m.worktrees, d.RemovedWorktree)
 	case d.Worktree != nil:
 		m.worktrees[d.Worktree.ID] = *d.Worktree
+	case d.RemovedSession != "":
+		delete(m.sessions, d.RemovedSession)
+		delete(m.events, d.RemovedSession)
 	case d.Session != nil:
 		m.sessions[d.Session.ID] = *d.Session
 	case d.Subagent != nil:
