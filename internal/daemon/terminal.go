@@ -154,12 +154,13 @@ func (d *Daemon) toggleShell(ctx context.Context, session domain.Session, target
 	if popup {
 		return out, d.withClient(func(ctx context.Context, h ClientHost, _ app.Slot) error { return h.Popup(ctx, pane) })
 	}
-	if session.Pane != "" {
-		if err := d.showInMain(app.PaneID(session.Pane)); err != nil {
-			return rpc.ShellResult{}, err
-		}
-	}
 	err = d.withClient(func(ctx context.Context, h ClientHost, slot app.Slot) error {
+		editor, editing := d.term.nvims[session.ID]
+		if session.Pane != "" && !(editing && h.ShownIn(ctx, slot) == editor) {
+			if err := d.hs.host.Show(ctx, app.PaneID(session.Pane), slot); err != nil {
+				return err
+			}
+		}
 		if h.BelowPane(ctx, slot) == pane {
 			out.Shown = false
 			return h.HideBelow(ctx, slot)
