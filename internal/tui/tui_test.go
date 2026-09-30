@@ -359,3 +359,18 @@ func TestCountsUseTheSingularForOne(t *testing.T) {
 		t.Errorf("plural after one:\n%s", out)
 	}
 }
+
+func TestTaskHeaderNamesReposNotTheirPaths(t *testing.T) {
+	st := rpc.State{
+		Tasks:     []domain.Task{{ID: "t1", Source: domain.TaskText, Text: "add retries to upload"}},
+		Worktrees: []domain.Worktree{{ID: "w1", Repo: "/Users/someone/code/platform/api", SubtaskSlug: "retries"}},
+		Sessions:  []domain.Session{{ID: "s1", TaskID: "t1", Harness: domain.HarnessClaude, WorktreeIDs: []string{"w1"}}},
+	}
+	out := screen(newModel(&st, nil))
+	for _, line := range strings.Split(out, "\n") {
+		if strings.Contains(line, "add retries to upload") && strings.HasSuffix(strings.TrimSpace(line), " api") {
+			return
+		}
+	}
+	t.Fatalf("no header line with the task name and the repo name:\n%s", out)
+}
