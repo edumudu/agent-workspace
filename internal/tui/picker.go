@@ -10,13 +10,10 @@ import (
 	"github.com/giovaniif/agent-workspace/internal/domain"
 )
 
-// Switcher asks the daemon to change a session's model or effort;
-// *rpc.Client is one.
 type Switcher interface {
 	SwitchSession(ctx context.Context, sessionID string, kind domain.SwitchKind, value string) (domain.Session, error)
 }
 
-// picker is the open model or effort list for one session.
 type picker struct {
 	sessionID string
 	harness   domain.Harness
@@ -90,8 +87,6 @@ func (m Model) pickerLines() []string {
 	return out
 }
 
-// switchMarks are the sidebar pieces for a session's unconfirmed switches: the
-// values on their way, and a warning when a harness did not confirm one.
 func (m Model) switchMarks(x domain.Session) []piece {
 	var marks []piece
 	for _, sw := range x.Switches {

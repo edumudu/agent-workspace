@@ -12,8 +12,6 @@ import (
 
 const sendSwitchTimeout = 5 * time.Second
 
-// switchSession queues the requested switch on the loop and, if the agent is
-// between tools, sends it at once.
 func (d *Daemon) switchSession(req rpc.Request) (*rpc.Response, bool) {
 	var p rpc.SwitchParams
 	if err := json.Unmarshal(req.Params, &p); err != nil {

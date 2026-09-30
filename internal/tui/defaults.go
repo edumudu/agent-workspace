@@ -17,8 +17,7 @@ type Defaults struct {
 	Effort string `toml:"effort"`
 }
 
-// LoadDefaults reads the [defaults.claude] and [defaults.codex] tables of a
-// config.toml. A missing file gives no defaults.
+// LoadDefaults gives no defaults when the file is missing.
 func LoadDefaults(path string) (map[domain.Harness]Defaults, error) {
 	var cfg struct {
 		Defaults map[string]Defaults `toml:"defaults"`

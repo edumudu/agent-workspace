@@ -35,7 +35,6 @@ func SwitchChoices(h Harness, kind SwitchKind) []string {
 	return []string{"low", "medium", "high", "xhigh", "max"}
 }
 
-// SwitchCommand is the slash command that makes the harness apply sw.
 func SwitchCommand(_ Harness, sw Switch) string {
 	return "/" + string(sw.Kind) + " " + sw.Value
 }
@@ -75,8 +74,6 @@ func (s Session) Dispatch(now time.Time) (Session, []Switch) {
 	return s, out
 }
 
-// SwitchFailed drops switches that could not be typed into the pane and
-// raises the warning.
 func (s Session) SwitchFailed(failed []Switch) Session {
 	s.Switches = slices.DeleteFunc(slices.Clone(s.Switches), func(sw Switch) bool { return slices.Contains(failed, sw) })
 	s.SwitchWarning = true
