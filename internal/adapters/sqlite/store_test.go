@@ -21,7 +21,7 @@ func openTemp(t *testing.T) (*Store, string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { s.Close() })
+	t.Cleanup(func() { _ = s.Close() })
 	return s, path
 }
 
@@ -34,7 +34,7 @@ func reopen(t *testing.T, s *Store, path string) *Store {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { r.Close() })
+	t.Cleanup(func() { _ = r.Close() })
 	return r
 }
 
@@ -94,7 +94,7 @@ func TestWritesReachDiskWithoutExplicitFlush(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 	var n int
 	if err := db.QueryRow(`SELECT count(*) FROM tasks`).Scan(&n); err != nil {
 		t.Fatal(err)
@@ -117,7 +117,7 @@ func TestOpenUpgradesOlderVersion(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer s.Close()
+	defer func() { _ = s.Close() }()
 	if v, err := s.Version(); err != nil || v != LatestVersion() || v < 2 {
 		t.Fatalf("version = %d, %v; want %d", v, err, LatestVersion())
 	}
@@ -171,7 +171,7 @@ func runWriteLoop(path string) {
 	}
 	for i := 1; ; i++ {
 		s.PutSession(domain.Session{ID: "s1", Model: strconv.Itoa(i)})
-		os.Stdout.WriteString(strconv.Itoa(i) + "\n")
+		_, _ = os.Stdout.WriteString(strconv.Itoa(i) + "\n")
 		time.Sleep(time.Millisecond)
 	}
 }
@@ -227,13 +227,13 @@ func TestKilledProcessLosesAtMostLast100ms(t *testing.T) {
 	if err := db.QueryRow(`PRAGMA integrity_check`).Scan(&check); err != nil || check != "ok" {
 		t.Fatalf("integrity_check = %q, %v", check, err)
 	}
-	db.Close()
+	_ = db.Close()
 
 	s, err := Open(path)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer s.Close()
+	defer func() { _ = s.Close() }()
 	snap, err := s.Load()
 	if err != nil || len(snap.Sessions) != 1 {
 		t.Fatalf("sessions = %+v, %v", snap.Sessions, err)
@@ -249,7 +249,7 @@ func BenchmarkFlush1000SessionUpdates(b *testing.B) {
 	if err != nil {
 		b.Fatal(err)
 	}
-	defer s.Close()
+	defer func() { _ = s.Close() }()
 	for b.Loop() {
 		start := time.Now()
 		for i := range 1000 {
