@@ -167,6 +167,13 @@ func (d ReviewDraft) LinkTurn(refs []string) ReviewDraft {
 	return d
 }
 
+type HunkAction string
+
+const (
+	HunkStage  HunkAction = "stage"
+	HunkRevert HunkAction = "revert"
+)
+
 var ErrHunkUnsupported = errors.New("stage and revert work on plain text files only, not renames, binaries or quoted paths")
 
 // HunkPatch rebuilds one hunk of f as a patch for `git apply`.
