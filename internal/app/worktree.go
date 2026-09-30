@@ -15,9 +15,10 @@ type WorktreeLister interface {
 	ListWorktrees(ctx context.Context, dir string) (domain.RepoListing, error)
 }
 
-// PRFinder lists a repo's recent PRs with Head, State and Checks set.
+// PRFinder lists the recent PRs of every repo in one request. A repo it
+// cannot resolve is left out of the result.
 type PRFinder interface {
-	PRs(ctx context.Context, repo string) ([]domain.PullRequest, error)
+	PRs(ctx context.Context, repos []string) (map[string][]domain.PullRequest, error)
 }
 
 // ScanWorktrees lists every repo reachable from dirs once, sorted by main
@@ -53,30 +54,52 @@ func ScanWorktrees(ctx context.Context, lister WorktreeLister, dirs []string) []
 	return out
 }
 
-// RefreshPRs asks for each repo's PRs once and returns the worktrees whose
-// PR changed. A repo the finder fails on keeps its PRs.
-func RefreshPRs(ctx context.Context, finder PRFinder, worktrees []domain.Worktree) []domain.Worktree {
-	byRepo := map[string][]domain.Worktree{}
+// PRRefresh is Changed, the worktrees whose PR changed, and whether any open
+// PR has checks running after the refresh.
+type PRRefresh struct {
+	Changed       []domain.Worktree
+	ChecksRunning bool
+}
+
+// RefreshPRs asks for every repo's PRs in one request. On error nothing
+// changes, and a repo missing from the answer keeps its PRs.
+func RefreshPRs(ctx context.Context, finder PRFinder, worktrees []domain.Worktree) (PRRefresh, error) {
 	var repos []string
+	seen := map[string]bool{}
 	for _, w := range worktrees {
-		if _, ok := byRepo[w.Repo]; !ok {
+		if !seen[w.Repo] {
+			seen[w.Repo] = true
 			repos = append(repos, w.Repo)
 		}
-		byRepo[w.Repo] = append(byRepo[w.Repo], w)
 	}
-	var changed []domain.Worktree
-	for _, repo := range repos {
-		prs, err := finder.PRs(ctx, repo)
-		if err != nil {
+	if len(repos) == 0 {
+		return PRRefresh{}, nil
+	}
+	found, err := finder.PRs(ctx, repos)
+	if err != nil {
+		return PRRefresh{}, err
+	}
+	var out PRRefresh
+	for _, w := range worktrees {
+		prs, ok := found[w.Repo]
+		if !ok {
+			if running(w.PR) {
+				out.ChecksRunning = true
+			}
 			continue
 		}
-		for _, w := range byRepo[repo] {
-			pr := domain.PRForBranch(prs, w.Branch)
-			if !reflect.DeepEqual(pr, w.PR) {
-				w.PR = pr
-				changed = append(changed, w)
-			}
+		pr := domain.PRForBranch(prs, w.Branch)
+		if running(pr) {
+			out.ChecksRunning = true
+		}
+		if !reflect.DeepEqual(pr, w.PR) {
+			w.PR = pr
+			out.Changed = append(out.Changed, w)
 		}
 	}
-	return changed
+	return out, nil
+}
+
+func running(pr *domain.PullRequest) bool {
+	return pr != nil && pr.State == domain.PROpen && pr.Checks == domain.CheckPending
 }
