@@ -29,11 +29,16 @@ const query = `query($id: String!) { issue(id: $id) { title } }`
 const maxResponse = 1 << 20
 
 // Client asks Endpoint (Linear's API when empty) with Token, a personal API
-// key. HTTP defaults to http.DefaultClient.
+// key. HTTP defaults to a client that does not follow redirects, so the token
+// is never forwarded anywhere else.
 type Client struct {
 	Token    string
 	Endpoint string
 	HTTP     *http.Client
+}
+
+var defaultHTTP = &http.Client{
+	CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
 }
 
 func (c Client) Title(ctx context.Context, task domain.Task) (string, error) {
@@ -56,7 +61,7 @@ func (c Client) Title(ctx context.Context, task domain.Task) (string, error) {
 	req.Header.Set("Authorization", c.Token)
 	client := c.HTTP
 	if client == nil {
-		client = http.DefaultClient
+		client = defaultHTTP
 	}
 	resp, err := client.Do(req)
 	if err != nil {
