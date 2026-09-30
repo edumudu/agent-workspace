@@ -2,12 +2,16 @@ package tmux
 
 import (
 	"context"
+	"strconv"
 	"strings"
 
 	"github.com/giovaniif/agent-workspace/internal/app"
 )
 
 const slotPaneIndex = "1"
+
+// SidebarWidth is the TUI pane's width in columns; the main slot gets the rest.
+const SidebarWidth = 48
 
 // OpenClient creates the client window: the TUI's pane on the left and an
 // empty main slot on the right. The returned Slot is the window's ID.
@@ -18,6 +22,9 @@ func (h *Host) OpenClient(ctx context.Context, name string, tui app.PaneSpec) (a
 	}
 	slot := app.Slot(id.window)
 	if err := h.addSlotPane(ctx, slot); err != nil {
+		return "", err
+	}
+	if _, err := h.run(ctx, "", "resize-pane", "-t", string(slot)+".0", "-x", strconv.Itoa(SidebarWidth)); err != nil {
 		return "", err
 	}
 	return slot, nil
