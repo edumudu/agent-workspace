@@ -5,6 +5,7 @@
 # passes, the PR added tests for behavior that already exists.
 # Files named fakes_test.go or *_fake_test.go are skipped: they only hold
 # in-memory fakes of ports, which change when a port gains a method.
+# Changes that are whitespace only (gofmt) are skipped too.
 # Usage: scripts/tdd-check <base-ref> <head-ref>
 set -euo pipefail
 base="$1"
@@ -12,8 +13,11 @@ head="$2"
 
 files=$(git diff --name-only --diff-filter=AM "$base...$head" -- '*_test.go' '*/testdata/*' |
   grep -Ev '(^|/)(fakes|[^/]*_fake)_test\.go$' || true)
+files=$(for f in $files; do
+  git diff --quiet --ignore-all-space --ignore-blank-lines "$base...$head" -- "$f" || echo "$f"
+done)
 if [ -z "$files" ]; then
-  echo "tdd: no added or changed test files or testdata (port fake files are exempt)"
+  echo "tdd: no added or changed test files or testdata (port fakes and whitespace-only changes are exempt)"
   exit 0
 fi
 
