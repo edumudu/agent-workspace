@@ -12,6 +12,7 @@ A terminal workspace for running Claude Code and Codex sessions in parallel. It 
 - **Notifications.** You get one when an agent needs permission, is waiting on you, or finishes, whichever harness it is.
 - **Limits.** The Claude 5h/7d windows and the Codex limits sit in one bar, with a warning before you start a session on a nearly exhausted quota.
 - **Worktrees handled for you.** The agent creates worktrees, and each one is attached to the session that made it. When its PR merges, it is removed automatically if it has no uncommitted changes. If it does, they are backed up and you're asked first. Branches are never deleted.
+- **Ready-to-work worktrees.** A `[setup]` table in the repo's `.agentws.toml` copies env templates, links caches, runs commands and shares `node_modules` through APFS clones. `agentws setup-worktree <path>` applies it.
 - **Local review.** Diff the last agent turn, the uncommitted changes, or the whole branch. Comment on lines and send all the comments to the agent as one prompt.
 - **Shell and nvim one key away.** Both open in the right worktree. Diffs open in nvim through diffview.
 - **Single repo or multi-repo.** Point it at a single repo or at a folder that holds several service repos.
