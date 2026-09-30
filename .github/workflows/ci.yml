@@ -21,6 +21,8 @@ jobs:
       - run: ./bin/agentws version
       - run: make lint
       - run: go test ./...
+      - run: brew list tmux >/dev/null 2>&1 || brew install tmux
+      - run: go test -p 2 -tags integration ./internal/adapters/tmux/...
 
   tdd:
     if: github.event_name == 'pull_request'

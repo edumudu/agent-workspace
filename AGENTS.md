@@ -17,7 +17,8 @@
 - `make e2e`: the core e2e suite. It builds the binary once and runs the `test/e2e/testdata/script/*.txtar` scripts.
 - `scripts/tdd-check <base> <head>`: what CI's `tdd` job runs. Run it locally on a clean tree to check a branch before pushing; it leaves you on a detached base checkout.
 - `make test`, `make bench` and `make e2e` pass `GO_TEST_FLAGS` (default `-p 2`) to keep local runs light.
-- Integration tests use `-tags integration`. They need `git` and `tmux` installed, and use a temporary `AGENTWS_HOME`.
+- Integration tests use `-tags integration`. They need `git` and `tmux` installed, and use a temporary `AGENTWS_HOME`. The tmux ones also use a unique tmux socket each. Run them with `go test -p 2 -tags integration ./internal/adapters/tmux/...`; CI does too.
+- `domain`, `app`, `tui`, `rpc` and `daemon` may not import `os/exec` (depguard). `internal/adapters/tmux` is the only code that runs tmux, and only `internal/daemon` may import it.
 
 ## Rules
 
