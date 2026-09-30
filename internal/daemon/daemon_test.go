@@ -82,9 +82,9 @@ func shortDir(t *testing.T) string {
 	return dir
 }
 
-func start(t *testing.T, store app.Store) (*daemon.Daemon, string) {
+func start(t *testing.T, store app.Store, opts ...daemon.Option) (*daemon.Daemon, string) {
 	t.Helper()
-	d, err := daemon.New(store, 1234)
+	d, err := daemon.New(store, 1234, opts...)
 	if err != nil {
 		t.Fatal(err)
 	}
