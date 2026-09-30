@@ -14,6 +14,9 @@ import (
 type Reviewer interface {
 	Review(ctx context.Context, p rpc.ReviewParams) (rpc.Review, error)
 	MarkViewed(ctx context.Context, mark domain.ViewedMark, viewed bool) error
+	AddReviewComment(ctx context.Context, session string, c domain.ReviewComment) (domain.ReviewDraft, error)
+	SendReview(ctx context.Context, session string) (domain.ReviewDraft, error)
+	ApplyHunk(ctx context.Context, p rpc.HunkParams) error
 	ReviewLayout(ctx context.Context, open bool) error
 }
 
@@ -25,8 +28,10 @@ type styledLine struct {
 }
 
 // diffRow is one row of a file's diff: a hunk header, or a line (unified)
-// or a pair of lines (split, either side may be nil).
+// or a pair of lines (split, either side may be nil). hunk is the index of
+// the hunk the row belongs to.
 type diffRow struct {
+	hunk   int
 	header string
 	one    *styledLine
 	left   *styledLine
@@ -76,6 +81,16 @@ type reviewState struct {
 	marks  map[string]domain.ViewedMark
 	cur    int
 	scroll int
+
+	// line is the cursor's row in the current file's diff; mark, when
+	// marking, is where a V range started.
+	line    int
+	mark    int
+	marking bool
+	typing  bool
+	text    string
+	confirm bool
+	draft   domain.ReviewDraft
 }
 
 func prepare(syntax syntaxColors, r rpc.Review) prepared {
@@ -99,17 +114,17 @@ func layoutFile(syntax syntaxColors, wt domain.Worktree, f domain.FileDiff) revi
 	toks := highlight(syntax, f.Path, all)
 	styled := map[domain.DiffLine]*styledLine{}
 	i := 0
-	for _, h := range f.Hunks {
-		rf.unified = append(rf.unified, diffRow{header: h.Header})
-		rf.split = append(rf.split, diffRow{header: h.Header})
+	for hi, h := range f.Hunks {
+		rf.unified = append(rf.unified, diffRow{hunk: hi, header: h.Header})
+		rf.split = append(rf.split, diffRow{hunk: hi, header: h.Header})
 		for _, l := range h.Lines {
 			sl := &styledLine{line: l, toks: toks[i]}
 			styled[l] = sl
 			i++
-			rf.unified = append(rf.unified, diffRow{one: sl})
+			rf.unified = append(rf.unified, diffRow{hunk: hi, one: sl})
 		}
 		for _, r := range domain.SplitRows(h) {
-			row := diffRow{}
+			row := diffRow{hunk: hi}
 			if r.Left != nil {
 				row.left = styled[*r.Left]
 			}
@@ -182,6 +197,7 @@ func (m *Model) gotReview(msg reviewMsg) {
 		m.rv.err = msg.err.Error()
 		m.rv.review, m.rv.prep = rpc.Review{Scope: m.rv.scope}, prepared{}
 		m.rv.cur, m.rv.scroll = 0, 0
+		m.resetLine()
 		return
 	}
 	prevPath := ""
@@ -193,12 +209,18 @@ func (m *Model) gotReview(msg reviewMsg) {
 	for _, mk := range msg.review.Viewed {
 		m.rv.marks[mk.Key()] = mk
 	}
-	m.rv.cur, m.rv.scroll = 0, 0
+	m.rv.draft = msg.review.Draft
+	cur := 0
 	for i, f := range m.rv.prep.files {
 		if f.wt.ID+"\x00"+f.file.Path == prevPath {
-			m.rv.cur = i
+			cur = i
 		}
 	}
+	if cur != m.rv.cur || prevPath == "" {
+		m.rv.cur, m.rv.scroll = cur, 0
+		m.resetLine()
+	}
+	m.clampLine()
 }
 
 func (r reviewState) current() (reviewFile, bool) {
@@ -212,12 +234,41 @@ func (r reviewState) viewed(f reviewFile) bool {
 	return domain.IsViewed(r.marks, f.wt.ID, f.file)
 }
 
-func (m Model) reviewKey(k string) (tea.Model, tea.Cmd) {
+func (m Model) reviewKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+	k := msg.String()
+	switch {
+	case m.rv.typing:
+		return m.commentKey(msg)
+	case m.rv.confirm:
+		m.rv.confirm, m.status = false, ""
+		if k == "y" {
+			return m, m.applyHunk(domain.HunkRevert)
+		}
+		return m, nil
+	}
 	switch k {
 	case "q", "ctrl+c":
 		return m, tea.Quit
-	case "r", "esc":
+	case "esc":
+		if m.rv.marking {
+			m.rv.marking = false
+			return m, nil
+		}
 		return m.closeReview()
+	case "r":
+		return m.closeReview()
+	case "V":
+		m.rv.marking, m.rv.mark = !m.rv.marking, m.rv.line
+	case "c":
+		m.rv.typing, m.rv.text = true, ""
+	case "S":
+		return m, m.sendDraft()
+	case "s":
+		return m, m.applyHunk(domain.HunkStage)
+	case "x":
+		if _, ok := m.cursorHunk(); ok {
+			m.rv.confirm, m.status = true, "revert this hunk? y/n"
+		}
 	case "]", "[", "w":
 		switch k {
 		case "]":
@@ -234,6 +285,7 @@ func (m Model) reviewKey(k string) (tea.Model, tea.Cmd) {
 	case "u":
 		m.rv.split = !m.rv.split
 		m.rv.scroll = 0
+		m.resetLine()
 	case "v":
 		mark := m.toggleViewed()
 		return m, mark
@@ -242,13 +294,13 @@ func (m Model) reviewKey(k string) (tea.Model, tea.Cmd) {
 	case "p":
 		m.moveFile(-1)
 	case "j", "down":
-		m.scrollBy(1)
+		m.moveLine(1)
 	case "k", "up":
-		m.scrollBy(-1)
+		m.moveLine(-1)
 	case "ctrl+d":
-		m.scrollBy(m.diffHeight() / 2)
+		m.moveLine(m.diffHeight() / 2)
 	case "ctrl+u":
-		m.scrollBy(-m.diffHeight() / 2)
+		m.moveLine(-m.diffHeight() / 2)
 	}
 	return m, nil
 }
@@ -279,19 +331,8 @@ func (m *Model) moveFile(delta int) {
 	next := min(max(m.rv.cur+delta, 0), n-1)
 	if next != m.rv.cur {
 		m.rv.cur, m.rv.scroll = next, 0
+		m.resetLine()
 	}
-}
-
-func (m *Model) scrollBy(delta int) {
-	f, ok := m.rv.current()
-	if !ok {
-		return
-	}
-	rows := len(f.unified)
-	if m.rv.split {
-		rows = len(f.split)
-	}
-	m.rv.scroll = min(max(m.rv.scroll+delta, 0), max(rows-m.diffHeight(), 0))
 }
 
 func (m *Model) toggleViewed() tea.Cmd {

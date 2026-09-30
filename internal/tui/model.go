@@ -194,12 +194,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.status = msg.err.Error()
 	case reviewMsg:
 		m.gotReview(msg)
+	case draftMsg:
+		return m.gotDraft(msg)
 	case tea.KeyPressMsg:
 		if m.dialog != nil {
 			return m.dialogKey(msg)
 		}
 		if m.rv.open {
-			return m.reviewKey(msg.String())
+			return m.reviewKey(msg)
 		}
 		if m.launching != nil {
 			return m.launcherKey(msg)

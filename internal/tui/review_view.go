@@ -230,8 +230,12 @@ func (m Model) scopeBar(width int) string {
 		{text: fmt.Sprintf("-%d", del), fg: t.Red},
 		{text: fmt.Sprintf("  %d/%d viewed ", viewed, files), fg: t.Subtext},
 	}
-	if n := m.draftCount(m.rv.session); n > 0 {
-		right = append([]seg{{text: count(n, "draft comment") + "  ", fg: t.Peach}}, right...)
+	if n := len(m.rv.draft.Comments); n > 0 {
+		label := count(n, "comment")
+		if m.rv.draft.Status == domain.DraftQueued {
+			label += " queued"
+		}
+		right = append([]seg{{text: label + "  ", fg: t.Mauve, bold: true}}, right...)
 	}
 	if m.rv.loading {
 		right = append([]seg{{text: "loading…  ", fg: t.Overlay}}, right...)
@@ -390,8 +394,9 @@ func (m Model) diffLines(width, height int) []string {
 	case len(rows) == 0:
 		out = append(out, p.cell(width, "", seg{text: "  no text changes", fg: t.Overlay}))
 	}
+	from, to := m.rv.selected()
 	for i := m.rv.scroll; i < len(rows) && len(out) < height; i++ {
-		out = append(out, m.diffRow(rows[i], width))
+		out = append(out, m.diffRow(rows[i], width, i >= from && i <= to))
 	}
 	for len(out) < height {
 		out = append(out, p.cell(width, ""))
@@ -399,17 +404,23 @@ func (m Model) diffLines(width, height int) []string {
 	return out
 }
 
-func (m Model) diffRow(r diffRow, width int) string {
+// diffRow draws a row; at marks the cursor or a V selection with a bar in
+// its first column.
+func (m Model) diffRow(r diffRow, width int, at bool) string {
 	t := m.opts.Theme
 	p := m.paint
+	bar := seg{text: " "}
+	if at {
+		bar = seg{text: "▌", fg: t.Blue}
+	}
 	if r.header != "" {
-		return p.cell(width, t.Mantle, seg{text: " " + cleanText(r.header), fg: t.Subtext})
+		return p.cell(1, t.Mantle, bar) + p.cell(width-1, t.Mantle, seg{text: cleanText(r.header), fg: t.Subtext})
 	}
 	if r.one != nil {
-		return m.codeCell(r.one, width, sideBoth)
+		return p.cell(1, "", bar) + m.codeCell(r.one, width-1, sideBoth)
 	}
-	half := (width - 1) / 2
-	return m.codeCell(r.left, half, sideOld) + p.style(t.Surface, "", false).Render("│") + m.codeCell(r.right, width-1-half, sideNew)
+	half := (width - 2) / 2
+	return p.cell(1, "", bar) + m.codeCell(r.left, half, sideOld) + p.style(t.Surface, "", false).Render("│") + m.codeCell(r.right, width-2-half, sideNew)
 }
 
 type side int
@@ -460,8 +471,12 @@ func (m Model) codeCell(sl *styledLine, width int, sd side) string {
 
 func (m Model) reviewFooter(width int) string {
 	t := m.opts.Theme
+	if m.rv.typing {
+		return m.paint.cell(width, "", seg{text: " comment: ", fg: t.Mauve, bold: true}, seg{text: m.rv.text + "▏"},
+			seg{text: "   enter add · ctrl+j newline · esc cancel", fg: t.Subtext})
+	}
 	var segs []seg
-	keys := [][2]string{{"v", "viewed"}, {"u", "split"}, {"[ ]", "scope"}, {"w", "worktree"}, {"n/p", "file"}, {"j/k", "scroll"}}
+	keys := [][2]string{{"c", "comment"}, {"V", "range"}, {"S", "send"}, {"s", "stage"}, {"x", "revert"}, {"v", "viewed"}, {"u", "split"}, {"[ ]", "scope"}, {"w", "worktree"}, {"n/p", "file"}, {"j/k", "line"}}
 	if m.opts.Calls != nil {
 		keys = append(keys, [2]string{"o", "nvim"})
 	}
