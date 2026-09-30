@@ -1,0 +1,50 @@
+{
+  "session": "s1",
+  "name": "Add login",
+  "prs": [
+    {
+      "number": 12,
+      "title": "Add login",
+      "url": "https://github.com/o/api/pull/12",
+      "branch": "feat",
+      "state": "OPEN",
+      "checks": "failing",
+      "failing_checks": [
+        {
+          "name": "test",
+          "url": "https://github.com/o/api/actions/runs/1/job/2"
+        },
+        {
+          "name": "ci/deploy",
+          "url": "https://ci.example.com/deploy/9"
+        }
+      ],
+      "review_decision": "CHANGES_REQUESTED",
+      "unresolved_threads": 2,
+      "bot_comments_since_push": 4,
+      "mergeable": "CONFLICTING",
+      "ready_to_merge": false,
+      "blockers": [
+        "checks failing",
+        "changes requested",
+        "merge conflicts",
+        "2 unresolved threads"
+      ]
+    },
+    {
+      "number": 13,
+      "title": "Docs",
+      "url": "https://github.com/o/web/pull/13",
+      "branch": "docs",
+      "state": "OPEN",
+      "checks": "passing",
+      "failing_checks": [],
+      "review_decision": "APPROVED",
+      "unresolved_threads": 0,
+      "bot_comments_since_push": 0,
+      "mergeable": "MERGEABLE",
+      "ready_to_merge": true,
+      "blockers": []
+    }
+  ]
+}
