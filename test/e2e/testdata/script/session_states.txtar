@@ -1,0 +1,32 @@
+# A session's hook events move it running -> waiting -> done. Each gate
+# holds the fake agent until the previous state shows, so no hook overtakes
+# another.
+repo api
+exec agentws workspace add api
+exec agentws new --workspace api 'add a thing'
+capture SID '^session (\S+) on pane %\d+$'
+
+mkdir $AGENTWS_E2E/gates/prompt
+eventually '^seq=\d+ state=running harness=claude ' agentws debug session --once $SID
+mkdir $AGENTWS_E2E/gates/ask
+eventually ' state=waiting ' agentws debug session --once $SID
+mkdir $AGENTWS_E2E/gates/finish
+eventually ' state=done ' agentws debug session --once $SID
+
+# A Codex session goes through the same states from Codex's hooks.
+exec agentws new --workspace api --harness codex 'fix the build'
+capture CID '^session (\S+) on pane'
+mkdir $AGENTWS_E2E/gates/codex
+eventually '^seq=\d+ state=done harness=codex ' agentws debug session --once $CID
+
+-- claude.steps --
+gate prompt
+hook UserPromptSubmit {"prompt":"add a thing"}
+gate ask
+hook Notification {"notification_type":"idle_prompt","message":"Shall I go on?"}
+gate finish
+hook Stop {"last_assistant_message":"Added it."}
+-- codex.steps --
+gate codex
+hook UserPromptSubmit {"prompt":"fix the build"}
+hook Stop {"last_assistant_message":"Fixed."}

@@ -104,7 +104,7 @@ func (s *state) noteHook(sessionID string, kind domain.HarnessEventKind, payload
 				kept = append(kept, c)
 			}
 		}
-		s.hints.claims = append(kept, domain.WorktreeClaim{SessionID: sessionID, Command: cmd, At: now})
+		s.hints.claims = append(kept, domain.WorktreeClaim{SessionID: sessionID, Cwd: p.Cwd, Command: cmd, At: now})
 		s.hints.wake()
 	}
 }
@@ -198,6 +198,9 @@ func (d *Daemon) scanWorktrees(ctx context.Context) {
 				s.removeWorktree(id)
 			}
 			removedBy[l.Main] = append(removedBy[l.Main], removed...)
+		}
+		for _, w := range domain.ReclaimWorktrees(sorted(s.worktrees), s.hints.claims, now) {
+			s.putWorktree(w)
 		}
 	})
 	d.dropTurns(ctx, removedBy)

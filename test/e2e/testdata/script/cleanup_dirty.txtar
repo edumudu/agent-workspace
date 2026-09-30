@@ -1,0 +1,30 @@
+# A merged worktree with uncommitted changes is backed up, not removed.
+repo api
+exec agentws workspace add api
+exec agentws new --workspace api 'ship part c'
+capture SID '^session (\S+) on pane'
+eventually ' state=done ' agentws debug session --once $SID
+mkdir $AGENTWS_E2E/gates/end
+eventually ' state=idle ' agentws debug session --once $SID
+eventually '/api-c\s+feat-c\s+'$SID'\s' agentws worktree list
+capture C '^(\S+/api-c)\s'
+
+cp prs-merged.json prs.json
+eventually '/api-c\s+feat-c\s+'$SID'\s+#8 MERGED' agentws worktree list
+exec agentws cleanup
+stdout '^backup_then_ask\s+\S+/api-c\s+feat-c\s+1 uncommitted changes'
+exists $C/wip.txt
+exec ls $AGENTWS_HOME/backups
+stdout .
+
+-- claude.steps --
+hook UserPromptSubmit {"prompt":"ship part c"}
+run git worktree add -q -b feat-c ../api-c && cd ../api-c && echo c > c.txt && git add c.txt && git commit -qm c && echo wip > wip.txt
+hook Stop
+gate end
+hook SessionEnd
+-- prs-merged.json --
+{"data":{"r0":{"pullRequests":{"nodes":[
+  {"number":8,"title":"Part c","url":"https://github.com/o/api/pull/8","headRefName":"feat-c","state":"MERGED",
+   "reviewDecision":"APPROVED","mergeable":"UNKNOWN",
+   "reviewThreads":{"nodes":[]},"comments":{"nodes":[]},"reviews":{"nodes":[]},"commits":{"nodes":[]}}]}}}}
