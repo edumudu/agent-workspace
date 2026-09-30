@@ -106,6 +106,18 @@ func TestShellToggleKeepsOneShellPerSessionAndWorktree(t *testing.T) {
 	}
 }
 
+func TestShellToggleNeverMovesFocusToTheAgentPane(t *testing.T) {
+	r := startTerm(t, []domain.Session{termSession}, termWTs)
+	for range 2 {
+		if _, err := r.toggle(t, rpc.ShellParams{Session: "s1"}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if len(r.client.focused) != 0 {
+		t.Fatalf("focus moved to the slot %v times; showing the agent must leave focus with the caller or the shell", len(r.client.focused))
+	}
+}
+
 func TestShellToggleStartsAFreshShellWhenTheOldOneExited(t *testing.T) {
 	r := startTerm(t, []domain.Session{termSession}, termWTs)
 	first, _ := r.toggle(t, rpc.ShellParams{Session: "s1"})
