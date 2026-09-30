@@ -86,6 +86,10 @@ func start(t *testing.T, poll, prPoll time.Duration) env {
 	if err := os.WriteFile(gh, []byte(script), 0o755); err != nil {
 		t.Fatal(err)
 	}
+	// why: macOS scans a new executable on its first run, which takes seconds and would otherwise land in a timed PR poll.
+	if out, err := exec.Command(gh).CombinedOutput(); err != nil {
+		t.Fatalf("fake gh: %v\n%s", err, out)
+	}
 
 	store, err := sqlite.Open(filepath.Join(tmp, "state.db"))
 	if err != nil {
