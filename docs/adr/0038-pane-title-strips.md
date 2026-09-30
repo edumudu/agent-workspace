@@ -7,7 +7,7 @@ Status: accepted, 2026-09-30.
 - The agentws tmux config sets `pane-border-status top` and `pane-border-format "#{?@agentws_title, #{@agentws_title} ,}"`, so every pane has a top border, and one with the `@agentws_title` pane option set shows that text in it.
 - `app.TerminalHost.SetTitle(pane, title)` sets the option (`set-option -p`).
 - Each agent pane's title is `domain.AgentTitle(session, worktrees, cwd)`, as in `docs/images/sessions.png`: `◐ claude · opus-5.5 · high · cwd platform │ api:org-scope #3611 ◐ │ web:share-token #5731 ✓ │ api:legacy-removal no PR`. The state mark and PR marks are the sidebar's; `cwd` is the session's last hook cwd.
-- A daemon worker (`paneTitles`) reads state on the loop every 250 ms, works out the titles of sessions on a pane, and runs `SetTitle` off the loop only for those that changed.
+- A daemon worker (`paneTitles`) looks every 250 ms. Only when the state changed does it copy the sessions on a pane and the worktrees on the loop; it formats the titles and runs `SetTitle` on its own goroutine, only for those that changed.
 - The shell split's title is `domain.ShellTitle`: `shell · api:org-scope · /path · t hide · s type · T popup`, set when the daemon shows the shell (#92).
 
 ## Why
