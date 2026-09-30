@@ -228,7 +228,7 @@ func (m Model) sessionLines(e entry, sel bool) []string {
 			[]piece{bar, {s.dim, "     └ "}, {s.text, worktreeLabel(w)}},
 			[]piece{pr, {s.text, "   "}}))
 	}
-	return out
+	return append(out, m.subagentLines(x.ID, sel)...)
 }
 
 func (m Model) muteMarker(x domain.Session) []piece {
