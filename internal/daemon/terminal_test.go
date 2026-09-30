@@ -319,6 +319,9 @@ func TestReviewCommentRefusesWhatItCannotPlace(t *testing.T) {
 		{"no line", rpc.CommentParams{Session: "s1", File: "/wt/api/a.go", Body: "x"}, rpc.CodeBadRequest},
 		{"an empty comment", rpc.CommentParams{Session: "s1", File: "/wt/api/a.go", StartLine: 1, Body: "  "}, rpc.CodeBadRequest},
 		{"an unknown worktree", rpc.CommentParams{Session: "s1", Worktree: "w-x", Path: "a.go", StartLine: 1, Body: "x"}, rpc.CodeBadRequest},
+		{"a path that climbs out of the worktree", rpc.CommentParams{Session: "s1", Worktree: "w-api", Path: "../web/a.go", StartLine: 1, Body: "x"}, rpc.CodeBadRequest},
+		{"an absolute path with a worktree", rpc.CommentParams{Session: "s1", Worktree: "w-api", Path: "/wt/api/a.go", StartLine: 1, Body: "x"}, rpc.CodeBadRequest},
+		{"the worktree directory itself", rpc.CommentParams{Session: "s1", Worktree: "w-api", Path: ".", StartLine: 1, Body: "x"}, rpc.CodeBadRequest},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {

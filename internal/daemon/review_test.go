@@ -157,6 +157,24 @@ func TestReviewWithoutAScopeUsesTheLastOneOpenedForTheSession(t *testing.T) {
 	}
 }
 
+func TestReviewRefusesAnUnknownScopeAndKeepsTheSavedOne(t *testing.T) {
+	env := startReview(t, time.Hour)
+	c := dial(t, env.path)
+	ctx := context.Background()
+	if _, err := c.Review(ctx, rpc.ReviewParams{Session: "s1", Scope: domain.ScopeBranch}); err != nil {
+		t.Fatal(err)
+	}
+	_, err := c.Review(ctx, rpc.ReviewParams{Session: "s1", Scope: "typo"})
+	var rerr *rpc.Error
+	if !errors.As(err, &rerr) || rerr.Code != rpc.CodeBadRequest {
+		t.Fatalf("err = %v; want bad_request for an unknown scope", err)
+	}
+	again, err := c.Review(ctx, rpc.ReviewParams{Session: "s1"})
+	if err != nil || again.Scope != domain.ScopeBranch {
+		t.Fatalf("scope %q after a refused one, %v; want the saved branch scope", again.Scope, err)
+	}
+}
+
 func TestReviewRemovedWorktreeDropsItsTurns(t *testing.T) {
 	env := startReview(t, 20*time.Millisecond)
 	keep := domain.TurnRef("s1", "/solo", 1)
