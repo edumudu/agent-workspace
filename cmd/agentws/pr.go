@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"slices"
 	"strings"
 	"text/tabwriter"
 
@@ -108,7 +109,7 @@ func prReportFor(st rpc.State, arg string) (prReport, error) {
 	prsOf := func(s domain.Session) []domain.PullRequest {
 		var owned []domain.Worktree
 		for _, w := range st.Worktrees {
-			if w.SessionID == s.ID {
+			if slices.Contains(s.WorktreeIDs, w.ID) {
 				owned = append(owned, w)
 			}
 		}
