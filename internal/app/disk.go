@@ -17,6 +17,12 @@ type VolumeStat interface {
 	Stat(path string) (free, total uint64, err error)
 }
 
+// CleanupHistory reads back what the audit log recorded.
+type CleanupHistory interface {
+	// Recent returns at most n records, newest first.
+	Recent(n int) []CleanupRecord
+}
+
 type sizeEntry struct {
 	size       int64
 	known      bool
