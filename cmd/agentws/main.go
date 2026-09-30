@@ -37,6 +37,13 @@ func run(args []string, stdout, stderr io.Writer) int {
 	case cmd == "hook":
 		home, _ := rpc.Home()
 		return runHook(args[1:], os.Stdin, stdout, home, os.Getenv("TMUX_PANE"))
+	case cmd == "setup":
+		self, err := os.Executable()
+		if err != nil {
+			fmt.Fprintf(stderr, "agentws setup: %v\n", err)
+			return 1
+		}
+		return runSetup(args[1:], stdout, stderr, os.Getenv, self)
 	case cmd == "daemon":
 		return runDaemon(args[1:], stdout, stderr)
 	case cmd == "workspace":
@@ -66,5 +73,5 @@ func buildCommit() string {
 }
 
 func usage(w io.Writer) {
-	fmt.Fprintln(w, "usage: agentws [daemon|workspace|tui|debug|hook|new|cleanup|version]")
+	fmt.Fprintln(w, "usage: agentws [daemon|workspace|tui|debug|hook|setup|new|cleanup|version]")
 }
