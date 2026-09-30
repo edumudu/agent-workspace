@@ -31,16 +31,16 @@ func prState() rpc.State {
 	return rpc.State{
 		Tasks: []domain.Task{{ID: "t1", Text: "login work"}, {ID: "t2", Text: "other"}},
 		Sessions: []domain.Session{
-			{ID: "s1", TaskID: "t1"},
+			{ID: "s1", TaskID: "t1", WorktreeIDs: []string{"/w/api-feat", "/w/api-feat2", "/w/web-docs", "/w/api-bare"}},
 			{ID: "s12", TaskID: "t2"},
-			{ID: "s2", TaskID: "t2"},
+			{ID: "s2", TaskID: "t2", WorktreeIDs: []string{"/w/api-other"}},
 		},
 		Worktrees: []domain.Worktree{
-			{ID: "/w/api-feat", SessionID: "s1", Branch: "feat", PR: blocked},
-			{ID: "/w/api-feat2", SessionID: "s1", Branch: "feat", PR: blocked},
-			{ID: "/w/web-docs", SessionID: "s1", Branch: "docs", PR: ready},
-			{ID: "/w/api-bare", SessionID: "s1", Branch: "bare"},
-			{ID: "/w/api-other", SessionID: "s2", Branch: "other", PR: other},
+			{ID: "/w/api-feat", Branch: "feat", PR: blocked},
+			{ID: "/w/api-feat2", Branch: "feat", PR: blocked},
+			{ID: "/w/web-docs", Branch: "docs", PR: ready},
+			{ID: "/w/api-bare", Branch: "bare"},
+			{ID: "/w/api-other", Branch: "other", PR: other},
 		},
 	}
 }
