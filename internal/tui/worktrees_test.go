@@ -49,19 +49,20 @@ type diskRig struct {
 	focuser  *fakeFocuser
 }
 
-func diskModel(views ...rpc.DiskView) diskRig {
+func diskModel(views ...rpc.DiskView) *diskRig {
 	st := fixture(2, 2)
 	branches := []string{"feat-a", "feat-b", "feat-c", "feat-d"}
 	for i := range st.Worktrees {
 		st.Worktrees[i].Path = "/wt/" + st.Worktrees[i].ID
 		st.Worktrees[i].Branch = branches[i]
+		st.Worktrees[i].SessionID = "s" + st.Worktrees[i].ID[1:3]
 	}
 	st.Worktrees[0].PR.State = domain.PRMerged
 	st.Worktrees[2].Ports = []domain.Port{{Port: 3000, PID: 201, PGID: 200, Command: "bun"}}
 	if len(views) == 0 {
 		views = []rpc.DiskView{diskView(diskRows()...)}
 	}
-	r := diskRig{disk: &fakeDisker{views: views, item: rpc.CleanupItem{Outcome: "removed"}}, killer: &fakeKiller{}, attender: &fakeAttender{}, focuser: &fakeFocuser{}}
+	r := &diskRig{disk: &fakeDisker{views: views, item: rpc.CleanupItem{Outcome: "removed"}}, killer: &fakeKiller{}, attender: &fakeAttender{}, focuser: &fakeFocuser{}}
 	m := tui.New(tui.Options{Theme: tui.Latte(), Now: clock, Disk: r.disk, Kill: r.killer, Attend: r.attender, Focus: r.focuser})
 	m = update(m, tea.WindowSizeMsg{Width: 150, Height: 40})
 	r.m = update(m, tui.StateMsg(st))
