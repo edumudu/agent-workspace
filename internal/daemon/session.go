@@ -80,6 +80,7 @@ func (d *Daemon) newSession(req rpc.Request) (*rpc.Response, bool) {
 	ok = d.query(func(s *state) {
 		if in.isNew {
 			s.emit(TaskChanged{Task: in.task})
+			d.resolveTitleAsync(in.task)
 		}
 		if started.Worktree != nil {
 			s.emit(WorktreeChanged{Worktree: *started.Worktree})

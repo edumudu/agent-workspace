@@ -583,3 +583,32 @@ func (g *fakeReviewGit) refsOf(dir string) map[string]string {
 	}
 	return out
 }
+
+type fakeTitles struct {
+	mu     sync.Mutex
+	title  string
+	err    error
+	gate   chan struct{}
+	called []domain.Task
+}
+
+func (f *fakeTitles) Title(ctx context.Context, task domain.Task) (string, error) {
+	f.mu.Lock()
+	f.called = append(f.called, task)
+	gate, title, err := f.gate, f.title, f.err
+	f.mu.Unlock()
+	if gate != nil {
+		select {
+		case <-gate:
+		case <-ctx.Done():
+			return "", ctx.Err()
+		}
+	}
+	return title, err
+}
+
+func (f *fakeTitles) calls() []domain.Task {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return append([]domain.Task(nil), f.called...)
+}

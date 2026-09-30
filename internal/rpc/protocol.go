@@ -38,6 +38,10 @@ const (
 	MethodWorktreeAssign = "worktree.assign"
 	MethodNewSession     = "session.new"
 	MethodEndSession     = "session.end"
+	// MethodSessionRename pins a name on the session's task; MethodSessionUnpin
+	// takes it off, so the name is automatic again.
+	MethodSessionRename = "session.rename"
+	MethodSessionUnpin  = "session.unpin"
 	// MethodPortsKill terminates the process groups behind worktree ports.
 	MethodPortsKill    = "ports.kill"
 	MethodReviewOpen   = "review.open"
@@ -101,6 +105,13 @@ type CleanupItem struct {
 type SessionMuteParams struct {
 	ID    string `json:"id"`
 	Muted bool   `json:"muted"`
+}
+
+// SessionRenameParams pins Name on the task the session belongs to, which
+// every session on that task shares.
+type SessionRenameParams struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
 }
 
 type SessionFocusParams struct {

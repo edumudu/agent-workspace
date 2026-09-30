@@ -310,3 +310,10 @@ func (g *fakeReviewGit) Diff(_ context.Context, _ string, from, tree string) (st
 	g.diffCalls++
 	return g.diffs[from+".."+tree], nil
 }
+
+type titleFake struct {
+	title string
+	err   error
+}
+
+func (f titleFake) Title(context.Context, domain.Task) (string, error) { return f.title, f.err }
