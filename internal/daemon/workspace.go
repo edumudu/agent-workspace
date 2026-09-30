@@ -14,7 +14,6 @@ import (
 
 const defaultRefreshInterval = 30 * time.Second
 
-// Option configures a Daemon.
 type Option func(*Daemon)
 
 // WithWorkspaces enables the workspace.* methods. fs and git do IO, so they

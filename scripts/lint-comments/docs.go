@@ -125,8 +125,8 @@ func fieldWords(fields *ast.FieldList) []string {
 	return words
 }
 
-// identWords takes only the top-level identifiers of a type expression count; a struct's
-// field names are what a doc comment may legitimately talk about.
+// identWords returns only the top-level identifiers of a type expression: a
+// struct's field names are what its doc comment may talk about.
 func identWords(expr ast.Expr) []string {
 	switch e := expr.(type) {
 	case *ast.Ident:

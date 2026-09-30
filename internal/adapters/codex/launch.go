@@ -37,7 +37,6 @@ func Launch(ctx context.Context, host app.TerminalHost, req LaunchRequest) (app.
 	return host.Create(ctx, LaunchSpec(req))
 }
 
-// Adapter is the app.HarnessAdapter for Codex.
 type Adapter struct{}
 
 func (Adapter) Harness() domain.Harness { return domain.HarnessCodex }
