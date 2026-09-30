@@ -156,7 +156,7 @@ func (d *Daemon) toggleShell(ctx context.Context, session domain.Session, target
 	}
 	err = d.withClient(func(ctx context.Context, h ClientHost, slot app.Slot) error {
 		editor, editing := d.term.nvims[session.ID]
-		if session.Pane != "" && !(editing && h.ShownIn(ctx, slot) == editor) {
+		if session.Pane != "" && (!editing || h.ShownIn(ctx, slot) != editor) {
 			if err := d.hs.host.Show(ctx, app.PaneID(session.Pane), slot); err != nil {
 				return err
 			}
