@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/giovaniif/agent-workspace/internal/app"
 	"github.com/giovaniif/agent-workspace/internal/domain"
 )
 
@@ -283,5 +284,53 @@ func BenchmarkFlush1000SessionUpdates(b *testing.B) {
 		if d := time.Since(start); d > 200*time.Millisecond {
 			b.Fatalf("1000 updates flushed in %v, budget 200ms", d)
 		}
+	}
+}
+
+func TestEventsSurviveARestartInOrder(t *testing.T) {
+	s, path := openTemp(t)
+	at := time.Date(2026, 9, 29, 21, 0, 0, 0, time.UTC)
+	want := []domain.SessionEvent{
+		{SessionID: "s1", At: at, Kind: domain.EventPreToolUse, Tool: "Bash", Detail: "make"},
+		{SessionID: "s2", At: at.Add(time.Second), Kind: domain.EventStop, Text: "Done?"},
+		{SessionID: "s1", At: at.Add(2 * time.Second), Kind: domain.EventPermissionRequest, Text: "Bash: rm x"},
+	}
+	for _, ev := range want {
+		s.PutEvent(ev)
+	}
+	snap, err := reopen(t, s, path).Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(snap.Events, want) {
+		t.Fatalf("events = %+v, want %+v", snap.Events, want)
+	}
+}
+
+func TestOnlyTheNewestEventsOfEachSessionAreKept(t *testing.T) {
+	s, path := openTemp(t)
+	for i := range app.EventsPerSession + 5 {
+		s.PutEvent(domain.SessionEvent{SessionID: "busy", Detail: strconv.Itoa(i)})
+		if i < 3 {
+			s.PutEvent(domain.SessionEvent{SessionID: "quiet", Detail: strconv.Itoa(i)})
+		}
+	}
+	snap, err := reopen(t, s, path).Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var busy, quiet []string
+	for _, ev := range snap.Events {
+		if ev.SessionID == "busy" {
+			busy = append(busy, ev.Detail)
+		} else {
+			quiet = append(quiet, ev.Detail)
+		}
+	}
+	if len(busy) != app.EventsPerSession || busy[0] != "5" || busy[len(busy)-1] != strconv.Itoa(app.EventsPerSession+4) {
+		t.Errorf("busy kept %v", busy)
+	}
+	if !reflect.DeepEqual(quiet, []string{"0", "1", "2"}) {
+		t.Errorf("quiet kept %v", quiet)
 	}
 }

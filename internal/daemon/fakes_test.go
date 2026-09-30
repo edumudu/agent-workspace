@@ -52,6 +52,12 @@ func (s *memStore) PutSession(x domain.Session) {
 	s.snap.Sessions = append(s.snap.Sessions, x)
 }
 
+func (s *memStore) PutEvent(ev domain.SessionEvent) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.snap.Events = append(s.snap.Events, ev)
+}
+
 func (s *memStore) Load() (app.Snapshot, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
