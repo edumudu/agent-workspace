@@ -70,6 +70,7 @@ func TestNamingSummarizesTheFirstPrompt(t *testing.T) {
 		{"first line only", "migrate the users table\nand then update the docs", "migrate the users table"},
 		{"punctuation trimmed", "\"Fix\" the (auth) bug, please", "Fix the (auth) bug"},
 		{"one word stays", "refactor", "refactor"},
+		{"two words keep a trailing connective", "upgrade to", "upgrade to"},
 		{"all filler falls back to the words", "please help me", "please help me"},
 		{"blank", "  \n ", ""},
 	}
