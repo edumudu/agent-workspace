@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"sync"
 	"testing"
 	"time"
 
@@ -12,44 +11,6 @@ import (
 	"github.com/giovaniif/agent-workspace/internal/domain"
 	"github.com/giovaniif/agent-workspace/internal/rpc"
 )
-
-type fakeLister struct {
-	mu       sync.Mutex
-	listings map[string]domain.RepoListing
-}
-
-func (f *fakeLister) ListWorktrees(_ context.Context, dir string) (domain.RepoListing, error) {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	l, ok := f.listings[dir]
-	if !ok {
-		return domain.RepoListing{}, errors.New("not a git repo")
-	}
-	return l, nil
-}
-
-func (f *fakeLister) set(dir string, wts ...domain.ListedWorktree) {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	f.listings[dir] = domain.RepoListing{Main: dir, Worktrees: wts}
-}
-
-type fakeFinder struct {
-	mu  sync.Mutex
-	prs map[string][]domain.PullRequest
-}
-
-func (f *fakeFinder) PRs(_ context.Context, repo string) ([]domain.PullRequest, error) {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	return f.prs[repo], nil
-}
-
-func (f *fakeFinder) set(repo string, prs ...domain.PullRequest) {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	f.prs[repo] = prs
-}
 
 var soloFS = fakeFS{markers: map[string]domain.GitMarker{"/solo": domain.GitDir}}
 

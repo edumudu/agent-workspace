@@ -2,24 +2,12 @@ package app_test
 
 import (
 	"context"
-	"errors"
 	"reflect"
-	"sync"
 	"testing"
 
 	"github.com/giovaniif/agent-workspace/internal/app"
 	"github.com/giovaniif/agent-workspace/internal/domain"
 )
-
-type fakeLister map[string]domain.RepoListing
-
-func (f fakeLister) ListWorktrees(_ context.Context, dir string) (domain.RepoListing, error) {
-	l, ok := f[dir]
-	if !ok {
-		return domain.RepoListing{}, errors.New("not a git repo")
-	}
-	return l, nil
-}
 
 func TestWorktreeDetectScanListsEachRepoOnce(t *testing.T) {
 	api := domain.RepoListing{Main: "/w/api", Worktrees: []domain.ListedWorktree{{Path: "/w/api-a", Branch: "a"}}}
@@ -30,23 +18,6 @@ func TestWorktreeDetectScanListsEachRepoOnce(t *testing.T) {
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("got %+v, want %+v", got, want)
 	}
-}
-
-type fakeFinder struct {
-	mu    sync.Mutex
-	prs   map[string][]domain.PullRequest
-	calls map[string]int
-}
-
-func (f *fakeFinder) PRs(_ context.Context, repo string) ([]domain.PullRequest, error) {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	f.calls[repo]++
-	prs, ok := f.prs[repo]
-	if !ok {
-		return nil, errors.New("gh failed")
-	}
-	return prs, nil
 }
 
 func TestWorktreeDetectRefreshPRsReturnsOnlyChanges(t *testing.T) {
