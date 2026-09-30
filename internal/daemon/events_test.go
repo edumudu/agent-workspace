@@ -81,3 +81,29 @@ func TestRestoredEventsAreInTheSnapshot(t *testing.T) {
 		t.Fatalf("events %+v", sub.State.Events)
 	}
 }
+
+func TestDebugSeedGivesEverySessionAnEventLogForTheCard(t *testing.T) {
+	_, path := start(t, &memStore{})
+	c := dial(t, path)
+	ctx := context.Background()
+	if err := c.DebugSeed(ctx, 5); err != nil {
+		t.Fatal(err)
+	}
+	sub, err := dial(t, path).Subscribe(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, s := range sub.State.Sessions {
+		card := domain.BuildSessionCard(domain.Task{}, s, nil, sub.State.Events)
+		if len(card.Actions) == 0 {
+			t.Errorf("%s (%s) has no actions", s.ID, s.State)
+		}
+		needsReason := s.State == domain.StatePermission || s.State == domain.StateWaiting
+		if needsReason && card.Waiting == "" {
+			t.Errorf("%s (%s) waits on nothing", s.ID, s.State)
+		}
+		if !needsReason && card.Waiting != "" {
+			t.Errorf("%s (%s) waits on %q", s.ID, s.State, card.Waiting)
+		}
+	}
+}
