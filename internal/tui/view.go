@@ -309,10 +309,16 @@ func (m Model) helpLines() []string {
 func (m Model) footer() []string {
 	s := m.styles
 	worktrees := 0
+	var ports []domain.Port
 	for _, e := range m.entries {
 		worktrees += len(e.session.WorktreeIDs)
+		ports = append(ports, e.ports()...)
 	}
-	right := []piece{{s.sub, count(len(m.entries), "session") + " · " + count(worktrees, "worktree") + " "}}
+	counts := count(len(m.entries), "session") + " · " + count(worktrees, "worktree")
+	if label := portLabel(ports); label != "" {
+		counts += " · ports " + strings.ReplaceAll(label, ":", "")
+	}
+	right := []piece{{s.sub, counts + " "}}
 	left, withCounts := m.statusLeft()
 	switch {
 	case m.status != "":
@@ -322,10 +328,17 @@ func (m Model) footer() []string {
 	}
 	return []string{
 		"",
-		m.line(false, []piece{{s.bold, " ⏎"}, {s.sub, " focus      "}, {s.bold, "␣"}, {s.sub, " next waiting"}}, nil),
-		m.line(false, []piece{{s.bold, " ⇥"}, {s.sub, " last       "}, {s.bold, "?"}, {s.sub, " keys"}}, nil),
+		m.keyRow("n", "new session", "r", "review"),
+		m.keyRow("t", "shell", "e", "nvim"),
+		m.keyRow("w", "worktrees", "␣", "next waiting"),
 		m.line(false, left, right),
 	}
+}
+
+// keyRow is one footer row of two key hints in columns, as in the mockup.
+func (m Model) keyRow(k1, what1, k2, what2 string) string {
+	s := m.styles
+	return m.line(false, []piece{{s.bold, " " + k1}, {s.sub, fmt.Sprintf(" %-14s", what1)}, {s.bold, k2}, {s.sub, " " + what2}}, nil)
 }
 
 // statusLeft is the status line's left side. Ports and the kill prompt need
