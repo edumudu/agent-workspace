@@ -108,11 +108,11 @@ func setup(env *testscript.Env, fakes string) error {
 }
 
 // eventually <regexp> <command> [args...] runs the command until its stdout
-// matches, failing after waitWithin. The last run's stdout stays for the
-// commands that follow.
+// matches, failing after waitWithin; `! eventually` runs it until its stdout
+// no longer matches. The last run's stdout stays for the commands that follow.
 func eventually(ts *testscript.TestScript, neg bool, args []string) {
-	if neg || len(args) < 2 {
-		ts.Fatalf("usage: eventually <regexp> <command> [args...]")
+	if len(args) < 2 {
+		ts.Fatalf("usage: [!] eventually <regexp> <command> [args...]")
 	}
 	re, err := regexp.Compile(`(?m)` + args[0])
 	ts.Check(err)
@@ -120,11 +120,15 @@ func eventually(ts *testscript.TestScript, neg bool, args []string) {
 	for {
 		runErr := ts.Exec(args[1], args[2:]...)
 		out := ts.ReadFile("stdout")
-		if runErr == nil && re.MatchString(out) {
+		if runErr == nil && re.MatchString(out) != neg {
 			return
 		}
 		if time.Now().After(deadline) {
-			ts.Fatalf("no match for %q within %v; last stdout:\n%s\nstderr:\n%s\nerr: %v", args[0], waitWithin, out, ts.ReadFile("stderr"), runErr)
+			want := "no match"
+			if neg {
+				want = "still a match"
+			}
+			ts.Fatalf("%s for %q after %v; last stdout:\n%s\nstderr:\n%s\nerr: %v", want, args[0], waitWithin, out, ts.ReadFile("stderr"), runErr)
 		}
 		time.Sleep(25 * time.Millisecond)
 	}
