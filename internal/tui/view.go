@@ -211,7 +211,7 @@ func (m Model) sessionLines(e entry, sel bool) []string {
 	detail := strings.TrimSpace(x.Model + " " + x.Effort)
 	trees := "root only"
 	if n := len(x.WorktreeIDs); n > 0 {
-		trees = fmt.Sprintf("%d worktrees", n)
+		trees = count(n, "worktree")
 	}
 	out = append(out, m.line(sel, []piece{bar, {s.sub, fmt.Sprintf("    %s  ctx %d%%  %s", detail, x.Usage.ContextLeftPercent, trees)}}, nil))
 	if m.collapsed[x.ID] {
@@ -267,7 +267,7 @@ func (m Model) footer() []string {
 	for _, e := range m.entries {
 		worktrees += len(e.session.WorktreeIDs)
 	}
-	right := []piece{{s.sub, fmt.Sprintf("%d sessions · %d worktrees ", len(m.entries), worktrees)}}
+	right := []piece{{s.sub, count(len(m.entries), "session") + " · " + count(worktrees, "worktree") + " "}}
 	if m.status != "" {
 		right = []piece{{s.peach, m.status + " "}}
 	}
@@ -306,4 +306,11 @@ func worktreeLabel(w domain.Worktree) string {
 		return w.Repo
 	}
 	return w.Repo + ":" + part
+}
+
+func count(n int, noun string) string {
+	if n == 1 {
+		return fmt.Sprintf("1 %s", noun)
+	}
+	return fmt.Sprintf("%d %ss", n, noun)
 }
