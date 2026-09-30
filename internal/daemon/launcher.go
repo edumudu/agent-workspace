@@ -3,9 +3,13 @@ package daemon
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io/fs"
 	"log"
 	"slices"
+
+	"github.com/BurntSushi/toml"
 
 	"github.com/giovaniif/agent-workspace/internal/domain"
 	"github.com/giovaniif/agent-workspace/internal/rpc"
@@ -25,6 +29,24 @@ func WithLauncher(maxParallel int) Option {
 		d.lc.enabled = true
 		d.lc.maxParallel = maxParallel
 	}
+}
+
+// LoadMaxParallel reads max_parallel from the [launcher] table of a
+// config.toml. A missing file or key gives 0, which means the default.
+func LoadMaxParallel(path string) (int, error) {
+	var cfg struct {
+		Launcher struct {
+			MaxParallel int `toml:"max_parallel"`
+		} `toml:"launcher"`
+	}
+	_, err := toml.DecodeFile(path, &cfg)
+	if errors.Is(err, fs.ErrNotExist) {
+		return 0, nil
+	}
+	if err != nil {
+		return 0, fmt.Errorf("launcher: %s: %w", path, err)
+	}
+	return cfg.Launcher.MaxParallel, nil
 }
 
 // QueueChanged replaces the launcher queue.
