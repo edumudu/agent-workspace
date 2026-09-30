@@ -12,7 +12,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/giovaniif/agent-workspace/internal/app"
 	"github.com/giovaniif/agent-workspace/internal/daemon"
 	"github.com/giovaniif/agent-workspace/internal/domain"
 	"github.com/giovaniif/agent-workspace/internal/rpc"
@@ -64,17 +63,6 @@ func TestHookWithBadArgumentsStillExitsZeroAndLogs(t *testing.T) {
 		t.Fatal(err)
 	}
 }
-
-type nopStore struct{}
-
-func (nopStore) PutWorkspace(domain.Workspace) {}
-func (nopStore) DeleteWorkspace(string)        {}
-func (nopStore) PutTask(domain.Task)           {}
-func (nopStore) PutWorktree(domain.Worktree)   {}
-func (nopStore) PutSession(domain.Session)     {}
-func (nopStore) Load() (app.Snapshot, error)   { return app.Snapshot{}, nil }
-func (nopStore) Flush() error                  { return nil }
-func (nopStore) Close() error                  { return nil }
 
 func TestHookEventReachesDaemonStateWithin150ms(t *testing.T) {
 	home := shortHome(t)
