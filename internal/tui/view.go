@@ -285,6 +285,7 @@ func (m Model) helpLines() []string {
 		{"R", "rename and pin the name"},
 		{"A", "unpin (name is automatic)"},
 		{"K", "kill the session's dev servers"},
+		{"r", "review the session's changes"},
 		{"w", "worktrees and disk"},
 		{"t / T", "shell below / popup"},
 		{"e", "nvim (o in a review opens the line)"},
