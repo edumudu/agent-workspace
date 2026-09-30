@@ -13,6 +13,7 @@ func (nopStore) PutTask(domain.Task)           {}
 func (nopStore) PutWorktree(domain.Worktree)   {}
 func (nopStore) DeleteWorktree(string)         {}
 func (nopStore) PutSession(domain.Session)     {}
+func (nopStore) DeleteSession(string)          {}
 func (nopStore) PutEvent(domain.SessionEvent)  {}
 func (nopStore) PutViewed(domain.ViewedMark)   {}
 func (nopStore) DeleteViewed(string)           {}

@@ -9,6 +9,7 @@ import (
 	"context"
 	"encoding/json"
 	"net"
+	"slices"
 	"sort"
 	"sync"
 	"time"
@@ -69,6 +70,13 @@ func (e WorktreeChanged) apply(s *state) rpc.Diff {
 }
 
 func (e SessionChanged) apply(s *state) rpc.Diff {
+	if e.Session.Forgotten() {
+		delete(s.sessions, e.Session.ID)
+		delete(s.events, e.Session.ID)
+		s.subagents = slices.DeleteFunc(s.subagents, func(x domain.Subagent) bool { return x.SessionID == e.Session.ID })
+		s.store.DeleteSession(e.Session.ID)
+		return rpc.Diff{RemovedSession: e.Session.ID}
+	}
 	s.sessions[e.Session.ID] = e.Session
 	s.store.PutSession(e.Session)
 	return rpc.Diff{Session: &e.Session}
