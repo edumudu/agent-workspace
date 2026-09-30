@@ -95,6 +95,9 @@ const (
 
 func (m Model) reviewWidths() (area, tree, diff int) {
 	area = max(m.width-railWidth-1, 20)
+	if agent := m.agentColumnWidth(); agent > 0 {
+		area -= agent + 1
+	}
 	tree = min(treeMax, area/3)
 	return area, tree, area - tree - 1
 }
@@ -117,8 +120,17 @@ func (m Model) reviewView() string {
 	for i := range bodyH {
 		right = append(right, tree[i]+sep+diff[i])
 	}
-	right = append(right, m.reviewFooter(area))
-	rail := m.railLines(len(right))
+	rail := m.railLines(len(right) + 1)
+	footerWidth := area
+	if w := m.agentColumnWidth(); w > 0 {
+		agent := m.agentColumn(w, len(right))
+		for i := range right {
+			right[i] = agent[i] + sep + right[i]
+		}
+		// why: the key hints run under the agent column too, so a narrower review cuts none of them.
+		footerWidth += w + 1
+	}
+	right = append(right, m.reviewFooter(footerWidth))
 	for i, r := range right {
 		lines = append(lines, rail[i]+sep+r)
 	}
