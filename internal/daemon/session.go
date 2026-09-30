@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"sync"
 
 	"github.com/giovaniif/agent-workspace/internal/app"
 	"github.com/giovaniif/agent-workspace/internal/domain"
@@ -14,6 +15,7 @@ type sessionDeps struct {
 	worktrees    app.WorktreeAdder
 	setup        app.SetupFunc
 	worktreeHome string
+	addMu        sync.Mutex
 }
 
 // WithSessions enables session.new: worktrees are added under worktreeHome
@@ -26,7 +28,21 @@ func WithSessions(worktrees app.WorktreeAdder, setup app.SetupFunc, worktreeHome
 }
 
 func (d *Daemon) sessions() app.Sessions {
-	return app.Sessions{Host: d.hs.host, Worktrees: d.sess.worktrees, Setup: d.sess.setup}
+	return app.Sessions{Host: d.hs.host, Worktrees: serialAdder{mu: &d.sess.addMu, inner: d.sess.worktrees}, Setup: d.sess.setup}
+}
+
+// serialAdder keeps two `git worktree add` runs from overlapping: they race
+// on the repo's config file and one fails with "unable to write upstream
+// branch configuration". The launcher starts several sessions at once.
+type serialAdder struct {
+	mu    *sync.Mutex
+	inner app.WorktreeAdder
+}
+
+func (a serialAdder) AddWorktree(ctx context.Context, repo, path, branch, base string) (app.AddedWorktree, error) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return a.inner.AddWorktree(ctx, repo, path, branch, base)
 }
 
 type newSessionInput struct {
