@@ -225,3 +225,19 @@ func TestModelSwitchAcceptedOnlyBetweenTools(t *testing.T) {
 		}
 	}
 }
+
+func TestModelSwitchAReportFromBeforeTheSwitchDoesNotWarn(t *testing.T) {
+	s := sentSession(SwitchEffort, "high")
+	stale := s.Report(StatusReport{Effort: "low", At: switchT0.Add(-time.Minute)})
+	if stale.SwitchWarning || len(stale.Switches) != 1 {
+		t.Fatalf("stale report: %+v", stale)
+	}
+	fresh := s.Report(StatusReport{Effort: "low", At: switchT0.Add(time.Minute)})
+	if !fresh.SwitchWarning {
+		t.Fatalf("fresh report: %+v", fresh)
+	}
+	match := s.Report(StatusReport{Effort: "high", At: switchT0.Add(-time.Minute)})
+	if match.SwitchWarning || len(match.Switches) != 0 {
+		t.Fatalf("matching report: %+v", match)
+	}
+}

@@ -84,3 +84,18 @@ func TestContextLeftPercentIgnoresTheFixedPromptBaseline(t *testing.T) {
 		}
 	}
 }
+
+func TestSnapshotTurnAtIsTheLatestTurnContextTime(t *testing.T) {
+	f, err := os.Open(filepath.Join("testdata", "rollout", "turns.jsonl"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = f.Close() }()
+	snap, err := ReadSnapshot(f)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := time.Date(2026, 9, 29, 10, 5, 0, 0, time.UTC); !snap.TurnAt.Equal(want) {
+		t.Fatalf("TurnAt %v", snap.TurnAt)
+	}
+}
