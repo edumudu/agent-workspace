@@ -43,10 +43,22 @@ type terminalInput struct {
 	found     bool
 }
 
-func (d *Daemon) terminalInput(sessionID string) (terminalInput, bool) {
+// terminalInput gathers what placing a terminal needs. Without a session id,
+// worktreeID names the worktree and its owner, if any, is the session.
+func (d *Daemon) terminalInput(sessionID, worktreeID string) (terminalInput, bool) {
 	var in terminalInput
 	ok := d.query(func(s *state) {
-		in.session, in.found = s.sessions[sessionID]
+		if sessionID == "" {
+			wt, known := s.worktrees[worktreeID]
+			if !known {
+				return
+			}
+			sessionID = wt.SessionID
+			in.found = true
+		}
+		if sess, known := s.sessions[sessionID]; known {
+			in.session, in.found = sess, true
+		}
 		in.cwd = s.hints.cwd[sessionID]
 		for _, w := range sorted(s.worktrees) {
 			if w.SessionID == sessionID {
@@ -71,11 +83,17 @@ func (d *Daemon) dispatchTerminal(req rpc.Request) (*rpc.Response, bool) {
 	if err := json.Unmarshal(req.Params, &p); err != nil {
 		return errorResponse(req.ID, rpc.CodeBadRequest, req.Method+" params: "+err.Error()), true
 	}
-	in, ok := d.terminalInput(p.Session)
+	if p.Session == "" && p.Worktree == "" {
+		return errorResponse(req.ID, rpc.CodeBadRequest, req.Method+" needs a session or a worktree"), true
+	}
+	in, ok := d.terminalInput(p.Session, p.Worktree)
 	if !ok {
 		return nil, false
 	}
 	if !in.found {
+		if p.Session == "" {
+			return errorResponse(req.ID, rpc.CodeNotFound, "no worktree "+p.Worktree), true
+		}
 		return errorResponse(req.ID, rpc.CodeNotFound, "no session "+p.Session), true
 	}
 	target, placed := domain.ChooseShell(in.session.ID, in.worktrees, p.Worktree, in.cwd)

@@ -179,6 +179,30 @@ func TestShellToggleRefusesWhatItCannotPlace(t *testing.T) {
 	}
 }
 
+func TestShellToggleByWorktreeAloneUsesItsOwnerOrNone(t *testing.T) {
+	wts := append([]domain.Worktree{{ID: "w-free", Path: "/wt/free"}}, termWTs...)
+	r := startTerm(t, []domain.Session{termSession}, wts)
+	owned, err := r.toggle(t, rpc.ShellParams{Worktree: "w-web"})
+	if err != nil || owned.Dir != "/wt/web" {
+		t.Fatalf("owned = %+v, %v; want a shell in /wt/web", owned, err)
+	}
+	same, err := r.toggle(t, rpc.ShellParams{Session: "s1", Worktree: "w-web"})
+	if err != nil || same.Shown || same.Pane != owned.Pane {
+		t.Fatalf("by session = %+v, %v; want the same shell, now hidden", same, err)
+	}
+	free, err := r.toggle(t, rpc.ShellParams{Worktree: "w-free"})
+	if err != nil || free.Dir != "/wt/free" || free.Pane == owned.Pane {
+		t.Fatalf("unowned = %+v, %v; want its own shell in /wt/free", free, err)
+	}
+	var rerr *rpc.Error
+	if _, err := r.toggle(t, rpc.ShellParams{Worktree: "w-x"}); !errors.As(err, &rerr) || rerr.Code != rpc.CodeNotFound {
+		t.Fatalf("unknown worktree: %v; want not_found", err)
+	}
+	if _, err := r.toggle(t, rpc.ShellParams{}); !errors.As(err, &rerr) || rerr.Code != rpc.CodeBadRequest {
+		t.Fatalf("no session or worktree: %v; want bad_request", err)
+	}
+}
+
 func TestShellPopupOpensThePaneInAPopupNotASplit(t *testing.T) {
 	r := startTerm(t, []domain.Session{termSession}, termWTs)
 	out, err := r.toggle(t, rpc.ShellParams{Session: "s1", Popup: true})

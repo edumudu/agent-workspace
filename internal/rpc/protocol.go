@@ -71,9 +71,6 @@ const (
 	// MethodCleanupWorktree removes one worktree through the cleanup engine
 	// and answers its CleanupItem.
 	MethodCleanupWorktree = "cleanup.worktree"
-	// MethodWorktreeShell opens a shell in a worktree and shows it in the
-	// main slot.
-	MethodWorktreeShell = "worktree.shell"
 )
 
 // DiskView is the worktrees and disk view. Rows are in worktree order;
@@ -109,10 +106,6 @@ type RecentCleanup struct {
 type CleanupWorktreeParams struct {
 	Path   string `json:"path"`
 	Backup bool   `json:"backup,omitempty"`
-}
-
-type WorktreeShellParams struct {
-	ID string `json:"id"`
 }
 
 // ReviewParams asks for Session's review in Scope, of one worktree ID or,

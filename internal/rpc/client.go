@@ -149,7 +149,7 @@ func (c *Client) CleanupWorktree(ctx context.Context, path string, backup bool) 
 }
 
 func (c *Client) WorktreeShell(ctx context.Context, id string) error {
-	return c.Call(ctx, MethodWorktreeShell, WorktreeShellParams{ID: id}, nil)
+	return c.Call(ctx, MethodShellToggle, ShellParams{Worktree: id}, nil)
 }
 
 func (c *Client) WorkspaceRemove(ctx context.Context, root string) error {

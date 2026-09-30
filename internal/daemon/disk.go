@@ -2,7 +2,6 @@ package daemon
 
 import (
 	"encoding/json"
-	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -113,47 +112,6 @@ func (d *Daemon) afterRemoval(w domain.Worktree) {
 	}
 	d.Post(WorktreeRemoved{ID: w.ID})
 	d.st.hints.wake()
-}
-
-// worktreeShell opens $SHELL (or sh) in the worktree and swaps it into the
-// main slot. The pane is not a session and is left to the user to close.
-func (d *Daemon) worktreeShell(req rpc.Request) (*rpc.Response, bool) {
-	var p rpc.WorktreeShellParams
-	if err := json.Unmarshal(req.Params, &p); err != nil {
-		return errorResponse(req.ID, rpc.CodeBadRequest, "worktree.shell params: "+err.Error()), true
-	}
-	var wt domain.Worktree
-	var found bool
-	if !d.query(func(s *state) { wt, found = s.worktrees[p.ID] }) {
-		return nil, false
-	}
-	if !found {
-		return errorResponse(req.ID, rpc.CodeNotFound, "no worktree "+p.ID), true
-	}
-	if d.hs.host == nil {
-		return errorResponse(req.ID, rpc.CodeUnavailable, "this daemon has no terminal host"), true
-	}
-	if !d.hasLayout() {
-		return errorResponse(req.ID, rpc.CodeUnavailable, errNoLayout.Error()), true
-	}
-	shell := os.Getenv("SHELL")
-	if shell == "" {
-		shell = "/bin/sh"
-	}
-	pane, err := d.hs.host.Create(d.ws.ctx, app.PaneSpec{Name: "shell", Dir: wt.Path, Command: []string{shell}})
-	if err != nil {
-		return errorResponse(req.ID, rpc.CodeFailed, err.Error()), true
-	}
-	if err := d.showInMain(pane); err != nil && !errors.Is(err, errNoLayout) {
-		return errorResponse(req.ID, rpc.CodeFailed, err.Error()), true
-	}
-	return result(req.ID, struct{}{}), true
-}
-
-func (d *Daemon) hasLayout() bool {
-	d.clients.mu.Lock()
-	defer d.clients.mu.Unlock()
-	return d.clients.host != nil && d.clients.slot != ""
 }
 
 // DepsStorePath is the shared dependency store to report: $AGENTWS_DEPS_STORE
