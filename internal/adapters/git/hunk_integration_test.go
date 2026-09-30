@@ -120,6 +120,29 @@ func TestReviewRevertOfAStaleHunkChangesNothing(t *testing.T) {
 	}
 }
 
+func TestReviewStageAndRevertIgnoreInheritedGitLocationVariables(t *testing.T) {
+	a, b := twoHunkRepos(t)
+	interactive(t, a, "y\nn\n", "add", "-p", "f.txt")
+	f, h := firstHunk(t, b)
+	stray := filepath.Join(t.TempDir(), "stray-index")
+	t.Setenv("GIT_INDEX_FILE", stray)
+	t.Setenv("GIT_DIR", filepath.Join(a, ".git"))
+	t.Setenv("GIT_WORK_TREE", a)
+	if err := app.ApplyHunk(context.Background(), git.Review{}, b, f, h, domain.HunkStage); err != nil {
+		t.Fatal(err)
+	}
+	for _, k := range []string{"GIT_INDEX_FILE", "GIT_DIR", "GIT_WORK_TREE"} {
+		t.Setenv(k, "")
+		os.Unsetenv(k)
+	}
+	if _, err := os.Stat(stray); err == nil {
+		t.Error("staging wrote the inherited GIT_INDEX_FILE")
+	}
+	if got, want := gitOut(t, b, "diff", "--cached"), gitOut(t, a, "diff", "--cached"); got != want {
+		t.Errorf("staged in b:\n%s\nwant\n%s", got, want)
+	}
+}
+
 func TestReviewStageAHunkOfANewFileAddsIt(t *testing.T) {
 	dir := reviewRepo(t)
 	put(t, filepath.Join(dir, "n.txt"), "new\n")
