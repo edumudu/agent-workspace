@@ -28,6 +28,8 @@ type Store interface {
 	PutWorktree(domain.Worktree)
 	DeleteWorktree(id string)
 	PutSession(domain.Session)
+	// DeleteSession also drops the session's events.
+	DeleteSession(id string)
 	// PutEvent appends; unlike the Put methods it never replaces an earlier one.
 	PutEvent(domain.SessionEvent)
 	PutViewed(domain.ViewedMark)

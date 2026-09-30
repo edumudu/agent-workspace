@@ -12,9 +12,9 @@ func (s Session) NeedsYou() bool {
 	return s.State == StateWaiting || s.State == StatePermission
 }
 
-// Sidebar groups sessions under their task, in task order, dropping tasks
-// with no session. Sessions whose task is unknown get a group of their own
-// after the known tasks. Within a group, sessions that need you come first
+// Sidebar groups sessions under their task, in task order, leaving out ended
+// sessions and tasks with no session. Sessions whose task is unknown get a
+// group of their own after the known tasks. Within a group, sessions that need you come first
 // and the rest keep their order.
 func Sidebar(tasks []Task, sessions []Session) []TaskGroup {
 	byTask := map[string][]Session{}
@@ -24,6 +24,9 @@ func Sidebar(tasks []Task, sessions []Session) []TaskGroup {
 		known[t.ID] = true
 	}
 	for _, s := range sessions {
+		if s.Ended {
+			continue
+		}
 		if !known[s.TaskID] && byTask[s.TaskID] == nil {
 			orphanOrder = append(orphanOrder, s.TaskID)
 		}

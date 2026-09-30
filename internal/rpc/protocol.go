@@ -307,8 +307,11 @@ type OpenClient struct {
 	Attach []string `json:"attach"`
 }
 
+// DebugSeedParams: Codex also seeds Codex sessions and limits, for trying the
+// UI of a harness that is not set up.
 type DebugSeedParams struct {
-	Count int `json:"count"`
+	Count int  `json:"count"`
+	Codex bool `json:"codex,omitempty"`
 }
 
 // WorktreeAssignParams gives worktree ID to session Session; an empty
@@ -370,7 +373,8 @@ type State struct {
 // Diff is one change: exactly one field besides Seq is set, except that a hook
 // sets Session and Event together. Every field but the Removed ones and Event
 // replaces the entity with the same key; RemovedWorkspace is the root of a
-// workspace to drop, RemovedWorktree the ID of a worktree, and Event is
+// workspace to drop, RemovedWorktree the ID of a worktree, RemovedSession the
+// ID of a session, and Event is
 // appended to its session's events. A subagent change is a diff of its own,
 // replacing the subagent with the same session and ID. Queue replaces the
 // whole launcher queue.
@@ -378,6 +382,7 @@ type Diff struct {
 	Seq              uint64               `json:"seq"`
 	RemovedWorkspace string               `json:"removed_workspace,omitempty"`
 	RemovedWorktree  string               `json:"removed_worktree,omitempty"`
+	RemovedSession   string               `json:"removed_session,omitempty"`
 	Workspace        *domain.Workspace    `json:"workspace,omitempty"`
 	Task             *domain.Task         `json:"task,omitempty"`
 	Worktree         *domain.Worktree     `json:"worktree,omitempty"`

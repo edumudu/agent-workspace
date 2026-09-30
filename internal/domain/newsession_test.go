@@ -155,11 +155,30 @@ func TestPlanSessionStart(t *testing.T) {
 func TestSessionEndIdlesAndLetsGoOfThePane(t *testing.T) {
 	s := Session{ID: "a", Pane: "%3", State: StatePermission, Focused: true, Unread: true, WorktreeIDs: []string{"w"}}
 	got := s.End()
-	want := Session{ID: "a", State: StateIdle, Unread: true, WorktreeIDs: []string{"w"}}
+	want := Session{ID: "a", State: StateIdle, Ended: true, Unread: true, WorktreeIDs: []string{"w"}}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("End() = %+v, want %+v", got, want)
 	}
 	if _, ok := SessionOnPane([]Session{got}, "%3"); ok {
 		t.Fatal("an ended session still owns its old pane")
+	}
+}
+
+func TestSessionIsForgottenOnceEndedWithNoWorktreeLeft(t *testing.T) {
+	cases := []struct {
+		name string
+		s    Session
+		want bool
+	}{
+		{"live with no worktree", Session{State: StateIdle, Pane: "%1"}, false},
+		{"ended with a worktree", Session{Ended: true, WorktreeIDs: []string{"w"}}, false},
+		{"ended with no worktree", Session{Ended: true}, true},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			if got := c.s.Forgotten(); got != c.want {
+				t.Fatalf("Forgotten() = %v, want %v", got, c.want)
+			}
+		})
 	}
 }
