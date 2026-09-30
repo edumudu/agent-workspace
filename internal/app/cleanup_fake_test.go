@@ -4,19 +4,38 @@ import (
 	"context"
 	"errors"
 	"strconv"
+	"sync"
 
 	"github.com/giovaniif/agent-workspace/internal/app"
 	"github.com/giovaniif/agent-workspace/internal/domain"
 )
 
+// fakeCleanupGit answers from facts, except that a path in later answers
+// from later on every call after its first.
 type fakeCleanupGit struct {
-	facts     map[string]app.WorktreeGitFacts
-	backupErr error
-	taken     map[string]bool
-	ops       []string
+	mu             sync.Mutex
+	calls          map[string]int
+	failAfterFirst bool
+	later          map[string]app.WorktreeGitFacts
+	facts          map[string]app.WorktreeGitFacts
+	backupErr      error
+	taken          map[string]bool
+	ops            []string
 }
 
 func (g *fakeCleanupGit) CleanupFacts(_ context.Context, w domain.Worktree) (app.WorktreeGitFacts, error) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if g.calls == nil {
+		g.calls = map[string]int{}
+	}
+	g.calls[w.Path]++
+	if g.failAfterFirst && g.calls[w.Path] > 1 {
+		return app.WorktreeGitFacts{}, errors.New("git status failed")
+	}
+	if f, ok := g.later[w.Path]; ok && g.calls[w.Path] > 1 {
+		return f, nil
+	}
 	f, ok := g.facts[w.Path]
 	if !ok {
 		return app.WorktreeGitFacts{}, errors.New("git status failed")

@@ -105,6 +105,14 @@ func TestCleanupFactsMergeStateAndDirt(t *testing.T) {
 	if after.Uncommitted != 2 || after.Fingerprint == before.Fingerprint {
 		t.Errorf("dirty facts = %+v (before %q), want 2 changes and a new fingerprint", after, before.Fingerprint)
 	}
+	write(t, filepath.Join(fresh, "a.txt"), "changed again\n")
+	again, err := g.CleanupFacts(ctx, domain.Worktree{Repo: repo, Path: fresh, Branch: "fresh"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if again.Uncommitted != 2 || again.Fingerprint == after.Fingerprint {
+		t.Errorf("second edit kept fingerprint %q; want a new one when tracked content changes", again.Fingerprint)
+	}
 
 	main, err := g.CleanupFacts(ctx, domain.Worktree{Repo: repo, Path: repo, Branch: "main"})
 	if err != nil || !main.OnDefault {

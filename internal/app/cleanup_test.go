@@ -201,6 +201,39 @@ func TestCleanupExecNeverTouchesAWorktreeHeldAtTheLastMoment(t *testing.T) {
 	}
 }
 
+func TestCleanupExecKeepsAWorktreeWrittenToAfterPlanning(t *testing.T) {
+	old := cleanupNow.Add(-2 * time.Hour)
+	w := newCleanupWorld(map[string]app.WorktreeGitFacts{
+		"/w/a": {ModifiedAt: old, Fingerprint: "clean"},
+		"/w/b": {ModifiedAt: old, Fingerprint: "clean"},
+		"/w/c": {ModifiedAt: old, Fingerprint: "clean"},
+	})
+	w.git.later = map[string]app.WorktreeGitFacts{
+		"/w/a": {Uncommitted: 1, ModifiedAt: old, Fingerprint: "dirty"},
+		"/w/b": {ModifiedAt: old, Fingerprint: "clean"},
+	}
+	w.git.later["/w/c"] = app.WorktreeGitFacts{}
+	w.git.facts["/w/d"] = app.WorktreeGitFacts{ModifiedAt: old, Fingerprint: "clean"}
+	w.git.later["/w/d"] = app.WorktreeGitFacts{ModifiedAt: cleanupNow, Fingerprint: "clean"}
+	wts := []domain.Worktree{merged("/w/a", "a", 1), merged("/w/b", "b", 2), merged("/w/c", "c", 3), merged("/w/d", "d", 4)}
+	got := outcomes(w.c.Execute(context.Background(), wts, idle))
+	if got["/w/a"] != "kept: changed since it was planned" || got["/w/c"] != "kept: changed since it was planned" || got["/w/d"] != "kept: changed since it was planned" {
+		t.Errorf("outcomes = %v, want /w/a, /w/c and /w/d kept", got)
+	}
+	if !reflect.DeepEqual(w.trash.moved, []string{"/w/b"}) {
+		t.Errorf("moved = %v, want only /w/b", w.trash.moved)
+	}
+}
+
+func TestCleanupExecKeepsAWorktreeWhoseFactsFailAtTheLastMoment(t *testing.T) {
+	w := newCleanupWorld(map[string]app.WorktreeGitFacts{"/w/a": {ModifiedAt: cleanupNow.Add(-2 * time.Hour), Fingerprint: "clean"}})
+	w.git.failAfterFirst = true
+	got := outcomes(w.c.Execute(context.Background(), []domain.Worktree{merged("/w/a", "a", 1)}, idle))
+	if got["/w/a"] != "kept: git status failed" || len(w.trash.moved) != 0 {
+		t.Errorf("outcome %q, moved %v", got["/w/a"], w.trash.moved)
+	}
+}
+
 func TestCleanupExecKeepsAllWhenTheLastCheckFails(t *testing.T) {
 	old := cleanupNow.Add(-2 * time.Hour)
 	w := newCleanupWorld(map[string]app.WorktreeGitFacts{"/w/a": {ModifiedAt: old}})
