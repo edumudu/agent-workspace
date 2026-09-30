@@ -351,3 +351,22 @@ func TestOnlyTheNewestEventsOfEachSessionAreKept(t *testing.T) {
 		t.Errorf("quiet kept %v", quiet)
 	}
 }
+
+func TestReviewViewedMarksSurviveARestart(t *testing.T) {
+	s, path := openTemp(t)
+	a := domain.ViewedMark{Worktree: "/wt/api", Path: "a.go", Blob: "111"}
+	s.PutViewed(a)
+	s.PutViewed(domain.ViewedMark{Worktree: "/wt/api", Path: "b.go", Blob: "222"})
+	s.PutViewed(domain.ViewedMark{Worktree: "/wt/api", Path: "b.go", Blob: "333"})
+	s.PutViewed(domain.ViewedMark{Worktree: "/wt/web", Path: "c.go", Blob: "444"})
+	s.DeleteViewed(domain.ViewedMark{Worktree: "/wt/web", Path: "c.go"}.Key())
+
+	snap, err := reopen(t, s, path).Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []domain.ViewedMark{a, {Worktree: "/wt/api", Path: "b.go", Blob: "333"}}
+	if !reflect.DeepEqual(snap.Viewed, want) {
+		t.Errorf("viewed = %+v, want %+v", snap.Viewed, want)
+	}
+}
