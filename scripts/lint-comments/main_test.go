@@ -19,7 +19,7 @@ func TestCheckFile(t *testing.T) {
 		{"nolint_no_reason.go.txt", []int{4}},
 		{"restating_doc.go.txt", []int{5, 8, 13, 16, 19, 22}},
 		{"useful_doc.go.txt", nil},
-		{"banner.go.txt", []int{3, 7, 11, 16}},
+		{"banner.go.txt", []int{3, 7, 11, 16, 26}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.fixture, func(t *testing.T) {

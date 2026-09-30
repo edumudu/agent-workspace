@@ -20,3 +20,8 @@ func d() {}
 // See README.
 
 func e() {}
+
+func f() {}
+
+// ---- helpers ----
+func g() {}
