@@ -32,7 +32,7 @@ func (Inspector) Inspect(ctx context.Context, path string) (app.RepoFacts, error
 
 func output(ctx context.Context, dir string, args ...string) ([]byte, error) {
 	cmd := exec.CommandContext(ctx, "git", append([]string{"-C", dir}, args...)...)
-	cmd.Env = append(cmd.Environ(), "GIT_OPTIONAL_LOCKS=0")
+	cmd.Env = append(isolated(cmd.Environ()), "GIT_OPTIONAL_LOCKS=0")
 	return cmd.Output()
 }
 

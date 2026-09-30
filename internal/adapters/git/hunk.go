@@ -41,10 +41,31 @@ func (Review) Revert(ctx context.Context, dir, patch string) error {
 	return apply(ctx, dir, patch, "-R")
 }
 
+// locationVars make git pick a repo, work tree or index other than the one
+// -C names; a daemon started from a git hook or alias can inherit them.
+var locationVars = []string{"GIT_DIR=", "GIT_WORK_TREE=", "GIT_INDEX_FILE=", "GIT_COMMON_DIR=", "GIT_OBJECT_DIRECTORY=", "GIT_NAMESPACE="}
+
+func isolated(env []string) []string {
+	out := env[:0:0]
+	for _, kv := range env {
+		keep := true
+		for _, p := range locationVars {
+			if strings.HasPrefix(kv, p) {
+				keep = false
+			}
+		}
+		if keep {
+			out = append(out, kv)
+		}
+	}
+	return out
+}
+
 // apply feeds patch to `git apply`, which changes nothing unless the whole
 // patch applies.
 func apply(ctx context.Context, dir, patch string, args ...string) error {
 	cmd := exec.CommandContext(ctx, "git", append([]string{"-C", dir, "apply", "--whitespace=nowarn"}, args...)...)
+	cmd.Env = isolated(cmd.Environ())
 	cmd.Stdin = strings.NewReader(patch)
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
