@@ -19,13 +19,17 @@ const turnQueue = 64
 
 const reviewTimeout = 10 * time.Second
 
+// turnJob.sent is the draft whose prompt started this turn, if any; it is
+// linked to the refs the snapshot makes.
 type turnJob struct {
 	session string
 	dirs    []string
+	sent    *domain.ReviewDraft
 }
 
 type review struct {
 	git      app.ReviewGit
+	hunks    app.HunkGit
 	reviewer *app.Reviewer
 	jobs     chan turnJob
 }
@@ -36,9 +40,9 @@ type review struct {
 func WithReview(g app.ReviewGit) Option {
 	return func(d *Daemon) {
 		d.rv = review{git: g, reviewer: app.NewReviewer(g), jobs: make(chan turnJob, turnQueue)}
-		d.st.requestTurn = func(session string, dirs []string) {
+		d.st.requestTurn = func(session string, dirs []string, sent *domain.ReviewDraft) {
 			select {
-			case d.rv.jobs <- turnJob{session: session, dirs: dirs}:
+			case d.rv.jobs <- turnJob{session: session, dirs: dirs, sent: sent}:
 			default:
 			}
 		}
@@ -54,11 +58,18 @@ func (d *Daemon) snapshotTurns(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case job := <-d.rv.jobs:
+			refs := []string{}
 			for _, dir := range job.dirs {
 				jctx, cancel := context.WithTimeout(ctx, reviewTimeout)
 				// why: a dir git cannot read (an orchestration root, a worktree just removed) has nothing to snapshot.
-				_, _ = app.SnapshotTurn(jctx, d.rv.git, job.session, dir)
+				if ref, err := app.SnapshotTurn(jctx, d.rv.git, job.session, dir); err == nil {
+					refs = append(refs, ref)
+				}
 				cancel()
+			}
+			if job.sent != nil {
+				linked := job.sent.LinkTurn(refs)
+				d.query(func(s *state) { s.store.PutDraft(linked) })
 			}
 		}
 	}
@@ -93,8 +104,13 @@ func (s *state) promptSubmitted(session string) {
 	for _, t := range s.reviewTargets(session) {
 		dirs = append(dirs, t.Worktree.Path)
 	}
+	var sent *domain.ReviewDraft
+	if d, ok := s.awaiting[session]; ok {
+		delete(s.awaiting, session)
+		sent = &d
+	}
 	if len(dirs) > 0 {
-		s.requestTurn(session, dirs)
+		s.requestTurn(session, dirs, sent)
 	}
 }
 
@@ -102,8 +118,13 @@ func (d *Daemon) dispatchReview(req rpc.Request) (*rpc.Response, bool) {
 	if d.rv.git == nil {
 		return errorResponse(req.ID, rpc.CodeUnknownMethod, "unknown method "+req.Method), true
 	}
-	if req.Method == rpc.MethodReviewViewed {
+	switch req.Method {
+	case rpc.MethodReviewViewed:
 		return d.markViewed(req)
+	case rpc.MethodReviewSend:
+		return d.sendReview(req)
+	case rpc.MethodReviewHunk:
+		return d.applyHunk(req)
 	}
 	var p rpc.ReviewParams
 	if err := json.Unmarshal(req.Params, &p); err != nil || p.Session == "" {
@@ -114,12 +135,14 @@ func (d *Daemon) dispatchReview(req rpc.Request) (*rpc.Response, bool) {
 	}
 	var targets []app.ReviewTarget
 	var marks []domain.ViewedMark
+	var draft domain.ReviewDraft
 	found := false
 	ok := d.query(func(s *state) {
 		if _, found = s.sessions[p.Session]; !found {
 			return
 		}
 		p.Scope = s.reviewScope(p.Session, p.Scope)
+		draft = s.drafts[p.Session]
 		ids := map[string]bool{}
 		for _, t := range s.reviewTargets(p.Session) {
 			if p.Worktree == "" || p.Worktree == t.Worktree.ID {
@@ -139,7 +162,7 @@ func (d *Daemon) dispatchReview(req rpc.Request) (*rpc.Response, bool) {
 	sort.Slice(marks, func(i, j int) bool { return marks[i].Key() < marks[j].Key() })
 	ctx, cancel := context.WithTimeout(context.Background(), reviewTimeout)
 	defer cancel()
-	out := rpc.Review{Scope: p.Scope, Worktrees: d.rv.reviewer.Review(ctx, p.Scope, targets), Viewed: marks}
+	out := rpc.Review{Scope: p.Scope, Worktrees: d.rv.reviewer.Review(ctx, p.Scope, targets), Viewed: marks, Draft: draft}
 	if out.Worktrees == nil {
 		out.Worktrees = []domain.WorktreeReview{}
 	}

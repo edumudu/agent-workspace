@@ -14,6 +14,8 @@ type Snapshot struct {
 	// Events are oldest first, at most EventsPerSession per session.
 	Events []domain.SessionEvent
 	Viewed []domain.ViewedMark
+	// Drafts are ordered by ID.
+	Drafts []domain.ReviewDraft
 }
 
 // Store persists daemon state. Put methods only enqueue and never block on
@@ -31,6 +33,7 @@ type Store interface {
 	PutViewed(domain.ViewedMark)
 	// DeleteViewed takes a ViewedMark.Key.
 	DeleteViewed(key string)
+	PutDraft(domain.ReviewDraft)
 	Load() (Snapshot, error)
 	Flush() error
 	Close() error

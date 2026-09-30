@@ -105,7 +105,7 @@ type state struct {
 	hints        worktreeHints
 	listeners    []domain.Listener
 	// requestTurn is set by WithReview and must not block.
-	requestTurn func(session string, dirs []string)
+	requestTurn func(session string, dirs []string, sent *domain.ReviewDraft)
 	viewed      map[string]domain.ViewedMark
 	// queue is the launcher's waiting issues; launched is the sessions it
 	// started, which hold its slots. Neither is persisted.
@@ -115,6 +115,12 @@ type state struct {
 	kickLauncher func()
 	comments     map[string]domain.DraftComment
 	scopes       map[string]domain.ReviewScope
+	// drafts holds each session's open or queued draft; awaiting, the sent
+	// draft whose prompt has not been seen yet.
+	drafts   map[string]domain.ReviewDraft
+	awaiting map[string]domain.ReviewDraft
+	// sendDraft is set by New, like sendSwitches.
+	sendDraft func(session domain.Session, draft domain.ReviewDraft, prompt string)
 }
 
 type Daemon struct {
@@ -160,6 +166,16 @@ func New(store app.Store, pid int, opts ...Option) (*Daemon, error) {
 		launched:   map[string]bool{},
 		comments:   map[string]domain.DraftComment{},
 		scopes:     map[string]domain.ReviewScope{},
+		drafts:     map[string]domain.ReviewDraft{},
+		awaiting:   map[string]domain.ReviewDraft{},
+	}
+	for _, dr := range snap.Drafts {
+		switch {
+		case dr.Status == domain.DraftOpen || dr.Status == domain.DraftQueued:
+			st.drafts[dr.Session] = dr
+		case dr.AwaitsTurn():
+			st.awaiting[dr.Session] = dr
+		}
 	}
 	for _, m := range snap.Viewed {
 		st.viewed[m.Key()] = m
@@ -197,6 +213,7 @@ func New(store app.Store, pid int, opts ...Option) (*Daemon, error) {
 	st.kickLauncher = d.kickLauncher
 	st.requestUsage = func(sessionID, path string, force bool) { d.requestUsage(st, sessionID, path, force) }
 	st.sendSwitches = d.sendSwitches
+	st.sendDraft = d.sendDraft
 	for _, o := range opts {
 		o(d)
 	}
@@ -338,6 +355,7 @@ func (s *state) hook(h rpc.Hook, now time.Time) {
 	s.trackSubagents(session.ID, kind, at, h.Payload)
 	s.announce(next, effects)
 	s.sendSwitches(next, toSend)
+	s.dispatchDraft(next)
 	if kind == domain.EventUserPromptSubmit {
 		s.promptSubmitted(session.ID)
 	}
@@ -447,7 +465,7 @@ func (d *Daemon) dispatch(c *conn, line []byte) (*rpc.Response, bool) {
 			return resp, ok
 		}
 		return errorResponse(req.ID, rpc.CodeUnknownMethod, "unknown method "+req.Method), true
-	case rpc.MethodReviewOpen, rpc.MethodReviewViewed:
+	case rpc.MethodReviewOpen, rpc.MethodReviewViewed, rpc.MethodReviewSend, rpc.MethodReviewHunk:
 		return d.dispatchReview(req)
 	case rpc.MethodShellToggle, rpc.MethodNvimToggle, rpc.MethodNvimOpen:
 		return d.dispatchTerminal(req)

@@ -184,6 +184,22 @@ func (c *Client) MarkViewed(ctx context.Context, mark domain.ViewedMark, viewed 
 	return c.Call(ctx, MethodReviewViewed, ViewedParams{Mark: mark, Viewed: viewed}, nil)
 }
 
+func (c *Client) AddReviewComment(ctx context.Context, session string, comment domain.ReviewComment) (domain.ReviewDraft, error) {
+	var out domain.ReviewDraft
+	err := c.Call(ctx, MethodReviewComment, ReviewCommentParams{Session: session, Comment: comment}, &out)
+	return out, err
+}
+
+func (c *Client) SendReview(ctx context.Context, session string) (domain.ReviewDraft, error) {
+	var out domain.ReviewDraft
+	err := c.Call(ctx, MethodReviewSend, ReviewSendParams{Session: session}, &out)
+	return out, err
+}
+
+func (c *Client) ApplyHunk(ctx context.Context, p HunkParams) error {
+	return c.Call(ctx, MethodReviewHunk, p, nil)
+}
+
 func (c *Client) ReviewLayout(ctx context.Context, open bool) error {
 	return c.Call(ctx, MethodClientReview, ClientReviewParams{Open: open}, nil)
 }

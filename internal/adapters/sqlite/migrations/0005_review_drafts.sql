@@ -1,0 +1,1 @@
+CREATE TABLE review_drafts(id TEXT PRIMARY KEY, data TEXT NOT NULL);

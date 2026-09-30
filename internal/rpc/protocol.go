@@ -52,6 +52,12 @@ const (
 	MethodPortsKill    = "ports.kill"
 	MethodReviewOpen   = "review.open"
 	MethodReviewViewed = "review.viewed"
+	// MethodReviewSend sends the draft as one prompt once the agent is
+	// between tools.
+	MethodReviewSend = "review.send"
+	// MethodReviewHunk stages or reverts one hunk of a file in a worktree the
+	// session owns.
+	MethodReviewHunk = "review.hunk"
 	// MethodClientReview widens the client's sidebar pane for the review, or
 	// puts it back.
 	MethodClientReview = "client.review"
@@ -123,6 +129,28 @@ type Review struct {
 	Scope     domain.ReviewScope      `json:"scope"`
 	Worktrees []domain.WorktreeReview `json:"worktrees"`
 	Viewed    []domain.ViewedMark     `json:"viewed"`
+	// Draft is the session's unsent draft; it has no ID before the first
+	// comment.
+	Draft domain.ReviewDraft `json:"draft"`
+}
+
+type ReviewCommentParams struct {
+	Session string               `json:"session"`
+	Comment domain.ReviewComment `json:"comment"`
+}
+
+type ReviewSendParams struct {
+	Session string `json:"session"`
+}
+
+// HunkParams names hunk Hunk of File, as the review showed it, in the
+// worktree whose ID is Worktree.
+type HunkParams struct {
+	Session  string            `json:"session"`
+	Worktree string            `json:"worktree"`
+	File     domain.FileDiff   `json:"file"`
+	Hunk     int               `json:"hunk"`
+	Action   domain.HunkAction `json:"action"`
 }
 
 // ViewedParams marks Mark viewed, or clears the mark for its worktree and
