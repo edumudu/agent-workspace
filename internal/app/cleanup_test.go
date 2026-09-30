@@ -56,7 +56,7 @@ func outcomes(rs []app.CleanupResult) map[string]string {
 }
 
 func TestCleanupPlanGathersFactsPerWorktree(t *testing.T) {
-	old := cleanupNow.Add(-2 * time.Hour)
+	old := cleanupNow.Add(-domain.CleanupGrace - time.Hour)
 	w := newCleanupWorld(map[string]app.WorktreeGitFacts{
 		"/w/a": {ModifiedAt: old},
 		"/w/b": {Uncommitted: 2, ModifiedAt: old},
@@ -86,7 +86,7 @@ func TestCleanupPlanGathersFactsPerWorktree(t *testing.T) {
 }
 
 func TestCleanupPlanSessionActivityCountsAsActivity(t *testing.T) {
-	w := newCleanupWorld(map[string]app.WorktreeGitFacts{"/w/a": {ModifiedAt: cleanupNow.Add(-2 * time.Hour)}})
+	w := newCleanupWorld(map[string]app.WorktreeGitFacts{"/w/a": {ModifiedAt: cleanupNow.Add(-domain.CleanupGrace - time.Hour)}})
 	recent := func(domain.Worktree) app.SessionActivity {
 		return app.SessionActivity{LastActivity: cleanupNow.Add(-time.Minute)}
 	}
@@ -97,7 +97,7 @@ func TestCleanupPlanSessionActivityCountsAsActivity(t *testing.T) {
 }
 
 func TestCleanupPlanKeepsEverythingWhenProcessesAreUnknown(t *testing.T) {
-	w := newCleanupWorld(map[string]app.WorktreeGitFacts{"/w/a": {ModifiedAt: cleanupNow.Add(-2 * time.Hour)}})
+	w := newCleanupWorld(map[string]app.WorktreeGitFacts{"/w/a": {ModifiedAt: cleanupNow.Add(-domain.CleanupGrace - time.Hour)}})
 	w.procs.err = errors.New("lsof missing")
 	got := w.c.Plan(context.Background(), []domain.Worktree{merged("/w/a", "a", 1)}, idle)
 	if got[0].Action != domain.CleanupKeep || !strings.Contains(got[0].Reason, "lsof missing") {
@@ -106,7 +106,7 @@ func TestCleanupPlanKeepsEverythingWhenProcessesAreUnknown(t *testing.T) {
 }
 
 func TestCleanupExecRemovesMergedCleanIntoTrashAndPrunesOncePerRepo(t *testing.T) {
-	old := cleanupNow.Add(-2 * time.Hour)
+	old := cleanupNow.Add(-domain.CleanupGrace - time.Hour)
 	w := newCleanupWorld(map[string]app.WorktreeGitFacts{"/w/a": {ModifiedAt: old}, "/w/b": {ModifiedAt: old}})
 	got := outcomes(w.c.Execute(context.Background(), []domain.Worktree{merged("/w/a", "a", 1), merged("/w/b", "b", 2)}, idle))
 	if got["/w/a"] != "removed" || got["/w/b"] != "removed" {
@@ -124,7 +124,7 @@ func TestCleanupExecRemovesMergedCleanIntoTrashAndPrunesOncePerRepo(t *testing.T
 }
 
 func TestCleanupExecBacksUpDirtyAndKeepsIt(t *testing.T) {
-	w := newCleanupWorld(map[string]app.WorktreeGitFacts{"/w/b": {Uncommitted: 2, ModifiedAt: cleanupNow.Add(-2 * time.Hour), Fingerprint: "f1"}})
+	w := newCleanupWorld(map[string]app.WorktreeGitFacts{"/w/b": {Uncommitted: 2, ModifiedAt: cleanupNow.Add(-domain.CleanupGrace - time.Hour), Fingerprint: "f1"}})
 	wts := []domain.Worktree{merged("/w/b", "b", 2)}
 	got := outcomes(w.c.Execute(context.Background(), wts, idle))
 	dir := "/h/backups/20260930-120000/b"
@@ -140,7 +140,7 @@ func TestCleanupExecBacksUpDirtyAndKeepsIt(t *testing.T) {
 		t.Errorf("second run = %q, ops %v: want no second backup of the same state", again["/w/b"], w.git.ops)
 	}
 
-	w.git.facts["/w/b"] = app.WorktreeGitFacts{Uncommitted: 3, ModifiedAt: cleanupNow.Add(-2 * time.Hour), Fingerprint: "f2"}
+	w.git.facts["/w/b"] = app.WorktreeGitFacts{Uncommitted: 3, ModifiedAt: cleanupNow.Add(-domain.CleanupGrace - time.Hour), Fingerprint: "f2"}
 	w.c.Execute(context.Background(), wts, idle)
 	if len(w.git.ops) != 2 {
 		t.Errorf("ops %v: want a new backup once the changes moved", w.git.ops)
@@ -148,7 +148,7 @@ func TestCleanupExecBacksUpDirtyAndKeepsIt(t *testing.T) {
 }
 
 func TestCleanupExecSameNamedWorktreesGetTheirOwnBackupDirs(t *testing.T) {
-	old := cleanupNow.Add(-2 * time.Hour)
+	old := cleanupNow.Add(-domain.CleanupGrace - time.Hour)
 	w := newCleanupWorld(map[string]app.WorktreeGitFacts{
 		"/w/api/agent-x": {Uncommitted: 1, ModifiedAt: old, Fingerprint: "f1"},
 		"/w/web/agent-x": {Uncommitted: 1, ModifiedAt: old, Fingerprint: "f2"},
@@ -165,7 +165,7 @@ func TestCleanupExecSameNamedWorktreesGetTheirOwnBackupDirs(t *testing.T) {
 }
 
 func TestCleanupExecDetachedGetsBackupBranchAndIsKept(t *testing.T) {
-	w := newCleanupWorld(map[string]app.WorktreeGitFacts{"/w/x": {ModifiedAt: cleanupNow.Add(-2 * time.Hour), Fingerprint: "f"}})
+	w := newCleanupWorld(map[string]app.WorktreeGitFacts{"/w/x": {ModifiedAt: cleanupNow.Add(-domain.CleanupGrace - time.Hour), Fingerprint: "f"}})
 	w.git.taken["backup/wt-x"] = true
 	got := outcomes(w.c.Execute(context.Background(), []domain.Worktree{{ID: "/w/x", Repo: "/w/api", Path: "/w/x"}}, idle))
 	dir := "/h/backups/20260930-120000/x"
@@ -179,7 +179,7 @@ func TestCleanupExecDetachedGetsBackupBranchAndIsKept(t *testing.T) {
 }
 
 func TestCleanupExecFailedBackupMakesNoBranch(t *testing.T) {
-	w := newCleanupWorld(map[string]app.WorktreeGitFacts{"/w/x": {ModifiedAt: cleanupNow.Add(-2 * time.Hour)}})
+	w := newCleanupWorld(map[string]app.WorktreeGitFacts{"/w/x": {ModifiedAt: cleanupNow.Add(-domain.CleanupGrace - time.Hour)}})
 	w.git.backupErr = errors.New("disk full")
 	got := outcomes(w.c.Execute(context.Background(), []domain.Worktree{{ID: "/w/x", Repo: "/w/api", Path: "/w/x"}}, idle))
 	if got["/w/x"] != "failed: disk full" || len(w.git.ops) != 0 || len(w.trash.moved) != 0 {
@@ -188,7 +188,7 @@ func TestCleanupExecFailedBackupMakesNoBranch(t *testing.T) {
 }
 
 func TestCleanupExecNeverTouchesAWorktreeHeldAtTheLastMoment(t *testing.T) {
-	old := cleanupNow.Add(-2 * time.Hour)
+	old := cleanupNow.Add(-domain.CleanupGrace - time.Hour)
 	w := newCleanupWorld(map[string]app.WorktreeGitFacts{"/w/a": {ModifiedAt: old}, "/w/b": {ModifiedAt: old}},
 		map[string][]string{},
 		map[string][]string{"/w/a": {"zsh (pid 8)"}})
@@ -202,7 +202,7 @@ func TestCleanupExecNeverTouchesAWorktreeHeldAtTheLastMoment(t *testing.T) {
 }
 
 func TestCleanupExecKeepsAWorktreeWrittenToAfterPlanning(t *testing.T) {
-	old := cleanupNow.Add(-2 * time.Hour)
+	old := cleanupNow.Add(-domain.CleanupGrace - time.Hour)
 	w := newCleanupWorld(map[string]app.WorktreeGitFacts{
 		"/w/a": {ModifiedAt: old, Fingerprint: "clean"},
 		"/w/b": {ModifiedAt: old, Fingerprint: "clean"},
@@ -226,7 +226,7 @@ func TestCleanupExecKeepsAWorktreeWrittenToAfterPlanning(t *testing.T) {
 }
 
 func TestCleanupExecKeepsAWorktreeWhoseFactsFailAtTheLastMoment(t *testing.T) {
-	w := newCleanupWorld(map[string]app.WorktreeGitFacts{"/w/a": {ModifiedAt: cleanupNow.Add(-2 * time.Hour), Fingerprint: "clean"}})
+	w := newCleanupWorld(map[string]app.WorktreeGitFacts{"/w/a": {ModifiedAt: cleanupNow.Add(-domain.CleanupGrace - time.Hour), Fingerprint: "clean"}})
 	w.git.failAfterFirst = true
 	got := outcomes(w.c.Execute(context.Background(), []domain.Worktree{merged("/w/a", "a", 1)}, idle))
 	if got["/w/a"] != "kept: git status failed" || len(w.trash.moved) != 0 {
@@ -235,7 +235,7 @@ func TestCleanupExecKeepsAWorktreeWhoseFactsFailAtTheLastMoment(t *testing.T) {
 }
 
 func TestCleanupExecKeepsAllWhenTheLastCheckFails(t *testing.T) {
-	old := cleanupNow.Add(-2 * time.Hour)
+	old := cleanupNow.Add(-domain.CleanupGrace - time.Hour)
 	w := newCleanupWorld(map[string]app.WorktreeGitFacts{"/w/a": {ModifiedAt: old}})
 	w.procs.calls = []map[string][]string{{}}
 	failing := &failSecond{fakeProcs: w.procs}
@@ -256,7 +256,7 @@ func (f *failSecond) Holders(ctx context.Context, paths []string) (map[string][]
 }
 
 func TestCleanupExecFailedMoveIsReportedAndNotPruned(t *testing.T) {
-	w := newCleanupWorld(map[string]app.WorktreeGitFacts{"/w/a": {ModifiedAt: cleanupNow.Add(-2 * time.Hour)}})
+	w := newCleanupWorld(map[string]app.WorktreeGitFacts{"/w/a": {ModifiedAt: cleanupNow.Add(-domain.CleanupGrace - time.Hour)}})
 	w.trash.failFor["/w/a"] = true
 	got := outcomes(w.c.Execute(context.Background(), []domain.Worktree{merged("/w/a", "a", 1)}, idle))
 	if got["/w/a"] != "failed: cross-device link" || len(w.git.ops) != 0 {
