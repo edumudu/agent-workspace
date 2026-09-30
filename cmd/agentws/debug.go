@@ -10,7 +10,7 @@ import (
 	"github.com/giovaniif/agent-workspace/internal/rpc"
 )
 
-const debugUsage = "usage: agentws debug seed <count>\n       agentws debug launch --harness claude --dir <dir> [--model m] [--effort e] [--name n]\n       agentws debug session [--once] <id>"
+const debugUsage = "usage: agentws debug seed <count> [--codex]\n       agentws debug launch --harness claude --dir <dir> [--model m] [--effort e] [--name n]\n       agentws debug session [--once] <id>"
 
 func runDebug(args []string, stdout, stderr io.Writer) int {
 	if len(args) == 0 {

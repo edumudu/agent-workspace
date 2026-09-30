@@ -204,8 +204,8 @@ func (c *Client) ReviewLayout(ctx context.Context, open bool) error {
 	return c.Call(ctx, MethodClientReview, ClientReviewParams{Open: open}, nil)
 }
 
-func (c *Client) DebugSeed(ctx context.Context, count int) error {
-	return c.Call(ctx, MethodDebugSeed, DebugSeedParams{Count: count}, nil)
+func (c *Client) DebugSeed(ctx context.Context, p DebugSeedParams) error {
+	return c.Call(ctx, MethodDebugSeed, p, nil)
 }
 
 type Subscription struct {

@@ -307,8 +307,11 @@ type OpenClient struct {
 	Attach []string `json:"attach"`
 }
 
+// DebugSeedParams: Codex also seeds Codex sessions and limits, for trying the
+// UI of a harness that is not set up.
 type DebugSeedParams struct {
-	Count int `json:"count"`
+	Count int  `json:"count"`
+	Codex bool `json:"codex,omitempty"`
 }
 
 // WorktreeAssignParams gives worktree ID to session Session; an empty
