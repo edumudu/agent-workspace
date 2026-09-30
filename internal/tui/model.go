@@ -26,6 +26,11 @@ type Attender interface {
 	FocusSession(ctx context.Context, id string) error
 }
 
+// Killer ends the process groups behind ports; *rpc.Client is one.
+type Killer interface {
+	KillPorts(ctx context.Context, pgids []int) ([]int, error)
+}
+
 type Options struct {
 	Theme Theme
 	// Now is the clock for the top bar; nil means time.Now.
@@ -35,6 +40,8 @@ type Options struct {
 	Focus Focuser
 	// Attend may be nil, which turns off m and the seen marker on enter.
 	Attend Attender
+	// Kill may be nil, which turns off K.
+	Kill Killer
 }
 
 // StateMsg replaces the whole state, as a subscribe snapshot does.
@@ -86,6 +93,7 @@ type Model struct {
 	frame    int
 	top      TopBarMsg
 	status   string
+	confirm  *killPrompt
 }
 
 func New(opts Options) Model {
@@ -271,6 +279,13 @@ func (m *Model) choose(i int) {
 
 func (m Model) key(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	k := msg.String()
+	if prompt := m.confirm; prompt != nil {
+		m.confirm = nil
+		if k == "y" {
+			return m, m.kill(prompt.pgids)
+		}
+		return m, nil
+	}
 	cur := m.index(m.selected)
 	switch k {
 	case "q", "ctrl+c":
@@ -291,6 +306,8 @@ func (m Model) key(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		}
 	case "m":
 		return m, m.toggleMute()
+	case "K":
+		m.askKill()
 	case "enter":
 		return m, m.focus()
 	default:
@@ -343,6 +360,33 @@ func (m Model) toggleMute() tea.Cmd {
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 		defer cancel()
 		if err := a.MuteSession(ctx, x.ID, !x.Muted); err != nil {
+			return errMsg{err}
+		}
+		return nil
+	}
+}
+
+func (m *Model) askKill() {
+	i := m.index(m.selected)
+	if i < 0 || m.opts.Kill == nil {
+		return
+	}
+	ports := m.entries[i].ports()
+	if len(ports) == 0 {
+		return
+	}
+	m.confirm = &killPrompt{pgids: groupsOf(ports), label: portLabel(ports)}
+}
+
+func (m Model) kill(pgids []int) tea.Cmd {
+	k := m.opts.Kill
+	if k == nil {
+		return nil
+	}
+	return func() tea.Msg {
+		ctx, cancel := context.WithTimeout(context.Background(), killTimeout)
+		defer cancel()
+		if _, err := k.KillPorts(ctx, pgids); err != nil {
 			return errMsg{err}
 		}
 		return nil

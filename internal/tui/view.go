@@ -215,7 +215,11 @@ func (m Model) sessionLines(e entry, sel bool) []string {
 	if n := len(x.WorktreeIDs); n > 0 {
 		trees = count(n, "worktree")
 	}
-	out = append(out, m.line(sel, []piece{bar, {s.sub, fmt.Sprintf("    %s  ctx %d%%  %s", detail, x.Usage.ContextLeftPercent, trees)}}, nil))
+	var open []piece
+	if label := portLabel(e.ports()); label != "" {
+		open = []piece{{s.teal, label}, {s.text, " "}}
+	}
+	out = append(out, m.line(sel, []piece{bar, {s.sub, fmt.Sprintf("    %s  ctx %d%%  %s", detail, x.Usage.ContextLeftPercent, trees)}}, open))
 	if m.collapsed[x.ID] {
 		return out
 	}
@@ -224,9 +228,13 @@ func (m Model) sessionLines(e entry, sel bool) []string {
 		if w.PR != nil {
 			pr = piece{s.sub, fmt.Sprintf("#%d", w.PR.Number)}
 		}
+		right := []piece{pr, {s.text, "   "}}
+		if label := portLabel(w.Ports); label != "" {
+			right = append([]piece{{s.teal, label + " "}}, right...)
+		}
 		out = append(out, m.line(sel,
 			[]piece{bar, {s.dim, "     └ "}, {s.text, worktreeLabel(w)}},
-			[]piece{pr, {s.text, "   "}}))
+			right))
 	}
 	return append(out, m.subagentLines(x.ID, sel)...)
 }
@@ -260,6 +268,7 @@ func (m Model) helpLines() []string {
 		{"j / k", "move"},
 		{"o", "expand / collapse worktrees"},
 		{"m", "mute session"},
+		{"K", "kill the session's dev servers"},
 		{"enter", "focus agent pane"},
 		{"?", "close help"},
 		{"q", "quit (sessions keep running)"},
@@ -278,15 +287,34 @@ func (m Model) footer() []string {
 		worktrees += len(e.session.WorktreeIDs)
 	}
 	right := []piece{{s.sub, count(len(m.entries), "session") + " · " + count(worktrees, "worktree") + " "}}
-	if m.status != "" {
+	left, withCounts := m.statusLeft()
+	switch {
+	case m.status != "":
 		right = []piece{{s.peach, m.status + " "}}
+	case !withCounts:
+		right = nil
 	}
 	return []string{
 		"",
 		m.line(false, []piece{{s.bold, " ⏎"}, {s.sub, " focus      "}, {s.bold, "␣"}, {s.sub, " next waiting"}}, nil),
 		m.line(false, []piece{{s.bold, " ⇥"}, {s.sub, " last       "}, {s.bold, "?"}, {s.sub, " keys"}}, nil),
-		m.line(false, []piece{{s.badge, " SESSION "}, {s.sub, " j/k move · ? keys"}}, right),
+		m.line(false, left, right),
 	}
+}
+
+// statusLeft is the status line's left side. Ports and the kill prompt need
+// the room the counts would take, so they leave the counts out.
+func (m Model) statusLeft() (left []piece, withCounts bool) {
+	s := m.styles
+	if m.confirm != nil {
+		return []piece{{s.badge, " KILL "}, {s.peach, " kill " + m.confirm.label + "? y/n"}}, false
+	}
+	if i := m.index(m.selected); i >= 0 {
+		if label := portLabel(m.entries[i].ports()); label != "" {
+			return []piece{{s.badge, " SESSION "}, {s.teal, " " + label}, {s.sub, " · K kill"}}, false
+		}
+	}
+	return []piece{{s.badge, " SESSION "}, {s.sub, " j/k move · ? keys"}}, true
 }
 
 func taskLabel(t domain.Task) string {
