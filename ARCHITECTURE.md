@@ -43,6 +43,7 @@ Dependency rule: `domain` ← `app` ← `adapters`/`daemon`, and `tui` → `rpc`
 - `PlanCleanup(worktrees, facts)`: the cleanup decision.
 - `Quotas(sessions)`, `Quota.Low`/`Stale`, `Advise(quotas, harness)`: the usage bar and the low-quota warning. See [docs/adr/0017-usage-and-limits-bar.md](docs/adr/0017-usage-and-limits-bar.md).
 - Discovery rules: `KindOfRoot`, `ReposIn`, `SingleRepo`, `MergeRepoState`, `LastUsedWorkspace`. See [Workspaces](#workspaces).
+- Worktree rules: `IsWorktreeAdd`, `SubagentParent`, `AttributeWorktree`, `ReconcileWorktrees`, `RollupChecks`, `PRForBranch`. See [Worktrees](#worktrees).
 
 Everything here is table-tested, with no mocks.
 
@@ -76,9 +77,9 @@ Everything here is table-tested, with no mocks.
 - The client picks `id`; responses and a subscription's diffs carry it back. A connection may have several requests in flight.
 - `subscribe` answers with the full `State` at `seq`, then one `diff` per change starting at `seq+1`. A diff sets exactly one of `workspace`, `task`, `worktree`, `session`, and replaces that entity by key. The one exception is a hook, whose diff sets `session` and `event` together; `event` is appended to its session's events. `State.events` holds each session's last 20. Domain structs encode with their Go field names.
 - `hook` carries one harness hook: `{"harness","event","pane","at","payload"}`, with the hook's stdin JSON as `payload`. The daemon maps `pane` to the session whose `Pane` matches (`domain.SessionOnPane`) and the name to a harness event (`domain.HookEvent`), then applies it; unknown panes and names are ignored. The result is a `HookReply` whose optional `output` the hook prints for the harness.
-- A diff may instead set `removed_workspace` (a root): drop that workspace.
+- A diff may instead set `removed_workspace` (a root) or `removed_worktree` (an ID): drop that entity.
 - `statusline` carries one status-line update: `{"pane","report"}`. The daemon applies it with `Session.Report` to the session on that pane. `session.launch` (`{"harness","dir","model","effort","name","prompt"}` → `Session`) opens a pane through the harness adapter and adds an `idle` session on it; a non-empty `name` also creates a text task with that name, so the session and its banners carry it. It exists only with `WithHarnesses`, and fails with `launch_failed` if the pane cannot be created.
-- Methods: `status`, `subscribe`, `hook`, `statusline`, `session.launch`, `session.mute` (`{"id","muted"}`), `session.focus` (`{"id"}`), and `workspace.add` (`{"path": abs}` → `Workspace`), `workspace.list` (→ `{"workspaces": [...], "last_used": root}`), `workspace.remove` (`{"root": …}`). The workspace methods exist only when the daemon is built with `WithWorkspaces`; otherwise they answer `unknown_method`.
+- Methods: `status`, `subscribe`, `hook`, `statusline`, `session.launch`, `session.mute` (`{"id","muted"}`), `session.focus` (`{"id"}`), and `workspace.add` (`{"path": abs}` → `Workspace`), `workspace.list` (→ `{"workspaces": [...], "last_used": root}`), `workspace.remove` (`{"root": …}`), and `worktree.assign` (`{"id", "session"}`; an empty session unassigns). The workspace methods exist only when the daemon is built with `WithWorkspaces`; otherwise they answer `unknown_method`.
 - Error codes: `unsupported_version` (missing or other `v`), `unknown_method`, `bad_request` (not JSON, bad params, or a path that is not a directory; `id` 0 when not JSON), `not_found` (removing an unknown workspace, or muting or focusing an unknown session), `unavailable` and `failed` (below), `launch_failed`.
 - `client.open` `{"command":[…],"env":{…}}` returns `{"slot","attach"}`: the client window (TUI pane on the left running `command`, main slot on the right), created on the first call and reused while it exists, plus the argv that attaches a terminal to it. `client.focus_main` makes that window's main slot the active pane. Both run tmux on the connection goroutine, never on the loop. Without a terminal host they return `unavailable`; a tmux failure returns `failed`.
 - `debug.seed` `{"count":N}` adds N fake sessions (two per task, one to three worktrees each) for manual testing; `agentws debug seed N` calls it.
@@ -130,6 +131,17 @@ The daemon performs the effects `Session.Apply` returns. `EffectNotify` becomes 
 - **Layers.** Rules in `domain` (`Recipe.Validate`, `PlanDeps`, `InstallCommand`). `app.WorktreeSetup` uses the `RecipeSource`, `MainCheckouts`, `SetupFS` and `CommandRunner` ports. Adapters: `adapters/setup` and `adapters/git`.
 - **Process.** It runs in the CLI process, not the daemon, and reports duration and the change in free bytes on the volume.
 - **Budget.** Cloning a 1 GB `node_modules` must take under 5 s and use under 50 MB. Measured on APFS with 1000 files: 0.13 s and 0.3 MB.
+
+## Worktrees
+
+See [docs/adr/0012-worktree-detection.md](docs/adr/0012-worktree-detection.md). `agentws worktree list` prints each worktree's path, branch, owner and PR; `agentws worktree assign <path> <session>` sets the owner.
+
+- **Model.** A worktree's ID is its path. `Worktree.SessionID` is the owner (empty is unassigned) and the owner's `Session.WorktreeIDs` lists it. `Worktree.PR` carries number, state and the check rollup.
+- **Scan.** One goroutine runs `git worktree list --porcelain -z` (`adapters/git.Worktrees`, at most 4 in flight) from every registered repo and every session's last hook `cwd`, one listing per main checkout. It runs at start, every 10 s, on `workspace.add`, and when a hook reports a new cwd or a `git worktree add`. A repo git cannot read is skipped, so its worktrees are never dropped by mistake. Prunable entries (directory gone) count as removed.
+- **Attribution** (`domain.AttributeWorktree`), for worktrees not seen before: the parent session of a subagent worktree (`<cwd>/.claude/worktrees/agent-*`), then a session whose cwd is inside it, then a `git worktree add` claim from a `PostToolUse` hook in the last 30 s. With claims from several sessions, only one whose command names the path or branch wins. Otherwise unassigned.
+- **Adoption.** The first scan of a repo in a daemon's life adopts its unknown worktrees as unassigned; stored worktrees keep their owner across restarts.
+- **PRs.** Every 60 s, one `gh pr list --state all --json ...` per repo (`adapters/github`), matched by head branch: the open PR, else the newest. A diff goes out only when the PR or its checks changed.
+- Hooks are parsed on the loop (a small JSON decode); all git and gh calls run on the scanner goroutine.
 
 ## Staying fast
 
