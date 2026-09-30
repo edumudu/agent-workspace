@@ -28,7 +28,7 @@ A terminal workspace for running Claude Code and Codex sessions in parallel. It 
 ## How it works
 
 - One Go binary acts as the daemon, the TUI, the CLI, and the hook handler.
-- Agents run in panes on a separate tmux server (`tmux -L agentws`). Your own tmux setup is left alone, and sessions survive closing the terminal.
+- Agents run in panes on a separate tmux server (`tmux -L agentws`). Your own tmux setup is left alone, and sessions survive closing the terminal. Press `ctrl+\` in an agent pane to return to the sidebar.
 - Claude Code and Codex hooks report state to the daemon over a local socket. The hook handler exits in under 20 ms, so agents never wait on it.
 - git, gh and tmux are called as command-line tools; nothing reimplements them.
 
