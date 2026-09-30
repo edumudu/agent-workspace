@@ -40,6 +40,8 @@ type WorktreeHolders interface {
 // business, in the background.
 type Trash interface {
 	Move(path string) error
+	// Purge deletes, in the background, whatever an earlier run left behind.
+	Purge()
 }
 
 type CleanupAudit interface {
@@ -197,6 +199,7 @@ func latest(a, b time.Time) time.Time {
 // backed up and kept for the user, merged clean ones go to the trash once a
 // last process check still finds nobody inside, and their repos are pruned.
 func (c *Cleanup) Execute(ctx context.Context, wts []domain.Worktree, activity func(domain.Worktree) SessionActivity) []CleanupResult {
+	c.trash.Purge()
 	planned := c.plan(ctx, wts, activity)
 	results := make([]CleanupResult, len(planned))
 	var removals []string

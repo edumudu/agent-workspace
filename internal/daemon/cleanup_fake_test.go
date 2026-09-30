@@ -38,6 +38,8 @@ func (f *fakeCleanupWorld) Move(path string) error {
 	return nil
 }
 
+func (f *fakeCleanupWorld) Purge() {}
+
 func (f *fakeCleanupWorld) Record(app.CleanupRecord) {}
 
 func (f *fakeCleanupWorld) movedPaths() []string {

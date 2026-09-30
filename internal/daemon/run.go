@@ -64,7 +64,6 @@ func Run(ctx context.Context, home string) (err error) {
 	}
 	banners := notify.New()
 	trash := wsfs.NewTrash(filepath.Join(home, "trash"), 4)
-	trash.Purge()
 	cleanup := app.NewCleanup(gitadapter.Worktrees{}, procs.Table{}, trash,
 		&wsfs.AuditLog{Path: filepath.Join(home, "cleanup.log")}, filepath.Join(home, "backups"), time.Now)
 	d, err := New(store, os.Getpid(),
