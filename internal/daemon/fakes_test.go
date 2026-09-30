@@ -46,6 +46,18 @@ func (s *memStore) PutWorktree(w domain.Worktree) {
 	s.snap.Worktrees = append(s.snap.Worktrees, w)
 }
 
+func (s *memStore) DeleteWorktree(id string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	kept := s.snap.Worktrees[:0]
+	for _, w := range s.snap.Worktrees {
+		if w.ID != id {
+			kept = append(kept, w)
+		}
+	}
+	s.snap.Worktrees = kept
+}
+
 func (s *memStore) PutSession(x domain.Session) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
