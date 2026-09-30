@@ -10,7 +10,7 @@ This covers how `agentws` is built. What it does is in [FEATURES.md](FEATURES.md
 - **Git:** the `git` CLI via exec, never a Go git library. It is the only thing that handles worktrees, sparse checkouts and user config correctly.
 - **GitHub:** `cli/go-gh`, which reuses the user's `gh` auth. GraphQL with ETag/backoff for polling.
 - **Terminals:** the `tmux` CLI against a dedicated server (`tmux -L agentws`) with its own config, driven only by `internal/adapters/tmux`. Panes are parked in their own windows and `swap-pane` puts one in the client's main slot. See [docs/adr/0003-tmux-terminal-host.md](docs/adr/0003-tmux-terminal-host.md).
-- **Storage:** SQLite via `modernc.org/sqlite` (no cgo), with embedded migrations. Stored under `~/.agentws/`.
+- **Storage:** SQLite via `modernc.org/sqlite` (no cgo), with embedded migrations and write-behind. Stored at `~/.agentws/state.db` (`$AGENTWS_HOME/state.db` if set). See [docs/adr/0004-sqlite-store.md](docs/adr/0004-sqlite-store.md).
 - **IPC:** a Unix socket at `~/.agentws/agentws.sock` carrying newline-delimited JSON. Request/response calls, plus a subscribe stream for state updates.
 - **Notifications:** `osascript` in v1. A native helper can replace it later behind the same port.
 - **nvim:** a small Lua plugin in `nvim/` that talks to the daemon through `agentws` CLI calls.
