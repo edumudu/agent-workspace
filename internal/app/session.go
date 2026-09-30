@@ -9,7 +9,14 @@ import (
 
 // WorktreeAdder runs `git worktree add -b branch path base` in repo.
 type WorktreeAdder interface {
-	AddWorktree(ctx context.Context, repo, path, branch, base string) error
+	AddWorktree(ctx context.Context, repo, path, branch, base string) (AddedWorktree, error)
+}
+
+// AddedWorktree holds the paths as git reports them, symlinks resolved, so
+// the worktree gets the same ID and repo that worktree detection gives it.
+type AddedWorktree struct {
+	Main string
+	Path string
 }
 
 type SetupFunc func(ctx context.Context, worktree string) error
@@ -22,18 +29,16 @@ type Sessions struct {
 	Setup     SetupFunc
 }
 
-// NewSession is one session to start. Task must already carry its ID;
-// WorktreeID is used only when Plan has a worktree.
+// NewSession is one session to start. Task must already carry its ID.
 type NewSession struct {
-	ID         string
-	WorktreeID string
-	Task       domain.Task
-	Plan       domain.SessionPlan
-	Harness    HarnessAdapter
-	Name       string
-	Model      string
-	Effort     string
-	Prompt     string
+	ID      string
+	Task    domain.Task
+	Plan    domain.SessionPlan
+	Harness HarnessAdapter
+	Name    string
+	Model   string
+	Effort  string
+	Prompt  string
 }
 
 type Started struct {
@@ -46,18 +51,21 @@ type Started struct {
 // stays on disk: it may hold the setup's work, and cleanup owns removal.
 func (s Sessions) Start(ctx context.Context, req NewSession) (Started, error) {
 	var wt *domain.Worktree
+	dir := req.Plan.Dir
 	if p := req.Plan.Worktree; p != nil {
-		if err := s.Worktrees.AddWorktree(ctx, p.RepoPath, p.Path, p.Branch, p.Base); err != nil {
+		added, err := s.Worktrees.AddWorktree(ctx, p.RepoPath, p.Path, p.Branch, p.Base)
+		if err != nil {
 			return Started{}, fmt.Errorf("worktree %s: %w", p.Path, err)
 		}
 		if s.Setup != nil {
-			if err := s.Setup(ctx, p.Path); err != nil {
-				return Started{}, fmt.Errorf("setup %s: %w", p.Path, err)
+			if err := s.Setup(ctx, added.Path); err != nil {
+				return Started{}, fmt.Errorf("setup %s: %w", added.Path, err)
 			}
 		}
-		wt = &domain.Worktree{ID: req.WorktreeID, Repo: p.Repo, Path: p.Path, Branch: p.Branch}
+		wt = &domain.Worktree{ID: added.Path, Repo: added.Main, Path: added.Path, Branch: p.Branch, SessionID: req.ID}
+		dir = added.Path
 	}
-	spec := req.Harness.Launch(LaunchRequest{Name: req.Name, Dir: req.Plan.Dir, Model: req.Model, Effort: req.Effort, Prompt: req.Prompt})
+	spec := req.Harness.Launch(LaunchRequest{Name: req.Name, Dir: dir, Model: req.Model, Effort: req.Effort, Prompt: req.Prompt})
 	pane, err := s.Host.Create(ctx, spec)
 	if err != nil {
 		return Started{}, fmt.Errorf("launch %s: %w", req.Harness.Harness(), err)

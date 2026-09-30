@@ -68,7 +68,7 @@ func (d *Daemon) newSession(req rpc.Request) (*rpc.Response, bool) {
 		name = plan.Worktree.Branch
 	}
 	started, err := d.sessions().Start(d.ws.ctx, app.NewSession{
-		ID: newID(), WorktreeID: newID(), Task: in.task, Plan: plan, Harness: adapter,
+		ID: newID(), Task: in.task, Plan: plan, Harness: adapter,
 		Name: name, Model: p.Model, Effort: p.Effort, Prompt: p.WorkItem,
 	})
 	if err != nil {

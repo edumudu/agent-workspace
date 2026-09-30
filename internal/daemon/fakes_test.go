@@ -340,7 +340,3 @@ func (f *fakeWorktrees) AddWorktree(_ context.Context, repo, path, branch, base 
 	f.added = append(f.added, addedWorktree{repo, path, branch, base})
 	return app.AddedWorktree{Main: repo, Path: path}, nil
 }
-
-type noPRs struct{}
-
-func (noPRs) PRs(context.Context, string) ([]domain.PullRequest, error) { return nil, nil }

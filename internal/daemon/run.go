@@ -43,6 +43,10 @@ func Run(ctx context.Context, home string) (err error) {
 		Socket:     os.Getenv("AGENTWS_TMUX_SOCKET"),
 		ConfigPath: filepath.Join(home, "tmux.conf"),
 	})
+	worktreeHome, err := realDir(filepath.Join(home, "worktrees"))
+	if err != nil {
+		return err
+	}
 	recipe := app.WorktreeSetup{
 		Recipes: setup.Recipes{},
 		FS:      setup.FS{},
@@ -62,7 +66,7 @@ func Run(ctx context.Context, home string) (err error) {
 	d, err := New(store, os.Getpid(),
 		WithWorkspaces(wsfs.FS{}, gitadapter.Inspector{}),
 		WithHarnesses(host, claude.Adapter{}, codex.Adapter{}),
-		WithSessions(gitadapter.Adder{}, runRecipe, filepath.Join(home, "worktrees")),
+		WithSessions(gitadapter.Adder{}, runRecipe, worktreeHome),
 		WithNotifier(banners, banners, sounds),
 		WithWorktrees(gitadapter.Worktrees{}, github.Finder{}),
 		WithProcessTable(procs.Table{}))
@@ -86,4 +90,13 @@ func Run(ctx context.Context, home string) (err error) {
 		return err
 	}
 	return d.Serve(ctx, ln)
+}
+
+// realDir creates dir and resolves its symlinks, so planned worktree paths
+// compare equal to the ones git reports.
+func realDir(dir string) (string, error) {
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return "", err
+	}
+	return filepath.EvalSymlinks(dir)
 }
