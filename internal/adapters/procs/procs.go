@@ -55,7 +55,7 @@ func (Table) Listeners(ctx context.Context) ([]domain.Listener, error) {
 func run(ctx context.Context, name string, args ...string) (string, error) {
 	out, err := exec.CommandContext(ctx, name, args...).Output()
 	var exit *exec.ExitError
-	if err != nil && !(errors.As(err, &exit) && exit.ExitCode() == 1) {
+	if err != nil && (!errors.As(err, &exit) || exit.ExitCode() != 1) {
 		return "", fmt.Errorf("%s: %w", name, err)
 	}
 	return string(out), nil
