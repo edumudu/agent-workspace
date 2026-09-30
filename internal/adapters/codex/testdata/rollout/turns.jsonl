@@ -1,0 +1,9 @@
+{"timestamp":"2026-09-29T10:00:00.000Z","ordinal":0,"type":"session_meta","payload":{"id":"019a1c2e-7b3d-7000-8a11-2f9d5c0e1a01","cwd":"/work/api","cli_version":"0.159.0"}}
+{"timestamp":"2026-09-29T10:00:01.000Z","ordinal":1,"type":"turn_context","payload":{"turn_id":"t1","cwd":"/work/api","model":"gpt-6.0-terra","effort":"low","summary":"none"}}
+{"timestamp":"2026-09-29T10:00:02.000Z","ordinal":2,"type":"event_msg","payload":{"type":"token_count","info":{"total_token_usage":{"total_tokens":16539},"last_token_usage":{"input_tokens":16500,"output_tokens":39,"reasoning_output_tokens":0,"total_tokens":16539},"model_context_window":258400},"rate_limits":null}}
+not json at all
+{"timestamp":"2026-09-29T10:05:00.000Z","ordinal":3,"type":"turn_context","payload":{"turn_id":"t2","cwd":"/work/api","model":"gpt-6.1-sol","effort":"medium","summary":"none"}}
+{"timestamp":"2026-09-29T10:05:02.000Z","ordinal":4,"type":"event_msg","payload":{"type":"agent_message","message":"working"}}
+{"timestamp":"2026-09-29T10:05:03.000Z","ordinal":5,"type":"event_msg","payload":{"type":"token_count","info":{"total_token_usage":{"total_tokens":140000},"last_token_usage":{"input_tokens":119000,"output_tokens":1000,"reasoning_output_tokens":0,"total_tokens":120000},"model_context_window":258400},"rate_limits":{"limit_id":"codex","primary":{"used_percent":40.6,"window_minutes":300,"resets_at":1791315501},"secondary":{"used_percent":12.0,"window_minutes":10080,"resets_at":1791800000},"plan_type":"pro"}}}
+{"timestamp":"2026-09-29T10:05:04.000Z","ordinal":6,"type":"event_msg","payload":{"type":"token_count","info":null,"rate_limits":null}}
+{"timestamp":"2026-09-29T10:05:05.000Z","ordinal":7,"type":"event_msg","payload":{"type":"token_cou
