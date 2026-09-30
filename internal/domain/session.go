@@ -63,6 +63,10 @@ type Session struct {
 	Limits      []RateLimit
 	// LimitsAt is when Limits were reported; zero when they never were.
 	LimitsAt time.Time
+	// Switches are model or effort changes not yet confirmed by a status
+	// report. SwitchWarning is set when one was not confirmed.
+	Switches      []Switch
+	SwitchWarning bool
 }
 
 // Apply is the agent state machine. Events that no longer fit the current
