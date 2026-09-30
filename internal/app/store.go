@@ -15,6 +15,7 @@ type Snapshot struct {
 // Flush waits until everything enqueued so far is written.
 type Store interface {
 	PutWorkspace(domain.Workspace)
+	DeleteWorkspace(root string)
 	PutTask(domain.Task)
 	PutWorktree(domain.Worktree)
 	PutSession(domain.Session)

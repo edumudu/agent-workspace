@@ -178,17 +178,26 @@ func (s *Store) PutTask(t domain.Task)           { s.put(tableTasks, t.ID, t) }
 func (s *Store) PutWorktree(w domain.Worktree)   { s.put(tableWorktrees, w.ID, w) }
 func (s *Store) PutSession(x domain.Session)     { s.put(tableSessions, x.ID, x) }
 
+// DeleteWorkspace enqueues a delete; like a put it supersedes any earlier
+// unflushed write for the same root.
+func (s *Store) DeleteWorkspace(root string) { s.enqueue(tableWorkspaces, root, nil) }
+
 func (s *Store) put(t table, key string, v any) {
 	data, err := json.Marshal(v)
-	s.mu.Lock()
 	if err != nil {
-		s.err = errors.Join(s.err, err)
-	} else {
-		if s.pending[t] == nil {
-			s.pending[t] = map[string][]byte{}
-		}
-		s.pending[t][key] = data
+		s.recordErr(err)
+		return
 	}
+	s.enqueue(t, key, data)
+}
+
+// enqueue records data for key; nil data means delete the row.
+func (s *Store) enqueue(t table, key string, data []byte) {
+	s.mu.Lock()
+	if s.pending[t] == nil {
+		s.pending[t] = map[string][]byte{}
+	}
+	s.pending[t][key] = data
 	s.mu.Unlock()
 	select {
 	case s.wake <- struct{}{}:
@@ -257,13 +266,25 @@ func (s *Store) write() error {
 		if err != nil {
 			return err
 		}
+		del, err := tx.Prepare(fmt.Sprintf(`DELETE FROM %s WHERE %s = ?`, t, keyColumn[t]))
+		if err != nil {
+			_ = stmt.Close()
+			return err
+		}
 		for key, data := range rows {
-			if _, err := stmt.Exec(key, string(data)); err != nil {
+			if data == nil {
+				_, err = del.Exec(key)
+			} else {
+				_, err = stmt.Exec(key, string(data))
+			}
+			if err != nil {
 				_ = stmt.Close()
+				_ = del.Close()
 				return err
 			}
 		}
 		_ = stmt.Close()
+		_ = del.Close()
 	}
 	return tx.Commit()
 }
