@@ -14,7 +14,7 @@ This covers how `agentws` is built. What it does is in [FEATURES.md](FEATURES.md
 - **IPC:** a Unix socket at `~/.agentws/agentws.sock` carrying newline-delimited JSON. Request/response calls, plus a subscribe stream for state updates.
 - **Notifications:** `osascript` in v1. A native helper can replace it later behind the same port.
 - **nvim:** a small Lua plugin in `nvim/` that talks to the daemon through `agentws` CLI calls.
-- **Tooling:** `go test`, `golangci-lint`, `testscript` for CLI end-to-end tests, GitHub Actions on macOS, goreleaser later.
+- **Tooling:** `go test`, `golangci-lint`, `testscript` for the e2e suite, `gremlins` for mutation testing, a `tdd` CI job that runs new tests against the base branch, `scripts/lint-comments`, GitHub Actions on macOS, and goreleaser later. Rules: [AGENTS.md](AGENTS.md).
 
 ## Layers
 
