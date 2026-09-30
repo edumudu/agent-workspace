@@ -57,3 +57,7 @@ linters:
           deny:
             - pkg: github.com/giovaniif/agent-workspace/internal/adapters/tmux
               desc: only the daemon wires the tmux adapter
+
+formatters:
+  enable:
+    - gofmt

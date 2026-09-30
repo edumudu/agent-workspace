@@ -11,7 +11,7 @@
 
 - `make build`: produces `./bin/agentws`.
 - `make test`: `go test ./...`.
-- `make lint`: `golangci-lint` (including the `depguard` layer rules in `.golangci.yml`), then `scripts/lint-comments`.
+- `make lint`: `golangci-lint` (including the `depguard` layer rules and the `gofmt` formatter check in `.golangci.yml`), then `scripts/lint-comments`. `scripts/tdd-check` ignores test changes that are whitespace only.
 - `make bench`: benchmarks that guard the performance budgets.
 - `make mutate`: `scripts/mutate` runs `gremlins` on `domain` and `app`, failing below 80% efficacy. A package with no tests is skipped. Install with `go install github.com/go-gremlins/gremlins/cmd/gremlins@v0.6.0`.
 - `make e2e`: the core e2e suite. It builds the binary once and runs the `test/e2e/testdata/script/*.txtar` scripts.

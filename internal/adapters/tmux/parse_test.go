@@ -24,9 +24,9 @@ func TestParsePanesKeepsOnlyManagedPanes(t *testing.T) {
 
 func TestTrimCaptureDropsTrailingBlankLines(t *testing.T) {
 	tests := map[string]string{
-		"a\nb\n\n\n":  "a\nb",
-		"a\n\nb\n":    "a\n\nb",
-		"\n\n":        "",
+		"a\nb\n\n\n":   "a\nb",
+		"a\n\nb\n":     "a\n\nb",
+		"\n\n":         "",
 		"  a  \n   \n": "  a  ",
 	}
 	for in, want := range tests {
