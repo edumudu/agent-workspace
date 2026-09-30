@@ -81,7 +81,7 @@ func TestDebugSeedAddsFakeSessionsWithWorktrees(t *testing.T) {
 	_, path := start(t, &memStore{})
 	c := dial(t, path)
 	ctx := context.Background()
-	if err := c.DebugSeed(ctx, 3); err != nil {
+	if err := c.DebugSeed(ctx, rpc.DebugSeedParams{Count: 3}); err != nil {
 		t.Fatal(err)
 	}
 	sub, err := dial(t, path).Subscribe(ctx)
@@ -110,7 +110,7 @@ func TestDebugSeedAddsFakeSessionsWithWorktrees(t *testing.T) {
 			}
 		}
 	}
-	if err := c.DebugSeed(ctx, 0); err == nil {
+	if err := c.DebugSeed(ctx, rpc.DebugSeedParams{Count: 0}); err == nil {
 		t.Fatal("seeding 0 sessions succeeded")
 	}
 }
