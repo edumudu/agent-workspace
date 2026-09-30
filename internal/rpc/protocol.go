@@ -134,11 +134,6 @@ type Review struct {
 	Draft domain.ReviewDraft `json:"draft"`
 }
 
-type ReviewCommentParams struct {
-	Session string               `json:"session"`
-	Comment domain.ReviewComment `json:"comment"`
-}
-
 type ReviewSendParams struct {
 	Session string `json:"session"`
 }
@@ -375,8 +370,8 @@ type State struct {
 	Subagents []domain.Subagent `json:"subagents"`
 	// Queue is the launcher's issues that have not become sessions yet.
 	Queue []domain.LaunchItem `json:"queue"`
-	// Comments are the draft review comments not yet sent, oldest first.
-	Comments []domain.DraftComment `json:"comments"`
+	// Drafts are each session's open or queued review draft, by ID.
+	Drafts []domain.ReviewDraft `json:"drafts"`
 }
 
 // Diff is one change: exactly one field besides Seq is set, except that a hook
@@ -397,7 +392,10 @@ type Diff struct {
 	Event            *domain.SessionEvent `json:"event,omitempty"`
 	Subagent         *domain.Subagent     `json:"subagent,omitempty"`
 	Queue            *[]domain.LaunchItem `json:"queue,omitempty"`
-	Comment          *domain.DraftComment `json:"comment,omitempty"`
+	// Draft replaces its session's draft; one that is sent no longer
+	// counts. Comment is set with it when a comment was just added.
+	Draft   *domain.ReviewDraft   `json:"draft,omitempty"`
+	Comment *domain.ReviewComment `json:"comment,omitempty"`
 }
 
 // Home is $AGENTWS_HOME, or ~/.agentws.

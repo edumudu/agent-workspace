@@ -11,6 +11,7 @@ import (
 // Worktree (a path, so the agent edits the right checkout). The numbers are
 // the new side's, or the old side's when Removed: every line was deleted.
 type ReviewComment struct {
+	ID       string   `json:"id,omitempty"`
 	Worktree string   `json:"worktree"`
 	Path     string   `json:"path"`
 	Start    int      `json:"start"`

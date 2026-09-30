@@ -5,7 +5,6 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
-	"time"
 )
 
 // ShellTarget is the shell a session gets for a directory. Key is unique per
@@ -79,18 +78,4 @@ func NormalizeLines(start, end int) (int, int, bool) {
 		return 0, 0, false
 	}
 	return min(start, end), max(start, end), true
-}
-
-// DraftComment is a review comment waiting to be sent to its session. Code
-// is the text of the lines it is about, as the commenter saw it.
-type DraftComment struct {
-	ID        string
-	Session   string
-	Worktree  string
-	Path      string
-	StartLine int
-	EndLine   int
-	Code      string
-	Body      string
-	At        time.Time
 }

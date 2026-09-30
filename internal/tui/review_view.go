@@ -230,9 +230,9 @@ func (m Model) scopeBar(width int) string {
 		{text: fmt.Sprintf("-%d", del), fg: t.Red},
 		{text: fmt.Sprintf("  %d/%d viewed ", viewed, files), fg: t.Subtext},
 	}
-	if n := len(m.rv.draft.Comments); n > 0 {
-		label := count(n, "comment")
-		if m.rv.draft.Status == domain.DraftQueued {
+	if n := m.draftCount(m.rv.session); n > 0 {
+		label := count(n, "draft comment")
+		if m.drafts[m.rv.session].Status == domain.DraftQueued {
 			label += " queued"
 		}
 		right = append([]seg{{text: label + "  ", fg: t.Mauve, bold: true}}, right...)

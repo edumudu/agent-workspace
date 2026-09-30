@@ -113,7 +113,6 @@ type state struct {
 	launched map[string]bool
 	// kickLauncher is set by New and must not block.
 	kickLauncher func()
-	comments     map[string]domain.DraftComment
 	scopes       map[string]domain.ReviewScope
 	// drafts holds each session's open or queued draft; awaiting, the sent
 	// draft whose prompt has not been seen yet.
@@ -166,7 +165,6 @@ func New(store app.Store, pid int, opts ...Option) (*Daemon, error) {
 		hints:      newWorktreeHints(),
 		viewed:     map[string]domain.ViewedMark{},
 		launched:   map[string]bool{},
-		comments:   map[string]domain.DraftComment{},
 		scopes:     map[string]domain.ReviewScope{},
 		drafts:     map[string]domain.ReviewDraft{},
 		awaiting:   map[string]domain.ReviewDraft{},
@@ -514,7 +512,7 @@ func (s *state) snapshot() rpc.State {
 		Events:     flatten(s.events),
 		Subagents:  append([]domain.Subagent{}, s.subagents...),
 		Queue:      append([]domain.LaunchItem{}, s.queue...),
-		Comments:   s.commentList(),
+		Drafts:     s.draftList(),
 	}
 }
 

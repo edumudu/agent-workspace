@@ -60,11 +60,14 @@ func runReview(args []string, stdout, stderr io.Writer) int {
 			return 2
 		}
 		return callReview(stderr, "comment", func(ctx context.Context, c *rpc.Client) error {
-			var out domain.DraftComment
-			if err := c.Call(ctx, rpc.MethodReviewComment, p, &out); err != nil {
+			draft, err := c.AddReviewComment(ctx, p)
+			if err != nil {
 				return err
 			}
-			fmt.Fprintf(stdout, "comment %s on %s:%d\n", out.ID, out.Path, out.StartLine)
+			if n := len(draft.Comments); n > 0 {
+				last := draft.Comments[n-1]
+				fmt.Fprintf(stdout, "comment %s on %s:%d (%d in the draft)\n", last.ID, last.Path, last.Start, n)
+			}
 			return nil
 		})
 	case "scope":

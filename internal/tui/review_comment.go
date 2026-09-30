@@ -2,6 +2,7 @@ package tui
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	tea "charm.land/bubbletea/v2"
@@ -122,17 +123,19 @@ func (m Model) submitComment() (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 	m.rv.marking = false
-	r, session := m.opts.Review, m.rv.session
+	r := m.opts.Review
+	p := rpc.CommentParams{Session: m.rv.session, Worktree: f.wt.ID, Path: c.Path, StartLine: c.Start, EndLine: c.End,
+		Code: strings.Join(c.Code, "\n"), Body: c.Body, Removed: c.Removed}
 	return m, func() tea.Msg {
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 		defer cancel()
-		d, err := r.AddReviewComment(ctx, session, c)
+		d, err := r.AddReviewComment(ctx, p)
 		return draftMsg{draft: d, err: err}
 	}
 }
 
 func (m *Model) sendDraft() tea.Cmd {
-	if len(m.rv.draft.Comments) == 0 {
+	if m.draftCount(m.rv.session) == 0 {
 		return nil
 	}
 	r, session := m.opts.Review, m.rv.session
@@ -152,13 +155,15 @@ func (m Model) gotDraft(msg draftMsg) (tea.Model, tea.Cmd) {
 	if msg.draft.Session != "" && msg.draft.Session != m.rv.session {
 		return m, nil
 	}
-	m.rv.draft = msg.draft
+	if msg.draft.Session == "" {
+		msg.draft.Session = m.rv.session
+	}
+	m.putDraft(msg.draft)
 	switch {
 	case !msg.sent:
 		m.status = ""
 	case msg.draft.Status == domain.DraftSent:
 		m.status = "sent " + count(len(msg.draft.Comments), "comment") + " to the agent"
-		m.rv.draft = domain.ReviewDraft{}
 	default:
 		m.status = "queued: sends when the agent is between tools"
 	}

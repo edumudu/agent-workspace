@@ -28,33 +28,6 @@ func (s *state) reviewTarget(session string, match func(domain.Worktree) bool) (
 	return domain.Worktree{}, false
 }
 
-func (d *Daemon) addDraftComment(req rpc.Request) (*rpc.Response, bool) {
-	var p rpc.ReviewCommentParams
-	if err := json.Unmarshal(req.Params, &p); err != nil || p.Session == "" || p.Comment.Path == "" || p.Comment.Body == "" {
-		return errorResponse(req.ID, rpc.CodeBadRequest, "review.comment needs a session, a path and a body"), true
-	}
-	var resp *rpc.Response
-	ok := d.query(func(s *state) {
-		if _, found := s.sessions[p.Session]; !found {
-			resp = errorResponse(req.ID, rpc.CodeNotFound, "no session "+p.Session)
-			return
-		}
-		if _, owned := s.reviewTarget(p.Session, func(w domain.Worktree) bool { return w.Path == p.Comment.Worktree }); !owned {
-			resp = errorResponse(req.ID, rpc.CodeBadRequest, "session "+p.Session+" does not work in "+p.Comment.Worktree)
-			return
-		}
-		draft, open := s.drafts[p.Session]
-		if !open {
-			draft = domain.ReviewDraft{ID: p.Session + "-" + strconv.FormatInt(time.Now().UnixNano(), 10), Session: p.Session}
-		}
-		draft = draft.Add(p.Comment)
-		s.drafts[p.Session] = draft
-		s.store.PutDraft(draft)
-		resp = result(req.ID, draft)
-	})
-	return resp, ok
-}
-
 func (d *Daemon) sendReview(req rpc.Request) (*rpc.Response, bool) {
 	var p rpc.ReviewSendParams
 	if err := json.Unmarshal(req.Params, &p); err != nil || p.Session == "" {
@@ -77,7 +50,7 @@ func (d *Daemon) sendReview(req rpc.Request) (*rpc.Response, bool) {
 		}
 		draft = draft.Queue()
 		s.drafts[p.Session] = draft
-		s.store.PutDraft(draft)
+		s.putDraft(draft, nil)
 		if sent, ok := s.dispatchDraft(session); ok {
 			draft = sent
 		}
@@ -100,6 +73,7 @@ func (s *state) dispatchDraft(session domain.Session) (domain.ReviewDraft, bool)
 	delete(s.drafts, session.ID)
 	s.awaiting[session.ID] = sent
 	s.pasting[session.ID] = true
+	s.emit(DraftChanged{Draft: sent})
 	// why: the store keeps it queued until the paste lands, so a daemon stopped in between sends it after the restart.
 	s.sendDraft(session, sent, prompt)
 	return sent, true
@@ -155,7 +129,7 @@ func (s *state) requeueDraft(draft domain.ReviewDraft) {
 		back.Comments = append(back.Comments, newer.Comments...)
 	}
 	s.drafts[draft.Session] = back
-	s.store.PutDraft(back)
+	s.putDraft(back, nil)
 }
 
 func (d *Daemon) applyHunk(req rpc.Request) (*rpc.Response, bool) {

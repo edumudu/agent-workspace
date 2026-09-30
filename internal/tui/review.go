@@ -14,7 +14,7 @@ import (
 type Reviewer interface {
 	Review(ctx context.Context, p rpc.ReviewParams) (rpc.Review, error)
 	MarkViewed(ctx context.Context, mark domain.ViewedMark, viewed bool) error
-	AddReviewComment(ctx context.Context, session string, c domain.ReviewComment) (domain.ReviewDraft, error)
+	AddReviewComment(ctx context.Context, p rpc.CommentParams) (domain.ReviewDraft, error)
 	SendReview(ctx context.Context, session string) (domain.ReviewDraft, error)
 	ApplyHunk(ctx context.Context, p rpc.HunkParams) error
 	ReviewLayout(ctx context.Context, open bool) error
@@ -90,7 +90,6 @@ type reviewState struct {
 	typing  bool
 	text    string
 	confirm bool
-	draft   domain.ReviewDraft
 }
 
 func prepare(syntax syntaxColors, r rpc.Review) prepared {
@@ -209,7 +208,10 @@ func (m *Model) gotReview(msg reviewMsg) {
 	for _, mk := range msg.review.Viewed {
 		m.rv.marks[mk.Key()] = mk
 	}
-	m.rv.draft = msg.review.Draft
+	if d := msg.review.Draft; d.ID != "" {
+		d.Session = m.rv.session
+		m.putDraft(d)
+	}
 	cur := 0
 	for i, f := range m.rv.prep.files {
 		if f.wt.ID+"\x00"+f.file.Path == prevPath {

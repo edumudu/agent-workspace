@@ -184,9 +184,9 @@ func (c *Client) MarkViewed(ctx context.Context, mark domain.ViewedMark, viewed 
 	return c.Call(ctx, MethodReviewViewed, ViewedParams{Mark: mark, Viewed: viewed}, nil)
 }
 
-func (c *Client) AddReviewComment(ctx context.Context, session string, comment domain.ReviewComment) (domain.ReviewDraft, error) {
+func (c *Client) AddReviewComment(ctx context.Context, p CommentParams) (domain.ReviewDraft, error) {
 	var out domain.ReviewDraft
-	err := c.Call(ctx, MethodReviewComment, ReviewCommentParams{Session: session, Comment: comment}, &out)
+	err := c.Call(ctx, MethodReviewComment, p, &out)
 	return out, err
 }
 
