@@ -116,6 +116,9 @@ type Daemon struct {
 	hs      harnesses
 	wt      worktreeScanner
 	ports   portScanner
+	sess    sessionDeps
+	// restored is the sessions loaded from the store, checked once against tmux on Serve.
+	restored []domain.Session
 }
 
 // New restores state from store. pid is what status reports.
@@ -152,15 +155,16 @@ func New(store app.Store, pid int, opts ...Option) (*Daemon, error) {
 		st.events[ev.SessionID] = append(st.events[ev.SessionID], ev)
 	}
 	d := &Daemon{
-		pid:     pid,
-		started: time.Now(),
-		events:  make(chan Event, 256),
-		queries: make(chan func(*state)),
-		stopped: make(chan struct{}),
-		st:      st,
-		ws:      workspaces{now: time.Now, refreshEvery: defaultRefreshInterval, ctx: context.Background()},
-		wt:      worktreeScanner{every: DefaultWorktreePoll, prEvery: DefaultPRPoll, baselined: map[string]bool{}},
-		ports:   portScanner{every: DefaultPortsPoll},
+		pid:      pid,
+		started:  time.Now(),
+		events:   make(chan Event, 256),
+		queries:  make(chan func(*state)),
+		stopped:  make(chan struct{}),
+		st:       st,
+		restored: snap.Sessions,
+		ws:       workspaces{now: time.Now, refreshEvery: defaultRefreshInterval, ctx: context.Background()},
+		wt:       worktreeScanner{every: DefaultWorktreePoll, prEvery: DefaultPRPoll, baselined: map[string]bool{}},
+		ports:    portScanner{every: DefaultPortsPoll},
 	}
 	st.requestUsage = func(sessionID, path string, force bool) { d.requestUsage(st, sessionID, path, force) }
 	for _, o := range opts {
@@ -200,6 +204,7 @@ func (d *Daemon) Serve(ctx context.Context, ln net.Listener) error {
 	}
 	go d.watchWorktrees(ctx)
 	go d.watchPorts(ctx)
+	go d.reconcilePanes(ctx)
 	loopDone := make(chan struct{})
 	go func() {
 		d.loop(ctx)
@@ -378,8 +383,14 @@ func (d *Daemon) dispatch(c *conn, line []byte) (*rpc.Response, bool) {
 		return result(req.ID, struct{}{}), ok
 	case rpc.MethodLaunch:
 		return d.launch(req)
-	case rpc.MethodSessionMute, rpc.MethodSessionFocus:
+	case rpc.MethodSessionMute:
 		return d.dispatchAttention(req)
+	case rpc.MethodSessionFocus:
+		return d.focusSession(req)
+	case rpc.MethodNewSession:
+		return d.newSession(req)
+	case rpc.MethodEndSession:
+		return d.endSession(req)
 	case rpc.MethodWorkspaceAdd, rpc.MethodWorkspaceList, rpc.MethodWorkspaceRemove:
 		if resp, ok, handled := d.workspaceMethod(req); handled {
 			return resp, ok

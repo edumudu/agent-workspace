@@ -171,11 +171,19 @@ func (h *fakeClientHost) close(slot app.Slot) {
 	delete(h.open, slot)
 }
 
+type shown struct {
+	pane app.PaneID
+	slot app.Slot
+}
+
 type fakeHost struct {
 	app.TerminalHost
-	mu    sync.Mutex
-	specs []app.PaneSpec
-	err   error
+	mu     sync.Mutex
+	specs  []app.PaneSpec
+	err    error
+	panes  []app.PaneInfo
+	killed []app.PaneID
+	shown  []shown
 }
 
 func (h *fakeHost) Create(_ context.Context, spec app.PaneSpec) (app.PaneID, error) {
@@ -293,4 +301,42 @@ func (f *fakeTable) killed() []int {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	return append([]int(nil), f.terminated...)
+}
+
+func (h *fakeHost) Kill(_ context.Context, pane app.PaneID) error {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.killed = append(h.killed, pane)
+	return nil
+}
+
+func (h *fakeHost) Show(_ context.Context, pane app.PaneID, slot app.Slot) error {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.shown = append(h.shown, shown{pane, slot})
+	return nil
+}
+
+func (h *fakeHost) List(context.Context) ([]app.PaneInfo, error) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	return h.panes, nil
+}
+
+type addedWorktree struct{ repo, path, branch, base string }
+
+type fakeWorktrees struct {
+	mu    sync.Mutex
+	added []addedWorktree
+	err   error
+}
+
+func (f *fakeWorktrees) AddWorktree(_ context.Context, repo, path, branch, base string) (app.AddedWorktree, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.err != nil {
+		return app.AddedWorktree{}, f.err
+	}
+	f.added = append(f.added, addedWorktree{repo, path, branch, base})
+	return app.AddedWorktree{Main: repo, Path: path}, nil
 }

@@ -159,6 +159,9 @@ func (m Model) topBar() string {
 // body renders the sidebar rows and returns the row the selection starts on.
 func (m Model) body() ([]string, int) {
 	s := m.styles
+	if m.dialog != nil {
+		return m.dialogLines()
+	}
 	if m.help {
 		return m.helpLines(), 0
 	}
@@ -270,6 +273,8 @@ func (m Model) helpLines() []string {
 		{"m", "mute session"},
 		{"K", "kill the session's dev servers"},
 		{"enter", "focus agent pane"},
+		{"n", "new session"},
+		{"x", "end session"},
 		{"?", "close help"},
 		{"q", "quit (sessions keep running)"},
 	}

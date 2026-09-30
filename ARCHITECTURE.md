@@ -81,8 +81,9 @@ Everything here is table-tested, with no mocks.
 - A diff may instead set `removed_workspace` (a root) or `removed_worktree` (an ID): drop that entity.
 - A subagent change is a diff of its own that sets `subagent`, replacing the subagent with the same `SessionID` and `ID`. `State.subagents` holds every session's subagents (at most 30 each, in memory only). See [docs/adr/0019-subagent-tree.md](docs/adr/0019-subagent-tree.md).
 - `statusline` carries one status-line update: `{"pane","report"}`. The daemon applies it with `Session.Report` to the session on that pane. `session.launch` (`{"harness","dir","model","effort","name","prompt"}` → `Session`) opens a pane through the harness adapter and adds an `idle` session on it; a non-empty `name` also creates a text task with that name, so the session and its banners carry it. It exists only with `WithHarnesses`, and fails with `launch_failed` if the pane cannot be created.
-- Methods: `status`, `subscribe`, `hook`, `statusline`, `session.launch`, `session.mute` (`{"id","muted"}`), `session.focus` (`{"id"}`), and `workspace.add` (`{"path": abs}` → `Workspace`), `workspace.list` (→ `{"workspaces": [...], "last_used": root}`), `workspace.remove` (`{"root": …}`), and `worktree.assign` (`{"id", "session"}`; an empty session unassigns). The workspace methods exist only when the daemon is built with `WithWorkspaces`; otherwise they answer `unknown_method`.
-- Error codes: `unsupported_version` (missing or other `v`), `unknown_method`, `bad_request` (not JSON, bad params, or a path that is not a directory; `id` 0 when not JSON), `not_found` (removing an unknown workspace, or muting or focusing an unknown session), `unavailable` and `failed` (below), `launch_failed`.
+- `session.new` (`{"workspace","work_item","harness","model","effort"}` → `Session`) starts a session: it parses the work item, plans the dir and worktree in `domain`, then runs git, the setup recipe and tmux on the connection goroutine and commits the task, worktree, session and last-used workspace. `session.end` (`{"id"}` → `Session`) kills the pane and idles the session. With a terminal host and an open client layout, `session.focus` also swaps the session's pane into the main slot and focuses it. They need `WithHarnesses` and, for `session.new`, `WithSessions`. See [Sessions](#sessions).
+- Methods: `status`, `subscribe`, `hook`, `statusline`, `session.launch`, `session.mute` (`{"id","muted"}`), `session.focus` (`{"id"}`), `session.new`, `session.end`, and `workspace.add` (`{"path": abs}` → `Workspace`), `workspace.list` (→ `{"workspaces": [...], "last_used": root}`), `workspace.remove` (`{"root": …}`), and `worktree.assign` (`{"id", "session"}`; an empty session unassigns). The workspace methods exist only when the daemon is built with `WithWorkspaces`; otherwise they answer `unknown_method`.
+- Error codes: `unsupported_version` (missing or other `v`), `unknown_method`, `bad_request` (not JSON, bad params, or a path that is not a directory; `id` 0 when not JSON), `not_found` (removing an unknown workspace, or muting, focusing or ending an unknown session), `unavailable` and `failed` (below), `launch_failed`.
 - `client.open` `{"command":[…],"env":{…}}` returns `{"slot","attach"}`: the client window (TUI pane on the left running `command`, main slot on the right), created on the first call and reused while it exists, plus the argv that attaches a terminal to it. `client.focus_main` makes that window's main slot the active pane. Both run tmux on the connection goroutine, never on the loop. Without a terminal host they return `unavailable`; a tmux failure returns `failed`.
 - `debug.seed` `{"count":N}` adds N fake sessions (two per task, one to three worktrees each) for manual testing; `agentws debug seed N` calls it.
 - Adding a method or an optional field keeps `v:1`. Removing or changing the meaning of a field bumps `v`.
@@ -116,6 +117,17 @@ The daemon performs the effects `Session.Apply` returns. `EffectNotify` becomes 
 - `$AGENTWS_HOME/notify.json` sets an optional macOS sound per event: `{"sounds":{"permission":"Glass"}}`.
 - `session.mute` sets `Session.Muted` (the TUI's `m`). `session.focus` sets `Session.Focused` and clears unread (the TUI's `enter`); focus is cleared on daemon start.
 - Claude and Codex share one path, and a fixture-driven daemon test covers both. See [docs/adr/0016-notifications-and-attention.md](docs/adr/0016-notifications-and-attention.md).
+
+## Sessions
+
+See [docs/adr/0015-session-lifecycle.md](docs/adr/0015-session-lifecycle.md).
+
+- **Start.** `n` in the TUI or `agentws new [--workspace p] [--harness h] [--model m] [--effort e] <work item>` calls `session.new`. The work item is a Linear issue URL, a GitHub PR URL, or text; a URL of neither shape stays text (`domain.ParseWorkItem`). A single repo gets one worktree at `$AGENTWS_HOME/worktrees/<repo>/<slug>` branched from `origin/<default>` and its setup recipe run; an orchestration root starts at the root with no worktree (`domain.PlanSessionStart`). The work item is the agent's first prompt.
+- **Low quota.** Under the harness row the dialog shows `domain.Advise`'s warning; `ctrl+s` switches to the other harness when it has reported limits.
+- **Focus.** `enter`, and every new session, calls `session.focus`, which swaps the pane into the main slot.
+- **End.** `x` then `y` calls `session.end`: the pane is killed and the session goes `idle` with no pane. It and its worktrees stay listed until cleanup.
+- **Survival.** The daemon and the tmux server own sessions, so quitting the TUI or detaching changes nothing. On daemon start, restored sessions whose pane is gone are ended (`app.ReconcilePanes`), off the loop.
+- **Budget.** `session.new` plus `session.focus`, excluding the setup recipe, must finish in < 1 s; the `NewSession` integration test checks it.
 
 ## Harness adapters
 

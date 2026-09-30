@@ -16,7 +16,7 @@ var (
 	commit  = ""
 )
 
-var stubs = []string{"new", "cleanup"}
+var stubs = []string{"cleanup"}
 
 func main() {
 	os.Exit(run(os.Args[1:], os.Stdout, os.Stderr))
@@ -55,6 +55,9 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return runWorkspace(args[1:], stdout, stderr)
 	case cmd == "worktree":
 		return runWorktree(args[1:], stdout, stderr)
+
+	case cmd == "new":
+		return runNew(args[1:], stdout, stderr)
 	case slices.Contains(stubs, cmd):
 		fmt.Fprintf(stderr, "agentws %s: not implemented yet\n", cmd)
 		return 1

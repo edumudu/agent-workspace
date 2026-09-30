@@ -27,12 +27,14 @@
 - `agentws debug session [--once] <id>` prints a session's state, harness, pane, model, effort, context left and limit used, then each change to it until interrupted (`--once` prints just the current line).
 - `agentws setup codex [--remove]` merges (or removes) the agentws hooks in `$CODEX_HOME/hooks.json`. Tests of it, and of anything else that touches Codex config, use a temp `CODEX_HOME`; never point them at the real `~/.codex`.
 - `agentws setup claude [--remove]` merges agentws hooks and the status-line wrapper into `$CLAUDE_CONFIG_DIR/settings.json` (default `~/.claude`). Tests set `CLAUDE_CONFIG_DIR` to a temp dir and never touch the real `~/.claude`.
-- `agentws debug launch --harness claude --dir <dir> [--model m] [--effort e]` starts a session in a new pane.
 - `agentws setup-worktree <path>` applies the `[setup]` recipe in the main checkout's `.agentws.toml` (`copy`, `link`, `run`, `deps = clone|link|install`) to a linked worktree, in-process (no daemon). Its integration tests are named `TestRecipe*`: `go test -tags integration -run Recipe ./internal/adapters/setup`. See [docs/adr/0013-setup-recipes.md](docs/adr/0013-setup-recipes.md).
 - Banners: `go test ./... -run Notify` runs every notification test. To try them by hand, put a stub `osascript` first on `PATH` for the daemon (it logs its argv), or fire at most a couple of real ones; use a temp `AGENTWS_HOME` and `AGENTWS_TMUX_SOCKET`. Sounds come from `$AGENTWS_HOME/notify.json`. In the TUI, `m` mutes the selected session.
 - `agentws worktree list|assign <path> <session>` shows detected worktrees and sets their owner.
 - Ports: `go test ./... -run Ports -tags integration -bench Ports` runs the adapter, daemon, TUI and end-to-end ports tests plus `BenchmarkPortsRefresh` (fails above 50 ms). Tests start their own throwaway servers and only signal process groups they started. In the TUI, `K` kills the selected session's dev servers after `y`. See [docs/adr/0022-ports-view.md](docs/adr/0022-ports-view.md).
 - `test/integration` holds `-tags integration` tests that run the daemon with its real adapters (the daemon package itself may not exec). CI runs them with the adapter ones: `go test -p 2 -tags integration ./internal/adapters/... ./test/integration/...`.
+- `agentws new [--workspace p] [--harness claude|codex] [--model m] [--effort e] <work item>` starts a session like the TUI's `n` dialog; without `--workspace` it uses the last used one. New single-repo worktrees go under `$AGENTWS_HOME/worktrees`.
+- `agentws debug launch --harness claude --dir <dir> [--model m] [--effort e]` opens a harness pane in any dir, with no task or worktree.
+- The daemon's `NewSession` integration test (`go test -tags integration -run NewSession ./internal/daemon/`) uses real temp repos, a fake harness script and its own tmux socket.
 - `domain`, `app`, `tui`, `rpc` and `daemon` may not import `os/exec` (depguard). `internal/adapters/tmux` is the only code that runs tmux, and only `internal/daemon` may import it.
 
 ## Rules

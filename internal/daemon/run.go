@@ -7,6 +7,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/giovaniif/agent-workspace/internal/adapters/claude"
 	"github.com/giovaniif/agent-workspace/internal/adapters/codex"
@@ -15,8 +16,10 @@ import (
 	"github.com/giovaniif/agent-workspace/internal/adapters/github"
 	"github.com/giovaniif/agent-workspace/internal/adapters/notify"
 	"github.com/giovaniif/agent-workspace/internal/adapters/procs"
+	"github.com/giovaniif/agent-workspace/internal/adapters/setup"
 	"github.com/giovaniif/agent-workspace/internal/adapters/sqlite"
 	"github.com/giovaniif/agent-workspace/internal/adapters/tmux"
+	"github.com/giovaniif/agent-workspace/internal/app"
 	"github.com/giovaniif/agent-workspace/internal/rpc"
 )
 
@@ -40,6 +43,21 @@ func Run(ctx context.Context, home string) (err error) {
 		Socket:     os.Getenv("AGENTWS_TMUX_SOCKET"),
 		ConfigPath: filepath.Join(home, "tmux.conf"),
 	})
+	worktreeHome, err := realDir(filepath.Join(home, "worktrees"))
+	if err != nil {
+		return err
+	}
+	recipe := app.WorktreeSetup{
+		Recipes: setup.Recipes{},
+		FS:      setup.FS{},
+		Runner:  setup.Shell{Out: os.Stderr},
+		Git:     gitadapter.Worktrees{},
+		Now:     time.Now,
+	}
+	runRecipe := func(ctx context.Context, worktree string) error {
+		_, err := recipe.Run(ctx, worktree)
+		return err
+	}
 	sounds, err := notify.LoadSounds(filepath.Join(home, "notify.json"))
 	if err != nil {
 		log.Printf("notify.json ignored: %v", err)
@@ -48,6 +66,7 @@ func Run(ctx context.Context, home string) (err error) {
 	d, err := New(store, os.Getpid(),
 		WithWorkspaces(wsfs.FS{}, gitadapter.Inspector{}),
 		WithHarnesses(host, claude.Adapter{}, codex.Adapter{}),
+		WithSessions(gitadapter.Adder{}, runRecipe, worktreeHome),
 		WithNotifier(banners, banners, sounds),
 		WithWorktrees(gitadapter.Worktrees{}, github.Finder{}),
 		WithProcessTable(procs.Table{}))
@@ -71,4 +90,13 @@ func Run(ctx context.Context, home string) (err error) {
 		return err
 	}
 	return d.Serve(ctx, ln)
+}
+
+// realDir creates dir and resolves its symlinks, so planned worktree paths
+// compare equal to the ones git reports.
+func realDir(dir string) (string, error) {
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return "", err
+	}
+	return filepath.EvalSymlinks(dir)
 }

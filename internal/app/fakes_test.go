@@ -13,24 +13,62 @@ import (
 
 type fakeHost struct {
 	app.TerminalHost
-	panes   []app.PaneInfo
-	listErr error
+	panes     []app.PaneInfo
+	listErr   error
+	created   []app.PaneSpec
+	createErr error
+	killed    []app.PaneID
+	killErr   error
+	log       *[]string
 }
 
-func (f fakeHost) List(context.Context) ([]app.PaneInfo, error) { return f.panes, f.listErr }
+func (f *fakeHost) List(context.Context) ([]app.PaneInfo, error) { return f.panes, f.listErr }
 
-type fakeStore struct {
-	bindings []app.PaneBinding
-	idled    []string
+func (f *fakeHost) Create(_ context.Context, spec app.PaneSpec) (app.PaneID, error) {
+	if f.log != nil {
+		*f.log = append(*f.log, "create "+spec.Dir)
+	}
+	if f.createErr != nil {
+		return "", f.createErr
+	}
+	f.created = append(f.created, spec)
+	return "%9", nil
 }
 
-func (s *fakeStore) PaneBindings(context.Context) ([]app.PaneBinding, error) {
-	return s.bindings, nil
-}
-
-func (s *fakeStore) MarkIdle(_ context.Context, sessionID string) error {
-	s.idled = append(s.idled, sessionID)
+func (f *fakeHost) Kill(_ context.Context, pane app.PaneID) error {
+	if f.killErr != nil {
+		return f.killErr
+	}
+	f.killed = append(f.killed, pane)
 	return nil
+}
+
+type addedWorktree struct{ repo, path, branch, base string }
+
+type fakeWorktrees struct {
+	added []addedWorktree
+	err   error
+	log   *[]string
+}
+
+// AddWorktree reports paths under /real, as git does once symlinks resolve.
+func (f *fakeWorktrees) AddWorktree(_ context.Context, repo, path, branch, base string) (app.AddedWorktree, error) {
+	if f.log != nil {
+		*f.log = append(*f.log, "add "+path)
+	}
+	if f.err != nil {
+		return app.AddedWorktree{}, f.err
+	}
+	f.added = append(f.added, addedWorktree{repo, path, branch, base})
+	return app.AddedWorktree{Main: "/real" + repo, Path: "/real" + path}, nil
+}
+
+type fakeHarness struct{}
+
+func (fakeHarness) Harness() domain.Harness { return domain.HarnessCodex }
+
+func (fakeHarness) Launch(req app.LaunchRequest) app.PaneSpec {
+	return app.PaneSpec{Name: req.Name, Dir: req.Dir, Command: []string{"agent", req.Model, req.Effort, req.Prompt}}
 }
 
 type fakeFS struct {
