@@ -68,6 +68,7 @@ func TestHookWithBadArgumentsStillExitsZeroAndLogs(t *testing.T) {
 type nopStore struct{}
 
 func (nopStore) PutWorkspace(domain.Workspace) {}
+func (nopStore) DeleteWorkspace(string)        {}
 func (nopStore) PutTask(domain.Task)           {}
 func (nopStore) PutWorktree(domain.Worktree)   {}
 func (nopStore) PutSession(domain.Session)     {}

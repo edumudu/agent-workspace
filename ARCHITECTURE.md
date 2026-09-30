@@ -82,7 +82,7 @@ Everything here is table-tested, with no mocks.
 
 ## Workspaces
 
-`agentws workspace add <path>`, `list` and `remove <path>` call `workspace.add`, `workspace.list` and `workspace.remove` on the daemon. See [docs/adr/0007-workspace-discovery.md](docs/adr/0006-workspace-discovery.md).
+`agentws workspace add <path>`, `list` and `remove <path>` call `workspace.add`, `workspace.list` and `workspace.remove` on the daemon. See [docs/adr/0007-workspace-discovery.md](docs/adr/0007-workspace-discovery.md).
 
 - **Kind.** `<path>/.git` a directory means `single`, with the path itself as the only repo. Anything else is an `orchestration` root: its direct children are scanned, symlinks followed, and each child with a `.git` directory is a repo. A child whose `.git` is a file is a worktree and is skipped, as is a dangling link. Nothing deeper than one level is read. Repos are sorted by name, and a symlinked repo keeps the link's name and path.
 - **Layers.** The rules are pure functions in `domain`. `app.DiscoverWorkspace` uses the `WorkspaceFS` port (`adapters/fs`, stat and readdir only, no git). `app.RefreshRepoFacts` uses the `RepoInspector` port (`adapters/git`, at most 4 repos in flight).
