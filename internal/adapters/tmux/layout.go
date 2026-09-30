@@ -58,6 +58,23 @@ func (h *Host) paneCount(ctx context.Context, slot app.Slot) (int, error) {
 	return len(strings.Fields(out)), nil
 }
 
+func (h *Host) ClientOpen(ctx context.Context, slot app.Slot) bool {
+	out, err := h.run(ctx, "", "display-message", "-p", "-t", string(slot), "#{window_id}")
+	return err == nil && strings.TrimSpace(out) == string(slot)
+}
+
+// FocusSlot makes the slot's pane the active one, so keys go to the agent.
+func (h *Host) FocusSlot(ctx context.Context, slot app.Slot) error {
+	_, err := h.run(ctx, "", "select-pane", "-t", string(slot)+"."+slotPaneIndex)
+	return err
+}
+
+// AttachCommand is the argv that attaches a terminal to the client window.
+// It always ends with "attach-session -t <slot>".
+func (h *Host) AttachCommand(slot app.Slot) []string {
+	return []string{"tmux", "-L", h.socket, "-f", h.configPath, "attach-session", "-t", string(slot)}
+}
+
 // ShownIn returns the pane currently in the slot, or "" if there is none.
 func (h *Host) ShownIn(ctx context.Context, slot app.Slot) app.PaneID {
 	out, err := h.run(ctx, "", "display-message", "-p", "-t", string(slot)+"."+slotPaneIndex, "#{pane_id}")
