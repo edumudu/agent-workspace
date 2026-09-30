@@ -182,18 +182,43 @@ func (d *Daemon) loop(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case e := <-d.events:
-			d.st.seq++
-			diff := e.apply(d.st)
-			diff.Seq = d.st.seq
-			for c, id := range d.st.subs {
-				if !c.push(rpc.Response{V: rpc.Version, ID: id, Diff: &diff}) {
-					delete(d.st.subs, c)
-				}
-			}
+			d.st.emit(e)
 		case q := <-d.queries:
 			q(d.st)
 		}
 	}
+}
+
+func (s *state) emit(e Event) {
+	s.seq++
+	diff := e.apply(s)
+	diff.Seq = s.seq
+	for c, id := range s.subs {
+		if !c.push(rpc.Response{V: rpc.Version, ID: id, Diff: &diff}) {
+			delete(s.subs, c)
+		}
+	}
+}
+
+// hook applies a harness hook to the session on its pane. Hooks from panes
+// no session owns, and hook names the harness adapter does not know, are
+// ignored.
+func (s *state) hook(h rpc.Hook) {
+	kind, ok := domain.HookEvent(domain.Harness(h.Harness), h.Event)
+	if !ok {
+		return
+	}
+	sessions := make([]domain.Session, 0, len(s.sessions))
+	for _, x := range s.sessions {
+		sessions = append(sessions, x)
+	}
+	session, ok := domain.SessionOnPane(sessions, h.Pane)
+	if !ok {
+		return
+	}
+	// why: TODO(#13) performs the effects Apply returns; nothing consumes them yet.
+	next, _ := session.Apply(domain.HarnessEvent{Kind: kind})
+	s.emit(SessionChanged{Session: next})
 }
 
 func (d *Daemon) handle(c *conn) {
@@ -239,6 +264,13 @@ func (d *Daemon) dispatch(c *conn, line []byte) (*rpc.Response, bool) {
 			}
 		})
 		return nil, ok
+	case rpc.MethodHook:
+		var h rpc.Hook
+		if err := json.Unmarshal(req.Params, &h); err != nil {
+			return errorResponse(req.ID, rpc.CodeBadRequest, "hook params: "+err.Error()), true
+		}
+		ok := d.query(func(s *state) { s.hook(h) })
+		return result(req.ID, rpc.HookReply{}), ok
 	default:
 		return errorResponse(req.ID, rpc.CodeUnknownMethod, "unknown method "+req.Method), true
 	}

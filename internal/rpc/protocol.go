@@ -18,7 +18,24 @@ const Version = 1
 const (
 	MethodStatus    = "status"
 	MethodSubscribe = "subscribe"
+	MethodHook      = "hook"
 )
+
+// Hook is one harness hook event as `agentws hook` received it. Payload is
+// the hook's stdin JSON, untouched.
+type Hook struct {
+	Harness string          `json:"harness"`
+	Event   string          `json:"event"`
+	Pane    string          `json:"pane"`
+	At      time.Time       `json:"at"`
+	Payload json.RawMessage `json:"payload,omitempty"`
+}
+
+// HookReply is the daemon's answer to a hook. Output, when set, is printed
+// on the hook's stdout for the harness to read.
+type HookReply struct {
+	Output json.RawMessage `json:"output,omitempty"`
+}
 
 const (
 	CodeUnsupportedVersion = "unsupported_version"
