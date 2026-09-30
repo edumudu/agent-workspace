@@ -104,7 +104,7 @@ func parseScopeArgs(args []string, stderr io.Writer) (rpc.ReviewParams, error) {
 	fs := flag.NewFlagSet("review scope", flag.ContinueOnError)
 	fs.SetOutput(stderr)
 	var p rpc.ReviewParams
-	scope := fs.String("scope", string(domain.ScopeUncommitted), "last_turn, uncommitted or branch")
+	scope := fs.String("scope", "", "last_turn, uncommitted or branch (default: the scope the review has open)")
 	fs.StringVar(&p.Session, "session", sessionFromEnv(), "session id (default $AGENTWS_SESSION)")
 	fs.StringVar(&p.Worktree, "worktree", "", "one worktree id (default: all)")
 	if err := fs.Parse(args); err != nil {
