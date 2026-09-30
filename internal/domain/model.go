@@ -36,6 +36,7 @@ const (
 
 // Task is the work item sessions are grouped under. IssueTitle is the Linear
 // issue title when Source is linear; PinnedName is set when the user pins a name.
+// URL is the Linear or PR link the task came from.
 type Task struct {
 	ID         string
 	Source     TaskSource
@@ -43,6 +44,7 @@ type Task struct {
 	Text       string
 	IssueTitle string
 	PinnedName string
+	URL        string
 }
 
 type PRState string
