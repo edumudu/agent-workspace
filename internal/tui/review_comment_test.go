@@ -34,7 +34,7 @@ func TestReviewCommentOnTheCursorLineGoesToTheDraft(t *testing.T) {
 
 func TestReviewRangeCommentCoversEveryLineFromTheMark(t *testing.T) {
 	m, rv := reviewModel(t, 150, 40)
-	m = drive(m, keys("r", "j", "j", "j", "V", "j", "j", "c", "x", "enter")...)
+	drive(m, keys("r", "j", "j", "j", "V", "j", "j", "c", "x", "enter")...)
 	st, _ := reviewFixture()
 	want := domain.CommentOn(st.Worktrees[0].Path, "src/graphql/public/resolvers.ts", resolversLines()[3:6], "x")
 	if len(rv.comments) != 1 || !reflect.DeepEqual(rv.comments[0], want) {
@@ -44,7 +44,7 @@ func TestReviewRangeCommentCoversEveryLineFromTheMark(t *testing.T) {
 
 func TestReviewRangeCommentInSplitViewTakesBothSides(t *testing.T) {
 	m, rv := reviewModel(t, 150, 40)
-	m = drive(m, keys("r", "u", "j", "j", "j", "V", "j", "c", "x", "enter")...)
+	drive(m, keys("r", "u", "j", "j", "j", "V", "j", "c", "x", "enter")...)
 	st, _ := reviewFixture()
 	want := domain.CommentOn(st.Worktrees[0].Path, "src/graphql/public/resolvers.ts", resolversLines()[3:7], "x")
 	if len(rv.comments) != 1 || !reflect.DeepEqual(rv.comments[0], want) {
@@ -59,7 +59,7 @@ func TestReviewEscCancelsTheCommentNotTheReview(t *testing.T) {
 	if len(rv.comments) != 0 || !strings.Contains(screen(m), "REVIEW") || strings.Contains(screen(m), "comment:") {
 		t.Errorf("esc should drop the comment and stay in the review; comments %+v:\n%s", rv.comments, screen(m))
 	}
-	m = drive(m, key("c"), key("enter"))
+	drive(m, key("c"), key("enter"))
 	if len(rv.comments) != 0 {
 		t.Errorf("an empty comment was sent: %+v", rv.comments)
 	}
