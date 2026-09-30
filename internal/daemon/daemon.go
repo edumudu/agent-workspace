@@ -119,6 +119,8 @@ type state struct {
 	// draft whose prompt has not been seen yet.
 	drafts   map[string]domain.ReviewDraft
 	awaiting map[string]domain.ReviewDraft
+	// pasting marks a session whose draft is being pasted; the next waits.
+	pasting map[string]bool
 	// sendDraft is set by New, like sendSwitches.
 	sendDraft func(session domain.Session, draft domain.ReviewDraft, prompt string)
 }
@@ -168,6 +170,7 @@ func New(store app.Store, pid int, opts ...Option) (*Daemon, error) {
 		scopes:     map[string]domain.ReviewScope{},
 		drafts:     map[string]domain.ReviewDraft{},
 		awaiting:   map[string]domain.ReviewDraft{},
+		pasting:    map[string]bool{},
 	}
 	for _, dr := range snap.Drafts {
 		switch {

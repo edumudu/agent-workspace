@@ -90,7 +90,7 @@ func (d *Daemon) sendReview(req rpc.Request) (*rpc.Response, bool) {
 // archiving it as sent; the paste itself runs on a worker.
 func (s *state) dispatchDraft(session domain.Session) (domain.ReviewDraft, bool) {
 	draft, ok := s.drafts[session.ID]
-	if !ok || s.sendDraft == nil {
+	if !ok || s.sendDraft == nil || s.pasting[session.ID] {
 		return draft, false
 	}
 	sent, prompt, ok := draft.Dispatch(session, time.Now())
@@ -99,6 +99,7 @@ func (s *state) dispatchDraft(session domain.Session) (domain.ReviewDraft, bool)
 	}
 	delete(s.drafts, session.ID)
 	s.awaiting[session.ID] = sent
+	s.pasting[session.ID] = true
 	// why: the store keeps it queued until the paste lands, so a daemon stopped in between sends it after the restart.
 	s.sendDraft(session, sent, prompt)
 	return sent, true
@@ -132,14 +133,19 @@ func (d *Daemon) sendDraft(session domain.Session, draft domain.ReviewDraft, pro
 // pasted records draft as sent, unless its prompt was already seen and the
 // linked copy is on its way to the store.
 func (s *state) pasted(draft domain.ReviewDraft) {
+	delete(s.pasting, draft.Session)
 	if current, ok := s.awaiting[draft.Session]; ok && current.ID == draft.ID {
 		s.store.PutDraft(current)
+	}
+	if session, ok := s.sessions[draft.Session]; ok {
+		s.dispatchDraft(session)
 	}
 }
 
 // requeueDraft puts back a draft that was not pasted, ahead of any comments
 // added since.
 func (s *state) requeueDraft(draft domain.ReviewDraft) {
+	delete(s.pasting, draft.Session)
 	if s.awaiting[draft.Session].ID == draft.ID {
 		delete(s.awaiting, draft.Session)
 	}
