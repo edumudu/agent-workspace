@@ -107,6 +107,12 @@ type state struct {
 	// requestTurn is set by WithReview and must not block.
 	requestTurn func(session string, dirs []string)
 	viewed      map[string]domain.ViewedMark
+	// queue is the launcher's waiting issues; launched is the sessions it
+	// started, which hold its slots. Neither is persisted.
+	queue    []domain.LaunchItem
+	launched map[string]bool
+	// kickLauncher is set by New and must not block.
+	kickLauncher func()
 }
 
 type Daemon struct {
@@ -128,6 +134,7 @@ type Daemon struct {
 	rv       review
 	cl       cleanupWorker
 	disk     DiskDeps
+	lc       launcherCfg
 }
 
 // New restores state from store. pid is what status reports.
@@ -147,6 +154,7 @@ func New(store app.Store, pid int, opts ...Option) (*Daemon, error) {
 		usage:      map[string]*usageJob{},
 		hints:      newWorktreeHints(),
 		viewed:     map[string]domain.ViewedMark{},
+		launched:   map[string]bool{},
 	}
 	for _, m := range snap.Viewed {
 		st.viewed[m.Key()] = m
@@ -179,7 +187,9 @@ func New(store app.Store, pid int, opts ...Option) (*Daemon, error) {
 		wt:       worktreeScanner{every: DefaultWorktreePoll, prEvery: DefaultPRPoll, baselined: map[string]bool{}},
 		ports:    portScanner{every: DefaultPortsPoll},
 		cl:       cleanupWorker{kick: make(chan struct{}, 1)},
+		lc:       launcherCfg{kick: make(chan struct{}, 1)},
 	}
+	st.kickLauncher = d.kickLauncher
 	st.requestUsage = func(sessionID, path string, force bool) { d.requestUsage(st, sessionID, path, force) }
 	st.sendSwitches = d.sendSwitches
 	for _, o := range opts {
@@ -223,6 +233,7 @@ func (d *Daemon) Serve(ctx context.Context, ln net.Listener) error {
 	go d.watchMainSlot(ctx)
 	go d.snapshotTurns(ctx)
 	go d.cleanupEvery(ctx)
+	go d.runLauncher(ctx)
 	loopDone := make(chan struct{})
 	go func() {
 		d.loop(ctx)
@@ -281,6 +292,12 @@ func (s *state) emit(e Event) {
 	s.seq++
 	diff := e.apply(s)
 	diff.Seq = s.seq
+	switch e.(type) {
+	case SessionChanged, SessionHooked:
+		if len(s.queue) > 0 {
+			s.kickLauncher()
+		}
+	}
 	for c, id := range s.subs {
 		if !c.push(rpc.Response{V: rpc.Version, ID: id, Diff: &diff}) {
 			delete(s.subs, c)
@@ -414,6 +431,8 @@ func (d *Daemon) dispatch(c *conn, line []byte) (*rpc.Response, bool) {
 		return d.newSession(req)
 	case rpc.MethodEndSession:
 		return d.endSession(req)
+	case rpc.MethodLauncherEnqueue, rpc.MethodLauncherDrop, rpc.MethodLauncherRetarget:
+		return d.launcherMethod(req)
 	case rpc.MethodSwitch:
 		return d.switchSession(req)
 	case rpc.MethodSessionRename, rpc.MethodSessionUnpin:
@@ -464,6 +483,7 @@ func (s *state) snapshot() rpc.State {
 		Sessions:   sorted(s.sessions),
 		Events:     flatten(s.events),
 		Subagents:  append([]domain.Subagent{}, s.subagents...),
+		Queue:      append([]domain.LaunchItem{}, s.queue...),
 	}
 }
 
