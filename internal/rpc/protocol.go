@@ -53,7 +53,55 @@ const (
 	// MethodCleanupRun executes it. Both answer []CleanupItem.
 	MethodCleanupPlan = "cleanup.plan"
 	MethodCleanupRun  = "cleanup.run"
+	// MethodDiskView answers a DiskView. It never waits for du: sizes not
+	// measured yet are domain.SizePending.
+	MethodDiskView = "disk.view"
+	// MethodCleanupWorktree removes one worktree through the cleanup engine
+	// and answers its CleanupItem.
+	MethodCleanupWorktree = "cleanup.worktree"
+	// MethodWorktreeShell opens a shell in a worktree and shows it in the
+	// main slot.
+	MethodWorktreeShell = "worktree.shell"
 )
+
+// DiskView is the worktrees and disk view. Rows are in worktree order;
+// domain.Reclaimable folds them into the reclaimable total.
+type DiskView struct {
+	Free  uint64 `json:"free"`
+	Total uint64 `json:"total"`
+	// AutoCleanEvery is 0 when automatic cleanup is off.
+	AutoCleanEvery time.Duration `json:"auto_clean_every"`
+	// DepsStore is nil when no shared dependency store is configured.
+	DepsStore *DepsStore       `json:"deps_store,omitempty"`
+	Rows      []domain.DiskRow `json:"rows"`
+	Recent    []RecentCleanup  `json:"recent"`
+}
+
+type DepsStore struct {
+	Path string `json:"path"`
+	Size int64  `json:"size"`
+}
+
+// RecentCleanup is one line of the cleanup audit log, newest first in a DiskView.
+type RecentCleanup struct {
+	At      time.Time            `json:"at"`
+	Path    string               `json:"path"`
+	Branch  string               `json:"branch,omitempty"`
+	Action  domain.CleanupAction `json:"action"`
+	Outcome string               `json:"outcome"`
+}
+
+// CleanupWorktreeParams names a worktree by path. With Backup, a dirty or
+// detached one is backed up and then removed; without it, only one cleanup
+// would remove anyway goes.
+type CleanupWorktreeParams struct {
+	Path   string `json:"path"`
+	Backup bool   `json:"backup,omitempty"`
+}
+
+type WorktreeShellParams struct {
+	ID string `json:"id"`
+}
 
 // ReviewParams asks for Session's review in Scope, of one worktree ID or,
 // when Worktree is empty, of all its worktrees.

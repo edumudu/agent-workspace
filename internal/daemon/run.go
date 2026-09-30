@@ -69,8 +69,9 @@ func Run(ctx context.Context, home string) (err error) {
 	}
 	banners := notify.New()
 	trash := wsfs.NewTrash(filepath.Join(home, "trash"), 4)
-	cleanup := app.NewCleanup(gitadapter.Worktrees{}, procs.Table{}, trash,
-		&wsfs.AuditLog{Path: filepath.Join(home, "cleanup.log")}, filepath.Join(home, "backups"), time.Now)
+	audit := &wsfs.AuditLog{Path: filepath.Join(home, "cleanup.log")}
+	cleanup := app.NewCleanup(gitadapter.Worktrees{}, procs.Table{}, trash, audit, filepath.Join(home, "backups"), time.Now)
+	sizes := app.NewDiskSizes(wsfs.Du{}, diskWorkers, diskSizeTTL, time.Now)
 	d, err := New(store, os.Getpid(),
 		WithWorkspaces(wsfs.FS{}, gitadapter.Inspector{}),
 		WithHarnesses(host, claude.Adapter{}, codex.Adapter{}),
@@ -81,7 +82,8 @@ func Run(ctx context.Context, home string) (err error) {
 		WithProcessTable(procs.Table{}),
 		WithReview(gitadapter.Review{}),
 		WithCleanup(cleanup, DefaultCleanupEvery),
-		WithSlotWatch(slotWatchEvery))
+		WithSlotWatch(slotWatchEvery),
+		WithDisk(DiskDeps{Sizes: sizes, Volume: wsfs.Volume{}, History: audit, VolumePath: home, DepsStore: DepsStorePath()}))
 	if err != nil {
 		return err
 	}

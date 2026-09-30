@@ -127,6 +127,7 @@ type Daemon struct {
 	restored []domain.Session
 	rv       review
 	cl       cleanupWorker
+	disk     DiskDeps
 }
 
 // New restores state from store. pid is what status reports.
@@ -443,6 +444,12 @@ func (d *Daemon) dispatch(c *conn, line []byte) (*rpc.Response, bool) {
 		return d.portsKill(req)
 	case rpc.MethodCleanupPlan, rpc.MethodCleanupRun:
 		return d.cleanupMethod(req)
+	case rpc.MethodDiskView:
+		return d.diskView(req)
+	case rpc.MethodCleanupWorktree:
+		return d.cleanupWorktree(req)
+	case rpc.MethodWorktreeShell:
+		return d.worktreeShell(req)
 	default:
 		return errorResponse(req.ID, rpc.CodeUnknownMethod, "unknown method "+req.Method), true
 	}
