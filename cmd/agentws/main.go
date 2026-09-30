@@ -36,6 +36,8 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return runHook(args[1:], os.Stdin, stdout, home, os.Getenv("TMUX_PANE"))
 	case cmd == "daemon":
 		return runDaemon(args[1:], stdout, stderr)
+	case cmd == "workspace":
+		return runWorkspace(args[1:], stdout, stderr)
 	case slices.Contains(stubs, cmd):
 		fmt.Fprintf(stderr, "agentws %s: not implemented yet\n", cmd)
 		return 1
@@ -61,5 +63,5 @@ func buildCommit() string {
 }
 
 func usage(w io.Writer) {
-	fmt.Fprintln(w, "usage: agentws <daemon|tui|hook|new|cleanup|version>")
+	fmt.Fprintln(w, "usage: agentws <daemon|workspace|tui|hook|new|cleanup|version>")
 }

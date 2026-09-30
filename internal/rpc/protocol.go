@@ -112,9 +112,9 @@ type Diff struct {
 	Seq              uint64            `json:"seq"`
 	RemovedWorkspace string            `json:"removed_workspace,omitempty"`
 	Workspace        *domain.Workspace `json:"workspace,omitempty"`
-	Task      *domain.Task      `json:"task,omitempty"`
-	Worktree  *domain.Worktree  `json:"worktree,omitempty"`
-	Session   *domain.Session   `json:"session,omitempty"`
+	Task             *domain.Task      `json:"task,omitempty"`
+	Worktree         *domain.Worktree  `json:"worktree,omitempty"`
+	Session          *domain.Session   `json:"session,omitempty"`
 }
 
 // Home is $AGENTWS_HOME, or ~/.agentws.

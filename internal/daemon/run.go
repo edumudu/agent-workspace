@@ -7,6 +7,8 @@ import (
 	"os"
 	"path/filepath"
 
+	wsfs "github.com/giovaniif/agent-workspace/internal/adapters/fs"
+	gitadapter "github.com/giovaniif/agent-workspace/internal/adapters/git"
 	"github.com/giovaniif/agent-workspace/internal/adapters/sqlite"
 	"github.com/giovaniif/agent-workspace/internal/rpc"
 )
@@ -26,7 +28,7 @@ func Run(ctx context.Context, home string) (err error) {
 	}
 	defer func() { err = errors.Join(err, store.Close()) }()
 
-	d, err := New(store, os.Getpid())
+	d, err := New(store, os.Getpid(), WithWorkspaces(wsfs.FS{}, gitadapter.Inspector{}))
 	if err != nil {
 		return err
 	}
