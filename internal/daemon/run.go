@@ -63,6 +63,10 @@ func Run(ctx context.Context, home string) (err error) {
 		log.Printf("notify.json ignored: %v", err)
 	}
 	banners := notify.New()
+	trash := wsfs.NewTrash(filepath.Join(home, "trash"), 4)
+	trash.Purge()
+	cleanup := app.NewCleanup(gitadapter.Worktrees{}, procs.Lsof{}, trash,
+		&wsfs.AuditLog{Path: filepath.Join(home, "cleanup.log")}, filepath.Join(home, "backups"), time.Now)
 	d, err := New(store, os.Getpid(),
 		WithWorkspaces(wsfs.FS{}, gitadapter.Inspector{}),
 		WithHarnesses(host, claude.Adapter{}, codex.Adapter{}),
@@ -70,7 +74,8 @@ func Run(ctx context.Context, home string) (err error) {
 		WithNotifier(banners, banners, sounds),
 		WithWorktrees(gitadapter.Worktrees{}, github.Finder{}),
 		WithProcessTable(procs.Table{}),
-		WithReview(gitadapter.Review{}))
+		WithReview(gitadapter.Review{}),
+		WithCleanup(cleanup, DefaultCleanupEvery))
 	if err != nil {
 		return err
 	}
