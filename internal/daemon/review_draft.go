@@ -135,6 +135,10 @@ func (s *state) requeueDraft(draft domain.ReviewDraft) {
 		delete(s.awaiting, draft.Session)
 	}
 	back := draft.Unsend()
+	if newer, ok := s.drafts[draft.Session]; ok {
+		s.store.PutDraft(domain.ReviewDraft{ID: newer.ID, Session: newer.Session, Status: domain.DraftMerged})
+		back.Comments = append(back.Comments, newer.Comments...)
+	}
 	s.drafts[draft.Session] = back
 	s.store.PutDraft(back)
 }

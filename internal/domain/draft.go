@@ -111,6 +111,9 @@ const (
 	DraftOpen   DraftStatus = "open"
 	DraftQueued DraftStatus = "queued"
 	DraftSent   DraftStatus = "sent"
+	// DraftMerged is a draft whose comments moved into an older one whose
+	// paste failed, so they are sent together.
+	DraftMerged DraftStatus = "merged"
 )
 
 // ReviewDraft collects a session's comments until it is sent as one prompt.
