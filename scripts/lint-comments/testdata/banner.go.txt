@@ -13,6 +13,10 @@ func b() {}
 // c is kept: the caller holds the lock.
 func c() {}
 
-// Test helpers.
+// Test helpers
 
 func d() {}
+
+// See README.
+
+func e() {}
