@@ -34,7 +34,18 @@ func TestScripts(t *testing.T) {
 		Dir: "testdata/script",
 		Setup: func(env *testscript.Env) error {
 			env.Setenv("PATH", binDir+string(os.PathListSeparator)+env.Getenv("PATH"))
-			env.Setenv("AGENTWS_HOME", filepath.Join(env.WorkDir, ".agentws"))
+			// why: macOS caps Unix socket paths at 104 bytes, so the home that holds agentws.sock must be short.
+			home, err := os.MkdirTemp("", "aws")
+			if err != nil {
+				return err
+			}
+			env.Setenv("AGENTWS_HOME", home)
+			env.Defer(func() {
+				stop := exec.Command(filepath.Join(binDir, "agentws"), "daemon", "stop")
+				stop.Env = append(os.Environ(), "AGENTWS_HOME="+home)
+				_ = stop.Run()
+				_ = os.RemoveAll(home)
+			})
 			return nil
 		},
 	})
