@@ -126,6 +126,14 @@ func (c *Client) FocusMain(ctx context.Context) error {
 	return c.Call(ctx, MethodFocusMain, nil, nil)
 }
 
+func (c *Client) MuteSession(ctx context.Context, id string, muted bool) error {
+	return c.Call(ctx, MethodSessionMute, SessionMuteParams{ID: id, Muted: muted}, nil)
+}
+
+func (c *Client) FocusSession(ctx context.Context, id string) error {
+	return c.Call(ctx, MethodSessionFocus, SessionFocusParams{ID: id}, nil)
+}
+
 func (c *Client) DebugSeed(ctx context.Context, count int) error {
 	return c.Call(ctx, MethodDebugSeed, DebugSeedParams{Count: count}, nil)
 }

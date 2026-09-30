@@ -29,7 +29,21 @@ const (
 	MethodDebugSeed  = "debug.seed"
 	MethodStatusLine = "statusline"
 	MethodLaunch     = "session.launch"
+	// MethodSessionMute sets whether a session's banners are silenced.
+	MethodSessionMute = "session.mute"
+	// MethodSessionFocus marks the session as the one in view, clearing its
+	// unread marker and blurring the session that was in view.
+	MethodSessionFocus = "session.focus"
 )
+
+type SessionMuteParams struct {
+	ID    string `json:"id"`
+	Muted bool   `json:"muted"`
+}
+
+type SessionFocusParams struct {
+	ID string `json:"id"`
+}
 
 // StatusLine is one harness status-line update from the session on Pane.
 type StatusLine struct {

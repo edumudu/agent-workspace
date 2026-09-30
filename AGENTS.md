@@ -29,6 +29,7 @@
 - `agentws setup claude [--remove]` merges agentws hooks and the status-line wrapper into `$CLAUDE_CONFIG_DIR/settings.json` (default `~/.claude`). Tests set `CLAUDE_CONFIG_DIR` to a temp dir and never touch the real `~/.claude`.
 - `agentws debug launch --harness claude --dir <dir> [--model m] [--effort e]` starts a session in a new pane.
 - `agentws setup-worktree <path>` applies the `[setup]` recipe in the main checkout's `.agentws.toml` (`copy`, `link`, `run`, `deps = clone|link|install`) to a linked worktree, in-process (no daemon). Its integration tests are named `TestRecipe*`: `go test -tags integration -run Recipe ./internal/adapters/setup`. See [docs/adr/0013-setup-recipes.md](docs/adr/0013-setup-recipes.md).
+- Banners: `go test ./... -run Notify` runs every notification test. To try them by hand, put a stub `osascript` first on `PATH` for the daemon (it logs its argv), or fire at most a couple of real ones; use a temp `AGENTWS_HOME` and `AGENTWS_TMUX_SOCKET`. Sounds come from `$AGENTWS_HOME/notify.json`. In the TUI, `m` mutes the selected session.
 - `domain`, `app`, `tui`, `rpc` and `daemon` may not import `os/exec` (depguard). `internal/adapters/tmux` is the only code that runs tmux, and only `internal/daemon` may import it.
 
 ## Rules

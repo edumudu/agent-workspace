@@ -49,7 +49,7 @@ One terminal tool for running Claude Code and Codex sessions in parallel, each i
 - Sessions survive TUI restarts, terminal crashes and SSH detach.
 
 **Attention**
-- Notifications for waiting, permission requests and done: macOS banner, optional sound, and per-session mute.
+- Notifications for waiting, permission requests and done: macOS banner, optional sound, and per-session mute (`m`). No banner for the session you are looking at while the terminal is in front, and at most one per session every 10 s.
 - An unread marker until you look at the session. Waiting sessions sort to the top.
 - Claude and Codex notify on the same events.
 

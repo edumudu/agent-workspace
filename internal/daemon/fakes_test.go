@@ -175,3 +175,16 @@ func (h *fakeHost) Create(_ context.Context, spec app.PaneSpec) (app.PaneID, err
 	h.specs = append(h.specs, spec)
 	return "%7", nil
 }
+
+type fakeNotifier struct{ banners chan domain.Banner }
+
+func newFakeNotifier() *fakeNotifier { return &fakeNotifier{banners: make(chan domain.Banner, 64)} }
+
+func (n *fakeNotifier) Notify(_ context.Context, b domain.Banner) error {
+	n.banners <- b
+	return nil
+}
+
+type fakeForeground struct{ terminal atomic.Bool }
+
+func (f *fakeForeground) TerminalFrontmost(context.Context) bool { return f.terminal.Load() }

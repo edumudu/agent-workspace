@@ -55,6 +55,7 @@ type Session struct {
 	State       AgentState
 	Unread      bool
 	Focused     bool
+	Muted       bool
 	WorktreeIDs []string
 	Usage       Usage
 	Limits      []RateLimit

@@ -208,7 +208,7 @@ func (m Model) sessionLines(e entry, sel bool) []string {
 	}
 	out := []string{m.line(sel,
 		[]piece{bar, glyph, {s.text, fmt.Sprintf(" %d ", e.num)}, {s.bold, name}},
-		[]piece{tag, {s.text, " "}})}
+		append(m.muteMarker(x), tag, piece{s.text, " "}))}
 
 	detail := strings.TrimSpace(x.Model + " " + x.Effort)
 	trees := "root only"
@@ -229,6 +229,13 @@ func (m Model) sessionLines(e entry, sel bool) []string {
 			[]piece{pr, {s.text, "   "}}))
 	}
 	return out
+}
+
+func (m Model) muteMarker(x domain.Session) []piece {
+	if !x.Muted {
+		return nil
+	}
+	return []piece{{m.styles.dim, "⊘ "}}
 }
 
 func (m Model) glyph(x domain.Session) piece {
@@ -252,6 +259,7 @@ func (m Model) helpLines() []string {
 		{"tab", "last session"},
 		{"j / k", "move"},
 		{"o", "expand / collapse worktrees"},
+		{"m", "mute session"},
 		{"enter", "focus agent pane"},
 		{"?", "close help"},
 		{"q", "quit (sessions keep running)"},
