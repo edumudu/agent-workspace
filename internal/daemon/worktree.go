@@ -104,7 +104,7 @@ func (s *state) noteHook(sessionID string, kind domain.HarnessEventKind, payload
 				kept = append(kept, c)
 			}
 		}
-		s.hints.claims = append(kept, domain.WorktreeClaim{SessionID: sessionID, Command: cmd, At: now})
+		s.hints.claims = append(kept, domain.WorktreeClaim{SessionID: sessionID, Cwd: p.Cwd, Command: cmd, At: now})
 		s.hints.wake()
 	}
 }

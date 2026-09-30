@@ -28,8 +28,10 @@ type SessionHint struct {
 	Cwd string
 }
 
+// WorktreeClaim.Cwd is where the command ran; it ties the claim to a repo.
 type WorktreeClaim struct {
 	SessionID string
+	Cwd       string
 	Command   string
 	At        time.Time
 }
@@ -147,12 +149,26 @@ func ReclaimWorktrees(known []Worktree, claims []WorktreeClaim, now time.Time) [
 	if len(recent) == 0 {
 		return nil
 	}
+	repoOf := func(cwd string) string {
+		for _, w := range known {
+			if cwd != "" && (within(cwd, w.Path) || within(cwd, w.Repo)) {
+				return w.Repo
+			}
+		}
+		return ""
+	}
 	var changed []Worktree
 	for _, w := range known {
 		if w.SessionID != "" || filepath.Clean(w.Path) == filepath.Clean(w.Repo) {
 			continue
 		}
-		if id := namedBy(w.Path, w.Branch, recent); id != "" {
+		var sameRepo []WorktreeClaim
+		for _, c := range recent {
+			if repoOf(c.Cwd) == w.Repo {
+				sameRepo = append(sameRepo, c)
+			}
+		}
+		if id := namedBy(w.Path, w.Branch, sameRepo); id != "" {
 			w.SessionID = id
 			changed = append(changed, w)
 		}

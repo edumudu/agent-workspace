@@ -19,4 +19,4 @@ Status: accepted, 2026-09-30.
 ## Limits
 
 - The suite needs `tmux`; CI installs it before `go test ./...`.
-- Claims name worktrees by substring, as in first-seen attribution, so a claim can name more than it meant; a claim from two sessions naming the same worktree leaves it unassigned.
+- A reclaim takes only claims made inside the worktree's repo (from the hook's cwd) that name it by a whole word: its branch, or a path ending in its dir name. Claims from two sessions naming the same worktree leave it unassigned. First-seen attribution still matches by substring.
