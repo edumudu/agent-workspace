@@ -196,6 +196,21 @@ func (s *Store) DeleteWorkspace(root string) { s.enqueue(tableWorkspaces, root, 
 
 func (s *Store) DeleteWorktree(id string) { s.enqueue(tableWorktrees, id, nil) }
 
+// DeleteSession enqueues the row's delete and drops the session's unflushed
+// events; write deletes its stored ones in the same transaction.
+func (s *Store) DeleteSession(id string) {
+	s.mu.Lock()
+	kept := s.events[:0]
+	for _, ev := range s.events {
+		if ev.SessionID != id {
+			kept = append(kept, ev)
+		}
+	}
+	s.events = kept
+	s.mu.Unlock()
+	s.enqueue(tableSessions, id, nil)
+}
+
 func (s *Store) PutViewed(m domain.ViewedMark) { s.put(tableViewed, m.Key(), m) }
 
 func (s *Store) DeleteViewed(key string) { s.enqueue(tableViewed, key, nil) }
@@ -314,6 +329,14 @@ func (s *Store) write() error {
 	}
 	if err := writeEvents(tx, events); err != nil {
 		return err
+	}
+	for id, data := range batch[tableSessions] {
+		if data != nil {
+			continue
+		}
+		if _, err := tx.Exec(`DELETE FROM session_events WHERE session_id = ?`, id); err != nil {
+			return err
+		}
 	}
 	return tx.Commit()
 }

@@ -2,7 +2,7 @@
 
 A terminal workspace for running Claude Code and Codex sessions in parallel. It creates and cleans up git worktrees for you, and lets you review what agents changed in a local, PR-style pane.
 
-**Status:** pre-alpha. The design and the [v1 issues](https://github.com/giovaniif/agent-workspace/milestone/1) exist; nothing is installable yet. The screens below are design mockups.
+**Status:** pre-alpha. The design and the [v1 issues](https://github.com/giovaniif/agent-workspace/milestone/1) exist; nothing is installable yet. The screens below are design mockups; their sources are in [docs/design](docs/design).
 
 ![Sessions](docs/images/sessions.png)
 

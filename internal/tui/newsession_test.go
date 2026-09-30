@@ -311,3 +311,49 @@ func TestAStartReplyOnlyTouchesTheDialogThatSentIt(t *testing.T) {
 		t.Fatalf("the third start's failure landed on the fourth dialog:\n%s", out)
 	}
 }
+
+func TestEndedAndRemovedSessionsLeaveTheSidebar(t *testing.T) {
+	st := fixture(3, 0)
+	st.Sessions[2].Ended = true
+	m := newModel(&st, nil)
+	if out := screen(m); !strings.Contains(out, "2 sessions") {
+		t.Fatalf("the ended session is still counted:\n%s", out)
+	}
+	m = update(m, tui.DiffMsg(rpc.Diff{Seq: 1, RemovedSession: "s02"}))
+	if out := screen(m); !strings.Contains(out, "1 session ") {
+		t.Fatalf("the removed session is still listed:\n%s", out)
+	}
+}
+
+func threeIdle() rpc.State {
+	return rpc.State{
+		Tasks: []domain.Task{{ID: "t"}},
+		Sessions: []domain.Session{
+			{ID: "a", TaskID: "t", State: domain.StateIdle},
+			{ID: "b", TaskID: "t", State: domain.StateIdle},
+			{ID: "c", TaskID: "t", State: domain.StateIdle},
+		},
+	}
+}
+
+func TestTheRowAfterAnEndedOrRemovedSessionTakesTheSelection(t *testing.T) {
+	pick := func(keys ...string) tui.Model {
+		st := threeIdle()
+		return press(newModel(&st, nil), keys...)
+	}
+	m := pick("j")
+	if m.Selected() != "b" {
+		t.Fatalf("selected %q; want b", m.Selected())
+	}
+	if got := update(pick("j"), tui.DiffMsg(rpc.Diff{Seq: 1, RemovedSession: "b"})).Selected(); got != "c" {
+		t.Fatalf("after b was removed selected %q; want c", got)
+	}
+	ended := threeIdle().Sessions[1]
+	ended.Ended = true
+	if got := update(pick("j"), tui.DiffMsg(rpc.Diff{Seq: 1, Session: &ended})).Selected(); got != "c" {
+		t.Fatalf("after b ended selected %q; want c", got)
+	}
+	if got := update(pick("j", "j"), tui.DiffMsg(rpc.Diff{Seq: 1, RemovedSession: "c"})).Selected(); got != "b" {
+		t.Fatalf("after the last row went selected %q; want b", got)
+	}
+}

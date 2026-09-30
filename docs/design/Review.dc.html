@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Review pane</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'JetBrains Mono',ui-monospace,Menlo,monospace;color:#4c4f69;background:#eff1f5}
+a{color:#1e66f5}a:hover{color:#1550c4}
+</style>
+</helmet>
+<div style="width: 1440px; height: 900px; box-sizing: border-box; display: flex; flex-direction: column; background: #eff1f5; font-size: 13px; line-height: 20px; font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace; color: #4c4f69">
+
+  <div style="height: 30px; flex-shrink: 0; display: flex; align-items: center; gap: 28px; padding: 0 14px; background: #e6e9ef; border-bottom: 1px solid #ccd0da">
+    <div style="display: flex; align-items: center; gap: 8px; font-weight: 700; color: #1e66f5">
+      <div style="width: 8px; height: 16px; background: #1e66f5"></div>
+      <span>agentws</span>
+    </div>
+    <span><b>claude</b> <span style="color: #5c5f77">5h</span> 38% <span style="color: #5c5f77">7d</span> 59%</span>
+    <span><b>codex</b> <span style="color: #5c5f77">5h</span> 81% <span style="color: #5c5f77">wk</span> 55%</span>
+    <div style="flex-grow: 1"></div>
+    <span style="font-weight: 700">21:44</span>
+  </div>
+
+  <div style="flex-grow: 1; display: flex; min-height: 0">
+
+    <div style="width: 52px; flex-shrink: 0; display: flex; flex-direction: column; align-items: center; gap: 6px; padding-top: 10px; background: #e6e9ef; border-right: 1px solid #ccd0da">
+      <sc-for list="{{rail}}" as="r" hint-placeholder-count="6">
+        <div style="{{r.style}}">
+          <span style="{{r.glyphStyle}}">{{r.glyph}}</span>
+          <span style="font-size: 11px">{{r.n}}</span>
+        </div>
+      </sc-for>
+    </div>
+
+    <div style="width: 440px; flex-shrink: 0; display: flex; flex-direction: column; border-right: 1px solid #ccd0da">
+      <div style="display: flex; gap: 12px; padding: 8px 14px; border-bottom: 1px solid #ccd0da">
+        <span style="font-weight: 700; color: #b3470a">✳</span>
+        <span style="font-weight: 700">public GraphQL org leak</span>
+        <span style="color: #5c5f77">waiting for you</span>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 6px; padding: 14px 16px; color: #5c5f77">
+        <span><span style="color: #2f7a1f">●</span> <b style="color: #4c4f69">Edit</b> resolvers.ts +18 −4</span>
+        <span><span style="color: #2f7a1f">●</span> <b style="color: #4c4f69">Edit</b> context.ts +9 −2</span>
+        <span><span style="color: #2f7a1f">●</span> <b style="color: #4c4f69">Bash</b> bun test · 42 pass</span>
+        <div style="height: 8px"></div>
+        <span style="color: #4c4f69">Org scoping now comes from the share token. Ready for review before I push.</span>
+      </div>
+      <div style="flex-grow: 1"></div>
+      <div style="margin: 0 14px 14px; padding: 10px 12px; border: 1px dashed #1e66f5; display: flex; flex-direction: column; gap: 4px">
+        <span style="font-weight: 700; color: #1e66f5">Draft review → this session</span>
+        <span style="color: #5c5f77">2 comments · 2 worktrees · sent as one prompt</span>
+        <span style="color: #5c5f77">each tagged with worktree + path</span>
+      </div>
+    </div>
+
+    <div style="flex-grow: 1; display: flex; flex-direction: column; min-width: 0">
+      <div style="display: flex; align-items: center; gap: 16px; padding: 7px 16px; border-bottom: 1px solid #ccd0da; background: #e6e9ef">
+        <span style="font-weight: 700; letter-spacing: 1px">REVIEW</span>
+        <div style="display: flex; gap: 2px">
+          <sc-for list="{{scopes}}" as="sc" hint-placeholder-count="3">
+            <span style="{{sc.style}}">{{sc.label}}</span>
+          </sc-for>
+        </div>
+        <div style="flex-grow: 1"></div>
+        <span style="color: #5c5f77">7 files</span>
+        <span style="color: #2f7a1f">+161</span>
+        <span style="color: #d20f39">−41</span>
+        <span style="color: #5c5f77">2/7 viewed</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 2px; padding: 5px 16px; border-bottom: 1px solid #ccd0da">
+        <span style="color: #5c5f77; margin-right: 10px">worktree</span>
+        <sc-for list="{{wtTabs}}" as="t" hint-placeholder-count="4">
+          <span style="{{t.style}}">{{t.label}}</span>
+        </sc-for>
+      </div>
+
+      <div style="flex-grow: 1; display: flex; min-height: 0">
+        <div style="width: 250px; flex-shrink: 0; display: flex; flex-direction: column; padding: 8px 0; border-right: 1px solid #ccd0da">
+          <sc-for list="{{groups}}" as="g" hint-placeholder-count="2">
+            <div style="display: flex; flex-direction: column; padding-bottom: 8px">
+              <div style="display: flex; justify-content: space-between; padding: 4px 12px; font-weight: 700">
+                <span>{{g.name}}</span>
+                <span style="font-weight: 400; color: #5c5f77">{{g.pr}}</span>
+              </div>
+              <sc-for list="{{g.files}}" as="f" hint-placeholder-count="3">
+                <div style="{{f.style}}">
+                  <span style="width: 12px; color: #2f7a1f">{{f.viewed}}</span>
+                  <span style="{{f.statusStyle}}">{{f.status}}</span>
+                  <span style="flex-grow: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{f.name}}</span>
+                  <span style="color: #5c5f77; font-size: 11px">{{f.delta}}</span>
+                </div>
+              </sc-for>
+            </div>
+          </sc-for>
+        </div>
+
+        <div style="flex-grow: 1; display: flex; flex-direction: column; min-width: 0">
+          <div style="display: flex; align-items: center; gap: 14px; padding: 6px 14px; border-bottom: 1px solid #ccd0da">
+            <span style="padding: 0 6px; background: #dce0e8">api:org-scope</span>
+            <span style="font-weight: 700">src/graphql/public/resolvers.ts</span>
+            <span style="color: #2f7a1f">+18</span>
+            <span style="color: #d20f39">−4</span>
+            <div style="flex-grow: 1"></div>
+            <span style="padding: 0 6px; background: #ccd0da">unified</span>
+            <span style="color: #5c5f77">split</span>
+          </div>
+          <div style="padding: 4px 14px; background: #dce0e8; color: #5c5f77">@@ -41,12 +41,26 @@ export const publicResolvers</div>
+          <sc-for list="{{diff}}" as="d" hint-placeholder-count="14">
+            <div style="{{d.style}}">
+              <span style="width: 36px; text-align: right; color: #6c6f85">{{d.a}}</span>
+              <span style="width: 36px; text-align: right; color: #6c6f85">{{d.b}}</span>
+              <span style="width: 14px; {{d.signStyle}}">{{d.sign}}</span>
+              <span style="white-space: pre">{{d.code}}</span>
+            </div>
+            <sc-if value="{{d.comment}}" hint-placeholder-val="{{ false }}">
+              <div style="margin: 6px 14px 6px 100px; display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; background: #ffffff; border: 1px solid #bcc0cc">
+                <div style="display: flex; gap: 10px">
+                  <span style="font-weight: 700">you</span>
+                  <span style="color: #5c5f77">draft · line {{d.b}}</span>
+                </div>
+                <span style="white-space: normal">{{d.comment}}</span>
+              </div>
+            </sc-if>
+          </sc-for>
+          <div style="margin: 6px 14px 6px 100px; display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; background: #ffffff; border: 1px solid #1e66f5">
+            <label for="c1" style="color: #5c5f77">comment on lines 58–60</label>
+            <input id="c1" value="Add a test where the token belongs to another org and the id is valid." style="font-family: inherit; font-size: 13px; border: none; outline: none; padding: 0; color: #4c4f69; background: transparent">
+            <div style="display: flex; gap: 14px; color: #5c5f77">
+              <span><b style="color: #4c4f69">⏎</b> add to draft</span>
+              <span><b style="color: #4c4f69">esc</b> cancel</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display: flex; align-items: center; gap: 18px; padding: 6px 16px; border-top: 1px solid #ccd0da; background: #e6e9ef; color: #5c5f77">
+        <span><b style="color: #4c4f69">c</b> comment</span>
+        <span><b style="color: #4c4f69">s</b> stage hunk</span>
+        <span><b style="color: #4c4f69">x</b> revert hunk</span>
+        <span><b style="color: #4c4f69">v</b> viewed</span>
+        <span><b style="color: #4c4f69">o</b> open in nvim</span>
+        <span><b style="color: #4c4f69">[ ]</b> scope</span>
+        <div style="flex-grow: 1"></div>
+        <button type="button" style="font-family: inherit; font-size: 13px; font-weight: 700; padding: 4px 12px; border: none; background: #1e66f5; color: #ffffff">S  send 2 comments</button>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const railItem = (n, g, c, sel) => ({ n, glyph: g, glyphStyle: 'font-weight: 700; color: ' + c,
+      style: 'width: 36px; display: flex; flex-direction: column; align-items: center; padding: 4px 0; ' + (sel ? 'background: #ccd0da; box-shadow: inset 3px 0 0 #1e66f5' : '') });
+    const rail = [
+      railItem(1, '✳', '#b3470a', true), railItem(2, '✳', '#b3470a', false), railItem(3, '✳', '#b3470a', false),
+      railItem(4, '●', '#b3470a', false), railItem(5, '○', '#6c6f85', false) ];
+    const scope = (label, on) => ({ label, style: 'padding: 0 10px; ' + (on ? 'background: #1e66f5; color: #ffffff; font-weight: 700' : 'background: #dce0e8; color: #4c4f69') });
+    const scopes = [scope('last turn', false), scope('uncommitted', true), scope('branch vs main', false)];
+    const file = (name, status, delta, viewed, sel) => ({ name, status, delta, viewed: viewed ? '✓' : '',
+      statusStyle: 'width: 12px; font-weight: 700; color: ' + (status === 'A' ? '#2f7a1f' : '#b3470a'),
+      style: 'display: flex; align-items: center; gap: 8px; padding: 3px 12px; ' + (sel ? 'background: #ccd0da' : '') });
+    const groups = [
+      { name: 'api:org-scope', pr: '#3611', files: [
+        file('resolvers.ts', 'M', '+18 −4', false, true),
+        file('resolvers.test.ts', 'A', '+41', false, false),
+        file('context.ts', 'M', '+9 −2', true, false),
+        file('shareToken.ts', 'M', '+22 −11', true, false),
+        file('schema.graphql', 'M', '+6 −6', false, false) ] },
+      { name: 'web:share-token', pr: '#5731', files: [
+        file('useShareLink.ts', 'M', '+19 −4', false, false),
+        file('ShareSheet.tsx', 'M', '+46 −14', false, false) ] } ];
+    const tab = (label, on) => ({ label, style: 'padding: 0 10px; ' + (on ? 'background: #4c4f69; color: #eff1f5; font-weight: 700' : 'background: #dce0e8; color: #4c4f69') });
+    const wtTabs = [tab('all', true), tab('api:org-scope #3611', false), tab('web:share-token #5731', false), tab('api:legacy-removal', false)];
+    const L = (a, b, sign, code, comment) => {
+      const bg = sign === '+' ? '#dcefd6' : sign === '−' ? '#f6d9dd' : 'transparent';
+      const col = sign === '+' ? '#2f7a1f' : sign === '−' ? '#d20f39' : '#6c6f85';
+      return { a, b, sign, code, comment: comment || '', style: 'display: flex; gap: 8px; padding: 0 14px; background: ' + bg, signStyle: 'color: ' + col };
+    };
+    const diff = [
+      L(41, 41, ' ', 'export const publicResolvers = {'),
+      L(42, 42, ' ', '  Query: {'),
+      L(43, 43, ' ', '    sharedProject: async (_, { id }, ctx) => {'),
+      L(44, '', '−', '      const orgId = ctx.user?.orgId;'),
+      L(45, '', '−', '      return ctx.db.project.findFirst({ where: { id } });'),
+      L('', 44, '+', '      const token = await verifyShareToken(ctx.shareToken);'),
+      L('', 45, '+', '      if (!token) throw new ForbiddenError(\'invalid share token\');', 'Keep the error message generic so it does not reveal whether the project id exists.'),
+      L('', 46, '+', '      return ctx.db.project.findFirst({'),
+      L('', 47, '+', '        where: { id, orgId: token.orgId },'),
+      L('', 48, '+', '      });'),
+      L(46, 49, ' ', '    },'),
+      L(47, 50, ' ', '    sharedInvoice: async (_, { id }, ctx) => {'),
+      L('', 51, '+', '      const token = await verifyShareToken(ctx.shareToken);'),
+      L(48, 52, ' ', '      return loadInvoice(ctx, id);'),
+    ];
+    return { rail, scopes, groups, wtTabs, diff };
+  }
+}
+</script>
+</body>
+</html>

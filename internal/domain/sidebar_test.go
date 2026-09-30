@@ -79,3 +79,15 @@ func TestNeedsYouCountsWaitingAndPermission(t *testing.T) {
 		}
 	}
 }
+
+func TestSidebarLeavesOutEndedSessions(t *testing.T) {
+	tasks := []Task{{ID: "t1"}, {ID: "t2"}}
+	sessions := []Session{
+		{ID: "a", TaskID: "t1"},
+		{ID: "b", TaskID: "t1", Ended: true},
+		{ID: "c", TaskID: "t2", Ended: true},
+	}
+	if got, want := sessionIDs(Sidebar(tasks, sessions)), [][]string{{"a"}}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("groups = %v, want %v", got, want)
+	}
+}
