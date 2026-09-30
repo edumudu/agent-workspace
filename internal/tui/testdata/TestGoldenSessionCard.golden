@@ -21,6 +21,7 @@
  #42 · task number 3                         api
 ▌✳ 5 session 5 change                        CC 
 ▌    opus-5.5 high  ctx 60%  1 worktree         
+▌     └ api:part-1                      #3604   
 
  CARD                                           
  #42 · task number 3                            
@@ -33,7 +34,6 @@
    Bash: rm -rf build                           
    make clean                                   
    make all…                                    
-
  n new session   r review                       
  t shell         e nvim                         
  w worktrees     ␣ next waiting                 

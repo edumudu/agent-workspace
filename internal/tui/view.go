@@ -327,7 +327,6 @@ func (m Model) footer() []string {
 		right = nil
 	}
 	return []string{
-		"",
 		m.keyRow("n", "new session", "r", "review"),
 		m.keyRow("t", "shell", "e", "nvim"),
 		m.keyRow("w", "worktrees", "␣", "next waiting"),
