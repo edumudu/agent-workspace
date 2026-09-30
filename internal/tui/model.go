@@ -43,6 +43,8 @@ type Options struct {
 	Attend Attender
 	// Kill may be nil, which turns off K.
 	Kill Killer
+	// Defaults pre-fill the new-session dialog per harness.
+	Defaults map[domain.Harness]Defaults
 	// Calls may be nil, which turns off n and x.
 	Calls Caller
 	// Switch applies model and effort switches; nil turns M and E off.

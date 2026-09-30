@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -48,7 +49,8 @@ type dialog struct {
 	err      string
 	busy     bool
 	// seq tells this dialog's start reply from one sent by a dialog closed earlier.
-	seq int
+	seq      int
+	defaults map[domain.Harness]Defaults
 }
 
 type sessionStartedMsg struct {
@@ -63,7 +65,9 @@ type startFailedMsg struct {
 
 func (m Model) openDialog() Model {
 	m.dialogs++
-	d := &dialog{seq: m.dialogs}
+	d := &dialog{seq: m.dialogs, defaults: m.opts.Defaults}
+	start := m.opts.Defaults[domain.HarnessClaude]
+	d.model, d.effort = start.Model, effortIndex(start.Effort)
 	all := sorted(m.workspaces)
 	last, found := domain.LastUsedWorkspace(all)
 	for i, w := range all {
@@ -84,6 +88,24 @@ func sorted(ws map[string]domain.Workspace) []domain.Workspace {
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].Root < out[j].Root })
 	return out
+}
+
+func effortIndex(effort string) int {
+	return max(slices.Index(effortChoices, effort), 0)
+}
+
+// cycleHarness moves to the next harness and carries the model and effort over
+// to its defaults, unless the user changed them from the previous defaults.
+func (d *dialog) cycleHarness(delta int) {
+	prev := d.defaults[domain.Harness(harnessChoices[d.harness])]
+	d.harness = cycle(d.harness, delta, len(harnessChoices))
+	next := d.defaults[domain.Harness(harnessChoices[d.harness])]
+	if d.model == prev.Model {
+		d.model = next.Model
+	}
+	if effortChoices[d.effort] == prev.Effort {
+		d.effort = effortIndex(next.Effort)
+	}
 }
 
 func cycle(i, delta, n int) int {
@@ -108,7 +130,7 @@ func (d *dialog) change(delta int) {
 	case fieldWorkspace:
 		d.ws = cycle(d.ws, delta, len(d.roots))
 	case fieldHarness:
-		d.harness = cycle(d.harness, delta, len(harnessChoices))
+		d.cycleHarness(delta)
 	case fieldEffort:
 		d.effort = cycle(d.effort, delta, len(effortChoices))
 	}
@@ -154,7 +176,7 @@ func (m Model) dialogKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		d.change(1)
 	case "ctrl+s":
 		if advice, ok := m.advice(); ok && advice.OtherShortest != nil {
-			d.harness = cycle(d.harness, 1, len(harnessChoices))
+			d.cycleHarness(1)
 		}
 	case "enter":
 		return m, m.submit()

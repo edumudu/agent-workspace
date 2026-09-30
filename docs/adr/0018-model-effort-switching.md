@@ -10,7 +10,7 @@ Status: accepted, 2026-09-30.
 - The command is `/model <value>` or `/effort <value>` (`domain.SwitchCommand`). Only Claude is supported (`domain.SwitchSupported`): the pickers do not open for a Codex session, and the daemon answers `bad_request`.
 - Confirmation is event based, not timed. `Session.Report` checks each sent switch against the next report that says something about its kind. A match clears it. A report that still shows the old value keeps the switch and sets `SwitchWarning`, and a later matching report clears both. A model matches when the reported name equals the requested one or its first word does, since Claude reports `Opus 4.7` for `opus` but `gpt-5` must not match `gpt-5-codex`; an effort matches exactly, ignoring case.
 - The sidebar shows `→ value` on the right of the detail row for each unconfirmed switch, and `!` when `SwitchWarning` is set. The new value itself appears as soon as the report lands, so it follows the harness's confirmation by one diff.
-- Per-harness defaults are `[defaults.claude]` and `[defaults.codex]` tables (`model`, `effort`) in `$AGENTWS_HOME/config.toml`, read by `tui.LoadDefaults`.
+- Per-harness defaults are `[defaults.claude]` and `[defaults.codex]` tables (`model`, `effort`) in `$AGENTWS_HOME/config.toml`, read by `tui.LoadDefaults`. The new-session dialog pre-fills model and effort from the chosen harness's table, and follows them when the harness field changes unless the user edited the value.
 
 ## Why
 
@@ -20,7 +20,6 @@ Status: accepted, 2026-09-30.
 
 ## Limits
 
-- The new-session dialog (#11) does not exist yet, so nothing reads the defaults; `tui.LoadDefaults` is ready for it.
 - The pick lists are fixed in `domain.SwitchChoices`, not read from the harness.
 - The recheck narrows the window between the state check and the paste to the 150 ms settle; it does not close it.
 - Codex is not supported. In 0.159 `/model` opens an interactive picker and takes no inline value, and there is no `/effort` command, so typing them changes nothing. Supporting it needs a Codex-specific path, such as driving the picker with keys.
