@@ -18,6 +18,9 @@ func TestReviewApplyHunkStagesOrRevertsItsPatch(t *testing.T) {
 	if err := app.ApplyHunk(ctx, g, "/wt", f, f.Hunks[0], domain.HunkStage); err != nil {
 		t.Fatal(err)
 	}
+	if len(g.staged) != 1 || len(g.reverted) != 0 {
+		t.Fatalf("stage: staged %q reverted %q", g.staged, g.reverted)
+	}
 	if err := app.ApplyHunk(ctx, g, "/wt", f, f.Hunks[0], domain.HunkRevert); err != nil {
 		t.Fatal(err)
 	}
