@@ -169,6 +169,9 @@ func (d *Daemon) toggleShell(ctx context.Context, session domain.Session, target
 		return rpc.ShellResult{}, err
 	}
 	out := rpc.ShellResult{Pane: string(pane), Dir: target.Dir, Shown: true}
+	if err := d.hs.host.SetTitle(ctx, pane, domain.ShellTitle(target)); err != nil {
+		return out, err
+	}
 	if popup {
 		return out, d.withClient(func(ctx context.Context, h ClientHost, _ app.Slot) error { return h.Popup(ctx, pane) })
 	}

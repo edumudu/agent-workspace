@@ -12,6 +12,8 @@ import (
 type ShellTarget struct {
 	Key string
 	Dir string
+	// Label names the worktree as the sidebar does, or "root".
+	Label string
 }
 
 // ChooseShell picks the directory of a session's shell: the wanted worktree,
@@ -27,13 +29,13 @@ func ChooseShell(session string, worktrees []Worktree, wanted, cwd string) (Shel
 	sort.Slice(owned, func(i, j int) bool { return owned[i].ID < owned[j].ID })
 	for _, w := range owned {
 		if wanted == "" || w.ID == wanted {
-			return ShellTarget{Key: session + "/" + w.ID, Dir: w.Path}, true
+			return ShellTarget{Key: session + "/" + w.ID, Dir: w.Path, Label: worktreeName(w)}, true
 		}
 	}
 	if wanted != "" || cwd == "" {
 		return ShellTarget{}, false
 	}
-	return ShellTarget{Key: session + "/root", Dir: cwd}, true
+	return ShellTarget{Key: session + "/root", Dir: cwd, Label: "root"}, true
 }
 
 // NvimOpenExpr is the expression a running nvim evaluates to edit path at

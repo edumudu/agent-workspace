@@ -41,12 +41,30 @@ func stateMark(st AgentState) string {
 	return "○"
 }
 
-func worktreeTab(w Worktree) string {
+// ShellTitle is the title row of the shell split: which worktree it runs in,
+// its path, and the keys for it.
+func ShellTitle(t ShellTarget) string {
+	return "shell · " + t.Label + " · " + t.Dir + " · t hide · s type · T popup"
+}
+
+// worktreeName is repo:part, as the sidebar shows it; a worktree with no repo
+// or part yet goes by its ID.
+func worktreeName(w Worktree) string {
 	part := w.SubtaskSlug
 	if part == "" {
 		part = w.Branch
 	}
-	tab := path.Base(w.Repo) + ":" + part
+	switch {
+	case w.Repo == "" && part == "":
+		return w.ID
+	case w.Repo == "":
+		return part
+	}
+	return path.Base(w.Repo) + ":" + part
+}
+
+func worktreeTab(w Worktree) string {
+	tab := worktreeName(w)
 	pr := w.PR
 	if pr == nil {
 		return tab + " no PR"
