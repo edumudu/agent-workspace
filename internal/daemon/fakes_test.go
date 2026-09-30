@@ -428,3 +428,90 @@ func (f *fakeWorktrees) AddWorktree(_ context.Context, repo, path, branch, base 
 	f.added = append(f.added, addedWorktree{repo, path, branch, base})
 	return app.AddedWorktree{Main: repo, Path: path}, nil
 }
+
+// fakeReviewGit resolves every rev to itself and answers diffs keyed by
+// "<from>..<tree>". refs are per dir, ref → tree.
+type fakeReviewGit struct {
+	mu    sync.Mutex
+	trees map[string]string
+	refs  map[string]map[string]string
+	diffs map[string]string
+}
+
+func newFakeReviewGit() *fakeReviewGit {
+	return &fakeReviewGit{trees: map[string]string{}, refs: map[string]map[string]string{}, diffs: map[string]string{}}
+}
+
+func (g *fakeReviewGit) WorkingTree(_ context.Context, dir string) (string, error) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	t, ok := g.trees[dir]
+	if !ok {
+		return "", errors.New("not a git repo")
+	}
+	return t, nil
+}
+
+func (g *fakeReviewGit) PointRef(_ context.Context, dir, ref, tree string) error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if g.refs[dir] == nil {
+		g.refs[dir] = map[string]string{}
+	}
+	g.refs[dir][ref] = tree
+	return nil
+}
+
+func (g *fakeReviewGit) TurnRefs(_ context.Context, dir string) ([]string, error) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	var out []string
+	for r := range g.refs[dir] {
+		out = append(out, r)
+	}
+	return out, nil
+}
+
+func (g *fakeReviewGit) DeleteRefs(_ context.Context, dir string, refs []string) error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	for _, r := range refs {
+		delete(g.refs[dir], r)
+	}
+	return nil
+}
+
+func (g *fakeReviewGit) Resolve(_ context.Context, dir, rev string) (string, error) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if t, ok := g.refs[dir][rev]; ok {
+		return t, nil
+	}
+	return rev, nil
+}
+
+func (g *fakeReviewGit) MergeBase(_ context.Context, _, rev string) (string, error) {
+	return "base-of-" + rev, nil
+}
+
+func (g *fakeReviewGit) Diff(_ context.Context, _, from, tree string) (string, error) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	return g.diffs[from+".."+tree], nil
+}
+
+func (g *fakeReviewGit) set(f func(g *fakeReviewGit)) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	f(g)
+}
+
+func (g *fakeReviewGit) refsOf(dir string) map[string]string {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	out := map[string]string{}
+	for k, v := range g.refs[dir] {
+		out[k] = v
+	}
+	return out
+}
