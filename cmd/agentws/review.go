@@ -14,9 +14,10 @@ import (
 )
 
 const (
-	reviewUsage  = "usage: agentws review <comment|scope> ..."
+	reviewUsage  = "usage: agentws review <comment|scope|send> ..."
 	commentUsage = "usage: agentws review comment [--session id] (--file abs-path | --worktree id --path rel-path) --start line [--end line] [--code text] --body text"
 	scopeUsage   = "usage: agentws review scope [--session id] [--scope last_turn|uncommitted|branch] [--worktree id]"
+	sendUsage    = "usage: agentws review send [--session id]"
 )
 
 var errBadComment = errors.New("bad comment arguments")
@@ -82,6 +83,26 @@ func runReview(args []string, stdout, stderr io.Writer) int {
 				return err
 			}
 			return json.NewEncoder(stdout).Encode(scopeRows(rev))
+		})
+	case "send":
+		fs := flag.NewFlagSet("review send", flag.ContinueOnError)
+		fs.SetOutput(stderr)
+		session := fs.String("session", sessionFromEnv(), "session id (default $AGENTWS_SESSION)")
+		if err := fs.Parse(args[1:]); err != nil || *session == "" || fs.NArg() > 0 {
+			fmt.Fprintln(stderr, sendUsage)
+			return 2
+		}
+		return callReview(stderr, "send", func(ctx context.Context, c *rpc.Client) error {
+			draft, err := c.SendReview(ctx, *session)
+			if err != nil {
+				return err
+			}
+			verb := "queued"
+			if draft.Status == domain.DraftSent {
+				verb = "sent"
+			}
+			fmt.Fprintf(stdout, "%s %d comments to %s\n", verb, len(draft.Comments), *session)
+			return nil
 		})
 	default:
 		fmt.Fprintln(stderr, reviewUsage)

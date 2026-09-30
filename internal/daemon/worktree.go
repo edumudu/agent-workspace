@@ -199,6 +199,9 @@ func (d *Daemon) scanWorktrees(ctx context.Context) {
 			}
 			removedBy[l.Main] = append(removedBy[l.Main], removed...)
 		}
+		for _, w := range domain.ReclaimWorktrees(sorted(s.worktrees), s.hints.claims, now) {
+			s.putWorktree(w)
+		}
 	})
 	d.dropTurns(ctx, removedBy)
 }

@@ -115,6 +115,51 @@ func AttributeWorktree(wt ListedWorktree, hints []SessionHint, claims []Worktree
 	return id
 }
 
+// namedBy is the one session whose claims name the worktree by a whole
+// word: its branch, or a path ending in its dir name.
+func namedBy(path, branch string, claims []WorktreeClaim) string {
+	base := filepath.Base(path)
+	var naming []WorktreeClaim
+	for _, c := range claims {
+		for _, word := range strings.Fields(c.Command) {
+			if word == branch || word == base || strings.HasSuffix(filepath.Clean(word), "/"+base) {
+				naming = append(naming, c)
+				break
+			}
+		}
+	}
+	id, _ := onlySession(naming)
+	return id
+}
+
+// ReclaimWorktrees attaches unassigned worktrees that a recent claim names:
+// a scan that runs while `git worktree add` does sees the worktree before
+// the PostToolUse hook that claims it. Pre-existing worktrees stay
+// unassigned unless a claim names them word for word. It returns only the
+// ones it changed.
+func ReclaimWorktrees(known []Worktree, claims []WorktreeClaim, now time.Time) []Worktree {
+	var recent []WorktreeClaim
+	for _, c := range claims {
+		if now.Sub(c.At) <= ClaimWindow {
+			recent = append(recent, c)
+		}
+	}
+	if len(recent) == 0 {
+		return nil
+	}
+	var changed []Worktree
+	for _, w := range known {
+		if w.SessionID != "" || filepath.Clean(w.Path) == filepath.Clean(w.Repo) {
+			continue
+		}
+		if id := namedBy(w.Path, w.Branch, recent); id != "" {
+			w.SessionID = id
+			changed = append(changed, w)
+		}
+	}
+	return changed
+}
+
 func onlySession(claims []WorktreeClaim) (string, bool) {
 	if len(claims) == 0 {
 		return "", false

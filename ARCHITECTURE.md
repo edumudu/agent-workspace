@@ -29,7 +29,7 @@ internal/rpc           protocol types + client (used by tui, hook, cli, nvim)
 internal/tui           Bubble Tea models; talks only to rpc.Client
 nvim/                  Lua plugin
 scripts/               repo tooling: lint-comments (Go AST check), tdd-check, mutate
-test/e2e               testscript suite; builds the binary and runs testdata/script/*.txtar
+test/e2e               testscript suite; builds the binary and runs testdata/script/*.txtar with the fakes in test/e2e/bin
 ```
 
 Dependency rule: `domain` ← `app` ← `adapters`/`daemon`, and `tui` → `rpc` only. `golangci-lint depguard` enforces it (rules in `.golangci.yml`), so breaking it fails CI. `tui` may import `domain` types.
@@ -159,7 +159,7 @@ See [docs/adr/0012-worktree-detection.md](docs/adr/0012-worktree-detection.md). 
 
 - **Model.** A worktree's ID is its path. `Worktree.SessionID` is the owner (empty is unassigned) and the owner's `Session.WorktreeIDs` lists it. `Worktree.PR` carries number, state and the check rollup.
 - **Scan.** One goroutine runs `git worktree list --porcelain -z` (`adapters/git.Worktrees`, at most 4 in flight) from every registered repo and every session's last hook `cwd`, one listing per main checkout. It runs at start, every 10 s, on `workspace.add`, and when a hook reports a new cwd or a `git worktree add`. A repo git cannot read is skipped, so its worktrees are never dropped by mistake. Prunable entries (directory gone) count as removed.
-- **Attribution** (`domain.AttributeWorktree`), for worktrees not seen before: the parent session of a subagent worktree (`<cwd>/.claude/worktrees/agent-*`), then a session whose cwd is inside it, then a `git worktree add` claim from a `PostToolUse` hook in the last 30 s. With claims from several sessions, only one whose command names the path or branch wins. Otherwise unassigned.
+- **Attribution** (`domain.AttributeWorktree`), for worktrees not seen before: the parent session of a subagent worktree (`<cwd>/.claude/worktrees/agent-*`), then a session whose cwd is inside it, then a `git worktree add` claim from a `PostToolUse` hook in the last 30 s. With claims from several sessions, only one whose command names the path or branch wins. Otherwise unassigned. A scan can run while `git worktree add` does, before the `PostToolUse` claim lands; `domain.ReclaimWorktrees` then attaches an unassigned worktree once a recent claim from one session names its path or branch.
 - **Adoption.** The first scan of a repo in a daemon's life adopts its unknown worktrees as unassigned; stored worktrees keep their owner across restarts.
 - **PRs.** Every 60 s, one read-only `gh api graphql` request for all repos (`adapters/github`), matched by head branch: the open PR, else the newest. It carries checks with failing job names and run URLs, review decision, unresolved threads, bot comments since the last push and mergeable state; `domain` derives merge blockers from them. The wait is a quarter of that while checks run and doubles per failed poll up to 10x. A diff goes out only when the PR changed. See [docs/adr/0024-pr-board.md](docs/adr/0024-pr-board.md). `agentws pr <session> [--json]` prints a session's board from daemon state.
 - Hooks are parsed on the loop (a small JSON decode); all git and gh calls run on the scanner goroutine.

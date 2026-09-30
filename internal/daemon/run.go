@@ -75,9 +75,10 @@ func Run(ctx context.Context, home string) (err error) {
 	banners := notify.New()
 	trash := wsfs.NewTrash(filepath.Join(home, "trash"), 4)
 	audit := &wsfs.AuditLog{Path: filepath.Join(home, "cleanup.log")}
-	cleanup := app.NewCleanup(gitadapter.Worktrees{}, procs.Table{}, trash, audit, filepath.Join(home, "backups"), time.Now)
+	hooks := testHooksFromEnv(os.Getenv)
+	cleanup := app.NewCleanup(gitadapter.Worktrees{}, procs.Table{}, trash, audit, filepath.Join(home, "backups"), hooks.cleanupClock)
 	sizes := app.NewDiskSizes(wsfs.Du{}, diskWorkers, diskSizeTTL, time.Now)
-	d, err := New(store, os.Getpid(),
+	opts := []Option{
 		WithWorkspaces(wsfs.FS{}, gitadapter.Inspector{}),
 		WithHarnesses(host, claude.Adapter{}, codex.Adapter{}),
 		WithSessions(gitadapter.Adder{}, runRecipe, worktreeHome),
@@ -91,7 +92,12 @@ func Run(ctx context.Context, home string) (err error) {
 		WithSlotWatch(slotWatchEvery),
 		WithDisk(DiskDeps{Sizes: sizes, Volume: wsfs.Volume{}, History: audit, VolumePath: home, DepsStore: DepsStorePath()}),
 		WithTerminals(home, nvim.Editor{}),
-		WithHunks(gitadapter.Review{}))
+		WithHunks(gitadapter.Review{}),
+	}
+	if hooks.prPoll > 0 {
+		opts = append(opts, WithWorktreePoll(DefaultWorktreePoll, hooks.prPoll))
+	}
+	d, err := New(store, os.Getpid(), opts...)
 	if err != nil {
 		return err
 	}
@@ -122,3 +128,37 @@ func realDir(dir string) (string, error) {
 	}
 	return filepath.EvalSymlinks(dir)
 }
+
+// testHooks are what the e2e suite sets through the environment so it can
+// run the real daemon without waiting on wall-clock time. Unset, they change
+// nothing.
+type testHooks struct {
+	// clockSkew moves the cleanup clock, from AGENTWS_TEST_CLOCK (e.g. "+2h"),
+	// so fresh worktrees are past domain.CleanupGrace.
+	clockSkew time.Duration
+	// prPoll replaces DefaultPRPoll, from AGENTWS_TEST_PR_POLL. The worktree
+	// poll stays: a scan between `git worktree add` and its PostToolUse hook
+	// would see the worktree before the claim that attributes it.
+	prPoll time.Duration
+}
+
+func testHooksFromEnv(getenv func(string) string) testHooks {
+	var h testHooks
+	if v := getenv("AGENTWS_TEST_CLOCK"); v != "" {
+		if d, err := time.ParseDuration(v); err == nil {
+			h.clockSkew = d
+		} else {
+			log.Printf("AGENTWS_TEST_CLOCK ignored: %v", err)
+		}
+	}
+	if v := getenv("AGENTWS_TEST_PR_POLL"); v != "" {
+		if d, err := time.ParseDuration(v); err == nil && d > 0 {
+			h.prPoll = d
+		} else {
+			log.Printf("AGENTWS_TEST_PR_POLL ignored: %q", v)
+		}
+	}
+	return h
+}
+
+func (h testHooks) cleanupClock() time.Time { return time.Now().Add(h.clockSkew) }
