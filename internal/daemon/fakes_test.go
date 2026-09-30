@@ -157,6 +157,7 @@ type fakeClientHost struct {
 	opened  []app.PaneSpec
 	open    map[app.Slot]bool
 	focused []app.Slot
+	wide    []bool
 }
 
 func (h *fakeClientHost) OpenClient(_ context.Context, name string, tui app.PaneSpec) (app.Slot, error) {
@@ -188,6 +189,16 @@ func (h *fakeClientHost) FocusSlot(_ context.Context, slot app.Slot) error {
 		return errors.New("no such slot")
 	}
 	h.focused = append(h.focused, slot)
+	return nil
+}
+
+func (h *fakeClientHost) WidenSidebar(_ context.Context, slot app.Slot, wide bool) error {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if !h.open[slot] {
+		return errors.New("no such slot")
+	}
+	h.wide = append(h.wide, wide)
 	return nil
 }
 

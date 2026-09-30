@@ -39,8 +39,40 @@ const (
 	MethodNewSession     = "session.new"
 	MethodEndSession     = "session.end"
 	// MethodPortsKill terminates the process groups behind worktree ports.
-	MethodPortsKill = "ports.kill"
+	MethodPortsKill    = "ports.kill"
+	MethodReviewOpen   = "review.open"
+	MethodReviewViewed = "review.viewed"
+	// MethodClientReview widens the client's sidebar pane for the review, or
+	// puts it back.
+	MethodClientReview = "client.review"
 )
+
+// ReviewParams asks for Session's review in Scope, of one worktree ID or,
+// when Worktree is empty, of all its worktrees.
+type ReviewParams struct {
+	Session  string             `json:"session"`
+	Scope    domain.ReviewScope `json:"scope"`
+	Worktree string             `json:"worktree,omitempty"`
+}
+
+// Review holds each worktree's files and every viewed mark in those
+// worktrees; domain.IsViewed tells which marks still apply.
+type Review struct {
+	Scope     domain.ReviewScope      `json:"scope"`
+	Worktrees []domain.WorktreeReview `json:"worktrees"`
+	Viewed    []domain.ViewedMark     `json:"viewed"`
+}
+
+// ViewedParams marks Mark viewed, or clears the mark for its worktree and
+// path when Viewed is false.
+type ViewedParams struct {
+	Mark   domain.ViewedMark `json:"mark"`
+	Viewed bool              `json:"viewed"`
+}
+
+type ClientReviewParams struct {
+	Open bool `json:"open"`
+}
 
 // PortsKillParams names process groups by PGID, as a domain.Port carries it.
 // The daemon kills only groups that serve a port it lists on some worktree.

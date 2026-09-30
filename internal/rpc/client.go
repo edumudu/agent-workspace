@@ -146,6 +146,20 @@ func (c *Client) FocusSession(ctx context.Context, id string) error {
 	return c.Call(ctx, MethodSessionFocus, SessionFocusParams{ID: id}, nil)
 }
 
+func (c *Client) Review(ctx context.Context, p ReviewParams) (Review, error) {
+	var out Review
+	err := c.Call(ctx, MethodReviewOpen, p, &out)
+	return out, err
+}
+
+func (c *Client) MarkViewed(ctx context.Context, mark domain.ViewedMark, viewed bool) error {
+	return c.Call(ctx, MethodReviewViewed, ViewedParams{Mark: mark, Viewed: viewed}, nil)
+}
+
+func (c *Client) ReviewLayout(ctx context.Context, open bool) error {
+	return c.Call(ctx, MethodClientReview, ClientReviewParams{Open: open}, nil)
+}
+
 func (c *Client) DebugSeed(ctx context.Context, count int) error {
 	return c.Call(ctx, MethodDebugSeed, DebugSeedParams{Count: count}, nil)
 }
