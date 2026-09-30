@@ -229,6 +229,8 @@ func (m Model) reviewKey(k string) (tea.Model, tea.Cmd) {
 		}
 		fetch := m.fetchReview()
 		return m, fetch
+	case "o":
+		return m.openInNvim()
 	case "u":
 		m.rv.split = !m.rv.split
 		m.rv.scroll = 0

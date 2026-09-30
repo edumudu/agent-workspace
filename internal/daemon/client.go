@@ -20,6 +20,11 @@ type ClientHost interface {
 	WidenSidebar(ctx context.Context, slot app.Slot, wide bool) error
 	EnsureSlot(ctx context.Context, slot app.Slot) error
 	SlotHasPane(ctx context.Context, slot app.Slot) bool
+	ShownIn(ctx context.Context, slot app.Slot) app.PaneID
+	BelowPane(ctx context.Context, slot app.Slot) app.PaneID
+	ShowBelow(ctx context.Context, pane app.PaneID, slot app.Slot) error
+	HideBelow(ctx context.Context, slot app.Slot) error
+	Popup(ctx context.Context, pane app.PaneID) error
 }
 
 const clientName = "main"

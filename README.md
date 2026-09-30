@@ -36,7 +36,7 @@ The details are in [ARCHITECTURE.md](ARCHITECTURE.md), and the full scope is in 
 
 ## Requirements (planned)
 
-macOS, tmux, git, the GitHub CLI (`gh`, signed in), and Claude Code and/or the Codex CLI.
+macOS, tmux, git, the GitHub CLI (`gh`, signed in), and Claude Code and/or the Codex CLI. For the nvim integration: Neovim 0.10+ and, for `:AgentwsDiff`, [diffview.nvim](https://github.com/sindrets/diffview.nvim).
 
 ## Build and test
 
@@ -55,6 +55,16 @@ make mutate            # gremlins on internal/domain and internal/app
 ```
 
 Integration tests use `-tags integration` and need `git` and `tmux`.
+
+## Shell and nvim
+
+In the sidebar, `t` shows a shell below the selected session's agent pane in its worktree (and hides it again), `T` opens it as a popup (`M-t` closes it), and `e` swaps the session's nvim into the main area and back. `o` in the review opens the file at the diff's top line in that nvim. In nvim, `C-h/j/k/l` move between its splits and, at the edge, to the neighbouring pane; every other pane receives those keys untouched.
+
+Add the plugin to nvim by putting the repo's `nvim/` directory on the runtimepath (with your plugin manager, or `vim.opt.rtp:prepend('<repo>/nvim')`) and calling `require('agentws').setup({})`. It needs `agentws` on `PATH`, and works in the nvim the `e` key starts, which carries `AGENTWS_SESSION`.
+
+- `:AgentwsDiff [last_turn|uncommitted|branch]` opens the session's review scope in diffview (by default the one the review pane has open).
+- `:'<,'>AgentwsComment [text]` adds the selected lines as a draft review comment.
+- `setup{bin = 'agentws', tmux = 'tmux', navigate = true}`; `navigate = false` leaves `C-h/j/k/l` alone in nvim.
 
 ## Codex setup
 

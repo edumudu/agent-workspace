@@ -16,6 +16,7 @@ import (
 	"github.com/giovaniif/agent-workspace/internal/adapters/github"
 	"github.com/giovaniif/agent-workspace/internal/adapters/linear"
 	"github.com/giovaniif/agent-workspace/internal/adapters/notify"
+	"github.com/giovaniif/agent-workspace/internal/adapters/nvim"
 	"github.com/giovaniif/agent-workspace/internal/adapters/procs"
 	"github.com/giovaniif/agent-workspace/internal/adapters/setup"
 	"github.com/giovaniif/agent-workspace/internal/adapters/sqlite"
@@ -88,7 +89,8 @@ func Run(ctx context.Context, home string) (err error) {
 		WithReview(gitadapter.Review{}),
 		WithCleanup(cleanup, DefaultCleanupEvery),
 		WithSlotWatch(slotWatchEvery),
-		WithDisk(DiskDeps{Sizes: sizes, Volume: wsfs.Volume{}, History: audit, VolumePath: home, DepsStore: DepsStorePath()}))
+		WithDisk(DiskDeps{Sizes: sizes, Volume: wsfs.Volume{}, History: audit, VolumePath: home, DepsStore: DepsStorePath()}),
+		WithTerminals(home, nvim.Editor{}))
 	if err != nil {
 		return err
 	}

@@ -1,0 +1,100 @@
+package daemon_test
+
+import (
+	"context"
+	"fmt"
+	"sync"
+
+	"github.com/giovaniif/agent-workspace/internal/app"
+)
+
+// termFake is one terminal host that also serves as the client layout, as
+// *tmux.Host does, so a pane shown in the slot is what ShownIn reports.
+type termFake struct {
+	app.TerminalHost
+	client *fakeClientHost
+
+	mu      sync.Mutex
+	specs   []app.PaneSpec
+	alive   map[app.PaneID]bool
+	created []app.PaneID
+	shown   []app.PaneID
+}
+
+func newTermFake(client *fakeClientHost, live ...app.PaneID) *termFake {
+	t := &termFake{client: client, alive: map[app.PaneID]bool{}}
+	for _, p := range live {
+		t.alive[p] = true
+	}
+	return t
+}
+
+func (t *termFake) Create(_ context.Context, spec app.PaneSpec) (app.PaneID, error) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	t.specs = append(t.specs, spec)
+	id := app.PaneID(fmt.Sprintf("%%t%d", len(t.specs)))
+	t.alive[id] = true
+	t.created = append(t.created, id)
+	return id, nil
+}
+
+func (t *termFake) Alive(_ context.Context, pane app.PaneID) (bool, error) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	return t.alive[pane], nil
+}
+
+func (t *termFake) List(context.Context) ([]app.PaneInfo, error) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	var out []app.PaneInfo
+	for p, ok := range t.alive {
+		out = append(out, app.PaneInfo{ID: p, Alive: ok})
+	}
+	return out, nil
+}
+
+func (t *termFake) Show(_ context.Context, pane app.PaneID, slot app.Slot) error {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	t.shown = append(t.shown, pane)
+	t.client.setShownIn(slot, pane)
+	return nil
+}
+
+func (t *termFake) kill(pane app.PaneID) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	t.alive[pane] = false
+}
+
+func (t *termFake) createdSpecs() []app.PaneSpec {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	return append([]app.PaneSpec(nil), t.specs...)
+}
+
+func (t *termFake) shownPanes() []app.PaneID {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	return append([]app.PaneID(nil), t.shown...)
+}
+
+type fakeEditor struct {
+	mu    sync.Mutex
+	calls []string
+}
+
+func (e *fakeEditor) Eval(_ context.Context, socket, expr string) error {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	e.calls = append(e.calls, socket+" "+expr)
+	return nil
+}
+
+func (e *fakeEditor) evals() []string {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	return append([]string(nil), e.calls...)
+}

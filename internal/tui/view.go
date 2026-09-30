@@ -286,6 +286,8 @@ func (m Model) helpLines() []string {
 		{"A", "unpin (name is automatic)"},
 		{"K", "kill the session's dev servers"},
 		{"w", "worktrees and disk"},
+		{"t / T", "shell below / popup"},
+		{"e", "nvim (o in a review opens the line)"},
 		{"M / E", "switch model / effort"},
 		{"enter", "focus agent pane"},
 		{`ctrl+\`, "in an agent pane: back to the sidebar"},

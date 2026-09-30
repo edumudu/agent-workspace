@@ -3,6 +3,7 @@ package daemon
 import (
 	"context"
 	"encoding/json"
+	"slices"
 	"sort"
 	"time"
 
@@ -108,6 +109,9 @@ func (d *Daemon) dispatchReview(req rpc.Request) (*rpc.Response, bool) {
 	if err := json.Unmarshal(req.Params, &p); err != nil || p.Session == "" {
 		return errorResponse(req.ID, rpc.CodeBadRequest, "review.open needs a session"), true
 	}
+	if p.Scope != "" && !slices.Contains(domain.ReviewScopes, p.Scope) {
+		return errorResponse(req.ID, rpc.CodeBadRequest, "unknown review scope "+string(p.Scope)), true
+	}
 	var targets []app.ReviewTarget
 	var marks []domain.ViewedMark
 	found := false
@@ -115,6 +119,7 @@ func (d *Daemon) dispatchReview(req rpc.Request) (*rpc.Response, bool) {
 		if _, found = s.sessions[p.Session]; !found {
 			return
 		}
+		p.Scope = s.reviewScope(p.Session, p.Scope)
 		ids := map[string]bool{}
 		for _, t := range s.reviewTargets(p.Session) {
 			if p.Worktree == "" || p.Worktree == t.Worktree.ID {
@@ -139,6 +144,19 @@ func (d *Daemon) dispatchReview(req rpc.Request) (*rpc.Response, bool) {
 		out.Worktrees = []domain.WorktreeReview{}
 	}
 	return result(req.ID, out), ok
+}
+
+// reviewScope remembers the scope a session's review was last opened with,
+// so callers that do not choose one, such as nvim, see what the TUI shows.
+func (s *state) reviewScope(session string, asked domain.ReviewScope) domain.ReviewScope {
+	if asked == "" {
+		asked = s.scopes[session]
+	}
+	if asked == "" {
+		asked = domain.ScopeUncommitted
+	}
+	s.scopes[session] = asked
+	return asked
 }
 
 func (d *Daemon) markViewed(req rpc.Request) (*rpc.Response, bool) {

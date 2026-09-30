@@ -230,6 +230,9 @@ func (m Model) scopeBar(width int) string {
 		{text: fmt.Sprintf("-%d", del), fg: t.Red},
 		{text: fmt.Sprintf("  %d/%d viewed ", viewed, files), fg: t.Subtext},
 	}
+	if n := m.draftCount(m.rv.session); n > 0 {
+		right = append([]seg{{text: count(n, "draft comment") + "  ", fg: t.Peach}}, right...)
+	}
 	if m.rv.loading {
 		right = append([]seg{{text: "loading…  ", fg: t.Overlay}}, right...)
 	}
@@ -458,7 +461,12 @@ func (m Model) codeCell(sl *styledLine, width int, sd side) string {
 func (m Model) reviewFooter(width int) string {
 	t := m.opts.Theme
 	var segs []seg
-	for _, k := range [][2]string{{"v", "viewed"}, {"u", "split"}, {"[ ]", "scope"}, {"w", "worktree"}, {"n/p", "file"}, {"j/k", "scroll"}, {"r", "close"}} {
+	keys := [][2]string{{"v", "viewed"}, {"u", "split"}, {"[ ]", "scope"}, {"w", "worktree"}, {"n/p", "file"}, {"j/k", "scroll"}}
+	if m.opts.Calls != nil {
+		keys = append(keys, [2]string{"o", "nvim"})
+	}
+	keys = append(keys, [2]string{"r", "close"})
+	for _, k := range keys {
 		segs = append(segs, seg{text: " " + k[0], bold: true}, seg{text: " " + k[1] + "  ", fg: t.Subtext})
 	}
 	var right []seg
