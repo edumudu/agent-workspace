@@ -55,16 +55,17 @@ func (o Osascript) Notify(ctx context.Context, b domain.Banner) error {
 
 const frontmostScript = `tell application "System Events" to get name of first application process whose frontmost is true`
 
+// why: System Events reports process names, which differ in case and suffix from the app's display name (ghostty, wezterm-gui).
 var terminalApps = map[string]bool{
-	"Terminal": true, "iTerm2": true, "Ghostty": true, "WezTerm": true,
-	"kitty": true, "Alacritty": true, "Hyper": true, "Warp": true,
+	"terminal": true, "iterm2": true, "ghostty": true, "wezterm": true, "wezterm-gui": true,
+	"kitty": true, "alacritty": true, "hyper": true, "warp": true,
 }
 
 // TerminalFrontmost is false when the query fails, so a banner is never
 // suppressed on a guess.
 func (o Osascript) TerminalFrontmost(ctx context.Context) bool {
 	out, err := o.Run(ctx, "osascript", "-e", frontmostScript)
-	return err == nil && terminalApps[strings.TrimSpace(string(out))]
+	return err == nil && terminalApps[strings.ToLower(strings.TrimSpace(string(out)))]
 }
 
 // LoadSounds reads the sound name per event state from the file's "sounds"
