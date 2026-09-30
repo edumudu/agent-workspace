@@ -277,8 +277,27 @@ func TestAgentExitingInViewShowsTheNextOne(t *testing.T) {
 	if a := sessionState(t, r, "a"); a.Pane != "" || a.State != domain.StateIdle || a.Focused {
 		t.Fatalf("session a after its agent exited: %+v", a)
 	}
-	if !sessionState(t, r, "b").Focused {
-		t.Fatal("b is not marked in view")
+	waitUntil(t, "b to be marked in view", func() bool { return sessionState(t, r, "b").Focused })
+}
+
+func TestSlotWatchDoesNotEndASessionThatTookTheSlotMeanwhile(t *testing.T) {
+	r, clientHost, _ := startWithClient(t, "a",
+		domain.Session{ID: "a", Pane: "%7"},
+		domain.Session{ID: "b", Pane: "%8"})
+	checked := make(chan struct{})
+	clientHost.mu.Lock()
+	clientHost.duringCheck = func() {
+		defer close(checked)
+		if err := r.c.Call(context.Background(), rpc.MethodSessionFocus, rpc.SessionFocusParams{ID: "b"}, nil); err != nil {
+			t.Error(err)
+		}
+	}
+	clientHost.mu.Unlock()
+	clientHost.loseSlotPane()
+	<-checked
+	time.Sleep(200 * time.Millisecond)
+	if b := sessionState(t, r, "b"); b.Pane != "%8" || !b.Focused {
+		t.Fatalf("b was ended by a recovery meant for a: %+v", b)
 	}
 }
 
