@@ -42,7 +42,8 @@ func startSessions(t *testing.T, store *memStore, setup app.SetupFunc) sessionRi
 	r.d, r.path = start(t, store,
 		daemon.WithHarnesses(r.host, claude.Adapter{}, codex.Adapter{}),
 		daemon.WithSessions(r.wts, setup, "/h/worktrees"),
-		daemon.WithClock(func() time.Time { return r.now }))
+		daemon.WithClock(func() time.Time { return r.now }),
+		daemon.WithSlotWatch(10*time.Millisecond))
 	r.c = dial(t, r.path)
 	return r
 }
@@ -249,6 +250,48 @@ func TestEndingTheLastSessionLeavesAnEmptyStateInTheSlot(t *testing.T) {
 	endSession(t, r, "a")
 	if !slices.Equal(clientHost.ensured, []app.Slot{slot}) || len(r.host.shown) != 0 {
 		t.Fatalf("shown %+v, ensured %v; want the slot to get its empty-state pane", r.host.shown, clientHost.ensured)
+	}
+}
+
+func sessionState(t *testing.T, r sessionRig, id string) domain.Session {
+	t.Helper()
+	for _, s := range r.state(t).Sessions {
+		if s.ID == id {
+			return s
+		}
+	}
+	t.Fatalf("no session %s", id)
+	return domain.Session{}
+}
+
+func TestAgentExitingInViewShowsTheNextOne(t *testing.T) {
+	r, clientHost, slot := startWithClient(t, "a",
+		domain.Session{ID: "a", Pane: "%7"},
+		domain.Session{ID: "b", Pane: "%8"})
+	clientHost.loseSlotPane()
+	waitUntil(t, "b to be shown", func() bool {
+		r.host.mu.Lock()
+		defer r.host.mu.Unlock()
+		return reflect.DeepEqual(r.host.shown, []shown{{"%8", slot}})
+	})
+	if a := sessionState(t, r, "a"); a.Pane != "" || a.State != domain.StateIdle || a.Focused {
+		t.Fatalf("session a after its agent exited: %+v", a)
+	}
+	if !sessionState(t, r, "b").Focused {
+		t.Fatal("b is not marked in view")
+	}
+}
+
+func TestLastAgentExitingLeavesAnEmptyStateInTheSlot(t *testing.T) {
+	r, clientHost, slot := startWithClient(t, "a", domain.Session{ID: "a", Pane: "%7"})
+	clientHost.loseSlotPane()
+	waitUntil(t, "the empty-state pane", func() bool {
+		clientHost.mu.Lock()
+		defer clientHost.mu.Unlock()
+		return slices.Equal(clientHost.ensured, []app.Slot{slot})
+	})
+	if a := sessionState(t, r, "a"); a.Pane != "" || a.Focused {
+		t.Fatalf("session a after its agent exited: %+v", a)
 	}
 }
 
