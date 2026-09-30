@@ -149,8 +149,13 @@ type SwitchAdvice struct {
 // Advise returns a warning when the shortest window of the chosen harness has
 // less than WarnQuotaLeft percent left. A harness with no figures gets none.
 func Advise(quotas []Quota, chosen Harness) (SwitchAdvice, bool) {
+	return AdviseAt(quotas, chosen, WarnQuotaLeft)
+}
+
+// AdviseAt is Advise with a chosen threshold instead of WarnQuotaLeft.
+func AdviseAt(quotas []Quota, chosen Harness, threshold int) (SwitchAdvice, bool) {
 	low, ok := ShortestQuota(quotas, chosen)
-	if !ok || low.LeftPercent >= WarnQuotaLeft {
+	if !ok || low.LeftPercent >= threshold {
 		return SwitchAdvice{}, false
 	}
 	other := HarnessClaude
