@@ -13,6 +13,8 @@
 - `make test`: `go test ./...`.
 - `make lint`: `golangci-lint`, including the layer rules.
 - `make bench`: benchmarks that guard the performance budgets.
+- `make mutate`: mutation testing on `domain` and `app`.
+- `make e2e`: the core e2e suite.
 - Integration tests use `-tags integration`. They need `git` and `tmux` installed, and use a temporary `AGENTWS_HOME`.
 
 ## Rules
@@ -23,6 +25,7 @@
 - **Shell out, don't reimplement:** use the `git`, `gh` and `tmux` CLIs. Never use a Go git library.
 - **Never destroy user work:** cleanup code backs up uncommitted changes before removing anything, never deletes branches, and never touches a worktree that a process is using. Any change to cleanup needs tests for those cases.
 - **Leave the user's setup alone:** the tmux adapter uses only the `agentws` tmux server. Setup commands merge into `~/.claude` and `~/.codex` config idempotently, back the file up first, and can be undone.
+
 ## Tests: TDD, enforced by CI
 
 - **Test first, always:** write the failing test, see it fail, then write the code. Never add a test after the behavior already exists.
