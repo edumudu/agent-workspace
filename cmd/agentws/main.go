@@ -57,7 +57,8 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return runCleanup(args[1:], stdout, stderr)
 	case cmd == "worktree":
 		return runWorktree(args[1:], stdout, stderr)
-
+	case cmd == "pr":
+		return runPR(args[1:], stdout, stderr)
 	case cmd == "new":
 		return runNew(args[1:], stdout, stderr)
 	case slices.Contains(stubs, cmd):
@@ -85,5 +86,5 @@ func buildCommit() string {
 }
 
 func usage(w io.Writer) {
-	fmt.Fprintln(w, "usage: agentws [daemon|workspace|worktree|setup|setup-worktree|tui|debug|hook|statusline|new|cleanup|version]")
+	fmt.Fprintln(w, "usage: agentws [daemon|workspace|worktree|pr|setup|setup-worktree|tui|debug|hook|statusline|new|cleanup|version]")
 }
