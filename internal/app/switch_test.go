@@ -69,6 +69,29 @@ func TestModelSwitchCodexFailsWhenNoPickerOpens(t *testing.T) {
 	}
 }
 
+func TestModelSwitchCodexWaitsForTheRedrawBeforeTheNextKeys(t *testing.T) {
+	host := codexHost()
+	host.lag = 2
+	s := domain.Session{Harness: domain.HarnessCodex, Pane: "%3", Model: "gpt-6.1-sol", Effort: "medium"}
+	sws := []domain.Switch{{Kind: domain.SwitchEffort, Value: "xhigh"}}
+	if err := app.SendSwitches(context.Background(), host, s, sws, 0); err != nil {
+		t.Fatal(err)
+	}
+	if want := [][]string{{"GPT-6.1-Sol", "Extra high"}}; !reflect.DeepEqual(host.done, want) {
+		t.Fatalf("chose %q, typed %q", host.done, host.typed)
+	}
+}
+
+func TestModelSwitchCodexClosesThePickerWhenThePaneCannotBeRead(t *testing.T) {
+	host := codexHost()
+	host.captureErr = errors.New("capture failed")
+	s := domain.Session{Harness: domain.HarnessCodex, Pane: "%3", Model: "gpt-6.1-sol"}
+	err := app.SendSwitches(context.Background(), host, s, []domain.Switch{{Kind: domain.SwitchModel, Value: "gpt-6-luna"}}, 0)
+	if err == nil || host.popup != nil {
+		t.Fatalf("err %v, popup %q, typed %q", err, host.popup, host.typed)
+	}
+}
+
 func TestModelSwitchTypesEachCommandAsAPasteThenEnter(t *testing.T) {
 	host := &typingHost{}
 	sws := []domain.Switch{{Kind: domain.SwitchModel, Value: "opus"}, {Kind: domain.SwitchEffort, Value: "high"}}

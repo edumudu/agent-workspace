@@ -346,6 +346,11 @@ type codexPickerHost struct {
 	chosen          []string
 	done            [][]string
 	pending         string
+	// lag is how many captures after each key press still show the screen
+	// from before it, as a slow redraw would.
+	lag, stale int
+	shown      string
+	captureErr error
 }
 
 func (h *codexPickerHost) SendText(_ context.Context, _ app.PaneID, text string, _ bool) error {
@@ -356,6 +361,7 @@ func (h *codexPickerHost) SendText(_ context.Context, _ app.PaneID, text string,
 
 func (h *codexPickerHost) SendKeys(_ context.Context, _ app.PaneID, keys ...string) error {
 	h.typed = append(h.typed, "keys "+strings.Join(keys, " "))
+	h.stale = h.lag
 	for _, k := range keys {
 		switch {
 		case k == "Down" && h.highlight < len(h.popup)-1:
@@ -380,11 +386,23 @@ func (h *codexPickerHost) SendKeys(_ context.Context, _ app.PaneID, keys ...stri
 }
 
 func (h *codexPickerHost) Capture(context.Context, app.PaneID, int) (string, error) {
+	if h.captureErr != nil {
+		return "", h.captureErr
+	}
+	if h.stale > 0 && h.shown != "" {
+		h.stale--
+		return h.shown, nil
+	}
+	h.shown = h.render()
+	return h.shown, nil
+}
+
+func (h *codexPickerHost) render() string {
 	var b strings.Builder
 	b.WriteString("• earlier output\n  1. a numbered list\n")
 	if h.popup == nil {
 		b.WriteString("› ")
-		return b.String(), nil
+		return b.String()
 	}
 	title := "Select Model and Effort"
 	if h.chosen != nil {
@@ -399,5 +417,5 @@ func (h *codexPickerHost) Capture(context.Context, app.PaneID, int) (string, err
 		fmt.Fprintf(&b, "%s %d. %s    description\n", mark, i+1, row)
 	}
 	b.WriteString("\n  Press enter to confirm or esc to go back")
-	return b.String(), nil
+	return b.String()
 }
