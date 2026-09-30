@@ -4,6 +4,11 @@ linters:
   enable:
     - depguard
   settings:
+    errcheck:
+      exclude-functions:
+        - fmt.Fprint
+        - fmt.Fprintf
+        - fmt.Fprintln
     depguard:
       rules:
         domain:

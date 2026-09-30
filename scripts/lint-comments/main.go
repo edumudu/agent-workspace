@@ -1,6 +1,6 @@
 // Command lint-comments enforces the comment rules in AGENTS.md: inside
 // function bodies only "// why:" comments and tool directives are allowed,
-// and every TODO references an issue as TODO(#<n>).
+// and every to-do marker references an issue number.
 package main
 
 import (

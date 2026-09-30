@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"runtime/debug"
+	"slices"
 )
 
 // Set at build time with -ldflags "-X main.version=... -X main.commit=...".
@@ -28,7 +29,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 	case cmd == "version":
 		fmt.Fprintf(stdout, "agentws %s (commit %s)\n", version, buildCommit())
 		return 0
-	case isStub(cmd):
+	case slices.Contains(stubs, cmd):
 		fmt.Fprintf(stderr, "agentws %s: not implemented yet\n", cmd)
 		return 1
 	default:
@@ -36,15 +37,6 @@ func run(args []string, stdout, stderr io.Writer) int {
 		usage(stderr)
 		return 2
 	}
-}
-
-func isStub(cmd string) bool {
-	for _, s := range stubs {
-		if s == cmd {
-			return true
-		}
-	}
-	return false
 }
 
 func buildCommit() string {
