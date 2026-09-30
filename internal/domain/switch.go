@@ -23,21 +23,26 @@ type Switch struct {
 
 func (sw Switch) sent() bool { return !sw.SentAt.IsZero() }
 
-// SwitchSupported is false for Codex: its `/model` opens an interactive picker
-// and it has no `/effort` command, so typing either changes nothing.
-func SwitchSupported(h Harness) bool { return h == HarnessClaude }
+func SwitchSupported(h Harness) bool { return h == HarnessClaude || h == HarnessCodex }
 
 func SwitchChoices(h Harness, kind SwitchKind) []string {
 	switch {
 	case !SwitchSupported(h):
 		return nil
-	case kind == SwitchModel:
-		return []string{"opus", "sonnet", "haiku"}
+	case kind == SwitchEffort:
+		return []string{"low", "medium", "high", "xhigh", "max"}
+	case h == HarnessCodex:
+		return []string{"gpt-6.1-sol", "gpt-6-astra", "gpt-6-sol", "gpt-6-luna", "gpt-5.5"}
 	}
-	return []string{"low", "medium", "high", "xhigh", "max"}
+	return []string{"opus", "sonnet", "haiku"}
 }
 
-func SwitchCommand(_ Harness, sw Switch) string {
+// SwitchCommand is what gets typed first. Codex's `/model` takes no value and
+// opens a picker that CodexPickerKeys then drives; it has no `/effort`.
+func SwitchCommand(h Harness, sw Switch) string {
+	if h == HarnessCodex {
+		return "/model"
+	}
 	return "/" + string(sw.Kind) + " " + sw.Value
 }
 
