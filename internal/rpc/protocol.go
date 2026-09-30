@@ -347,6 +347,8 @@ type State struct {
 	Subagents []domain.Subagent `json:"subagents"`
 	// Queue is the launcher's issues that have not become sessions yet.
 	Queue []domain.LaunchItem `json:"queue"`
+	// Comments are the draft review comments not yet sent, oldest first.
+	Comments []domain.DraftComment `json:"comments"`
 }
 
 // Diff is one change: exactly one field besides Seq is set, except that a hook
@@ -367,6 +369,7 @@ type Diff struct {
 	Event            *domain.SessionEvent `json:"event,omitempty"`
 	Subagent         *domain.Subagent     `json:"subagent,omitempty"`
 	Queue            *[]domain.LaunchItem `json:"queue,omitempty"`
+	Comment          *domain.DraftComment `json:"comment,omitempty"`
 }
 
 // Home is $AGENTWS_HOME, or ~/.agentws.

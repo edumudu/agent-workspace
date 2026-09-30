@@ -113,6 +113,7 @@ type state struct {
 	launched map[string]bool
 	// kickLauncher is set by New and must not block.
 	kickLauncher func()
+	comments    map[string]domain.DraftComment
 }
 
 type Daemon struct {
@@ -135,6 +136,7 @@ type Daemon struct {
 	cl       cleanupWorker
 	disk     DiskDeps
 	lc       launcherCfg
+	term     terminals
 }
 
 // New restores state from store. pid is what status reports.
@@ -155,6 +157,7 @@ func New(store app.Store, pid int, opts ...Option) (*Daemon, error) {
 		hints:      newWorktreeHints(),
 		viewed:     map[string]domain.ViewedMark{},
 		launched:   map[string]bool{},
+		comments:   map[string]domain.DraftComment{},
 	}
 	for _, m := range snap.Viewed {
 		st.viewed[m.Key()] = m
@@ -444,6 +447,10 @@ func (d *Daemon) dispatch(c *conn, line []byte) (*rpc.Response, bool) {
 		return errorResponse(req.ID, rpc.CodeUnknownMethod, "unknown method "+req.Method), true
 	case rpc.MethodReviewOpen, rpc.MethodReviewViewed:
 		return d.dispatchReview(req)
+	case rpc.MethodShellToggle, rpc.MethodNvimToggle, rpc.MethodNvimOpen:
+		return d.dispatchTerminal(req)
+	case rpc.MethodReviewComment:
+		return d.addComment(req)
 	case rpc.MethodOpenClient, rpc.MethodFocusMain, rpc.MethodClientReview:
 		return d.dispatchClient(req), true
 	case rpc.MethodDebugSeed:
@@ -484,6 +491,7 @@ func (s *state) snapshot() rpc.State {
 		Events:     flatten(s.events),
 		Subagents:  append([]domain.Subagent{}, s.subagents...),
 		Queue:      append([]domain.LaunchItem{}, s.queue...),
+		Comments:   s.commentList(),
 	}
 }
 

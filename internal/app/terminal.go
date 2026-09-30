@@ -30,3 +30,9 @@ type TerminalHost interface {
 	Capture(ctx context.Context, pane PaneID, lines int) (string, error)
 	Alive(ctx context.Context, pane PaneID) (bool, error)
 }
+
+// Editor evaluates an expression in a running nvim, found by the socket it
+// was started with `--listen`.
+type Editor interface {
+	Eval(ctx context.Context, socket, expr string) error
+}
