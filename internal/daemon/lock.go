@@ -57,7 +57,6 @@ func (l *Lock) Release() error {
 	return errors.Join(err, l.file.Close())
 }
 
-// ReadPID returns the pid in home's pid file, if there is one.
 func ReadPID(home string) (int, bool) {
 	b, err := os.ReadFile(PIDPath(home))
 	if err != nil {

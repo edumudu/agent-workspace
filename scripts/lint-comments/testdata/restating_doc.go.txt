@@ -1,0 +1,23 @@
+package fixture
+
+type Store struct{}
+
+// NewStore creates a new Store.
+func NewStore() *Store { return &Store{} }
+
+// Close closes the store.
+func (s *Store) Close() error { return nil }
+
+type Session struct{ id string }
+
+// ID returns the ID.
+func (s Session) ID() string { return s.id }
+
+// Name returns the session name.
+func (s Session) Name() string { return s.id }
+
+// Limit is the limit.
+const Limit = 3
+
+// Config holds the config.
+type Config struct{}

@@ -19,7 +19,6 @@ type RecipeSource interface {
 	Load(repoDir string) (domain.Recipe, bool, error)
 }
 
-// MainCheckouts finds the main checkout a linked worktree belongs to.
 type MainCheckouts interface {
 	MainCheckout(ctx context.Context, worktree string) (string, error)
 }
@@ -35,7 +34,6 @@ type SetupFS interface {
 	FreeBytes(path string) (int64, error)
 }
 
-// CommandRunner runs argv with dir as the working directory.
 type CommandRunner interface {
 	Run(ctx context.Context, dir string, argv ...string) error
 }

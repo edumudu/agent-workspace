@@ -59,6 +59,7 @@
 - Code explains itself through names. A comment only says *why*, never *what*.
 - Inside function bodies, the only comments allowed are ones starting with `// why:` and tool directives (`//go:`, `//nolint:` with a reason). `scripts/lint-comments` enforces this in CI.
 - Doc comments only where they add information a caller needs. No boilerplate docs that restate the name.
+- `scripts/lint-comments` rejects a declaration doc that starts with the name and says nothing else: once filler words (returns, is, a, the, new, creates...) and the words of the name, receiver, params and types are dropped, nothing is left (`// Close closes the store.`). It also rejects section banners (`// ---- helpers ----`, a lone `// Helpers` between declarations). See ADR 0020.
 - A TODO must reference an issue: `// TODO(#12): ...`.
 - A `//nolint:` directive needs a reason after it: `//nolint:gosec // why: ...`.
 - `scripts/lint-comments` fixtures live in its `testdata/` as `*.go.txt` so no other tool compiles them.
@@ -72,7 +73,7 @@
 5. Open one PR per issue that says `Closes #<n>`. Title it with a conventional prefix (`feat:`, `fix:`, `chore:`, `docs:`, `refactor:`, `test:`).
 6. If a criterion turns out wrong or impossible, don't quietly drop it. Say so in the PR and on the issue.
 7. main is protected: merge only via PR with build, tdd and mutate green and the branch up to date with main.
-8. CodeRabbit reviews every PR (`.coderabbit.yaml`). Address its correctness findings or reply why not before merging; it is advisory, not a required check.
+8. CodeRabbit reviews every PR and is a required check; fix or answer every finding and resolve all review threads before merging.
 
 ## Repo hygiene
 

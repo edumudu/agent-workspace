@@ -133,7 +133,6 @@ func (FS) FreeBytes(path string) (int64, error) {
 	return int64(st.Bavail) * int64(st.Bsize), nil //nolint:gosec // why: block counts of a real volume fit int64.
 }
 
-// Shell runs commands with their output going to Out.
 type Shell struct {
 	Out io.Writer
 }

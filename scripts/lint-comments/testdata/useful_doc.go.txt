@@ -1,0 +1,25 @@
+// Package fixture holds the store.
+package fixture
+
+type Store struct{}
+
+// NewStore opens the database at path, creating it if missing.
+func NewStore(path string) *Store { return &Store{} }
+
+// Close flushes pending writes before releasing the file lock.
+func (s *Store) Close() error { return nil }
+
+// Limit is how many sessions may start per minute; more are queued.
+const Limit = 3
+
+// Kind values match the wire format, so never reorder them.
+type Kind int
+
+// ID returns the tmux window id, such as @3.
+func ID() string { return "" }
+
+// Store section: the lock order is store, then session.
+var order = 1
+
+// Port returns 8080.
+func Port() int { return 0 }

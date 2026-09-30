@@ -19,7 +19,6 @@ var (
 	_ app.Foreground = Osascript{}
 )
 
-// Runner runs a command and returns its stdout.
 type Runner func(ctx context.Context, name string, args ...string) ([]byte, error)
 
 func execRunner(ctx context.Context, name string, args ...string) ([]byte, error) {

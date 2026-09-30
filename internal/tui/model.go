@@ -52,7 +52,6 @@ type TopBarMsg struct {
 	Disk   string
 }
 
-// DisconnectedMsg reports that the daemon connection ended.
 type DisconnectedMsg struct{ Err error }
 
 type errMsg struct{ err error }

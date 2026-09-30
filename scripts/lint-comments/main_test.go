@@ -17,6 +17,9 @@ func TestCheckFile(t *testing.T) {
 		{"directive.go.txt", []int{6}},
 		{"todo.go.txt", []int{3}},
 		{"nolint_no_reason.go.txt", []int{4}},
+		{"restating_doc.go.txt", []int{5, 8, 13, 16, 19, 22}},
+		{"useful_doc.go.txt", nil},
+		{"banner.go.txt", []int{3, 7, 11, 16, 26}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.fixture, func(t *testing.T) {
@@ -46,6 +49,8 @@ func TestRunExitCode(t *testing.T) {
 	}{
 		{"bad_body.go.txt", 1},
 		{"why.go.txt", 0},
+		{"restating_doc.go.txt", 1},
+		{"useful_doc.go.txt", 0},
 	}
 	for _, tt := range tests {
 		t.Run(tt.fixture, func(t *testing.T) {
