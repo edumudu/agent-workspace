@@ -47,7 +47,7 @@ Dependency rule: `domain` ← `app` ← `adapters`/`daemon`, and `tui` → `rpc`
 - Worktree rules: `IsWorktreeAdd`, `SubagentParent`, `AttributeWorktree`, `ReconcileWorktrees`, `RollupChecks`, `PRForBranch`. See [Worktrees](#worktrees).
 - Ports rules: `PortsByWorktree`, `KillGroups`. See [Ports](#ports).
 - Disk rules: `Reclaimable`, `TotalSize`, `DiskState`. See [Disk view](#disk-view).
-- Review rules: `RangeFor` (scopes), `TurnRef`/`LatestTurn`/`OlderTurns`/`TurnsOfWorktree`, `ParseDiff`, `IsViewed`, `SplitRows`. See [Review](#review).
+- Review rules: `RangeFor` (scopes), `TurnRef`/`LatestTurn`/`OlderTurns`/`TurnsOfWorktree`, `ParseDiff`, `IsViewed`, `SplitRows`, and for comments `CommentOn`, `ReviewPrompt` (golden-tested), `ReviewDraft.Queue`/`Dispatch`, `HunkPatch`. See [Review](#review).
 
 Everything here is table-tested, with no mocks.
 
@@ -181,7 +181,9 @@ See [docs/adr/0023-review-pane.md](docs/adr/0023-review-pane.md). In the TUI, `r
 - **Scopes.** `last_turn` diffs from the session's newest turn snapshot, `uncommitted` from `HEAD`, `branch` from the merge base with `origin/<default>`. All end at the working tree, untracked files included, taken as a tree from a temp copy of the index (`adapters/git.Review`), so the real index is never touched.
 - **Turns.** Each `UserPromptSubmit` queues a snapshot of the session's worktrees (or its hook cwd when it owns none) to a worker: `refs/agentws/turns/<session>/<worktree key>/<n>`, keeping only the newest per session and worktree. The scanner drops a removed worktree's turn refs from its main checkout. They never show in `git branch`.
 - **Building.** `review.open` runs on the connection goroutine through `app.Reviewer`, at most 4 worktrees at once, and caches parsed diffs by base commit and tree hash. The TUI highlights and lays out the answer in the command that fetched it.
-- **Viewer.** File tree grouped by worktree with its PR, unified or split diff, hunk headers, a `✓` per viewed file. Keys: `[`/`]` scope, `w` worktree (all, then each), `n`/`p` file, `j`/`k` scroll, `u` split, `v` viewed, `r` or `esc` close. Viewed marks are stored per worktree, path and blob, and reset when the file changes.
+- **Viewer.** File tree grouped by worktree with its PR, unified or split diff, hunk headers, a `✓` per viewed file, a line cursor. Keys: `[`/`]` scope, `w` worktree (all, then each), `n`/`p` file, `j`/`k` line, `u` split, `v` viewed, `c` comment, `V` range, `S` send, `s` stage hunk, `x` revert hunk (after `y`), `r` or `esc` close.
+- **Comments.** See [docs/adr/0028-review-comments-and-hunks.md](docs/adr/0028-review-comments-and-hunks.md). Drafts live in the `review_drafts` table and survive a restart. The prompt lists `worktree:path:lines`, the quoted code and the comment, pasted as one bracketed paste once the agent is between tools. The next prompt's turn refs are stored on the sent draft.
+- **Hunks.** Stage is `git apply --cached`, revert `git apply -R`, both of a patch rebuilt from the shown hunk. A revert first writes the patch to `<git dir>/agentws/reverted/`. Viewed marks are stored per worktree, path and blob, and reset when the file changes.
 - **Budget.** `BenchmarkReviewOpen50Files` (`adapters/git`, `-tags integration`) fails if a cold 50-file, 3,000-line review takes over 300 ms (about 60 ms on an M3); `BenchmarkReviewScroll` (`tui`) fails if a frame takes over 16 ms p95 (about 2 ms).
 
 ## Cleanup

@@ -30,4 +30,4 @@ Status: accepted, 2026-09-30.
 
 - A prompt's snapshot can land a few milliseconds after the agent starts editing on a large repo; that edit then counts as before the turn.
 - A worktree with a huge untracked, non-ignored directory makes `git add -A` slow; it runs off the loop, but the review waits for it.
-- Stage and revert per hunk, comments and nvim are separate issues; the footer shows only the keys that work.
+- nvim is a separate issue. Comments and hunk stage/revert came later, in ADR 0028.
