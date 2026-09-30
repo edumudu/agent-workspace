@@ -177,3 +177,43 @@ func TestXEndsTheSelectedSessionAfterYes(t *testing.T) {
 		t.Fatalf("calls %+v", c.calls)
 	}
 }
+
+func lowClaudeState() rpc.State {
+	st := withWorkspaces(rpc.State{})
+	st.Sessions = []domain.Session{
+		{ID: "c", Harness: domain.HarnessClaude, LimitsAt: clock(), Limits: []domain.RateLimit{{Window: "five_hour", UsedPercent: 90}}},
+		{ID: "x", Harness: domain.HarnessCodex, LimitsAt: clock(), Limits: []domain.RateLimit{{Window: "five_hour", UsedPercent: 36}}},
+	}
+	return st
+}
+
+var keyCtrlS = tea.KeyPressMsg{Code: 's', Mod: tea.ModCtrl}
+
+func TestNewSessionDialogWarnsOnLowQuotaAndSwitchesHarness(t *testing.T) {
+	m, c := dialogModel(t, lowClaudeState())
+	out := screen(m)
+	if !strings.Contains(out, "claude 5h 10% left") || !strings.Contains(out, "ctrl+s codex 64%") {
+		t.Fatalf("no low-quota warning with a switch:\n%s", out)
+	}
+	m = pressCmd(m, keyCtrlS)
+	if out := screen(m); !strings.Contains(out, "‹ codex ›") || strings.Contains(out, "10% left") {
+		t.Fatalf("ctrl+s did not switch to codex:\n%s", out)
+	}
+	pressCmd(typeText(m, "x"), keyEnter)
+	if len(c.calls) == 0 || c.calls[0].params.(rpc.NewSessionParams).Harness != "codex" {
+		t.Fatalf("calls %+v", c.calls)
+	}
+}
+
+func TestNewSessionDialogWarnsWithoutASwitchWhenTheOtherHarnessIsUnknown(t *testing.T) {
+	st := lowClaudeState()
+	st.Sessions = st.Sessions[:1]
+	m, _ := dialogModel(t, st)
+	out := screen(m)
+	if !strings.Contains(out, "claude 5h 10% left") || strings.Contains(out, "ctrl+s") {
+		t.Fatalf("warning should have no switch:\n%s", out)
+	}
+	if out := screen(pressCmd(m, keyCtrlS)); !strings.Contains(out, "‹ claude ›") {
+		t.Fatalf("ctrl+s switched with nothing to switch to:\n%s", out)
+	}
+}
