@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -258,6 +259,69 @@ func (c *Cleanup) Execute(ctx context.Context, wts []domain.Worktree, activity f
 		}
 	}
 	return results
+}
+
+// RemoveWorktree acts on one worktree the user picked. Without withBackup it
+// removes only what Execute would, and leaves a dirty or detached worktree
+// alone. With it, such a worktree is backed up (and, when detached, gets its
+// branch) and then removed, unless the backup fails, someone entered it, or
+// it changed after the backup was taken.
+func (c *Cleanup) RemoveWorktree(ctx context.Context, w domain.Worktree, activity func(domain.Worktree) SessionActivity, withBackup bool) CleanupResult {
+	p := c.plan(ctx, []domain.Worktree{w}, activity)[0]
+	switch p.decision.Action {
+	case domain.CleanupRemove:
+		return c.Execute(ctx, []domain.Worktree{w}, activity)[0]
+	case domain.CleanupBackupThenAsk:
+		if withBackup {
+			return c.backupThenRemove(ctx, p, activity)
+		}
+		return CleanupResult{Decision: p.decision, Outcome: "kept: " + p.decision.Reason + ", back it up first"}
+	default:
+		return CleanupResult{Decision: p.decision, Outcome: "kept: " + p.decision.Reason}
+	}
+}
+
+func (c *Cleanup) backupThenRemove(ctx context.Context, p plannedWorktree, activity func(domain.Worktree) SessionActivity) CleanupResult {
+	w := p.decision.Worktree
+	res := CleanupResult{Decision: p.decision, Outcome: c.backup(ctx, p)}
+	if strings.HasPrefix(res.Outcome, "failed") || strings.Contains(res.Outcome, "branch failed") {
+		c.record(res)
+		return res
+	}
+	res.Outcome += c.removeAfterBackup(ctx, p, activity)
+	if strings.HasSuffix(res.Outcome, ", removed") {
+		_ = c.git.Prune(ctx, w.Repo)
+	}
+	c.record(res)
+	return res
+}
+
+// removeAfterBackup is the suffix for the outcome: ", removed", or why not.
+func (c *Cleanup) removeAfterBackup(ctx context.Context, p plannedWorktree, activity func(domain.Worktree) SessionActivity) string {
+	w := p.decision.Worktree
+	// why: a shell or editor may have entered the worktree while the backup ran.
+	holders, err := c.procs.Holders(ctx, []string{w.Path})
+	switch {
+	case err != nil:
+		return ", kept: process check failed: " + err.Error()
+	case len(holders[w.Path]) > 0:
+		return ", kept: in use by " + holders[w.Path][0]
+	}
+	g, err := c.git.CleanupFacts(ctx, w)
+	if err != nil {
+		return ", kept: " + err.Error()
+	}
+	fresh := c.decide(w, g, nil, nil, nil, activity(w))
+	switch {
+	case fresh.decision.Action == domain.CleanupKeep:
+		return ", kept: " + fresh.decision.Reason
+	case fresh.fingerprint != p.fingerprint:
+		return ", kept: changed since it was backed up"
+	}
+	if err := c.trash.Move(w.Path); err != nil {
+		return ", failed: " + err.Error()
+	}
+	return ", removed"
 }
 
 func (c *Cleanup) backup(ctx context.Context, p plannedWorktree) string {

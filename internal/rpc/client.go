@@ -136,6 +136,22 @@ func (c *Client) CleanupRun(ctx context.Context) ([]CleanupItem, error) {
 	return items, err
 }
 
+func (c *Client) DiskView(ctx context.Context) (DiskView, error) {
+	var v DiskView
+	err := c.Call(ctx, MethodDiskView, nil, &v)
+	return v, err
+}
+
+func (c *Client) CleanupWorktree(ctx context.Context, path string, backup bool) (CleanupItem, error) {
+	var item CleanupItem
+	err := c.Call(ctx, MethodCleanupWorktree, CleanupWorktreeParams{Path: path, Backup: backup}, &item)
+	return item, err
+}
+
+func (c *Client) WorktreeShell(ctx context.Context, id string) error {
+	return c.Call(ctx, MethodWorktreeShell, WorktreeShellParams{ID: id}, nil)
+}
+
 func (c *Client) WorkspaceRemove(ctx context.Context, root string) error {
 	return c.Call(ctx, MethodWorkspaceRemove, WorkspaceRemoveParams{Root: root}, nil)
 }

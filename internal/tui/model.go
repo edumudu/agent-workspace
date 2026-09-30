@@ -53,6 +53,8 @@ type Options struct {
 	Switch Switcher
 	// Review may be nil, which turns off r.
 	Review Reviewer
+	// Disk may be nil, which turns off w.
+	Disk Disker
 }
 
 // Caller makes daemon calls such as session.new; *rpc.Client is one.
@@ -113,6 +115,7 @@ type Model struct {
 	status   string
 	confirm  *killPrompt
 	rv       reviewState
+	dk       diskState
 	paint    *painter
 	renaming *renamePrompt
 
@@ -166,7 +169,17 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.apply(rpc.Diff(msg))
 	case TickMsg:
 		m.frame++
-		return m, m.tick()
+		return m, tea.Batch(m.tick(), m.tickDisk())
+	case diskMsg:
+		m.gotDisk(msg)
+	case diskDoneMsg:
+		return m, m.gotDiskAction(msg)
+	case diskShellMsg:
+		if msg.err != nil {
+			m.dk.status = msg.err.Error()
+			break
+		}
+		return m.closeDisk()
 	case TopBarMsg:
 		m.top = msg
 	case DisconnectedMsg:
@@ -184,6 +197,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		if m.renaming != nil {
 			return m.renameKey(msg)
+		}
+		if m.dk.open {
+			return m.diskKey(msg.String())
 		}
 		return m.key(msg)
 	case tea.PasteMsg:
@@ -261,6 +277,8 @@ func (m *Model) apply(d rpc.Diff) {
 		return
 	case d.Task != nil:
 		m.putTask(*d.Task)
+	case d.RemovedWorktree != "":
+		delete(m.worktrees, d.RemovedWorktree)
 	case d.Worktree != nil:
 		m.worktrees[d.Worktree.ID] = *d.Worktree
 	case d.Session != nil:
@@ -420,6 +438,8 @@ func (m Model) key(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return m, m.focus()
 	case "r":
 		return m.openReview()
+	case "w":
+		return m.openDisk()
 	default:
 		if len(k) == 1 && k[0] >= '1' && k[0] <= '9' {
 			m.choose(int(k[0] - '1'))
