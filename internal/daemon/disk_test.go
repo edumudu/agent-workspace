@@ -194,38 +194,3 @@ func TestCleanupWorktreeUnknownPathIsNotFound(t *testing.T) {
 		t.Errorf("got %v, want not_found", err)
 	}
 }
-
-func TestWorktreeShellOpensAShellInTheWorktreeAndShowsItInTheMainSlot(t *testing.T) {
-	env := startDisk(t, mergedWT("a", 1))
-	clientHost := &fakeClientHost{}
-	env.d.SetClientHost(clientHost)
-	c := dial(t, env.path)
-	opened, err := c.OpenClient(context.Background(), rpc.OpenClientParams{Command: []string{"agentws", "tui"}})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := c.WorktreeShell(context.Background(), "/solo-a"); err != nil {
-		t.Fatal(err)
-	}
-	if len(env.host.specs) != 1 || env.host.specs[0].Dir != "/solo-a" || len(env.host.specs[0].Command) == 0 {
-		t.Fatalf("specs = %+v, want one shell in /solo-a", env.host.specs)
-	}
-	if !reflect.DeepEqual(env.host.shown, []shown{{"%7", app.Slot(opened.Slot)}}) {
-		t.Errorf("shown = %+v, want the new pane in the main slot", env.host.shown)
-	}
-}
-
-func TestWorktreeShellErrors(t *testing.T) {
-	env := startDisk(t, mergedWT("a", 1))
-	c := dial(t, env.path)
-	var rerr *rpc.Error
-	if err := c.WorktreeShell(context.Background(), "/elsewhere"); !errors.As(err, &rerr) || rerr.Code != rpc.CodeNotFound {
-		t.Errorf("unknown worktree: %v, want not_found", err)
-	}
-	if err := c.WorktreeShell(context.Background(), "/solo-a"); !errors.As(err, &rerr) || rerr.Code != rpc.CodeUnavailable {
-		t.Errorf("without a client layout: %v, want unavailable", err)
-	}
-	if len(env.host.specs) != 0 {
-		t.Errorf("opened %+v with nowhere to show it", env.host.specs)
-	}
-}

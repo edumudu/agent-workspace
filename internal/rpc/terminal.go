@@ -15,7 +15,8 @@ const (
 
 // ShellParams names the session and, optionally, the worktree of its shell.
 // Without a worktree the session's first one is used, else the directory its
-// hooks last reported.
+// hooks last reported. Without a session, Worktree is required and its owner,
+// if any, is the session.
 type ShellParams struct {
 	Session  string `json:"session"`
 	Worktree string `json:"worktree,omitempty"`

@@ -495,8 +495,6 @@ func (d *Daemon) dispatch(c *conn, line []byte) (*rpc.Response, bool) {
 		return d.diskView(req)
 	case rpc.MethodCleanupWorktree:
 		return d.cleanupWorktree(req)
-	case rpc.MethodWorktreeShell:
-		return d.worktreeShell(req)
 	default:
 		return errorResponse(req.ID, rpc.CodeUnknownMethod, "unknown method "+req.Method), true
 	}
