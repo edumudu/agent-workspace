@@ -1,0 +1,142 @@
+// Package tmux is the only place that runs the tmux CLI. It drives a
+// dedicated server (`tmux -L <socket>`) with its own config, so the user's
+// default server and ~/.tmux.conf are never touched.
+package tmux
+
+import (
+	"bytes"
+	"context"
+	"errors"
+	"fmt"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
+	"sync"
+	"sync/atomic"
+)
+
+const (
+	DefaultSocket = "agentws"
+	sessionName   = "agentws"
+	managedOption = "@agentws"
+	placeholder   = "tail -f /dev/null"
+)
+
+const configContents = `set -g status off
+set -g prefix None
+unbind-key -a
+set -g mouse off
+set -g escape-time 0
+set -g remain-on-exit off
+set -g history-limit 50000
+set -g default-terminal "tmux-256color"
+`
+
+type Config struct {
+	Socket     string
+	ConfigPath string
+}
+
+type Host struct {
+	socket     string
+	configPath string
+
+	configOnce sync.Once
+	configErr  error
+	bufferSeq  atomic.Uint64
+}
+
+func New(cfg Config) *Host {
+	socket := cfg.Socket
+	if socket == "" {
+		socket = DefaultSocket
+	}
+	return &Host{socket: socket, configPath: cfg.ConfigPath}
+}
+
+// Close stops the dedicated server and every pane on it.
+func (h *Host) Close(ctx context.Context) error {
+	_, err := h.run(ctx, "", "kill-server")
+	if isServerGone(err) {
+		return nil
+	}
+	return err
+}
+
+// ShowOption returns a global option of the dedicated server.
+func (h *Host) ShowOption(ctx context.Context, name string) (string, error) {
+	out, err := h.run(ctx, "", "show-options", "-gv", name)
+	return strings.TrimSpace(out), err
+}
+
+func (h *Host) run(ctx context.Context, stdin string, args ...string) (string, error) {
+	if err := h.ensureConfig(); err != nil {
+		return "", err
+	}
+	full := append([]string{"-L", h.socket, "-f", h.configPath}, args...)
+	cmd := exec.CommandContext(ctx, "tmux", full...)
+	cmd.Env = withoutTmuxEnv(os.Environ())
+	if stdin != "" {
+		cmd.Stdin = strings.NewReader(stdin)
+	}
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		return stdout.String(), &tmuxError{args: args, stderr: strings.TrimSpace(stderr.String()), err: err}
+	}
+	return stdout.String(), nil
+}
+
+func (h *Host) ensureConfig() error {
+	h.configOnce.Do(func() {
+		if h.configPath == "" {
+			h.configErr = errors.New("tmux: Config.ConfigPath is required")
+			return
+		}
+		if err := os.MkdirAll(filepath.Dir(h.configPath), 0o755); err != nil {
+			h.configErr = err
+			return
+		}
+		h.configErr = os.WriteFile(h.configPath, []byte(configContents), 0o644)
+	})
+	return h.configErr
+}
+
+func withoutTmuxEnv(env []string) []string {
+	out := make([]string, 0, len(env))
+	for _, kv := range env {
+		if !strings.HasPrefix(kv, "TMUX=") && !strings.HasPrefix(kv, "TMUX_PANE=") {
+			out = append(out, kv)
+		}
+	}
+	return out
+}
+
+type tmuxError struct {
+	args   []string
+	stderr string
+	err    error
+}
+
+func (e *tmuxError) Error() string {
+	return fmt.Sprintf("tmux %s: %s (%v)", strings.Join(e.args, " "), e.stderr, e.err)
+}
+
+func (e *tmuxError) Unwrap() error { return e.err }
+
+func isServerGone(err error) bool {
+	var te *tmuxError
+	if !errors.As(err, &te) {
+		return false
+	}
+	return strings.Contains(te.stderr, "no server running") ||
+		strings.Contains(te.stderr, "error connecting") ||
+		strings.Contains(te.stderr, "server exited")
+}
+
+func isMissingTarget(err error) bool {
+	var te *tmuxError
+	return errors.As(err, &te) && strings.Contains(te.stderr, "can't find")
+}

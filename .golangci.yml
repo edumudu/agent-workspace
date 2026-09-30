@@ -39,3 +39,21 @@ linters:
               desc: tui talks only to rpc
             - pkg: github.com/giovaniif/agent-workspace/internal/daemon
               desc: tui talks only to rpc
+        no-exec-outside-adapters:
+          files:
+            - "**/internal/domain/**"
+            - "**/internal/app/**"
+            - "**/internal/tui/**"
+            - "**/internal/rpc/**"
+            - "**/internal/daemon/**"
+          deny:
+            - pkg: os/exec
+              desc: only adapters shell out; tmux calls live in internal/adapters/tmux
+        tmux-adapter-only-via-daemon:
+          files:
+            - "**/internal/**"
+            - "!**/internal/daemon/**"
+            - "!**/internal/adapters/tmux/**"
+          deny:
+            - pkg: github.com/giovaniif/agent-workspace/internal/adapters/tmux
+              desc: only the daemon wires the tmux adapter
