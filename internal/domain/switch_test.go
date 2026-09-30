@@ -36,7 +36,7 @@ func TestModelSwitchQueuedWhileRunningIsSentAtTheNextDone(t *testing.T) {
 	s := Session{State: StateRunning}.RequestSwitch(SwitchEffort, "high")
 	s, _ = s.Dispatch(switchT0)
 	s, _ = s.Apply(HarnessEvent{Kind: EventStop})
-	s, sent := s.Dispatch(switchT0.Add(time.Minute))
+	_, sent := s.Dispatch(switchT0.Add(time.Minute))
 	if len(sent) != 1 || sent[0].Kind != SwitchEffort || sent[0].SentAt != switchT0.Add(time.Minute) {
 		t.Fatalf("sent %+v", sent)
 	}
