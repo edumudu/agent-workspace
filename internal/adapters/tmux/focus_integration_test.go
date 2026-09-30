@@ -78,6 +78,35 @@ func TestFocusKeyReturnsFromTheAgentPaneToTheSidebar(t *testing.T) {
 	}
 }
 
+func TestSlotHasPaneTurnsFalseWhenTheShownPaneExits(t *testing.T) {
+	ctx := context.Background()
+	h := newHost(t)
+	slot, err := h.OpenClient(ctx, "main", app.PaneSpec{Name: "tui", Command: []string{"sleep", "600"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	quitter, err := h.Create(ctx, app.PaneSpec{Name: "quitter", Command: []string{"sh", "-c", "read x"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := h.Show(ctx, quitter, slot); err != nil {
+		t.Fatal(err)
+	}
+	if !h.SlotHasPane(ctx, slot) {
+		t.Fatal("SlotHasPane is false with an agent shown")
+	}
+	if err := h.SendKeys(ctx, quitter, "Enter"); err != nil {
+		t.Fatal(err)
+	}
+	waitFor(t, "the slot to lose its pane", func() bool { return !h.SlotHasPane(ctx, slot) })
+	if err := h.EnsureSlot(ctx, slot); err != nil {
+		t.Fatal(err)
+	}
+	if !h.SlotHasPane(ctx, slot) {
+		t.Fatal("SlotHasPane is false after EnsureSlot")
+	}
+}
+
 func TestEnsureSlotGivesAnEmptySlotAnEmptyStatePane(t *testing.T) {
 	ctx := context.Background()
 	h := newHost(t)
