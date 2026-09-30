@@ -54,7 +54,7 @@ One terminal tool for running Claude Code and Codex sessions in parallel, each i
 - Claude and Codex notify on the same events.
 
 **Model, effort, limits**
-- A global bar showing Claude 5h/7d windows (including per-model limits) and Codex limits, with the percentage left and when each resets.
+- A global bar showing Claude 5h/7d windows and Codex limits, with the percentage used and the clock time each resets.
 - A warning before starting a session when little quota is left.
 - Change a session's model or effort with one key. Defaults are set per harness.
 
