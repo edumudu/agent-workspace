@@ -17,6 +17,7 @@ type ClientHost interface {
 	ClientOpen(ctx context.Context, slot app.Slot) bool
 	AttachCommand(slot app.Slot) []string
 	FocusSlot(ctx context.Context, slot app.Slot) error
+	WidenSidebar(ctx context.Context, slot app.Slot, wide bool) error
 }
 
 const clientName = "main"
@@ -60,6 +61,18 @@ func (d *Daemon) dispatchClient(req rpc.Request) *rpc.Response {
 			d.clients.slot = slot
 		}
 		return result(req.ID, rpc.OpenClient{Slot: string(d.clients.slot), Attach: h.AttachCommand(d.clients.slot)})
+	case rpc.MethodClientReview:
+		var p rpc.ClientReviewParams
+		if err := json.Unmarshal(req.Params, &p); err != nil {
+			return errorResponse(req.ID, rpc.CodeBadRequest, "client.review needs {\"open\": bool}")
+		}
+		if d.clients.slot == "" {
+			return errorResponse(req.ID, rpc.CodeFailed, "no client layout is open")
+		}
+		if err := h.WidenSidebar(ctx, d.clients.slot, p.Open); err != nil {
+			return errorResponse(req.ID, rpc.CodeFailed, err.Error())
+		}
+		return result(req.ID, struct{}{})
 	default:
 		if d.clients.slot == "" {
 			return errorResponse(req.ID, rpc.CodeFailed, "no client layout is open")

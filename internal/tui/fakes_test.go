@@ -10,6 +10,40 @@ import (
 	"github.com/giovaniif/agent-workspace/internal/rpc"
 )
 
+// fakeReviewer answers every review with reply, recording what it was asked.
+type fakeReviewer struct {
+	reply   rpc.Review
+	err     error
+	asked   []rpc.ReviewParams
+	marked  []viewedCall
+	layouts []bool
+}
+
+type viewedCall struct {
+	mark   domain.ViewedMark
+	viewed bool
+}
+
+func (f *fakeReviewer) Review(_ context.Context, p rpc.ReviewParams) (rpc.Review, error) {
+	f.asked = append(f.asked, p)
+	if f.err != nil {
+		return rpc.Review{}, f.err
+	}
+	r := f.reply
+	r.Scope = p.Scope
+	return r, nil
+}
+
+func (f *fakeReviewer) MarkViewed(_ context.Context, m domain.ViewedMark, viewed bool) error {
+	f.marked = append(f.marked, viewedCall{m, viewed})
+	return nil
+}
+
+func (f *fakeReviewer) ReviewLayout(_ context.Context, open bool) error {
+	f.layouts = append(f.layouts, open)
+	return nil
+}
+
 type call struct {
 	method string
 	params any

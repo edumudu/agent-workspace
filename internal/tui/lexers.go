@@ -1,0 +1,67 @@
+package tui
+
+import (
+	"embed"
+	"io/fs"
+	"sync"
+
+	. "github.com/alecthomas/chroma/v2" //nolint:staticcheck // why: the Go rules below are chroma's, kept close to their source.
+)
+
+// The syntax/*.xml lexers are copied from chroma (MIT, see syntax/COPYING).
+// chroma's own lexers package builds all ~280 lexers in its init, which
+// would cost every `agentws hook` run several milliseconds, so the review
+// builds this smaller set on first use instead.
+//
+//go:embed syntax/*.xml
+var lexerFiles embed.FS
+
+var (
+	lexerOnce     sync.Once
+	lexerRegistry *LexerRegistry
+)
+
+func matchLexer(filename string) Lexer {
+	lexerOnce.Do(func() {
+		reg := NewLexerRegistry()
+		paths, _ := fs.Glob(lexerFiles, "syntax/*.xml")
+		for _, p := range paths {
+			if l, err := NewXMLLexer(lexerFiles, p); err == nil {
+				reg.Register(l)
+			}
+		}
+		reg.Register(MustNewLexer(&Config{Name: "Go", Aliases: []string{"go"}, Filenames: []string{"*.go"}}, goRules))
+		lexerRegistry = reg
+	})
+	return lexerRegistry.Match(filename)
+}
+
+//nolint:govet // why: chroma rule tables are positional, as in its own lexers.
+func goRules() Rules {
+	return Rules{
+		"root": {
+			{`\n`, TextWhitespace, nil},
+			{`\s+`, TextWhitespace, nil},
+			{`//[^\s\n\r][^\n\r]*`, CommentPreproc, nil},
+			{`//[^\n\r]*`, CommentSingle, nil},
+			{`/(\\\n)?[*](.|\n)*?[*](\\\n)?/`, CommentMultiline, nil},
+			{`(import|package)\b`, KeywordNamespace, nil},
+			{`(var|func|struct|map|chan|type|interface|const)\b`, KeywordDeclaration, nil},
+			{Words(``, `\b`, `break`, `default`, `select`, `case`, `defer`, `go`, `else`, `goto`, `switch`, `fallthrough`, `if`, `range`, `continue`, `for`, `return`), Keyword, nil},
+			{`(true|false|iota|nil)\b`, KeywordConstant, nil},
+			{Words(``, `\b(\()`, `uint`, `uint8`, `uint16`, `uint32`, `uint64`, `int`, `int8`, `int16`, `int32`, `int64`, `float`, `float32`, `float64`, `complex64`, `complex128`, `byte`, `rune`, `string`, `bool`, `error`, `uintptr`, `print`, `println`, `panic`, `recover`, `close`, `complex`, `real`, `imag`, `len`, `cap`, `append`, `copy`, `delete`, `new`, `make`, `clear`, `min`, `max`), ByGroups(NameBuiltin, Punctuation), nil},
+			{Words(``, `\b`, `uint`, `uint8`, `uint16`, `uint32`, `uint64`, `int`, `int8`, `int16`, `int32`, `int64`, `float`, `float32`, `float64`, `complex64`, `complex128`, `byte`, `rune`, `string`, `bool`, `error`, `uintptr`, `any`), KeywordType, nil},
+			{`\d+(\.\d+[eE][+\-]?\d+|\.\d*|[eE][+\-]?\d+)`, LiteralNumberFloat, nil},
+			{`0[xX][0-9a-fA-F_]+`, LiteralNumberHex, nil},
+			{`0b[01_]+`, LiteralNumberBin, nil},
+			{`(0|[1-9][0-9_]*)`, LiteralNumberInteger, nil},
+			{`'(\\['"\\abfnrtv]|\\x[0-9a-fA-F]{2}|\\[0-7]{1,3}|\\u[0-9a-fA-F]{4}|\\U[0-9a-fA-F]{8}|[^\\])'`, LiteralStringChar, nil},
+			{"`[^`]*`", LiteralString, nil},
+			{`"(\\\\|\\"|[^"])*"`, LiteralString, nil},
+			{`(<<=|>>=|<<|>>|<=|>=|&\^=|&\^|\+=|-=|\*=|/=|%=|&=|\|=|&&|\|\||<-|\+\+|--|==|!=|:=|\.\.\.|[+\-*/%&])`, Operator, nil},
+			{`([a-zA-Z_]\w*)(\s*)(\()`, ByGroups(NameFunction, UsingSelf("root"), Punctuation), nil},
+			{`[|^<>=!()\[\]{}.,;:~]`, Punctuation, nil},
+			{`[^\W\d]\w*`, NameOther, nil},
+		},
+	}
+}

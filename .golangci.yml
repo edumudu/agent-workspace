@@ -49,6 +49,14 @@ linters:
           deny:
             - pkg: os/exec
               desc: only adapters shell out; tmux calls live in internal/adapters/tmux
+        no-chroma-registries:
+          files:
+            - "$all"
+          deny:
+            - pkg: github.com/alecthomas/chroma/v2/lexers
+              desc: its init builds every lexer and slows each hook run; add XML lexers to internal/tui/syntax
+            - pkg: github.com/alecthomas/chroma/v2/styles
+              desc: its init parses every style and slows each hook run; syntax colors come from the theme
         tmux-adapter-only-via-daemon:
           files:
             - "**/internal/**"

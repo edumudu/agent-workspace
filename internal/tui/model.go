@@ -49,6 +49,8 @@ type Options struct {
 	Calls Caller
 	// Switch applies model and effort switches; nil turns M and E off.
 	Switch Switcher
+	// Review may be nil, which turns off r.
+	Review Reviewer
 }
 
 // Caller makes daemon calls such as session.new; *rpc.Client is one.
@@ -108,6 +110,8 @@ type Model struct {
 	top      TopBarMsg
 	status   string
 	confirm  *killPrompt
+	rv       reviewState
+	paint    *painter
 
 	dialog  *dialog
 	dialogs int
@@ -133,6 +137,7 @@ func New(opts Options) Model {
 		events:     map[string][]domain.SessionEvent{},
 		subagents:  map[string][]domain.Subagent{},
 		collapsed:  map[string]bool{},
+		paint:      newPainter(opts.Theme),
 	}
 }
 
@@ -165,9 +170,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.status = "daemon disconnected"
 	case errMsg:
 		m.status = msg.err.Error()
+	case reviewMsg:
+		m.gotReview(msg)
 	case tea.KeyPressMsg:
 		if m.dialog != nil {
 			return m.dialogKey(msg)
+		}
+		if m.rv.open {
+			return m.reviewKey(msg.String())
 		}
 		return m.key(msg)
 	case tea.PasteMsg:
@@ -395,6 +405,8 @@ func (m Model) key(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		m.askKill()
 	case "enter":
 		return m, m.focus()
+	case "r":
+		return m.openReview()
 	default:
 		if len(k) == 1 && k[0] >= '1' && k[0] <= '9' {
 			m.choose(int(k[0] - '1'))

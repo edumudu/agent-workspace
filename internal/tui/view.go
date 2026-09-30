@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"path/filepath"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
@@ -94,6 +95,11 @@ func (m Model) line(sel bool, left, right []piece) string {
 }
 
 func (m Model) View() tea.View {
+	if m.rv.open {
+		v := tea.NewView(m.reviewView())
+		v.AltScreen = true
+		return v
+	}
 	s := m.styles
 	var lines []string
 	lines = append(lines, m.topBar())
@@ -345,14 +351,19 @@ func taskLabel(t domain.Task) string {
 }
 
 func worktreeLabel(w domain.Worktree) string {
+	repo := w.Repo
+	if repo != "" {
+		// why: Repo is the main checkout's path; its last element is the name people use.
+		repo = filepath.Base(repo)
+	}
 	part := w.SubtaskSlug
 	if part == "" {
 		part = w.Branch
 	}
 	if part == "" {
-		return w.Repo
+		return repo
 	}
-	return w.Repo + ":" + part
+	return repo + ":" + part
 }
 
 func count(n int, noun string) string {

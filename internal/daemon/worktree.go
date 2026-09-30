@@ -167,6 +167,7 @@ func (d *Daemon) scanWorktrees(ctx context.Context) {
 		}
 	}
 	now := d.ws.now()
+	removedBy := map[string][]string{}
 	d.query(func(s *state) {
 		known := sorted(s.worktrees)
 		hints := s.sessionHints()
@@ -184,8 +185,10 @@ func (d *Daemon) scanWorktrees(ctx context.Context) {
 			for _, id := range removed {
 				s.removeWorktree(id)
 			}
+			removedBy[l.Main] = append(removedBy[l.Main], removed...)
 		}
 	})
+	d.dropTurns(ctx, removedBy)
 }
 
 func (s *state) sessionHints() []domain.SessionHint {

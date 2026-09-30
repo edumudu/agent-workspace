@@ -23,24 +23,29 @@ type Theme struct {
 	Teal     string `toml:"teal"`
 	Mauve    string `toml:"mauve"`
 	Selected string `toml:"selected"`
+	// AddedBg and DeletedBg tint the review's added and deleted lines.
+	AddedBg   string `toml:"added_bg"`
+	DeletedBg string `toml:"deleted_bg"`
 }
 
 // Latte is Catppuccin Latte, the default.
 func Latte() Theme {
 	return Theme{
-		Text:     "#4c4f69",
-		Subtext:  "#6c6f85",
-		Overlay:  "#9ca0b0",
-		Surface:  "#ccd0da",
-		Mantle:   "#e6e9ef",
-		Base:     "#eff1f5",
-		Blue:     "#1e66f5",
-		Peach:    "#fe640b",
-		Green:    "#40a02b",
-		Red:      "#d20f39",
-		Teal:     "#179299",
-		Mauve:    "#8839ef",
-		Selected: "#dce0e8",
+		Text:      "#4c4f69",
+		Subtext:   "#6c6f85",
+		Overlay:   "#9ca0b0",
+		Surface:   "#ccd0da",
+		Mantle:    "#e6e9ef",
+		Base:      "#eff1f5",
+		Blue:      "#1e66f5",
+		Peach:     "#fe640b",
+		Green:     "#40a02b",
+		Red:       "#d20f39",
+		Teal:      "#179299",
+		Mauve:     "#8839ef",
+		Selected:  "#dce0e8",
+		AddedBg:   "#dcefd8",
+		DeletedBg: "#f6d9de",
 	}
 }
 

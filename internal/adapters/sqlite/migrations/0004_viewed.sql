@@ -1,0 +1,1 @@
+CREATE TABLE viewed(key TEXT PRIMARY KEY, data TEXT NOT NULL);

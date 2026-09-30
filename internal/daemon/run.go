@@ -69,7 +69,8 @@ func Run(ctx context.Context, home string) (err error) {
 		WithSessions(gitadapter.Adder{}, runRecipe, worktreeHome),
 		WithNotifier(banners, banners, sounds),
 		WithWorktrees(gitadapter.Worktrees{}, github.Finder{}),
-		WithProcessTable(procs.Table{}))
+		WithProcessTable(procs.Table{}),
+		WithReview(gitadapter.Review{}))
 	if err != nil {
 		return err
 	}
