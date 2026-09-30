@@ -66,7 +66,9 @@ func serveLive(t *testing.T, home, socket, fakeAgent string) liveDaemon {
 	d, err := daemon.New(store, os.Getpid(),
 		daemon.WithWorkspaces(wsfs.FS{}, gitadapter.Inspector{}),
 		daemon.WithHarnesses(host, claude.Adapter{Binary: fakeAgent}, codex.Adapter{Binary: fakeAgent}),
-		daemon.WithSessions(gitadapter.Adder{}, nil, filepath.Join(home, "worktrees")))
+		daemon.WithSessions(gitadapter.Adder{}, nil, filepath.Join(home, "worktrees")),
+		daemon.WithWorktrees(gitadapter.Worktrees{}, noPRs{}),
+		daemon.WithWorktreePoll(50*time.Millisecond, 0))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -202,6 +204,20 @@ func TestNewSessionCwdAndWorktreeLayoutPerWorkspaceKindAndRestart(t *testing.T) 
 	}
 	if got := gitIn(t, wt, "symbolic-ref", "--short", "HEAD"); got != "api-42" {
 		t.Fatalf("branch %s", got)
+	}
+	time.Sleep(300 * time.Millisecond)
+	var worktrees []domain.Worktree
+	sub, err := dial(t, live.path).Subscribe(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, w := range sub.State.Worktrees {
+		if w.Path == wt {
+			worktrees = append(worktrees, w)
+		}
+	}
+	if len(worktrees) != 1 || worktrees[0].ID != wt || worktrees[0].SessionID != one.ID || worktrees[0].Repo != single {
+		t.Fatalf("after a worktree scan the new worktree is %+v, want one owned by %s", worktrees, one.ID)
 	}
 
 	var two domain.Session

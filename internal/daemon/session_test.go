@@ -86,7 +86,7 @@ func TestNewSessionInASingleRepoStartsInAFreshWorktree(t *testing.T) {
 	if len(st.Tasks) != 1 || st.Tasks[0].ID != got.TaskID || st.Tasks[0].Source != domain.TaskLinear || st.Tasks[0].Ref != "ENG-1" {
 		t.Fatalf("tasks %+v", st.Tasks)
 	}
-	wantWT := domain.Worktree{ID: got.WorktreeIDs[0], Repo: "api", Path: "/h/worktrees/api/eng-1", Branch: "eng-1"}
+	wantWT := domain.Worktree{ID: "/h/worktrees/api/eng-1", Repo: "/src/api", Path: "/h/worktrees/api/eng-1", Branch: "eng-1", SessionID: got.ID}
 	if len(st.Worktrees) != 1 || !reflect.DeepEqual(st.Worktrees[0], wantWT) {
 		t.Fatalf("worktrees %+v", st.Worktrees)
 	}

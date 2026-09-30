@@ -331,12 +331,16 @@ type fakeWorktrees struct {
 	err   error
 }
 
-func (f *fakeWorktrees) AddWorktree(_ context.Context, repo, path, branch, base string) error {
+func (f *fakeWorktrees) AddWorktree(_ context.Context, repo, path, branch, base string) (app.AddedWorktree, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if f.err != nil {
-		return f.err
+		return app.AddedWorktree{}, f.err
 	}
 	f.added = append(f.added, addedWorktree{repo, path, branch, base})
-	return nil
+	return app.AddedWorktree{Main: repo, Path: path}, nil
 }
+
+type noPRs struct{}
+
+func (noPRs) PRs(context.Context, string) ([]domain.PullRequest, error) { return nil, nil }

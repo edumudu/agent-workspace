@@ -45,8 +45,14 @@ func TestAddWorktreeBranchesFromTheBaseIntoANewDir(t *testing.T) {
 	run(t, clone, "commit", "-qm", "local only")
 
 	path := filepath.Join(root, "worktrees", "api", "eng-1")
-	if err := (git.Adder{}).AddWorktree(context.Background(), clone, path, "eng-1", "origin/main"); err != nil {
+	added, err := (git.Adder{}).AddWorktree(context.Background(), clone, path, "eng-1", "origin/main")
+	if err != nil {
 		t.Fatal(err)
+	}
+	realClone, _ := filepath.EvalSymlinks(clone)
+	realPath, _ := filepath.EvalSymlinks(path)
+	if added != (app.AddedWorktree{Main: realClone, Path: realPath}) {
+		t.Fatalf("added %+v, want main %s and path %s as git reports them", added, realClone, realPath)
 	}
 	if got, want := revParse(t, path, "HEAD"), revParse(t, clone, "origin/main"); got != want {
 		t.Fatalf("worktree HEAD %s, want origin/main %s", got, want)
@@ -59,7 +65,7 @@ func TestAddWorktreeBranchesFromTheBaseIntoANewDir(t *testing.T) {
 		t.Fatalf("branch %q, %v", out, err)
 	}
 
-	err := (git.Adder{}).AddWorktree(context.Background(), clone, filepath.Join(root, "other"), "eng-1", "origin/main")
+	_, err = (git.Adder{}).AddWorktree(context.Background(), clone, filepath.Join(root, "other"), "eng-1", "origin/main")
 	if err == nil || !strings.Contains(err.Error(), "eng-1") {
 		t.Fatalf("adding a taken branch again: %v", err)
 	}

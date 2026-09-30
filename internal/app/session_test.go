@@ -13,7 +13,7 @@ import (
 
 func newSession(plan domain.SessionPlan) app.NewSession {
 	return app.NewSession{
-		ID: "s1", WorktreeID: "w1", Task: domain.Task{ID: "t1"}, Plan: plan, Harness: fakeHarness{},
+		ID: "s1", Task: domain.Task{ID: "t1"}, Plan: plan, Harness: fakeHarness{},
 		Name: "eng-1", Model: "m", Effort: "high", Prompt: "do it",
 	}
 }
@@ -22,7 +22,7 @@ var singlePlan = domain.SessionPlan{Dir: "/h/api/eng-1", Worktree: &domain.Workt
 	Repo: "api", RepoPath: "/src/api", Path: "/h/api/eng-1", Branch: "eng-1", Base: "origin/main",
 }}
 
-func TestStartSessionInASingleRepoAddsTheWorktreeRunsSetupThenLaunches(t *testing.T) {
+func TestStartSessionInASingleRepoAddsTheWorktreeRunsSetupThenLaunchesWhereGitPutIt(t *testing.T) {
 	var log []string
 	host := &fakeHost{log: &log}
 	wts := &fakeWorktrees{log: &log}
@@ -34,24 +34,24 @@ func TestStartSessionInASingleRepoAddsTheWorktreeRunsSetupThenLaunches(t *testin
 	if err != nil {
 		t.Fatal(err)
 	}
-	if want := []string{"add /h/api/eng-1", "setup /h/api/eng-1", "create /h/api/eng-1"}; !slices.Equal(log, want) {
+	if want := []string{"add /h/api/eng-1", "setup /real/h/api/eng-1", "create /real/h/api/eng-1"}; !slices.Equal(log, want) {
 		t.Fatalf("steps %v, want %v", log, want)
 	}
 	if want := []addedWorktree{{"/src/api", "/h/api/eng-1", "eng-1", "origin/main"}}; !reflect.DeepEqual(wts.added, want) {
 		t.Fatalf("added %+v", wts.added)
 	}
-	wantSpec := app.PaneSpec{Name: "eng-1", Dir: "/h/api/eng-1", Command: []string{"agent", "m", "high", "do it"}}
+	wantSpec := app.PaneSpec{Name: "eng-1", Dir: "/real/h/api/eng-1", Command: []string{"agent", "m", "high", "do it"}}
 	if len(host.created) != 1 || !reflect.DeepEqual(host.created[0], wantSpec) {
 		t.Fatalf("created %+v", host.created)
 	}
 	wantSession := domain.Session{
 		ID: "s1", TaskID: "t1", Harness: domain.HarnessCodex, Pane: "%9", Model: "m", Effort: "high",
-		State: domain.StateIdle, WorktreeIDs: []string{"w1"},
+		State: domain.StateIdle, WorktreeIDs: []string{"/real/h/api/eng-1"},
 	}
 	if !reflect.DeepEqual(got.Session, wantSession) {
 		t.Fatalf("session %+v", got.Session)
 	}
-	wantWorktree := &domain.Worktree{ID: "w1", Repo: "api", Path: "/h/api/eng-1", Branch: "eng-1"}
+	wantWorktree := &domain.Worktree{ID: "/real/h/api/eng-1", Repo: "/real/src/api", Path: "/real/h/api/eng-1", Branch: "eng-1", SessionID: "s1"}
 	if !reflect.DeepEqual(got.Worktree, wantWorktree) {
 		t.Fatalf("worktree %+v", got.Worktree)
 	}

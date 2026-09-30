@@ -51,15 +51,16 @@ type fakeWorktrees struct {
 	log   *[]string
 }
 
-func (f *fakeWorktrees) AddWorktree(_ context.Context, repo, path, branch, base string) error {
+// AddWorktree reports paths under /real, as git does once symlinks resolve.
+func (f *fakeWorktrees) AddWorktree(_ context.Context, repo, path, branch, base string) (app.AddedWorktree, error) {
 	if f.log != nil {
 		*f.log = append(*f.log, "add "+path)
 	}
 	if f.err != nil {
-		return f.err
+		return app.AddedWorktree{}, f.err
 	}
 	f.added = append(f.added, addedWorktree{repo, path, branch, base})
-	return nil
+	return app.AddedWorktree{Main: "/real" + repo, Path: "/real" + path}, nil
 }
 
 type fakeHarness struct{}
