@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	"sync"
 	"time"
 
 	"github.com/giovaniif/agent-workspace/internal/adapters/claude"
@@ -16,6 +17,7 @@ import (
 type harnesses struct {
 	host     app.TerminalHost
 	adapters map[domain.Harness]app.HarnessAdapter
+	sendMu   sync.Mutex
 }
 
 // WithHarnesses enables session.launch. host.Create runs tmux, so launches

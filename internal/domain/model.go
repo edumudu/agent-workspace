@@ -124,6 +124,7 @@ type StatusReport struct {
 }
 
 func (s Session) Report(r StatusReport) Session {
+	s = s.confirmSwitches(r)
 	if r.Model != "" {
 		s.Model = r.Model
 	}

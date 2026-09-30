@@ -3,6 +3,7 @@ package app_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"sync"
 	"time"
@@ -191,4 +192,24 @@ func (f *fakeFinder) PRs(_ context.Context, repo string) ([]domain.PullRequest, 
 		return nil, errors.New("gh failed")
 	}
 	return prs, nil
+}
+
+type typingHost struct {
+	app.TerminalHost
+	typed   []string
+	failOn  string
+	failErr error
+}
+
+func (h *typingHost) SendText(_ context.Context, pane app.PaneID, text string, bracketed bool) error {
+	if text == h.failOn {
+		return h.failErr
+	}
+	h.typed = append(h.typed, fmt.Sprintf("%s paste=%t %s", pane, bracketed, text))
+	return nil
+}
+
+func (h *typingHost) SendKeys(_ context.Context, pane app.PaneID, keys ...string) error {
+	h.typed = append(h.typed, fmt.Sprintf("%s keys %s", pane, strings.Join(keys, " ")))
+	return nil
 }

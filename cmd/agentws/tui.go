@@ -82,6 +82,10 @@ func tuiIn(home string) error {
 	if err != nil {
 		return err
 	}
+	defaults, err := tui.LoadDefaults(filepath.Join(home, "config.toml"))
+	if err != nil {
+		return err
+	}
 	subscriber, err := connect(ctx, home)
 	if err != nil {
 		return err
@@ -92,7 +96,7 @@ func tuiIn(home string) error {
 		return err
 	}
 	defer func() { _ = caller.Close() }()
-	err = tui.Run(ctx, subscriber, caller, theme)
+	err = tui.Run(ctx, subscriber, caller, theme, defaults)
 	if errors.Is(err, context.Canceled) {
 		return nil
 	}

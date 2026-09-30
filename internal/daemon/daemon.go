@@ -100,6 +100,8 @@ type state struct {
 	attn       *attention
 	// requestUsage is set by New; state cannot reach the Daemon that owns it.
 	requestUsage func(sessionID, path string, force bool)
+	// sendSwitches is set by New for the same reason.
+	sendSwitches func(session domain.Session, sws []domain.Switch)
 	hints        worktreeHints
 	listeners    []domain.Listener
 }
@@ -167,6 +169,7 @@ func New(store app.Store, pid int, opts ...Option) (*Daemon, error) {
 		ports:    portScanner{every: DefaultPortsPoll},
 	}
 	st.requestUsage = func(sessionID, path string, force bool) { d.requestUsage(st, sessionID, path, force) }
+	st.sendSwitches = d.sendSwitches
 	for _, o := range opts {
 		o(d)
 	}
@@ -291,11 +294,13 @@ func (s *state) hook(h rpc.Hook, now time.Time) {
 	if at.IsZero() {
 		at = time.Now()
 	}
+	next, toSend := next.Dispatch(time.Now())
 	ev := domain.SessionEventFromHook(kind, at, h.Payload)
 	ev.SessionID = session.ID
 	s.emit(SessionHooked{Session: next, Event: ev})
 	s.trackSubagents(session.ID, kind, at, h.Payload)
 	s.announce(next, effects)
+	s.sendSwitches(next, toSend)
 }
 
 // trackSubagents follows a subagent start or stop, and stops what a session
@@ -391,6 +396,8 @@ func (d *Daemon) dispatch(c *conn, line []byte) (*rpc.Response, bool) {
 		return d.newSession(req)
 	case rpc.MethodEndSession:
 		return d.endSession(req)
+	case rpc.MethodSwitch:
+		return d.switchSession(req)
 	case rpc.MethodWorkspaceAdd, rpc.MethodWorkspaceList, rpc.MethodWorkspaceRemove:
 		if resp, ok, handled := d.workspaceMethod(req); handled {
 			return resp, ok

@@ -3,8 +3,11 @@ package daemon_test
 import (
 	"context"
 	"errors"
+	"fmt"
+	"strings"
 	"sync"
 	"sync/atomic"
+	"testing"
 	"time"
 
 	"github.com/giovaniif/agent-workspace/internal/app"
@@ -178,12 +181,74 @@ type shown struct {
 
 type fakeHost struct {
 	app.TerminalHost
-	mu     sync.Mutex
-	specs  []app.PaneSpec
-	err    error
-	panes  []app.PaneInfo
-	killed []app.PaneID
-	shown  []shown
+	mu       sync.Mutex
+	specs    []app.PaneSpec
+	err      error
+	panes    []app.PaneInfo
+	killed   []app.PaneID
+	shown    []shown
+	typed    []string
+	failText string
+	gates    map[app.PaneID]chan struct{}
+}
+
+func (h *fakeHost) holdPane(pane app.PaneID) (release func()) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if h.gates == nil {
+		h.gates = map[app.PaneID]chan struct{}{}
+	}
+	gate := make(chan struct{})
+	h.gates[pane] = gate
+	return func() { close(gate) }
+}
+
+func (h *fakeHost) SendText(_ context.Context, pane app.PaneID, text string, bracketed bool) error {
+	h.mu.Lock()
+	gate := h.gates[pane]
+	h.mu.Unlock()
+	if gate != nil {
+		<-gate
+	}
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if text == h.failText {
+		return errors.New("pane gone")
+	}
+	h.typed = append(h.typed, fmt.Sprintf("%s paste=%t %s", pane, bracketed, text))
+	return nil
+}
+
+func (h *fakeHost) SendKeys(_ context.Context, pane app.PaneID, keys ...string) error {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.typed = append(h.typed, fmt.Sprintf("%s keys %s", pane, strings.Join(keys, " ")))
+	return nil
+}
+
+func (h *fakeHost) failOn(text string) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.failText = text
+}
+
+func (h *fakeHost) typedNow() []string {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	return append([]string(nil), h.typed...)
+}
+
+func (h *fakeHost) waitTyped(t *testing.T, n int) []string {
+	t.Helper()
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) {
+		if got := h.typedNow(); len(got) >= n {
+			return got
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+	t.Fatalf("typed %q, want %d entries", h.typedNow(), n)
+	return nil
 }
 
 func (h *fakeHost) Create(_ context.Context, spec app.PaneSpec) (app.PaneID, error) {
