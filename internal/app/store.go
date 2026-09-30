@@ -13,6 +13,7 @@ type Snapshot struct {
 	Sessions   []domain.Session
 	// Events are oldest first, at most EventsPerSession per session.
 	Events []domain.SessionEvent
+	Viewed []domain.ViewedMark
 }
 
 // Store persists daemon state. Put methods only enqueue and never block on
@@ -27,6 +28,9 @@ type Store interface {
 	PutSession(domain.Session)
 	// PutEvent appends; unlike the Put methods it never replaces an earlier one.
 	PutEvent(domain.SessionEvent)
+	PutViewed(domain.ViewedMark)
+	// DeleteViewed takes a ViewedMark.Key.
+	DeleteViewed(key string)
 	Load() (Snapshot, error)
 	Flush() error
 	Close() error

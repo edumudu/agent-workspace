@@ -37,6 +37,7 @@ const (
 	tableTasks      table = "tasks"
 	tableWorktrees  table = "worktrees"
 	tableSessions   table = "sessions"
+	tableViewed     table = "viewed"
 )
 
 var keyColumn = map[table]string{
@@ -44,6 +45,7 @@ var keyColumn = map[table]string{
 	tableTasks:      "id",
 	tableWorktrees:  "id",
 	tableSessions:   "id",
+	tableViewed:     "key",
 }
 
 type Store struct {
@@ -191,6 +193,10 @@ func (s *Store) PutEvent(ev domain.SessionEvent) {
 func (s *Store) DeleteWorkspace(root string) { s.enqueue(tableWorkspaces, root, nil) }
 
 func (s *Store) DeleteWorktree(id string) { s.enqueue(tableWorktrees, id, nil) }
+
+func (s *Store) PutViewed(m domain.ViewedMark) { s.put(tableViewed, m.Key(), m) }
+
+func (s *Store) DeleteViewed(key string) { s.enqueue(tableViewed, key, nil) }
 
 func (s *Store) put(t table, key string, v any) {
 	data, err := json.Marshal(v)
@@ -363,6 +369,9 @@ func (s *Store) Load() (app.Snapshot, error) {
 		return snap, err
 	}
 	if snap.Sessions, err = loadAll[domain.Session](s.db, tableSessions); err != nil {
+		return snap, err
+	}
+	if snap.Viewed, err = loadAll[domain.ViewedMark](s.db, tableViewed); err != nil {
 		return snap, err
 	}
 	snap.Events, err = loadEvents(s.db)

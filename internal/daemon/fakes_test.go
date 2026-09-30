@@ -73,6 +73,29 @@ func (s *memStore) PutEvent(ev domain.SessionEvent) {
 	s.snap.Events = append(s.snap.Events, ev)
 }
 
+func (s *memStore) PutViewed(m domain.ViewedMark) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.deleteViewedLocked(m.Key())
+	s.snap.Viewed = append(s.snap.Viewed, m)
+}
+
+func (s *memStore) DeleteViewed(key string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.deleteViewedLocked(key)
+}
+
+func (s *memStore) deleteViewedLocked(key string) {
+	kept := s.snap.Viewed[:0]
+	for _, m := range s.snap.Viewed {
+		if m.Key() != key {
+			kept = append(kept, m)
+		}
+	}
+	s.snap.Viewed = kept
+}
+
 func (s *memStore) Load() (app.Snapshot, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
