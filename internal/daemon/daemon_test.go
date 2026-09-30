@@ -32,6 +32,18 @@ func (s *memStore) PutWorkspace(w domain.Workspace) {
 	s.snap.Workspaces = append(s.snap.Workspaces, w)
 }
 
+func (s *memStore) DeleteWorkspace(root string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	kept := s.snap.Workspaces[:0]
+	for _, w := range s.snap.Workspaces {
+		if w.Root != root {
+			kept = append(kept, w)
+		}
+	}
+	s.snap.Workspaces = kept
+}
+
 func (s *memStore) PutTask(x domain.Task) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
