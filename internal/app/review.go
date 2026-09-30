@@ -88,35 +88,35 @@ func (r *Reviewer) Review(ctx context.Context, scope domain.ReviewScope, targets
 			defer wg.Done()
 			defer func() { <-sem }()
 			out[i] = domain.WorktreeReview{Worktree: targets[i].Worktree}
-			files, err := r.one(ctx, scope, targets[i])
+			from, files, err := r.one(ctx, scope, targets[i])
 			if err != nil {
 				out[i].Err = err.Error()
 				return
 			}
-			out[i].Files = files
+			out[i].From, out[i].Files = from, files
 		}()
 	}
 	wg.Wait()
 	return out
 }
 
-func (r *Reviewer) one(ctx context.Context, scope domain.ReviewScope, t ReviewTarget) ([]domain.FileDiff, error) {
+func (r *Reviewer) one(ctx context.Context, scope domain.ReviewScope, t ReviewTarget) (string, []domain.FileDiff, error) {
 	dir := t.Worktree.Path
 	tree, err := r.git.WorkingTree(ctx, dir)
 	if err != nil {
-		return nil, err
+		return "", nil, err
 	}
 	facts := domain.RangeFacts{DefaultBranch: t.DefaultBranch}
 	if scope == domain.ScopeLastTurn {
 		refs, err := r.git.TurnRefs(ctx, dir)
 		if err != nil {
-			return nil, err
+			return "", nil, err
 		}
 		facts.LatestTurn, _ = domain.LatestTurn(refs, t.Session, dir)
 	}
 	rng, err := domain.RangeFor(scope, facts)
 	if err != nil {
-		return nil, err
+		return "", nil, err
 	}
 	var from string
 	if rng.MergeBase {
@@ -125,19 +125,19 @@ func (r *Reviewer) one(ctx context.Context, scope domain.ReviewScope, t ReviewTa
 		from, err = r.git.Resolve(ctx, dir, rng.From)
 	}
 	if err != nil {
-		return nil, err
+		return "", nil, err
 	}
 	key := from + ".." + tree
 	if files, ok := r.cached(key); ok {
-		return files, nil
+		return from, files, nil
 	}
 	out, err := r.git.Diff(ctx, dir, from, tree)
 	if err != nil {
-		return nil, err
+		return "", nil, err
 	}
 	files := domain.ParseDiff(out)
 	r.store(key, files)
-	return files, nil
+	return from, files, nil
 }
 
 func (r *Reviewer) cached(key string) ([]domain.FileDiff, bool) {
