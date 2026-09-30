@@ -130,13 +130,16 @@ func TestNamingLinearToken(t *testing.T) {
 		}
 		return p
 	}
-	if tok, err := linear.LoadToken(write("ok.json", `{"token":" lin_abc \n"}`)); err != nil || tok != "lin_abc" {
+	if tok, err := linear.LoadToken(write("ok.toml", "[theme]\nblue = \"#000000\"\n\n[linear]\ntoken = \" lin_abc \"\n")); err != nil || tok != "lin_abc" {
 		t.Errorf("LoadToken = %q, %v", tok, err)
 	}
-	if tok, err := linear.LoadToken(filepath.Join(dir, "missing.json")); err != nil || tok != "" {
+	if tok, err := linear.LoadToken(write("none.toml", "[theme]\nblue = \"#000000\"\n")); err != nil || tok != "" {
+		t.Errorf("a config without the table should mean no token, got %q, %v", tok, err)
+	}
+	if tok, err := linear.LoadToken(filepath.Join(dir, "missing.toml")); err != nil || tok != "" {
 		t.Errorf("a missing file should mean no token, got %q, %v", tok, err)
 	}
-	if _, err := linear.LoadToken(write("bad.json", `{`)); err == nil {
+	if _, err := linear.LoadToken(write("bad.toml", "[linear\n")); err == nil {
 		t.Error("a malformed file should be an error")
 	}
 }
