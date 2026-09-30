@@ -143,7 +143,7 @@ func (m Model) closeReview() (tea.Model, tea.Cmd) {
 	return m, layout(m.opts.Review, false)
 }
 
-func layout(r Reviewer, open bool) tea.Cmd {
+func layout(r layouter, open bool) tea.Cmd {
 	return func() tea.Msg {
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 		defer cancel()

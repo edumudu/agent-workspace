@@ -1,0 +1,30 @@
+ WORKTREES & DISK                                                                                              esc back 
+
+ volume 240 GB free of 994 GB · deps store 4.1 GB                                                                       
+ worktrees 4.0 GB+ (4) · reclaimable 2.5 GB · auto-clean every 10m                                                      
+
+ STATE     TASK                     REPO     BRANCH                                PR     SESSION PORT            SIZE  
+▌merged    #40 · task number 1      api      feat-a                                #3600  1                     2.0 GB  
+ needs you #40 · task number 1      web      feat-b                                –      1                     500 MB  
+     ↳ 2 uncommitted changes · b backup + remove · o shell · g session                                                  
+ keep      #40 · task number 1      api      feat-c                                #3601  2       :3000         1.5 GB  
+ keep      #40 · task number 1      web      feat-d                                –      2                          …  
+
+ RECENTLY CLEANED                                                                                                       
+ 12:03  old-merged  removed                                                                                             
+ 11:40  old-dirty  backed up to /h/backups/x                                                                            
+
+
+
+
+
+
+
+
+
+
+
+
+
+ d remove  b backup+remove  o shell  k kill port  g session  j/↑↓ move                                                  
+ WORKTREES  w or esc closes                                                                                             

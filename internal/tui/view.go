@@ -100,6 +100,11 @@ func (m Model) View() tea.View {
 		v.AltScreen = true
 		return v
 	}
+	if m.dk.open {
+		v := tea.NewView(m.diskScreen())
+		v.AltScreen = true
+		return v
+	}
 	s := m.styles
 	var lines []string
 	lines = append(lines, m.topBar())
@@ -277,6 +282,7 @@ func (m Model) helpLines() []string {
 		{"R", "rename and pin the name"},
 		{"A", "unpin (name is automatic)"},
 		{"K", "kill the session's dev servers"},
+		{"w", "worktrees and disk"},
 		{"M / E", "switch model / effort"},
 		{"enter", "focus agent pane"},
 		{`ctrl+\`, "in an agent pane: back to the sidebar"},
