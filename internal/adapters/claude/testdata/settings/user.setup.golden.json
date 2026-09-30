@@ -117,7 +117,7 @@
   },
   "statusLine": {
     "type": "command",
-    "command": "/opt/agentws/bin/agentws statusline --chain '~/.claude/statusline.sh'",
+    "command": "/opt/agentws/bin/agentws statusline --harness claude --chain '~/.claude/statusline.sh'",
     "padding": 1
   }
 }

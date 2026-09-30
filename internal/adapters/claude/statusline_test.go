@@ -90,7 +90,10 @@ func TestChainedStatusLineRoundTripsQuotes(t *testing.T) {
 	if _, ok := claude.ChainedStatusLine("~/.claude/statusline.sh"); ok {
 		t.Fatal("user command taken as ours")
 	}
-	if got, ok := claude.ChainedStatusLine(claude.StatusLineCommand("/x/agentws", "")); !ok || got != "" {
+	if _, ok := claude.ChainedStatusLine("~/bin/my statusline"); ok {
+		t.Fatal("user command named statusline taken as ours")
+	}
+	if got, ok := claude.ChainedStatusLine(claude.StatusLineCommand("/tmp/b001/agentws.test", "")); !ok || got != "" {
 		t.Fatalf("no chain: %q, %v", got, ok)
 	}
 }
