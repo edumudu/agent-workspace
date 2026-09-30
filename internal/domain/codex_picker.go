@@ -27,7 +27,8 @@ var (
 
 // ParsePicker reads the last popup on the screen. Only numbered rows under a
 // title starting with "Select " count, so a numbered list in the transcript
-// is not taken for a picker.
+// is not taken for a picker. The capture includes scrollback, so a picker
+// with Codex's `›` input prompt below it is one that has already closed.
 func ParsePicker(screen string) (Picker, bool) {
 	lines := strings.Split(screen, "\n")
 	title := -1
@@ -42,6 +43,9 @@ func ParsePicker(screen string) (Picker, bool) {
 	p := Picker{Title: strings.TrimSpace(lines[title])}
 	for _, l := range lines[title+1:] {
 		m := pickerRow.FindStringSubmatch(l)
+		if m == nil && strings.HasPrefix(strings.TrimSpace(l), "›") {
+			return Picker{}, false
+		}
 		if m == nil {
 			continue
 		}
