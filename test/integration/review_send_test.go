@@ -164,7 +164,8 @@ func TestReviewSendReachesARealAgentPaneAcrossARestart(t *testing.T) {
 		lines := f.Hunks[0].Lines
 		cm := domain.CommentOn(wt, f.Path, lines[len(lines)-1:], "look at "+f.Path)
 		want = append(want, cm)
-		if _, err := c.AddReviewComment(ctx, s.ID, cm); err != nil {
+		p := rpc.CommentParams{Session: s.ID, File: filepath.Join(wt, f.Path), StartLine: cm.Start, EndLine: cm.End, Code: strings.Join(cm.Code, "\n"), Body: cm.Body}
+		if _, err := c.AddReviewComment(ctx, p); err != nil {
 			t.Fatal(err)
 		}
 	}

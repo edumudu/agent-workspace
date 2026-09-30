@@ -269,20 +269,24 @@ func TestReviewCommentFromAFileBecomesADraftEveryoneSees(t *testing.T) {
 		t.Fatal(err)
 	}
 	started := time.Now()
-	var got domain.DraftComment
+	var draft domain.ReviewDraft
 	err = r.c.Call(context.Background(), rpc.MethodReviewComment, rpc.CommentParams{
 		Session: "s1", File: "/wt/web/src/app.ts", StartLine: 9, EndLine: 4, Code: "let x = 1", Body: "why not const?",
-	}, &got)
+	}, &draft)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got.ID == "" || got.Session != "s1" || got.Worktree != "w-web" || got.Path != "src/app.ts" || got.StartLine != 4 || got.EndLine != 9 || got.Body != "why not const?" || got.Code != "let x = 1" {
-		t.Fatalf("draft = %+v", got)
+	if draft.Session != "s1" || draft.Status != domain.DraftOpen || len(draft.Comments) != 1 {
+		t.Fatalf("draft = %+v", draft)
+	}
+	got := draft.Comments[0]
+	if got.ID == "" || got.Worktree != "/wt/web" || got.Path != "src/app.ts" || got.Start != 4 || got.End != 9 || got.Body != "why not const?" || !slices.Equal(got.Code, []string{"let x = 1"}) {
+		t.Fatalf("comment = %+v", got)
 	}
 	select {
 	case d := <-sub.Diffs:
-		if d.Comment == nil || d.Comment.ID != got.ID {
-			t.Fatalf("diff = %+v; want the comment", d)
+		if d.Comment == nil || d.Comment.ID != got.ID || d.Draft == nil || d.Draft.ID != draft.ID {
+			t.Fatalf("diff = %+v; want the comment and its draft", d)
 		}
 	case <-time.After(time.Second):
 		t.Fatal("the comment did not reach a subscriber within 1 s")
@@ -291,19 +295,22 @@ func TestReviewCommentFromAFileBecomesADraftEveryoneSees(t *testing.T) {
 		t.Fatalf("comment took %v", elapsed)
 	}
 	late, err := dial(t, r.path).Subscribe(context.Background())
-	if err != nil || len(late.State.Comments) != 1 || late.State.Comments[0].ID != got.ID {
-		t.Fatalf("a later subscriber's comments = %+v, %v", late.State.Comments, err)
+	if err != nil || len(late.State.Drafts) != 1 || late.State.Drafts[0].Comments[0].ID != got.ID {
+		t.Fatalf("a later subscriber's drafts = %+v, %v", late.State.Drafts, err)
 	}
 }
 
 func TestReviewCommentByWorktreeAndPath(t *testing.T) {
 	r := commentRig(t)
-	var got domain.DraftComment
+	var draft domain.ReviewDraft
 	err := r.c.Call(context.Background(), rpc.MethodReviewComment, rpc.CommentParams{
 		Session: "s1", Worktree: "w-api", Path: "main.go", StartLine: 2, Body: "rename",
-	}, &got)
-	if err != nil || got.Worktree != "w-api" || got.Path != "main.go" || got.StartLine != 2 || got.EndLine != 2 {
-		t.Fatalf("draft = %+v, %v", got, err)
+	}, &draft)
+	if err != nil || len(draft.Comments) != 1 {
+		t.Fatalf("draft = %+v, %v", draft, err)
+	}
+	if got := draft.Comments[0]; got.Worktree != "/wt/api" || got.Path != "main.go" || got.Start != 2 || got.End != 2 {
+		t.Fatalf("comment = %+v", got)
 	}
 }
 
@@ -333,7 +340,7 @@ func TestReviewCommentRefusesWhatItCannotPlace(t *testing.T) {
 		})
 	}
 	late, _ := dial(t, r.path).Subscribe(context.Background())
-	if len(late.State.Comments) != 0 {
-		t.Fatalf("refused comments were kept: %+v", late.State.Comments)
+	if len(late.State.Drafts) != 0 {
+		t.Fatalf("refused comments were kept: %+v", late.State.Drafts)
 	}
 }

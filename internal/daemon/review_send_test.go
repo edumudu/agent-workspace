@@ -54,11 +54,26 @@ func addComments(t *testing.T, c *rpc.Client, cs ...domain.ReviewComment) domain
 	var d domain.ReviewDraft
 	var err error
 	for _, x := range cs {
-		if d, err = c.AddReviewComment(context.Background(), "s1", x); err != nil {
+		if d, err = c.AddReviewComment(context.Background(), params(x)); err != nil {
 			t.Fatal(err)
 		}
 	}
 	return d
+}
+
+// params addresses c by worktree ID, which in these tests is its path.
+func params(c domain.ReviewComment) rpc.CommentParams {
+	return rpc.CommentParams{Session: "s1", Worktree: c.Worktree, Path: c.Path, StartLine: c.Start, EndLine: c.End,
+		Code: strings.Join(c.Code, "\n"), Body: c.Body, Removed: c.Removed}
+}
+
+func withoutIDs(cs []domain.ReviewComment) []domain.ReviewComment {
+	out := make([]domain.ReviewComment, len(cs))
+	for i, c := range cs {
+		c.ID = ""
+		out[i] = c
+	}
+	return out
 }
 
 func hook(t *testing.T, c *rpc.Client, event string) {
@@ -150,10 +165,12 @@ func TestReviewSendRefusesAnEmptyDraftAndAnUnknownSession(t *testing.T) {
 	if _, err := env.c.SendReview(context.Background(), "s1"); !errors.As(err, &rerr) || rerr.Code != rpc.CodeBadRequest {
 		t.Errorf("empty draft: %v", err)
 	}
-	if _, err := env.c.AddReviewComment(context.Background(), "nope", commentA); !errors.As(err, &rerr) || rerr.Code != rpc.CodeNotFound {
+	unknown := params(commentA)
+	unknown.Session = "nope"
+	if _, err := env.c.AddReviewComment(context.Background(), unknown); !errors.As(err, &rerr) || rerr.Code != rpc.CodeNotFound {
 		t.Errorf("unknown session: %v", err)
 	}
-	if _, err := env.c.AddReviewComment(context.Background(), "s1", domain.ReviewComment{Worktree: "/elsewhere", Path: "a.go", Body: "x"}); !errors.As(err, &rerr) || rerr.Code != rpc.CodeBadRequest {
+	if _, err := env.c.AddReviewComment(context.Background(), params(domain.ReviewComment{Worktree: "/elsewhere", Path: "a.go", Start: 1, Body: "x"})); !errors.As(err, &rerr) || rerr.Code != rpc.CodeBadRequest {
 		t.Errorf("a worktree the session does not own: %v", err)
 	}
 }
@@ -243,7 +260,7 @@ func TestReviewSendAFailedPasteGoesBackToTheQueueWithCommentsAddedSince(t *testi
 		rv, _ = env.c.Review(context.Background(), rpc.ReviewParams{Session: "s1", Scope: domain.ScopeUncommitted})
 		return rv.Draft.Status == domain.DraftQueued
 	})
-	if want := []domain.ReviewComment{commentA, commentB}; !reflect.DeepEqual(rv.Draft.Comments, want) {
+	if want := []domain.ReviewComment{commentA, commentB}; !reflect.DeepEqual(withoutIDs(rv.Draft.Comments), want) {
 		t.Errorf("requeued comments %+v, want %+v", rv.Draft.Comments, want)
 	}
 	live := 0

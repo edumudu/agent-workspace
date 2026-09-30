@@ -18,7 +18,7 @@ type fakeReviewer struct {
 	marked  []viewedCall
 	layouts []bool
 
-	comments   []domain.ReviewComment
+	comments   []rpc.CommentParams
 	draft      domain.ReviewDraft
 	sent       []string
 	sendStatus domain.DraftStatus
@@ -45,10 +45,10 @@ func (f *fakeReviewer) MarkViewed(_ context.Context, m domain.ViewedMark, viewed
 	return nil
 }
 
-func (f *fakeReviewer) AddReviewComment(_ context.Context, session string, c domain.ReviewComment) (domain.ReviewDraft, error) {
-	f.comments = append(f.comments, c)
-	f.draft = f.draft.Add(c)
-	f.draft.Session = session
+func (f *fakeReviewer) AddReviewComment(_ context.Context, p rpc.CommentParams) (domain.ReviewDraft, error) {
+	f.comments = append(f.comments, p)
+	f.draft = f.draft.Add(domain.ReviewComment{Path: p.Path, Start: p.StartLine, End: p.EndLine, Body: p.Body})
+	f.draft.Session = p.Session
 	return f.draft, nil
 }
 

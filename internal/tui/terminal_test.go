@@ -55,7 +55,7 @@ func TestShellNvimKeysNeedACaller(t *testing.T) {
 	}
 }
 
-func TestReviewOOpensTheFileAtTheTopVisibleLineInNvimAndClosesTheReview(t *testing.T) {
+func TestReviewOOpensTheFileAtTheCursorLineInNvimAndClosesTheReview(t *testing.T) {
 	cases := []struct {
 		name   string
 		height int
@@ -64,8 +64,8 @@ func TestReviewOOpensTheFileAtTheTopVisibleLineInNvimAndClosesTheReview(t *testi
 	}{
 		{"the first line of the first file", 40, []string{"r", "o"}, rpc.NvimParams{Session: "s01", Worktree: "w01-0", Path: "src/graphql/public/resolvers.ts", Line: 41}},
 		{"a deleted line opens at the next line that exists", 8, []string{"r", "j", "j", "j", "j", "o"}, rpc.NvimParams{Session: "s01", Worktree: "w01-0", Path: "src/graphql/public/resolvers.ts", Line: 44}},
-		{"a context line opens at its new line number", 8, []string{"r", "j", "j", "o"}, rpc.NvimParams{Session: "s01", Worktree: "w01-0", Path: "src/graphql/public/resolvers.ts", Line: 42}},
-		{"the split view reads the new side", 8, []string{"r", "u", "j", "j", "j", "j", "o"}, rpc.NvimParams{Session: "s01", Worktree: "w01-0", Path: "src/graphql/public/resolvers.ts", Line: 44}},
+		{"a context line opens at its new line number", 8, []string{"r", "j", "j", "o"}, rpc.NvimParams{Session: "s01", Worktree: "w01-0", Path: "src/graphql/public/resolvers.ts", Line: 43}},
+		{"the split view reads the new side", 8, []string{"r", "u", "j", "j", "j", "j", "o"}, rpc.NvimParams{Session: "s01", Worktree: "w01-0", Path: "src/graphql/public/resolvers.ts", Line: 45}},
 		{"a file in another worktree", 40, []string{"r", "n", "n", "o"}, rpc.NvimParams{Session: "s01", Worktree: "w01-1", Path: "src/ShareSheet.tsx", Line: 1}},
 	}
 	for _, c := range cases {
@@ -114,24 +114,24 @@ func TestReviewShowsTheSessionsDraftCommentCount(t *testing.T) {
 	if strings.Contains(screen(m), "draft") {
 		t.Fatalf("no comments yet, but the review mentions a draft:\n%s", screen(m))
 	}
-	comment := func(id, session string) tui.DiffMsg {
-		return tui.DiffMsg(rpc.Diff{Seq: 99, Comment: &domain.DraftComment{ID: id, Session: session, Path: "a.go", StartLine: 1, Body: "x"}})
+	draft := func(id, session string, n int) tui.DiffMsg {
+		return tui.DiffMsg(rpc.Diff{Seq: 99, Draft: &domain.ReviewDraft{ID: id, Session: session, Status: domain.DraftOpen, Comments: make([]domain.ReviewComment, n)}})
 	}
-	m = update(m, comment("c1", "s01"))
-	m = update(m, comment("c2", "s02"))
-	m = update(m, comment("c3", "s01"))
+	m = update(m, draft("d1", "s01", 1))
+	m = update(m, draft("d2", "s02", 3))
+	m = update(m, draft("d1", "s01", 2))
 	if out := screen(m); !strings.Contains(out, "2 draft comments") {
 		t.Fatalf("want the session's 2 comments, not the other's:\n%s", out)
 	}
-	m = update(m, comment("c1", "s01"))
-	if out := screen(m); !strings.Contains(out, "2 draft comments") {
-		t.Fatalf("a comment seen twice was counted twice:\n%s", out)
+	m = update(m, tui.DiffMsg(rpc.Diff{Seq: 100, Draft: &domain.ReviewDraft{ID: "d1", Session: "s01", Status: domain.DraftSent, Comments: make([]domain.ReviewComment, 2)}}))
+	if out := screen(m); strings.Contains(out, "draft comment") {
+		t.Fatalf("a sent draft still counts:\n%s", out)
 	}
 }
 
 func TestReviewCountsCommentsFromTheSnapshot(t *testing.T) {
 	st, rv := reviewFixture()
-	st.Comments = []domain.DraftComment{{ID: "c1", Session: "s01", Body: "x"}}
+	st.Drafts = []domain.ReviewDraft{{ID: "d1", Session: "s01", Status: domain.DraftOpen, Comments: []domain.ReviewComment{{Body: "x"}}}}
 	m := tui.New(tui.Options{Theme: tui.Latte(), Now: clock, Review: rv})
 	m = update(m, tea.WindowSizeMsg{Width: 150, Height: 40})
 	m = update(m, tui.StateMsg(st))
