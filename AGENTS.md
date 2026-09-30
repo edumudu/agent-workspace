@@ -26,6 +26,8 @@
 - TUI goldens live in `internal/tui/testdata/*.golden`; regenerate with `go test ./internal/tui/ -run Golden -update` and review the diff.
 - `agentws debug session [--once] <id>` prints a session's state, harness, pane, model, effort, context left and limit used, then each change to it until interrupted (`--once` prints just the current line).
 - `agentws setup codex [--remove]` merges (or removes) the agentws hooks in `$CODEX_HOME/hooks.json`. Tests of it, and of anything else that touches Codex config, use a temp `CODEX_HOME`; never point them at the real `~/.codex`.
+- `agentws setup claude [--remove]` merges agentws hooks and the status-line wrapper into `$CLAUDE_CONFIG_DIR/settings.json` (default `~/.claude`). Tests set `CLAUDE_CONFIG_DIR` to a temp dir and never touch the real `~/.claude`.
+- `agentws debug launch --harness claude --dir <dir> [--model m] [--effort e]` starts a session in a new pane.
 - `domain`, `app`, `tui`, `rpc` and `daemon` may not import `os/exec` (depguard). `internal/adapters/tmux` is the only code that runs tmux, and only `internal/daemon` may import it.
 
 ## Rules
