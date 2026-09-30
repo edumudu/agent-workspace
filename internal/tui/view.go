@@ -404,6 +404,7 @@ func (m Model) cardLines() []string {
 			chips = append(chips, piece{s.blue, fmt.Sprintf("#%d ", pr.Number)})
 		}
 		out = append(out, m.line(false, chips, nil))
+		out = append(out, m.prBoardLines(card.PRs)...)
 	}
 	for j, action := range card.Actions {
 		lead := "       "
@@ -423,6 +424,53 @@ func (m Model) cardLines() []string {
 		}
 	}
 	return out
+}
+
+// prBoardLines is the board under the card's PR chips. A PR the daemon has
+// no state for yet gets none.
+func (m Model) prBoardLines(prs []domain.PullRequest) []string {
+	s := m.styles
+	var out []string
+	for _, pr := range prs {
+		if pr.State == "" {
+			continue
+		}
+		head := fmt.Sprintf(" #%d ", pr.Number)
+		switch {
+		case pr.State != domain.PROpen:
+			out = append(out, m.line(false, []piece{{s.blue, head}, {s.dim, strings.ToLower(string(pr.State))}}, nil))
+			continue
+		case pr.ReadyToMerge():
+			out = append(out, m.line(false, []piece{{s.blue, head}, {s.green, "ready to merge"}}, nil))
+		default:
+			out = append(out, m.line(false, []piece{{s.blue, head}, {s.need, "blocked"}}, nil))
+			for _, b := range pr.Blockers() {
+				out = append(out, m.line(false, []piece{{s.sub, "   " + b}}, nil))
+			}
+		}
+		for _, f := range pr.Failing {
+			out = append(out, m.line(false, []piece{{s.peach, "   ✗ " + link(f.URL, cleanText(f.Name))}}, nil))
+		}
+		if pr.BotComments > 0 {
+			out = append(out, m.line(false, []piece{{s.dim, "   " + count(pr.BotComments, "bot comment") + " since push"}}, nil))
+		}
+	}
+	return out
+}
+
+// link wraps text in an OSC 8 hyperlink when url is a plain http(s) URL.
+// The URL comes from GitHub, so anything with a control character or another
+// scheme is left as text rather than risk breaking out of the sequence.
+func link(url, text string) string {
+	if !strings.HasPrefix(url, "https://") && !strings.HasPrefix(url, "http://") {
+		return text
+	}
+	for _, r := range url {
+		if r < ' ' || r == 0x7f {
+			return text
+		}
+	}
+	return ansi.SetHyperlink(url) + text + ansi.ResetHyperlink()
 }
 
 // cleanText drops escape sequences and control characters an agent put in

@@ -71,7 +71,7 @@ func Run(ctx context.Context, home string) (err error) {
 		WithHarnesses(host, claude.Adapter{}, codex.Adapter{}),
 		WithSessions(gitadapter.Adder{}, runRecipe, worktreeHome),
 		WithNotifier(banners, banners, sounds),
-		WithWorktrees(gitadapter.Worktrees{}, github.Finder{}),
+		WithWorktrees(gitadapter.Worktrees{}, &github.Finder{}),
 		WithProcessTable(procs.Table{}),
 		WithReview(gitadapter.Review{}),
 		WithCleanup(cleanup, DefaultCleanupEvery))

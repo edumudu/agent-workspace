@@ -116,8 +116,14 @@ func (d *Daemon) watchWorktrees(ctx context.Context) {
 	d.scanWorktrees(ctx)
 	tick, stop := ticker(d.wt.every)
 	defer stop()
-	prTick, prStop := ticker(d.wt.prEvery)
-	defer prStop()
+	var prTimer *time.Timer
+	var prFire <-chan time.Time
+	if d.wt.prEvery > 0 {
+		prTimer = time.NewTimer(d.wt.prEvery)
+		prFire = prTimer.C
+		defer prTimer.Stop()
+	}
+	failures := 0
 	for {
 		select {
 		case <-ctx.Done():
@@ -126,8 +132,14 @@ func (d *Daemon) watchWorktrees(ctx context.Context) {
 			d.scanWorktrees(ctx)
 		case <-d.st.hints.kick:
 			d.scanWorktrees(ctx)
-		case <-prTick:
-			d.refreshWorktreePRs(ctx)
+		case <-prFire:
+			running, err := d.refreshWorktreePRs(ctx)
+			if err != nil {
+				failures++
+			} else {
+				failures = 0
+			}
+			prTimer.Reset(domain.NextPRPoll(d.wt.prEvery, running, failures))
 		}
 	}
 }
@@ -229,17 +241,20 @@ func (s *state) relink(id, from, to string) {
 	}
 }
 
-func (d *Daemon) refreshWorktreePRs(ctx context.Context) {
+func (d *Daemon) refreshWorktreePRs(ctx context.Context) (checksRunning bool, err error) {
 	if d.wt.prs == nil {
-		return
+		return false, nil
 	}
 	var wts []domain.Worktree
 	if !d.query(func(s *state) { wts = sorted(s.worktrees) }) {
-		return
+		return false, nil
 	}
-	changed := app.RefreshPRs(ctx, d.wt.prs, wts)
+	refresh, err := app.RefreshPRs(ctx, d.wt.prs, wts)
+	if err != nil {
+		return false, err
+	}
 	d.query(func(s *state) {
-		for _, w := range changed {
+		for _, w := range refresh.Changed {
 			cur, ok := s.worktrees[w.ID]
 			if !ok {
 				continue
@@ -251,6 +266,7 @@ func (d *Daemon) refreshWorktreePRs(ctx context.Context) {
 			s.emit(WorktreeChanged{Worktree: cur})
 		}
 	})
+	return refresh.ChecksRunning, nil
 }
 
 func (d *Daemon) worktreeAssign(req rpc.Request) (*rpc.Response, bool) {

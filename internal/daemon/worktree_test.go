@@ -187,6 +187,41 @@ func TestWorktreeDetectPRAndChecksAppearOnNextPoll(t *testing.T) {
 	})
 }
 
+func TestPRBoardPollBacksOffWhileGitHubFails(t *testing.T) {
+	env := startWorktrees(t, &memStore{}, 40*time.Millisecond)
+	env.finder.fail(errors.New("rate limited"))
+	before := env.finder.callCount()
+	time.Sleep(700 * time.Millisecond)
+	// why: unpaced, 700ms at a 40ms interval would be about 17 polls.
+	if n := env.finder.callCount() - before; n > 6 {
+		t.Errorf("%d polls in 700ms while failing, want the interval to grow", n)
+	}
+}
+
+func TestPRBoardPollRecoversOnceGitHubAnswers(t *testing.T) {
+	env := startWorktrees(t, &memStore{}, 40*time.Millisecond, domain.ListedWorktree{Path: "/solo-feat", Branch: "feat"})
+	env.finder.fail(errors.New("boom"))
+	time.Sleep(200 * time.Millisecond)
+	env.finder.fail(nil)
+	env.finder.set("/solo", domain.PullRequest{Number: 7, Head: "feat", State: domain.PROpen, Checks: domain.CheckPassing})
+	eventually(t, env.path, 3*time.Second, "pr after recovery", func(st rpc.State) bool {
+		w, _ := worktree(st, "/solo-feat")
+		return w.PR != nil && w.PR.Number == 7
+	})
+}
+
+func TestPRBoardPollSpeedsUpWhileChecksRun(t *testing.T) {
+	env := startWorktrees(t, &memStore{}, 800*time.Millisecond, domain.ListedWorktree{Path: "/solo-feat", Branch: "feat"})
+	env.finder.set("/solo", domain.PullRequest{Number: 7, Head: "feat", State: domain.PROpen, Checks: domain.CheckPending})
+	start := time.Now()
+	for env.finder.callCount() < 4 {
+		if time.Since(start) > 1900*time.Millisecond {
+			t.Fatalf("%d polls in %v, want at least 4 (a quarter of the interval while checks run)", env.finder.callCount(), time.Since(start))
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+}
+
 func TestWorktreeDetectAssign(t *testing.T) {
 	store := &memStore{}
 	store.snap.Sessions = []domain.Session{{ID: "s2", Pane: "%2"}}

@@ -77,10 +77,12 @@ func start(t *testing.T, poll, prPoll time.Duration) env {
 	e := env{root: filepath.Join(tmp, "ws"), ghOut: filepath.Join(tmp, "prs.json")}
 	newRepo(t, filepath.Join(e.root, "api"))
 	newRepo(t, filepath.Join(e.root, "web"))
+	git(t, filepath.Join(e.root, "api"), "remote", "add", "origin", "https://github.com/o/api.git")
+	git(t, filepath.Join(e.root, "web"), "remote", "add", "origin", "git@github.com:o/web.git")
 	git(t, filepath.Join(e.root, "api"), "worktree", "add", "-q", "-b", "old", filepath.Join(e.root, "api-old"))
 
 	gh := filepath.Join(tmp, "gh")
-	script := "#!/bin/sh\ncat '" + e.ghOut + "' 2>/dev/null || echo '[]'\n"
+	script := "#!/bin/sh\ncat '" + e.ghOut + "' 2>/dev/null || echo '{\"data\":{}}'\n"
 	if err := os.WriteFile(gh, []byte(script), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -96,7 +98,7 @@ func start(t *testing.T, poll, prPoll time.Duration) env {
 	}
 	d, err := daemon.New(store, os.Getpid(),
 		daemon.WithWorkspaces(wsfs.FS{}, gitadapter.Inspector{}),
-		daemon.WithWorktrees(gitadapter.Worktrees{}, github.Finder{Bin: gh}),
+		daemon.WithWorktrees(gitadapter.Worktrees{}, &github.Finder{Bin: gh}),
 		daemon.WithWorktreePoll(poll, prPoll),
 		daemon.WithProcessTable(procs.Table{}),
 	)
@@ -233,14 +235,18 @@ func TestWorktreeDetectHandMadeWorktreeUnassignedWithin15s(t *testing.T) {
 func TestWorktreeDetectPRAndChecksWithinOnePoll(t *testing.T) {
 	const prPoll = 300 * time.Millisecond
 	e := start(t, time.Hour, prPoll)
-	prs := `[{"number":42,"title":"Old","url":"https://github.com/o/api/pull/42","headRefName":"old","state":"OPEN",
-	  "statusCheckRollup":[{"__typename":"CheckRun","status":"COMPLETED","conclusion":"FAILURE"}]}]`
+	prs := `{"data":{"r0":{"pullRequests":{"nodes":[{"number":42,"title":"Old","url":"https://github.com/o/api/pull/42","headRefName":"old","state":"OPEN",
+	  "reviewDecision":"REVIEW_REQUIRED","mergeable":"MERGEABLE",
+	  "reviewThreads":{"nodes":[{"isResolved":false,"comments":{"nodes":[]}}]},"comments":{"nodes":[]},"reviews":{"nodes":[]},
+	  "commits":{"nodes":[{"commit":{"committedDate":"2026-09-01T00:00:00Z","statusCheckRollup":{"contexts":{"nodes":[
+	    {"__typename":"CheckRun","name":"test","status":"COMPLETED","conclusion":"FAILURE","detailsUrl":"https://github.com/o/api/actions/runs/1"}]}}}}]}}]}}}}`
 	if err := os.WriteFile(e.ghOut, []byte(prs), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	e.waitFor(t, 2*prPoll+500*time.Millisecond, "PR on api-old", func(st rpc.State) bool {
 		w, _ := find(st, filepath.Join(e.root, "api-old"))
-		return w.PR != nil && w.PR.Number == 42 && w.PR.Checks == domain.CheckFailing
+		return w.PR != nil && w.PR.Number == 42 && w.PR.Checks == domain.CheckFailing &&
+			w.PR.UnresolvedThreads == 1 && len(w.PR.Failing) == 1 && w.PR.Failing[0].Name == "test"
 	})
 }
 

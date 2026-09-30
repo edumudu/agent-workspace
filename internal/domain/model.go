@@ -73,6 +73,13 @@ type PullRequest struct {
 	Head   string
 	State  PRState
 	Checks CheckState
+
+	ReviewDecision    ReviewDecision
+	Mergeable         Mergeable
+	UnresolvedThreads int
+	// BotComments counts bot comments since the last push.
+	BotComments int
+	Failing     []FailingCheck
 }
 
 type Harness string

@@ -338,14 +338,38 @@ func (f *fakeLister) set(dir string, wts ...domain.ListedWorktree) {
 }
 
 type fakeFinder struct {
-	mu  sync.Mutex
-	prs map[string][]domain.PullRequest
+	mu    sync.Mutex
+	prs   map[string][]domain.PullRequest
+	err   error
+	calls int
 }
 
-func (f *fakeFinder) PRs(_ context.Context, repo string) ([]domain.PullRequest, error) {
+func (f *fakeFinder) PRs(_ context.Context, repos []string) (map[string][]domain.PullRequest, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	return f.prs[repo], nil
+	f.calls++
+	if f.err != nil {
+		return nil, f.err
+	}
+	out := map[string][]domain.PullRequest{}
+	for _, r := range repos {
+		if prs, ok := f.prs[r]; ok {
+			out[r] = prs
+		}
+	}
+	return out, nil
+}
+
+func (f *fakeFinder) fail(err error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.err = err
+}
+
+func (f *fakeFinder) callCount() int {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.calls
 }
 
 func (f *fakeFinder) set(repo string, prs ...domain.PullRequest) {

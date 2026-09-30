@@ -67,6 +67,11 @@ func seed(n int) []Event {
 			}
 			if w == 0 {
 				wt.PR = &domain.PullRequest{Number: 100 + i, Title: fmt.Sprintf("seeded change %d", i+1)}
+				if i == 0 {
+					wt.PR.State, wt.PR.Checks = domain.PROpen, domain.CheckFailing
+					wt.PR.ReviewDecision, wt.PR.UnresolvedThreads, wt.PR.BotComments = domain.ReviewChangesRequested, 2, 3
+					wt.PR.Failing = []domain.FailingCheck{{Name: "unit tests", URL: "https://example.com/runs/1"}}
+				}
 			}
 			events = append(events, WorktreeChanged{Worktree: wt})
 			s.WorktreeIDs = append(s.WorktreeIDs, wt.ID)
