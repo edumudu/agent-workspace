@@ -113,8 +113,8 @@ type state struct {
 	launched map[string]bool
 	// kickLauncher is set by New and must not block.
 	kickLauncher func()
-	comments    map[string]domain.DraftComment
-	scopes      map[string]domain.ReviewScope
+	comments     map[string]domain.DraftComment
+	scopes       map[string]domain.ReviewScope
 }
 
 type Daemon struct {
