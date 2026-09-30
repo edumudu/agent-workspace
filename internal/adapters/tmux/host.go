@@ -21,11 +21,18 @@ const (
 	sessionName   = "agentws"
 	managedOption = "@agentws"
 	placeholder   = "tail -f /dev/null"
+	emptyState    = `printf 'No session in view.\n\nPress n to start one.\n'; exec tail -f /dev/null`
+
+	// FocusSidebarKey moves focus from an agent pane back to the sidebar. It is
+	// a root-table key on the agentws server only; Claude Code and Codex leave
+	// ctrl+backslash unbound.
+	FocusSidebarKey = `C-\`
 )
 
 const configContents = `set -g status off
 set -g prefix None
 unbind-key -a
+bind-key -n C-\\ select-pane -t :.0
 set -g mouse off
 set -g escape-time 0
 set -g remain-on-exit off

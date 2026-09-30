@@ -55,8 +55,18 @@ func (h *Host) pinSidebar(ctx context.Context, slot app.Slot, width string) erro
 }
 
 func (h *Host) addSlotPane(ctx context.Context, slot app.Slot) error {
-	_, err := h.run(ctx, "", "split-window", "-h", "-d", "-l", "70%", "-t", string(slot)+".0", placeholder)
+	_, err := h.run(ctx, "", "split-window", "-h", "-d", "-l", "70%", "-t", string(slot)+".0", emptyState)
 	return err
+}
+
+// EnsureSlot gives the slot an empty-state pane if its pane is gone, such as
+// after the pane shown in it was killed.
+func (h *Host) EnsureSlot(ctx context.Context, slot app.Slot) error {
+	count, err := h.paneCount(ctx, slot)
+	if err != nil || count != 1 {
+		return err
+	}
+	return h.addSlotPane(ctx, slot)
 }
 
 // Show swaps pane into the slot; the pane that was there goes back to the
