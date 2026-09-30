@@ -27,7 +27,7 @@ done | sort -u)
 passed=()
 for pkg in $pkgs; do
   echo "tdd: go test $pkg on base"
-  if go test -count=1 "$pkg"; then
+  if go test -count=1 -tags integration "$pkg"; then
     passed+=("$pkg")
   fi
 done
