@@ -12,7 +12,7 @@ import (
 	"github.com/giovaniif/agent-workspace/internal/domain"
 )
 
-var longIdle = cleanupNow.Add(-2 * time.Hour)
+var longIdle = cleanupNow.Add(-domain.CleanupGrace - time.Hour)
 
 func TestCleanupRemoveWorktreeTrashesAMergedCleanOneAndAuditsIt(t *testing.T) {
 	w := newCleanupWorld(map[string]app.WorktreeGitFacts{"/w/a": {ModifiedAt: longIdle, Fingerprint: "f"}})
