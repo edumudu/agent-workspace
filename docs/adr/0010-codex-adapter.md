@@ -1,4 +1,4 @@
-# ADR 0009: Codex adapter
+# ADR 0010: Codex adapter
 
 Status: accepted, 2026-09-29.
 

@@ -103,7 +103,7 @@ Colors are Catppuccin Latte, overridden per key in the `[theme]` table of `$AGEN
 
 ## Harness adapters
 
-`internal/adapters/codex` covers Codex: the `setup codex` merge into `hooks.json`, hook and notify payload parsing, the rollout reader that supplies model, effort, context and limits, pane lookup, and launching. The daemon applies a Codex hook's model at once and reads the rollout in a worker, never on the loop. The mapping, formulas and where each number comes from are in [internal/adapters/codex/README.md](internal/adapters/codex/README.md) and [docs/adr/0009-codex-adapter.md](docs/adr/0009-codex-adapter.md).
+`internal/adapters/codex` covers Codex: the `setup codex` merge into `hooks.json`, hook and notify payload parsing, the rollout reader that supplies model, effort, context and limits, pane lookup, and launching. The daemon applies a Codex hook's model at once and reads the rollout in a worker, never on the loop. The mapping, formulas and where each number comes from are in [internal/adapters/codex/README.md](internal/adapters/codex/README.md) and [docs/adr/0010-codex-adapter.md](docs/adr/0010-codex-adapter.md).
 
 ## Staying fast
 
