@@ -184,6 +184,24 @@ func TestReviewHunkRunsInTheSessionsWorktreeOnly(t *testing.T) {
 	}
 }
 
+func TestReviewSendStoresADraftAsSentOnlyOnceItIsPasted(t *testing.T) {
+	env := startSend(t, domain.StateIdle)
+	addComments(t, env.c, commentA)
+	release := env.host.holdPane("%1")
+	if _, err := env.c.SendReview(context.Background(), "s1"); err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(50 * time.Millisecond)
+	if st := env.store.drafts(); len(st) != 1 || st[0].Status != domain.DraftQueued {
+		t.Fatalf("before the paste the store holds %+v; a restart now must resend it", st)
+	}
+	release()
+	waitUntil(t, "stored as sent", func() bool {
+		st := env.store.drafts()
+		return len(st) == 1 && st[0].Status == domain.DraftSent
+	})
+}
+
 func TestReviewSendAFailedPasteGoesBackToTheQueueWithCommentsAddedSince(t *testing.T) {
 	env := startSend(t, domain.StateIdle)
 	addComments(t, env.c, commentA)
