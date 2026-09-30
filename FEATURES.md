@@ -40,7 +40,7 @@ One terminal tool for running Claude Code and Codex sessions in parallel, each i
 **Sessions**
 - The sidebar has vertical tabs grouped by task, showing each session's state glyph, harness, model, effort and context left. A session row expands to show its worktrees, each with repo, subtask, PR and check status (for example `api:shares #42 ✓`).
 - The session header shows every PR the session owns, each with its check status.
-- Sessions are named automatically from the PR, then the Linear issue, then the task. You can rename or pin a name. The name is the work item, never the agent's current activity.
+- Sessions are named automatically from the PR, then the Linear issue, then the task. A text task is named by a 2-4 word summary of its first prompt. `R` renames and pins a name, `A` unpins it. The name is the work item, never the agent's current activity.
 - Keyboard-first navigation: jump to a session by number, next waiting session, last session.
 - The new-session dialog takes only the workspace, work item (Linear issue, PR or text), harness, model and effort. The workspace defaults to the last one used.
   - You never pick repos or create worktrees yourself. Creating them is the agent's job; the tool detects each one and attaches it to the session.

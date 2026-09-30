@@ -118,20 +118,20 @@ func TestNamingRenamePromptEditsAndCancels(t *testing.T) {
 	if out := screen(m); strings.Contains(out, "RENAME") {
 		t.Errorf("a blank name closes the prompt:\n%s", out)
 	}
-	m = press(m, "R", "j")
-	if len(c.calls) != 0 {
-		t.Fatalf("keys typed into the prompt must not act on the sidebar: %+v", c.calls)
+	m = press(m, "R", "x")
+	if out := screen(m); len(c.calls) != 0 || !strings.Contains(out, "RENAME") || !strings.Contains(out, "tidy the parserx") {
+		t.Fatalf("keys typed into the prompt must edit it, not act on the sidebar (calls %+v):\n%s", c.calls, out)
 	}
 }
 
 func TestNamingAKeyUnpinsOnlyAPinnedName(t *testing.T) {
 	m, c := namingModel(t, domain.Task{ID: "t1", Text: "tidy the parser", PinnedName: "mine"})
-	m = pressCmd(m, key("A"))
+	pressCmd(m, key("A"))
 	if len(c.calls) != 1 || c.calls[0].method != rpc.MethodSessionUnpin || c.calls[0].params != (rpc.SessionRef{ID: "s1"}) {
 		t.Fatalf("calls %+v", c.calls)
 	}
 	unpinned, c2 := namingModel(t, domain.Task{ID: "t1", Text: "tidy the parser"})
-	unpinned = pressCmd(unpinned, key("A"))
+	pressCmd(unpinned, key("A"))
 	if len(c2.calls) != 0 {
 		t.Fatalf("nothing pinned, nothing to unpin: %+v", c2.calls)
 	}
