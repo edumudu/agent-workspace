@@ -77,7 +77,9 @@ func serveReview(t *testing.T, home, socket, agent string) (*rpc.Client, func())
 
 type noPRs struct{}
 
-func (noPRs) PRs(context.Context, string) ([]domain.PullRequest, error) { return nil, nil }
+func (noPRs) PRs(context.Context, []string) (map[string][]domain.PullRequest, error) {
+	return nil, nil
+}
 
 func eventually(t *testing.T, within time.Duration, ok func() bool) bool {
 	t.Helper()
