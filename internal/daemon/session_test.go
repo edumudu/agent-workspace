@@ -461,3 +461,15 @@ func TestEndingAForgottenSessionInViewShowsTheNextRowNotTheFirst(t *testing.T) {
 		t.Fatalf("shown %+v; want c's pane, the row after b", r.host.shown)
 	}
 }
+
+func TestForgettingASessionDropsItsSubagents(t *testing.T) {
+	store := &memStore{}
+	store.snap.Sessions = []domain.Session{{ID: "a", Harness: domain.HarnessClaude, Pane: "%3", State: domain.StateRunning}}
+	r := startSessions(t, store, nil)
+	hookOnPane(t, r.c, "SubagentStart", `{"agent_id":"a1","agent_type":"Explore"}`)
+	waitUntil(t, "the subagent to be tracked", func() bool { return len(r.state(t).Subagents) == 1 })
+	endSession(t, r, "a")
+	if st := r.state(t); len(st.Sessions) != 0 || len(st.Subagents) != 0 {
+		t.Fatalf("sessions %+v, subagents %+v; want both gone", st.Sessions, st.Subagents)
+	}
+}
