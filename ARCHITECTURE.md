@@ -211,7 +211,7 @@ See [docs/adr/0029-shell-and-nvim.md](docs/adr/0029-shell-and-nvim.md). `daemon.
 - **`nvim.toggle`** (`{"session","worktree"}` → `{"pane","socket","shown"}`) swaps the session's nvim, listening on `$AGENTWS_HOME/nvim/<session>.sock`, into the main slot or the agent pane back. **`nvim.open`** adds `{"path","line"}`: it starts nvim on the file, or tells the running one through `app.Editor`, then shows it.
 - **`review.comment`** (`{"session","file"|"worktree"+"path","start_line","end_line","code","body"}` → `DraftComment`) adds a draft comment, published as `Diff.Comment` and kept in `State.Comments`. Drafts are in memory.
 - **TUI keys.** `t` shell, `T` popup, `e` nvim; `o` in the review opens the diff's top visible line in nvim and closes the review.
-- **Keys in tmux.** The config binds `C-h/j/k/l` in the root table (pass to nvim when it is the pane's command, else `select-pane` with no wrap) and `M-t` (closes the shell popup).
+- **Keys in tmux.** The config binds only `M-t` (closes the shell popup). `C-h/j/k/l` are not bound: they reach every pane, and the nvim plugin moves to the neighbouring tmux pane at nvim's edge.
 - **Plugin.** `nvim/lua/agentws` and `nvim/plugin/agentws.lua`: `:AgentwsComment`, `:AgentwsDiff [scope]`, `setup{bin, tmux, navigate}`. It calls `agentws review comment` and `agentws review scope` (JSON of each worktree's path, base commit and files) and opens `:DiffviewOpen`.
 - **Tests.** `go test ./... -run Shell -tags integration` covers the daemon against real tmux, the tmux adapter's split, popup and navigation keys; `TestNvimPluginSpecs` runs `nvim/test/spec.lua` headless.
 

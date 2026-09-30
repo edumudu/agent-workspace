@@ -38,10 +38,6 @@ set -g escape-time 0
 set -g remain-on-exit off
 set -g history-limit 50000
 set -g default-terminal "tmux-256color"
-bind -n C-h if -F '#{==:#{pane_current_command},nvim}' 'send-keys C-h' 'if -F "#{pane_at_left}" "" "select-pane -L"'
-bind -n C-j if -F '#{==:#{pane_current_command},nvim}' 'send-keys C-j' 'if -F "#{pane_at_bottom}" "" "select-pane -D"'
-bind -n C-k if -F '#{==:#{pane_current_command},nvim}' 'send-keys C-k' 'if -F "#{pane_at_top}" "" "select-pane -U"'
-bind -n C-l if -F '#{==:#{pane_current_command},nvim}' 'send-keys C-l' 'if -F "#{pane_at_right}" "" "select-pane -R"'
 bind -n M-t if -F '#{m:agentws-popup-*,#{session_name}}' 'detach-client' 'send-keys M-t'
 `
 

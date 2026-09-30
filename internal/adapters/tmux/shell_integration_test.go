@@ -188,7 +188,7 @@ func TestNavigationKeysReachTheAppInAPaneThatIsNotNvim(t *testing.T) {
 	ctx := context.Background()
 	h := newHost(t)
 	slot, _ := h.OpenClient(ctx, "main", app.PaneSpec{Name: "tui", Command: []string{"cat"}})
-	agent, _ := h.Create(ctx, catPane("agent"))
+	agent, _ := h.Create(ctx, app.PaneSpec{Name: "agent", Command: []string{"sh", "-c", "stty raw -echo; echo ready; exec cat -v"}})
 	shell, _ := h.Create(ctx, catPane("shell"))
 	if err := h.Show(ctx, agent, slot); err != nil {
 		t.Fatal(err)
@@ -200,13 +200,16 @@ func TestNavigationKeysReachTheAppInAPaneThatIsNotNvim(t *testing.T) {
 		t.Fatal(err)
 	}
 	outer := outerTerminal(t, h, slot)
+	waitFor(t, "the agent's terminal to be raw", func() bool {
+		got, _ := h.Capture(ctx, agent, 10)
+		return strings.Contains(got, "ready")
+	})
 	for _, key := range []string{"C-h", "C-j", "C-k", "C-l"} {
 		outer("send-keys", "-t", "outer", key)
 	}
-	want := "^H^J^K^L"
-	waitFor(t, "the agent's terminal to receive all four keys", func() bool {
+	waitFor(t, "the agent's terminal to receive C-h, C-k and C-l (C-j arrives as a newline)", func() bool {
 		got, _ := h.Capture(ctx, agent, 10)
-		return strings.Contains(strings.ReplaceAll(got, "\n", ""), want)
+		return strings.Contains(got, "^H") && strings.Contains(got, "^K") && strings.Contains(got, "^L")
 	})
 	if active := tmuxIn(t, h, slot, "display-message", "-p", "-t", string(slot), "#{pane_id}"); active != string(agent) {
 		t.Fatalf("active pane = %s; the keys must not move focus away from the agent %s", active, agent)
