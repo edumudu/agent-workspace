@@ -1,0 +1,44 @@
+{
+  "data": {
+    "r0": {
+      "pullRequests": {
+        "nodes": [
+          {
+            "number": 12, "title": "Add login", "url": "https://github.com/o/api/pull/12",
+            "headRefName": "feat", "state": "OPEN",
+            "reviewDecision": "CHANGES_REQUESTED", "mergeable": "CONFLICTING",
+            "reviewThreads": {"nodes": [
+              {"isResolved": false, "comments": {"nodes": [{"author": {"__typename": "Bot"}, "createdAt": "2026-09-01T12:30:00Z"}]}},
+              {"isResolved": true, "comments": {"nodes": [{"author": {"__typename": "Bot"}, "createdAt": "2026-09-01T12:31:00Z"}]}},
+              {"isResolved": false, "comments": {"nodes": [{"author": {"__typename": "User"}, "createdAt": "2026-09-01T12:32:00Z"}]}}
+            ]},
+            "comments": {"nodes": [
+              {"author": {"__typename": "Bot"}, "createdAt": "2026-09-01T11:00:00Z"},
+              {"author": {"__typename": "Bot"}, "createdAt": "2026-09-01T12:10:00Z"},
+              {"author": null, "createdAt": "2026-09-01T12:11:00Z"}
+            ]},
+            "reviews": {"nodes": [
+              {"author": {"__typename": "Bot"}, "submittedAt": "2026-09-01T12:20:00Z"},
+              {"author": {"__typename": "User"}, "submittedAt": "2026-09-01T12:21:00Z"}
+            ]},
+            "commits": {"nodes": [{"commit": {"committedDate": "2026-09-01T12:00:00Z", "statusCheckRollup": {"contexts": {"nodes": [
+              {"__typename": "CheckRun", "name": "build", "status": "COMPLETED", "conclusion": "SUCCESS", "detailsUrl": "https://github.com/o/api/actions/runs/1/job/1"},
+              {"__typename": "CheckRun", "name": "test", "status": "COMPLETED", "conclusion": "FAILURE", "detailsUrl": "https://github.com/o/api/actions/runs/1/job/2"},
+              {"__typename": "CheckRun", "name": "lint", "status": "IN_PROGRESS", "conclusion": null, "detailsUrl": "https://github.com/o/api/actions/runs/1/job/3"},
+              {"__typename": "StatusContext", "context": "ci/deploy", "state": "ERROR", "targetUrl": "https://ci.example.com/deploy/9"},
+              {"__typename": "CheckRun", "name": "docs", "status": "COMPLETED", "conclusion": "SKIPPED", "detailsUrl": "https://github.com/o/api/actions/runs/1/job/4"}
+            ]}}}}]}
+          },
+          {
+            "number": 11, "title": "Fix", "url": "u11", "headRefName": "fix", "state": "MERGED",
+            "reviewDecision": null, "mergeable": "UNKNOWN",
+            "reviewThreads": {"nodes": []}, "comments": {"nodes": []}, "reviews": {"nodes": []},
+            "commits": {"nodes": [{"commit": {"committedDate": "2026-08-01T00:00:00Z", "statusCheckRollup": null}}]}
+          }
+        ]
+      }
+    },
+    "r1": null
+  },
+  "errors": [{"type": "NOT_FOUND", "path": ["r1"], "message": "Could not resolve to a Repository with the name 'o/gone'."}]
+}
