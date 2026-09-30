@@ -1,0 +1,30 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+language: en-US
+reviews:
+  profile: chill
+  request_changes_workflow: false
+  high_level_summary: false
+  poem: false
+  review_status: true
+  collapse_walkthrough: true
+  auto_review:
+    enabled: true
+    drafts: false
+  path_instructions:
+    - path: "**/*.go"
+      instructions: >-
+        Enforce AGENTS.md: layer rules (domain has no IO and no internal imports; app depends only on domain;
+        tui talks only to rpc), no exec/disk/network on hot paths (hook, TUI render, daemon loop),
+        shell out to git/gh/tmux instead of Go libraries, cleanup never destroys user work.
+        Comments only explain decisions or non-obvious behavior; flag comments that restate code.
+        Focus on correctness bugs; skip style nits that gofmt or golangci-lint already cover.
+    - path: "**/*_test.go"
+      instructions: >-
+        Tests go through public behavior with in-memory fakes, not mocks. Flag tests that test getters,
+        constructors or mocks calling mocks.
+knowledge_base:
+  code_guidelines:
+    enabled: true
+    filePatterns:
+      - AGENTS.md
+      - ARCHITECTURE.md
