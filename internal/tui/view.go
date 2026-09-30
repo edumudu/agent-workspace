@@ -449,13 +449,28 @@ func (m Model) prBoardLines(prs []domain.PullRequest) []string {
 			}
 		}
 		for _, f := range pr.Failing {
-			out = append(out, m.line(false, []piece{{s.peach, "   ✗ " + cleanText(f.Name)}}, nil))
+			out = append(out, m.line(false, []piece{{s.peach, "   ✗ " + link(f.URL, cleanText(f.Name))}}, nil))
 		}
 		if pr.BotComments > 0 {
 			out = append(out, m.line(false, []piece{{s.dim, "   " + count(pr.BotComments, "bot comment") + " since push"}}, nil))
 		}
 	}
 	return out
+}
+
+// link wraps text in an OSC 8 hyperlink when url is a plain http(s) URL.
+// The URL comes from GitHub, so anything with a control character or another
+// scheme is left as text rather than risk breaking out of the sequence.
+func link(url, text string) string {
+	if !strings.HasPrefix(url, "https://") && !strings.HasPrefix(url, "http://") {
+		return text
+	}
+	for _, r := range url {
+		if r < ' ' || r == 0x7f {
+			return text
+		}
+	}
+	return ansi.SetHyperlink(url) + text + ansi.ResetHyperlink()
 }
 
 // cleanText drops escape sequences and control characters an agent put in

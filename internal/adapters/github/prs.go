@@ -66,6 +66,9 @@ func (f *Finder) PRs(ctx context.Context, dirs []string) (map[string][]domain.Pu
 		aliases[i] = fmt.Sprintf("r%d", i)
 	}
 	byAlias, parseErr := parseBoard(stdout.Bytes(), aliases)
+	if parseErr == nil && runErr != nil && len(byAlias) == 0 {
+		parseErr = errors.New("no repo resolved")
+	}
 	if parseErr != nil {
 		if runErr != nil {
 			return nil, fmt.Errorf("gh api graphql: %w: %s", runErr, strings.TrimSpace(stderr.String()))
