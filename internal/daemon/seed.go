@@ -54,6 +54,33 @@ func seed(n int) []Event {
 			s.WorktreeIDs = append(s.WorktreeIDs, wt.ID)
 		}
 		events = append(events, SessionChanged{Session: s})
+		for _, ev := range seedLog(s) {
+			events = append(events, SessionHooked{Session: s, Event: ev})
+		}
 	}
 	return events
+}
+
+func seedLog(s domain.Session) []domain.SessionEvent {
+	log := []domain.SessionEvent{
+		{Kind: domain.EventUserPromptSubmit},
+		{Kind: domain.EventPreToolUse, Tool: "Read", Detail: "internal/upload.go"},
+		{Kind: domain.EventPreToolUse, Tool: "Edit", Detail: "internal/upload.go"},
+		{Kind: domain.EventPreToolUse, Tool: "Bash", Detail: "go test ./..."},
+	}
+	switch s.State {
+	case domain.StatePermission:
+		log = append(log, domain.SessionEvent{Kind: domain.EventPermissionRequest, Tool: "Bash",
+			Text: "Bash: rm -rf build\nmake clean\nmake all\nmake install"})
+	case domain.StateWaiting:
+		log = append(log,
+			domain.SessionEvent{Kind: domain.EventStop, Text: "Tests pass.\n\nWant me to open the PR now, or wait for review?"},
+			domain.SessionEvent{Kind: domain.EventWaitingForInput, Text: "Claude is waiting for your input"})
+	case domain.StateDone:
+		log = append(log, domain.SessionEvent{Kind: domain.EventStop, Text: "Done. The upload retries three times."})
+	}
+	for i := range log {
+		log[i].SessionID = s.ID
+	}
+	return log
 }
