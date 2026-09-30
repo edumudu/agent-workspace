@@ -200,6 +200,39 @@ func TestReviewSplitViewPutsOldAndNewSideBySide(t *testing.T) {
 	}
 }
 
+func TestReviewSplitContextShowsEachSidesLineNumber(t *testing.T) {
+	m, _ := reviewModel(t, 150, 40)
+	m = drive(m, keys("r", "u")...)
+	found := false
+	for _, line := range strings.Split(screen(m), "\n") {
+		if strings.Count(line, "      },") == 2 {
+			found = true
+			if !strings.Contains(line, "46    ") || !strings.Contains(line, "47    ") {
+				t.Errorf("a context row carries the old number left and the new one right: %q", line)
+			}
+			break
+		}
+	}
+	if !found {
+		t.Errorf("no split context row for },:\n%s", screen(m))
+	}
+}
+
+func TestReviewLabelsNameTheRepoNotItsPath(t *testing.T) {
+	st, rv := reviewFixture()
+	for i := range st.Worktrees {
+		st.Worktrees[i].Repo = "/src/shop/" + st.Worktrees[i].Repo
+	}
+	rv.reply.Worktrees[0].Worktree = st.Worktrees[0]
+	m := tui.New(tui.Options{Theme: tui.Latte(), Now: clock, Review: rv})
+	m = update(m, tea.WindowSizeMsg{Width: 150, Height: 40})
+	m = drive(m, tui.StateMsg(st), key("r"))
+	out := screen(m)
+	if strings.Contains(out, "/src/shop") || !strings.Contains(out, "api:part-1 #3600") {
+		t.Errorf("labels should use the repo's name:\n%s", out)
+	}
+}
+
 func TestReviewWithoutAReviewerDoesNothing(t *testing.T) {
 	st := fixture(1, 1)
 	m := drive(newModel(&st, nil), key("r"))
