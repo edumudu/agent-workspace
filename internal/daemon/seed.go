@@ -75,6 +75,11 @@ func seed(n int) []Event {
 		for _, ev := range seedLog(s) {
 			events = append(events, SessionHooked{Session: s, Event: ev})
 		}
+		if i == 0 {
+			for _, sub := range seedSubagents(s.ID, now) {
+				events = append(events, SubagentChanged{Subagent: sub})
+			}
+		}
 	}
 	return events
 }
@@ -101,4 +106,13 @@ func seedLog(s domain.Session) []domain.SessionEvent {
 		log[i].SessionID = s.ID
 	}
 	return log
+}
+
+func seedSubagents(sessionID string, now time.Time) []domain.Subagent {
+	return []domain.Subagent{
+		{SessionID: sessionID, ID: "seed-agent-1", Type: "Explore", State: domain.SubagentStopped,
+			StartedAt: now.Add(-3 * time.Minute), StoppedAt: now.Add(-2 * time.Minute), Summary: "Found 3 callers of Upload."},
+		{SessionID: sessionID, ID: "seed-agent-2", Type: "Plan", State: domain.SubagentRunning, StartedAt: now.Add(-time.Minute)},
+		{SessionID: sessionID, ID: "seed-agent-3", ParentID: "seed-agent-2", Type: "Reviewer", State: domain.SubagentRunning, StartedAt: now.Add(-30 * time.Second)},
+	}
 }
