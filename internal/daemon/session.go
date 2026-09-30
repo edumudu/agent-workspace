@@ -152,17 +152,18 @@ func (d *Daemon) endSession(req rpc.Request) (*rpc.Response, bool) {
 		return errorResponse(req.ID, rpc.CodeFailed, err.Error()), true
 	}
 	var next domain.Session
-	var hasNext bool
+	var hasNext, wasInView bool
 	ok = d.query(func(s *state) {
 		if cur, found := s.sessions[ended.ID]; found {
+			wasInView = cur.Focused
 			ended = cur.End()
 			s.emit(SessionChanged{Session: ended})
-			if session.Focused {
+			if wasInView {
 				next, hasNext = domain.NextInView(sorted(s.tasks), sorted(s.sessions), ended.ID)
 			}
 		}
 	})
-	if ok && session.Focused {
+	if ok && wasInView {
 		d.refillMain(next, hasNext)
 	}
 	return result(req.ID, ended), ok

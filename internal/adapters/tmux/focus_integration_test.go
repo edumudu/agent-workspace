@@ -64,8 +64,17 @@ func TestFocusKeyReturnsFromTheAgentPaneToTheSidebar(t *testing.T) {
 	}
 	waitFor(t, "focus to return to the sidebar", func() bool { return activeIndex() == "0" })
 
-	if out, _ := exec.Command("tmux", "list-keys", "-T", "root").CombinedOutput(); strings.Contains(string(out), "select-pane -t :.0") {
-		t.Fatalf("the default tmux server got the binding:\n%s", out)
+	if got := tmuxOn(t, attach, "list-keys", "-T", "root"); !strings.Contains(got, "select-pane -t :.0") {
+		t.Fatalf("the agentws server has no focus binding:\n%s", got)
+	}
+	other := fmt.Sprintf("agentws-other-%d", os.Getpid())
+	t.Cleanup(func() { _ = exec.Command("tmux", "-L", other, "kill-server").Run() })
+	if out, err := exec.Command("tmux", "-L", other, "-f", "/dev/null", "new-session", "-d", "sleep 60").CombinedOutput(); err != nil {
+		t.Fatalf("other server: %v: %s", err, out)
+	}
+	out, err := exec.Command("tmux", "-L", other, "list-keys", "-T", "root").CombinedOutput()
+	if err != nil || strings.Contains(string(out), "select-pane -t :.0") {
+		t.Fatalf("another server sees the binding (err %v):\n%s", err, out)
 	}
 }
 
