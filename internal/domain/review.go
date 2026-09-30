@@ -184,12 +184,13 @@ const (
 )
 
 // DiffLine numbers are 1-based; Old is 0 on an added line and New on a
-// deleted one.
+// deleted one. NoEOL marks a last line with no newline after it.
 type DiffLine struct {
-	Kind LineKind
-	Old  int
-	New  int
-	Text string
+	Kind  LineKind
+	Old   int
+	New   int
+	Text  string
+	NoEOL bool `json:",omitempty"`
 }
 
 type Hunk struct {
@@ -207,7 +208,9 @@ type FileDiff struct {
 	Deleted int
 	Binary  bool
 	Blob    string
-	Hunks   []Hunk
+	// Mode is set only for an added or deleted file.
+	Mode  string `json:",omitempty"`
+	Hunks []Hunk
 }
 
 // ParseDiff reads `git diff` output made without color or external diff.
@@ -245,6 +248,9 @@ func ParseDiff(out string) []FileDiff {
 				newN++
 				continue
 			case strings.HasPrefix(line, `\`):
+				if n := len(h.Lines); n > 0 {
+					h.Lines[n-1].NoEOL = true
+				}
 				continue
 			}
 		}
@@ -253,10 +259,10 @@ func ParseDiff(out string) []FileDiff {
 			f.Hunks = append(f.Hunks, Hunk{Header: line})
 			h = &f.Hunks[len(f.Hunks)-1]
 			oldN, newN = hunkStarts(line)
-		case strings.HasPrefix(line, "new file mode"):
-			f.Status = FileAdded
-		case strings.HasPrefix(line, "deleted file mode"):
-			f.Status = FileDeleted
+		case strings.HasPrefix(line, "new file mode "):
+			f.Status, f.Mode = FileAdded, strings.TrimPrefix(line, "new file mode ")
+		case strings.HasPrefix(line, "deleted file mode "):
+			f.Status, f.Mode = FileDeleted, strings.TrimPrefix(line, "deleted file mode ")
 		case strings.HasPrefix(line, "rename from "):
 			f.Status = FileRenamed
 			f.OldPath = strings.TrimPrefix(line, "rename from ")
