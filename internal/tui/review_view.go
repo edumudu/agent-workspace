@@ -373,15 +373,23 @@ func (m Model) diffRow(r diffRow, width int) string {
 		return p.cell(width, t.Mantle, seg{text: " " + cleanText(r.header), fg: t.Subtext})
 	}
 	if r.one != nil {
-		return m.codeCell(r.one, width, true)
+		return m.codeCell(r.one, width, sideBoth)
 	}
 	half := (width - 1) / 2
-	return m.codeCell(r.left, half, false) + p.style(t.Surface, "", false).Render("│") + m.codeCell(r.right, width-1-half, false)
+	return m.codeCell(r.left, half, sideOld) + p.style(t.Surface, "", false).Render("│") + m.codeCell(r.right, width-1-half, sideNew)
 }
+
+type side int
+
+const (
+	sideBoth side = iota
+	sideOld
+	sideNew
+)
 
 // codeCell draws a line with its numbers: old and new in the unified view,
 // the side's own in the split view. A nil line is a blank side.
-func (m Model) codeCell(sl *styledLine, width int, unified bool) string {
+func (m Model) codeCell(sl *styledLine, width int, sd side) string {
 	t := m.opts.Theme
 	p := m.paint
 	if sl == nil {
@@ -401,10 +409,10 @@ func (m Model) codeCell(sl *styledLine, width int, unified bool) string {
 		bg, sign, signFg = t.DeletedBg, "-", t.Red
 	}
 	var nums string
-	switch {
-	case unified:
+	switch sd {
+	case sideBoth:
 		nums = num(sl.line.Old) + " " + num(sl.line.New)
-	case sl.line.Kind == domain.LineDeleted:
+	case sideOld:
 		nums = num(sl.line.Old)
 	default:
 		nums = num(sl.line.New)
