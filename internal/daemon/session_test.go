@@ -187,11 +187,11 @@ func TestEndSessionKillsThePaneAndKeepsTheSessionListed(t *testing.T) {
 	if err := r.c.Call(context.Background(), rpc.MethodEndSession, rpc.SessionRef{ID: s.ID}, &ended); err != nil {
 		t.Fatal(err)
 	}
-	if !slices.Equal(r.host.killed, []app.PaneID{"%7"}) || ended.State != domain.StateIdle || ended.Pane != "" {
+	if !slices.Equal(r.host.killed, []app.PaneID{"%7"}) || ended.State != domain.StateIdle || ended.Pane != "" || !ended.Ended {
 		t.Fatalf("killed %v, session %+v", r.host.killed, ended)
 	}
 	st := r.state(t)
-	if len(st.Sessions) != 1 || st.Sessions[0].Pane != "" || len(st.Worktrees) != 1 {
+	if len(st.Sessions) != 1 || st.Sessions[0].Pane != "" || !st.Sessions[0].Ended || len(st.Worktrees) != 1 {
 		t.Fatalf("state %+v", st)
 	}
 	var rerr *rpc.Error
@@ -240,8 +240,8 @@ func TestEndingTheSessionInViewShowsTheNextOne(t *testing.T) {
 	for _, s := range r.state(t).Sessions {
 		focused[s.ID] = s.Focused
 	}
-	if !reflect.DeepEqual(focused, map[string]bool{"a": false, "b": true}) {
-		t.Fatalf("focused %v; want b marked as the one in view", focused)
+	if !reflect.DeepEqual(focused, map[string]bool{"b": true}) {
+		t.Fatalf("focused %v; want a forgotten and b marked as the one in view", focused)
 	}
 }
 
@@ -251,6 +251,16 @@ func TestEndingTheLastSessionLeavesAnEmptyStateInTheSlot(t *testing.T) {
 	if !slices.Equal(clientHost.ensured, []app.Slot{slot}) || len(r.host.shown) != 0 {
 		t.Fatalf("shown %+v, ensured %v; want the slot to get its empty-state pane", r.host.shown, clientHost.ensured)
 	}
+}
+
+func hasSession(t *testing.T, r sessionRig, id string) bool {
+	t.Helper()
+	for _, s := range r.state(t).Sessions {
+		if s.ID == id {
+			return true
+		}
+	}
+	return false
 }
 
 func sessionState(t *testing.T, r sessionRig, id string) domain.Session {
@@ -274,8 +284,8 @@ func TestAgentExitingInViewShowsTheNextOne(t *testing.T) {
 		defer r.host.mu.Unlock()
 		return reflect.DeepEqual(r.host.shown, []shown{{"%8", slot}})
 	})
-	if a := sessionState(t, r, "a"); a.Pane != "" || a.State != domain.StateIdle || a.Focused {
-		t.Fatalf("session a after its agent exited: %+v", a)
+	if hasSession(t, r, "a") {
+		t.Fatal("session a is still listed after its agent exited")
 	}
 	waitUntil(t, "b to be marked in view", func() bool { return sessionState(t, r, "b").Focused })
 }
@@ -309,8 +319,8 @@ func TestLastAgentExitingLeavesAnEmptyStateInTheSlot(t *testing.T) {
 		defer clientHost.mu.Unlock()
 		return slices.Equal(clientHost.ensured, []app.Slot{slot})
 	})
-	if a := sessionState(t, r, "a"); a.Pane != "" || a.Focused {
-		t.Fatalf("session a after its agent exited: %+v", a)
+	if hasSession(t, r, "a") {
+		t.Fatal("session a is still listed after its agent exited")
 	}
 }
 
@@ -380,7 +390,8 @@ func TestRestoredSessionsWhosePaneIsGoneAreEnded(t *testing.T) {
 		for _, s := range sub.State.Sessions {
 			byID[s.ID] = s
 		}
-		return byID["gone"].State == domain.StateIdle && byID["gone"].Pane == "" &&
+		_, kept := byID["gone"]
+		return !kept &&
 			byID["alive"].State == domain.StateRunning && byID["alive"].Pane == "%1"
 	})
 }
@@ -412,5 +423,41 @@ func TestNewSessionRetryAfterAFailedSetupGetsAFreshWorktree(t *testing.T) {
 	}
 	if want := map[string]string{"/h/worktrees/api/fix-it": "", "/h/worktrees/api/fix-it-2": s.ID}; !reflect.DeepEqual(owners, want) {
 		t.Fatalf("worktree owners %v, want %v", owners, want)
+	}
+}
+
+func TestEndingASessionWithNoWorktreeForgetsIt(t *testing.T) {
+	store := &memStore{}
+	r := startSessions(t, store, nil)
+	var s domain.Session
+	if err := r.c.Call(context.Background(), rpc.MethodNewSession, rpc.NewSessionParams{Workspace: "/src/shop", WorkItem: "x", Harness: "claude"}, &s); err != nil {
+		t.Fatal(err)
+	}
+	sub, err := dial(t, r.path).Subscribe(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	endSession(t, r, s.ID)
+	for next(t, sub.Diffs).RemovedSession != s.ID {
+		continue
+	}
+	if st := r.state(t); len(st.Sessions) != 0 {
+		t.Fatalf("sessions %+v, want none", st.Sessions)
+	}
+	store.mu.Lock()
+	defer store.mu.Unlock()
+	if len(store.snap.Sessions) != 0 {
+		t.Fatalf("store still has %+v", store.snap.Sessions)
+	}
+}
+
+func TestEndingAForgottenSessionInViewShowsTheNextRowNotTheFirst(t *testing.T) {
+	r, _, slot := startWithClient(t, "b",
+		domain.Session{ID: "a", Pane: "%7"},
+		domain.Session{ID: "b", Pane: "%8"},
+		domain.Session{ID: "c", Pane: "%9"})
+	endSession(t, r, "b")
+	if !reflect.DeepEqual(r.host.shown, []shown{{"%9", slot}}) {
+		t.Fatalf("shown %+v; want c's pane, the row after b", r.host.shown)
 	}
 }

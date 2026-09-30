@@ -259,3 +259,21 @@ func TestWorktreeDetectAssign(t *testing.T) {
 		t.Errorf("unassign: %v", err)
 	}
 }
+
+func TestWorktreeDetectRemovingTheLastWorktreeOfAnEndedSessionForgetsIt(t *testing.T) {
+	store := &memStore{}
+	store.snap.Sessions = []domain.Session{{ID: "s2", State: domain.StateIdle, Ended: true, WorktreeIDs: []string{"/solo-b"}}}
+	store.snap.Worktrees = []domain.Worktree{{ID: "/solo-b", Repo: "/solo", Path: "/solo-b", Branch: "b", SessionID: "s2"}}
+	env := startWorktrees(t, store, 100*time.Millisecond)
+	st := eventually(t, env.path, 2*time.Second, "forgotten", func(st rpc.State) bool {
+		for _, s := range st.Sessions {
+			if s.ID == "s2" {
+				return false
+			}
+		}
+		return true
+	})
+	if s := session(st, "s1"); s.ID != "s1" {
+		t.Fatalf("the live session went too: %+v", st.Sessions)
+	}
+}

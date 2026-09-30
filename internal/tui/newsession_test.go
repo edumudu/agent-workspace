@@ -311,3 +311,16 @@ func TestAStartReplyOnlyTouchesTheDialogThatSentIt(t *testing.T) {
 		t.Fatalf("the third start's failure landed on the fourth dialog:\n%s", out)
 	}
 }
+
+func TestEndedAndRemovedSessionsLeaveTheSidebar(t *testing.T) {
+	st := fixture(3, 0)
+	st.Sessions[2].Ended = true
+	m := newModel(&st, nil)
+	if out := screen(m); !strings.Contains(out, "2 sessions") {
+		t.Fatalf("the ended session is still counted:\n%s", out)
+	}
+	m = update(m, tui.DiffMsg(rpc.Diff{Seq: 1, RemovedSession: "s02"}))
+	if out := screen(m); !strings.Contains(out, "1 session ") {
+		t.Fatalf("the removed session is still listed:\n%s", out)
+	}
+}
