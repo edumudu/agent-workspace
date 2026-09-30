@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -331,4 +332,72 @@ func (g *fakeHunkGit) Stage(_ context.Context, dir, patch string) error {
 func (g *fakeHunkGit) Revert(_ context.Context, dir, patch string) error {
 	g.reverted = append(g.reverted, dir+"\n"+patch)
 	return nil
+}
+
+// codexPickerHost plays Codex 0.159's `/model` flow: a model popup, then a
+// reasoning level popup for the chosen model, each moved with Up and Down.
+type codexPickerHost struct {
+	app.TerminalHost
+	models, efforts []string
+	current         string
+	typed           []string
+	popup           []string
+	highlight       int
+	chosen          []string
+	done            [][]string
+	pending         string
+}
+
+func (h *codexPickerHost) SendText(_ context.Context, _ app.PaneID, text string, _ bool) error {
+	h.typed = append(h.typed, "paste "+text)
+	h.pending = text
+	return nil
+}
+
+func (h *codexPickerHost) SendKeys(_ context.Context, _ app.PaneID, keys ...string) error {
+	h.typed = append(h.typed, "keys "+strings.Join(keys, " "))
+	for _, k := range keys {
+		switch {
+		case k == "Down" && h.highlight < len(h.popup)-1:
+			h.highlight++
+		case k == "Up" && h.highlight > 0:
+			h.highlight--
+		case k == "Escape":
+			h.popup = nil
+		case k == "Enter" && h.pending == "/model":
+			h.pending, h.chosen = "", nil
+			h.popup, h.highlight = h.models, slices.Index(h.models, h.current)
+		case k == "Enter" && h.popup != nil && h.chosen == nil:
+			h.chosen = []string{h.popup[h.highlight]}
+			h.popup, h.highlight = h.efforts, 1
+		case k == "Enter" && h.popup != nil:
+			h.chosen = append(h.chosen, h.popup[h.highlight])
+			h.done = append(h.done, h.chosen)
+			h.current, h.popup = h.chosen[0], nil
+		}
+	}
+	return nil
+}
+
+func (h *codexPickerHost) Capture(context.Context, app.PaneID, int) (string, error) {
+	var b strings.Builder
+	b.WriteString("• earlier output\n  1. a numbered list\n")
+	if h.popup == nil {
+		b.WriteString("› ")
+		return b.String(), nil
+	}
+	title := "Select Model and Effort"
+	if h.chosen != nil {
+		title = "Select Reasoning Level for " + h.chosen[0]
+	}
+	b.WriteString("\n  " + title + "\n\n")
+	for i, row := range h.popup {
+		mark := " "
+		if i == h.highlight {
+			mark = "›"
+		}
+		fmt.Fprintf(&b, "%s %d. %s    description\n", mark, i+1, row)
+	}
+	b.WriteString("\n  Press enter to confirm or esc to go back")
+	return b.String(), nil
 }

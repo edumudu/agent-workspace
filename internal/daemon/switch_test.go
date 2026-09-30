@@ -162,8 +162,8 @@ func TestModelSwitchSupersededWhileWaitingForTheSendLockIsNeverTyped(t *testing.
 	}
 }
 
-func TestModelSwitchIsRefusedForCodex(t *testing.T) {
-	host := &fakeHost{}
+func TestModelSwitchCodexOpensItsModelPickerAndPicksTheRow(t *testing.T) {
+	host := &fakeHost{screens: []string{"  Select Model and Effort\n› 1. GPT-6.1-Sol (current)  x\n  2. GPT-6-Luna  y"}}
 	d, path := start(t, &memStore{}, daemon.WithHarnesses(host, claude.Adapter{}))
 	c := dial(t, path)
 	sub, err := c.Subscribe(context.Background())
@@ -172,12 +172,11 @@ func TestModelSwitchIsRefusedForCodex(t *testing.T) {
 	}
 	d.Post(daemon.SessionChanged{Session: domain.Session{ID: "x", Harness: domain.HarnessCodex, Pane: "%5", State: domain.StateIdle}})
 	next(t, sub.Diffs)
-	_, err = c.SwitchSession(context.Background(), "x", domain.SwitchModel, "gpt-5")
-	var rerr *rpc.Error
-	if !errors.As(err, &rerr) || rerr.Code != rpc.CodeBadRequest {
-		t.Fatalf("err %v", err)
+	if _, err := c.SwitchSession(context.Background(), "x", domain.SwitchModel, "gpt-6-luna"); err != nil {
+		t.Fatal(err)
 	}
-	if typed := host.typedNow(); len(typed) != 0 {
+	want := []string{"%5 paste=true /model", "%5 keys Enter", "%5 keys Down Enter"}
+	if typed := host.waitTyped(t, len(want)); !reflect.DeepEqual(typed, want) {
 		t.Fatalf("typed %q", typed)
 	}
 }

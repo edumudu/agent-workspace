@@ -334,6 +334,20 @@ type fakeHost struct {
 	distinct bool
 	// failFirst makes the next Create fail once.
 	failFirst bool
+	// screens are what Capture shows, one per call; after the last it shows
+	// an empty pane.
+	screens []string
+}
+
+func (h *fakeHost) Capture(context.Context, app.PaneID, int) (string, error) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if len(h.screens) == 0 {
+		return "", nil
+	}
+	screen := h.screens[0]
+	h.screens = h.screens[1:]
+	return screen, nil
 }
 
 func (h *fakeHost) holdPane(pane app.PaneID) (release func()) {

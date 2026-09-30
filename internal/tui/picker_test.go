@@ -31,7 +31,7 @@ func TestModelSwitchMOpensThePickerWithTheSessionsHarnessModels(t *testing.T) {
 		}
 	}
 	out = screen(press(m, "j", "M"))
-	if strings.Contains(out, "MODEL") || !strings.Contains(out, "not supported for codex") {
+	if !strings.Contains(out, "gpt-6-luna") || strings.Contains(out, "opus") {
 		t.Fatalf("Codex session:\n%s", out)
 	}
 }
