@@ -17,7 +17,11 @@ type LaunchRequest struct {
 }
 
 func LaunchSpec(req LaunchRequest) app.PaneSpec {
-	command := []string{"codex"}
+	return launchSpec("codex", req)
+}
+
+func launchSpec(bin string, req LaunchRequest) app.PaneSpec {
+	command := []string{bin}
 	if req.Model != "" {
 		command = append(command, "--model", req.Model)
 	}
@@ -37,10 +41,17 @@ func Launch(ctx context.Context, host app.TerminalHost, req LaunchRequest) (app.
 	return host.Create(ctx, LaunchSpec(req))
 }
 
-type Adapter struct{}
+// Adapter launches Binary, or `codex` from PATH when it is empty.
+type Adapter struct {
+	Binary string
+}
 
 func (Adapter) Harness() domain.Harness { return domain.HarnessCodex }
 
-func (Adapter) Launch(req app.LaunchRequest) app.PaneSpec {
-	return LaunchSpec(LaunchRequest(req))
+func (a Adapter) Launch(req app.LaunchRequest) app.PaneSpec {
+	bin := a.Binary
+	if bin == "" {
+		bin = "codex"
+	}
+	return launchSpec(bin, LaunchRequest(req))
 }

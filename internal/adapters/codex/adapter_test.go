@@ -19,3 +19,10 @@ func TestAdapterLaunchesCodexAsTheCodexHarness(t *testing.T) {
 		t.Fatalf("got %+v, want %+v", got, want)
 	}
 }
+
+func TestAdapterLaunchesItsBinaryWhenSet(t *testing.T) {
+	got := Adapter{Binary: "/bin/fake-codex"}.Launch(app.LaunchRequest{Dir: "/w", Prompt: "go"})
+	if want := []string{"/bin/fake-codex", "--", "go"}; !reflect.DeepEqual(got.Command, want) {
+		t.Fatalf("command %v, want %v", got.Command, want)
+	}
+}
