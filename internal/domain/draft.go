@@ -125,7 +125,7 @@ type ReviewDraft struct {
 	Status   DraftStatus     `json:"status"`
 	Comments []ReviewComment `json:"comments"`
 	SentAt   time.Time       `json:"sent_at,omitzero"`
-	Turns    []string        `json:"turns,omitempty"`
+	Turns    []string        `json:"turns"`
 }
 
 func (d ReviewDraft) Add(c ReviewComment) ReviewDraft {
