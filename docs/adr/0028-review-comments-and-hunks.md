@@ -25,6 +25,7 @@ Status: accepted, 2026-09-30.
 
 ## Consequences
 
+- A draft is stored as sent only after its paste lands, so a daemon stopped mid-paste sends it again after the restart. A stop right after the paste but before that write can send it twice.
 - If the user types their own prompt between a send and its hook, the draft links to that turn instead.
 - In the branch scope, a hunk's old side is the merge base, not the index. Staging such a hunk fails if the index differs there, and the TUI shows git's error.
 - Reverted patches pile up under the git dir; nothing prunes them yet.

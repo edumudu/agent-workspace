@@ -105,7 +105,7 @@ type state struct {
 	hints        worktreeHints
 	listeners    []domain.Listener
 	// requestTurn is set by WithReview and must not block.
-	requestTurn func(session string, dirs []string, sent *domain.ReviewDraft)
+	requestTurn func(session string, dirs []string, sent *domain.ReviewDraft) bool
 	viewed      map[string]domain.ViewedMark
 	// queue is the launcher's waiting issues; launched is the sessions it
 	// started, which hold its slots. Neither is persisted.

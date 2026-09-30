@@ -99,7 +99,7 @@ func (s *state) dispatchDraft(session domain.Session) (domain.ReviewDraft, bool)
 	}
 	delete(s.drafts, session.ID)
 	s.awaiting[session.ID] = sent
-	s.store.PutDraft(sent)
+	// why: the store keeps it queued until the paste lands, so a daemon stopped in between sends it after the restart.
 	s.sendDraft(session, sent, prompt)
 	return sent, true
 }
@@ -121,11 +121,20 @@ func (d *Daemon) sendDraft(session domain.Session, draft domain.ReviewDraft, pro
 			err := app.SendPrompt(ctx, d.hs.host, app.PaneID(session.Pane), prompt, app.PasteSettle)
 			cancel()
 			if err == nil {
+				d.query(func(s *state) { s.pasted(draft) })
 				return
 			}
 		}
 		d.query(func(s *state) { s.requeueDraft(draft) })
 	}()
+}
+
+// pasted records draft as sent, unless its prompt was already seen and the
+// linked copy is on its way to the store.
+func (s *state) pasted(draft domain.ReviewDraft) {
+	if current, ok := s.awaiting[draft.Session]; ok && current.ID == draft.ID {
+		s.store.PutDraft(current)
+	}
 }
 
 // requeueDraft puts back a draft that was not pasted, ahead of any comments

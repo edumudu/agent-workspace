@@ -40,10 +40,12 @@ type review struct {
 func WithReview(g app.ReviewGit) Option {
 	return func(d *Daemon) {
 		d.rv = review{git: g, reviewer: app.NewReviewer(g), jobs: make(chan turnJob, turnQueue)}
-		d.st.requestTurn = func(session string, dirs []string, sent *domain.ReviewDraft) {
+		d.st.requestTurn = func(session string, dirs []string, sent *domain.ReviewDraft) bool {
 			select {
 			case d.rv.jobs <- turnJob{session: session, dirs: dirs, sent: sent}:
+				return true
 			default:
+				return false
 			}
 		}
 	}
@@ -109,8 +111,9 @@ func (s *state) promptSubmitted(session string) {
 		delete(s.awaiting, session)
 		sent = &d
 	}
-	if len(dirs) > 0 {
-		s.requestTurn(session, dirs, sent)
+	accepted := len(dirs) > 0 && s.requestTurn(session, dirs, sent)
+	if !accepted && sent != nil {
+		s.store.PutDraft(sent.LinkTurn(nil))
 	}
 }
 
