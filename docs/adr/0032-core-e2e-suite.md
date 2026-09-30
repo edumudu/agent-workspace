@@ -5,7 +5,7 @@ Status: accepted, 2026-09-30.
 ## Decision
 
 - `test/e2e` runs the real binary against a temp `AGENTWS_HOME`, temp repos and its own `tmux -L` server per script. Five scripts cover the core loop: hook events drive session state, agent-created worktrees attach, a merged PR's worktree is removed with its branch kept, a dirty merged worktree is backed up, and review comments reach the agent as the documented prompt.
-- Fake `claude`, `codex` and `gh` live in `test/e2e/bin` as shell scripts. The agent fakes replay a steps file and call `agentws hook` exactly as the real harnesses' hook config does, so the hook path under test is the real one.
+- Fake `claude`, `codex` and `gh` live in `test/e2e/testdata/bin` as shell scripts, not `test/e2e/bin` as the issue said: `scripts/tdd-check` copies only test files and `testdata/` onto the base checkout, and without the fakes there the base run would launch whatever real `claude` is on `PATH`. The agent fakes replay a steps file and call `agentws hook` exactly as the real harnesses' hook config does, so the hook path under test is the real one.
 - No fixed sleeps. Scripts poll with `eventually` (15 s deadline). Hooks are fire-and-forget on separate connections and can reach the daemon out of order, so where order matters the script waits for a state and then opens a `gate` that lets the fake go on.
 - The daemon takes two test hooks from the environment, read once in `daemon.Run`: `AGENTWS_TEST_CLOCK` shifts the cleanup clock (so the 1 h activity grace passes without waiting) and `AGENTWS_TEST_PR_POLL` replaces the 60 s PR poll. Unset, nothing changes. The worktree poll is left alone.
 - `agentws review send` was added so the review scenario runs from the CLI.

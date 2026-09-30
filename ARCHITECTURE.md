@@ -29,7 +29,7 @@ internal/rpc           protocol types + client (used by tui, hook, cli, nvim)
 internal/tui           Bubble Tea models; talks only to rpc.Client
 nvim/                  Lua plugin
 scripts/               repo tooling: lint-comments (Go AST check), tdd-check, mutate
-test/e2e               testscript suite; builds the binary and runs testdata/script/*.txtar with the fakes in test/e2e/bin
+test/e2e               testscript suite; builds the binary and runs testdata/script/*.txtar with the fakes in test/e2e/testdata/bin
 ```
 
 Dependency rule: `domain` ← `app` ← `adapters`/`daemon`, and `tui` → `rpc` only. `golangci-lint depguard` enforces it (rules in `.golangci.yml`), so breaking it fails CI. `tui` may import `domain` types.
