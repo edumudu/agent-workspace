@@ -69,6 +69,33 @@ func TestModelSwitchNewerRequestReplacesAnUnsentOneOfTheSameKind(t *testing.T) {
 	}
 }
 
+func TestModelSwitchNewRequestRetiresASentUnconfirmedOneOfTheSameKind(t *testing.T) {
+	s := sentSession(SwitchModel, "opus").RequestSwitch(SwitchModel, "haiku")
+	want := []Switch{{Kind: SwitchModel, Value: "haiku"}}
+	if !reflect.DeepEqual(s.Switches, want) {
+		t.Fatalf("switches %+v", s.Switches)
+	}
+}
+
+func TestModelSwitchModelNamesMatchExactlyOrByTheirFirstWord(t *testing.T) {
+	cases := []struct {
+		requested, reported string
+		confirmed           bool
+	}{
+		{"opus", "Opus 4.7", true},
+		{"gpt-5", "GPT-5", true},
+		{"gpt-5", "gpt-5-codex", false},
+		{"gpt-5-codex", "gpt-5", false},
+		{"sonnet", "Opus 4.7", false},
+	}
+	for _, c := range cases {
+		s := sentSession(SwitchModel, c.requested).Report(StatusReport{Model: c.reported})
+		if got := len(s.Switches) == 0; got != c.confirmed {
+			t.Errorf("%q vs %q: confirmed %v, want %v", c.requested, c.reported, got, c.confirmed)
+		}
+	}
+}
+
 func TestModelSwitchDoesNotMutateTheCallersSession(t *testing.T) {
 	before := Session{State: StateIdle}.RequestSwitch(SwitchModel, "opus")
 	_, _ = before.Dispatch(switchT0)
