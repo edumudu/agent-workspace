@@ -371,3 +371,11 @@ func SplitRows(h Hunk) []SplitRow {
 	}
 	return rows
 }
+
+// WorktreeReview is one worktree's files in a review. Err is set, and Files
+// empty, when its diff could not be built.
+type WorktreeReview struct {
+	Worktree Worktree
+	Files    []FileDiff
+	Err      string
+}
