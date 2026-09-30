@@ -1,0 +1,45 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+      - uses: golangci/golangci-lint-action@v8
+        with:
+          version: v2.14.0
+          install-only: true
+      - run: make build
+      - run: ./bin/agentws version
+      - run: make lint
+      - run: go test ./...
+
+  tdd:
+    if: github.event_name == 'pull_request'
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+      - run: cp scripts/tdd-check "$RUNNER_TEMP/" && "$RUNNER_TEMP/tdd-check" "origin/${{ github.base_ref }}" "${{ github.event.pull_request.head.sha }}"
+
+  mutate:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+      - run: go install github.com/go-gremlins/gremlins/cmd/gremlins@v0.6.0
+      - run: make mutate

@@ -37,6 +37,22 @@ The details are in [ARCHITECTURE.md](ARCHITECTURE.md), and the full scope is in 
 
 macOS, tmux, git, the GitHub CLI (`gh`, signed in), and Claude Code and/or the Codex CLI.
 
+## Build and test
+
+Needs Go (version in `go.mod`), `golangci-lint` v2, and for `make mutate` `gremlins`.
+
+```sh
+make build             # ./bin/agentws
+./bin/agentws version
+make test              # go test ./...
+make lint              # golangci-lint + scripts/lint-comments
+make e2e               # testscript suite in test/e2e
+make bench             # benchmarks for the performance budgets
+make mutate            # gremlins on internal/domain and internal/app
+```
+
+Integration tests use `-tags integration` and need `git` and `tmux`.
+
 ## Contributing
 
 The build is test-driven and CI enforces it. Read [AGENTS.md](AGENTS.md) before opening a PR: it covers the layer rules, tests first, no low-value tests or comments, and one PR per issue.

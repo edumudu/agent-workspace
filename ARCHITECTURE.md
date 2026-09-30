@@ -27,9 +27,13 @@ internal/daemon        socket server, event loop, workers; wires adapters into a
 internal/rpc           protocol types + client (used by tui, hook, cli, nvim)
 internal/tui           Bubble Tea models; talks only to rpc.Client
 nvim/                  Lua plugin
+scripts/               repo tooling: lint-comments (Go AST check), tdd-check, mutate
+test/e2e               testscript suite; builds the binary and runs testdata/script/*.txtar
 ```
 
-Dependency rule: `domain` ← `app` ← `adapters`/`daemon`, and `tui` → `rpc` only. `golangci-lint depguard` enforces it, so breaking it fails CI.
+Dependency rule: `domain` ← `app` ← `adapters`/`daemon`, and `tui` → `rpc` only. `golangci-lint depguard` enforces it (rules in `.golangci.yml`), so breaking it fails CI. `tui` may import `domain` types.
+
+`cmd/agentws` dispatches subcommands with the standard library; see [docs/adr/0002-cli-and-ci-tooling.md](docs/adr/0002-cli-and-ci-tooling.md). The version and commit come from `-ldflags -X main.version/main.commit`, falling back to the Go build info's VCS revision.
 
 **Domain** (`internal/domain`): `Workspace`, `Repo`, `Task`, `Session`, `Worktree`, `Harness`, `AgentState`, `Usage`, `ReviewDraft`, `Comment`, `CleanupPlan`. Rules live here as plain functions:
 - `Session.Apply(event)`: the state machine.

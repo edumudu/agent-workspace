@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# Runs gremlins on the packages AGENTS.md holds to a mutation score of 80%.
+# A package with no tests yet is skipped.
+set -euo pipefail
+gremlins="${1:-gremlins}"
+for pkg in internal/domain internal/app; do
+  if ! ls "$pkg"/*_test.go >/dev/null 2>&1; then
+    echo "mutate: $pkg has no tests yet, skipping"
+    continue
+  fi
+  GOMAXPROCS=4 "$gremlins" unleash --workers 2 --threshold-efficacy 80 "./$pkg"
+done
