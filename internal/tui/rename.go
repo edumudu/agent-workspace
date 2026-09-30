@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/charmbracelet/x/ansi"
 
 	"github.com/giovaniif/agent-workspace/internal/domain"
 	"github.com/giovaniif/agent-workspace/internal/rpc"
@@ -74,13 +75,16 @@ func (m Model) unpin() tea.Cmd {
 }
 
 // renameLeft is the status line while renaming. It shows the end of a text
-// too long for the row, where the cursor is.
+// too long for the row, where the cursor is, cut by display cells.
 func (m Model) renameLeft() []piece {
 	s := m.styles
-	room := max(m.width-len(" RENAME ")-3, 1)
-	text := []rune(m.renaming.text)
-	if len(text) > room {
-		text = text[len(text)-room:]
+	const badge = " RENAME "
+	room := max(m.width-ansi.StringWidth(badge)-ansi.StringWidth(" ▏"), 1)
+	full := m.renaming.text
+	text := full
+	// why: TruncateLeft keeps a wide character that straddles the cut, so it can leave one cell too many.
+	for cut := ansi.StringWidth(full) - room; ansi.StringWidth(text) > room; cut++ {
+		text = ansi.TruncateLeft(full, cut, "")
 	}
-	return []piece{{s.badge, " RENAME "}, {s.text, " " + string(text) + "▏"}}
+	return []piece{{s.badge, badge}, {s.text, " " + text + "▏"}}
 }
