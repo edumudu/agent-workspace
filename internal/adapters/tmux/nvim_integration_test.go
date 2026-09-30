@@ -31,7 +31,7 @@ func TestNavigationKeysPassThroughNvimAndLeaveItAtTheEdge(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = os.RemoveAll(dir) })
 	initLua := filepath.Join(dir, "init.lua")
-	if err := os.WriteFile(initLua, []byte("vim.opt.rtp:prepend('"+plugin+"')\nrequire('agentws').setup({})\nvim.cmd('vsplit')\nvim.cmd('wincmd l')\n"), 0o644); err != nil {
+	if err := os.WriteFile(initLua, []byte("vim.opt.rtp:prepend('"+plugin+"')\nrequire('agentws').setup({})\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	sock := filepath.Join(dir, "n.sock")
@@ -42,7 +42,7 @@ func TestNavigationKeysPassThroughNvimAndLeaveItAtTheEdge(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	editor, err := h.Create(ctx, app.PaneSpec{Name: "nvim", Command: []string{"nvim", "--clean", "-u", initLua, "--listen", sock}})
+	editor, err := h.Create(ctx, app.PaneSpec{Name: "nvim", Command: []string{"nvim", "--clean", "-u", initLua, "--listen", sock, "-c", "vsplit", "-c", "wincmd l"}})
 	if err != nil {
 		t.Fatal(err)
 	}
