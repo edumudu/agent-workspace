@@ -1,5 +1,6 @@
-// Package procs implements app.ProcessTable with netstat, lsof and process
-// signals. It only reads processes, and signals a group only when asked to.
+// Package procs implements app.ProcessTable and app.WorktreeHolders with
+// netstat, lsof and process signals. It only reads processes, and signals a
+// group only when asked to.
 package procs
 
 import (

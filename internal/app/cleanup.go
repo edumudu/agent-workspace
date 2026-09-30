@@ -1,0 +1,313 @@
+package app
+
+import (
+	"context"
+	"fmt"
+	"path/filepath"
+	"sync"
+	"time"
+
+	"github.com/giovaniif/agent-workspace/internal/domain"
+)
+
+// WorktreeGitFacts is what git knows about one worktree. Fingerprint changes
+// whenever HEAD or the status of any path does.
+type WorktreeGitFacts struct {
+	InDefault   bool
+	OnDefault   bool
+	Uncommitted int
+	ModifiedAt  time.Time
+	Fingerprint string
+}
+
+type CleanupGit interface {
+	CleanupFacts(ctx context.Context, w domain.Worktree) (WorktreeGitFacts, error)
+	// Backup writes the worktree's uncommitted changes, untracked files and
+	// status under dir, which it creates.
+	Backup(ctx context.Context, w domain.Worktree, dir string) error
+	// CreateBranch points a new branch at HEAD without ever moving an
+	// existing one, and returns the name it used.
+	CreateBranch(ctx context.Context, w domain.Worktree, name string) (string, error)
+	Prune(ctx context.Context, repo string) error
+}
+
+// WorktreeHolders maps each of paths to the processes whose cwd is inside it.
+type WorktreeHolders interface {
+	Holders(ctx context.Context, paths []string) (map[string][]string, error)
+}
+
+// Trash takes a directory out of place at once; deleting it is the trash's
+// business, in the background.
+type Trash interface {
+	Move(path string) error
+	// Purge deletes, in the background, whatever an earlier run left behind.
+	Purge()
+}
+
+type CleanupAudit interface {
+	Record(CleanupRecord)
+}
+
+type CleanupRecord struct {
+	At      time.Time            `json:"at"`
+	Path    string               `json:"path"`
+	Branch  string               `json:"branch,omitempty"`
+	Action  domain.CleanupAction `json:"action"`
+	Reason  string               `json:"reason"`
+	Outcome string               `json:"outcome"`
+}
+
+// SessionActivity is what the daemon knows about the worktree's session.
+type SessionActivity struct {
+	Live         bool
+	LastActivity time.Time
+}
+
+type CleanupResult struct {
+	Decision domain.CleanupDecision
+	Outcome  string
+}
+
+// Cleanup plans and executes worktree cleanup. It remembers which states it
+// already backed up, so a dirty worktree is not backed up on every run.
+type Cleanup struct {
+	git        CleanupGit
+	procs      WorktreeHolders
+	trash      Trash
+	audit      CleanupAudit
+	backupRoot string
+	now        func() time.Time
+
+	mu       sync.Mutex
+	backedUp map[string]string
+	usedDirs map[string]bool
+}
+
+func NewCleanup(git CleanupGit, procs WorktreeHolders, trash Trash, audit CleanupAudit, backupRoot string, now func() time.Time) *Cleanup {
+	return &Cleanup{git: git, procs: procs, trash: trash, audit: audit, backupRoot: backupRoot, now: now, backedUp: map[string]string{}, usedDirs: map[string]bool{}}
+}
+
+type plannedWorktree struct {
+	decision    domain.CleanupDecision
+	fingerprint string
+}
+
+// Plan decides every worktree without changing anything.
+func (c *Cleanup) Plan(ctx context.Context, wts []domain.Worktree, activity func(domain.Worktree) SessionActivity) []domain.CleanupDecision {
+	planned := c.plan(ctx, wts, activity)
+	out := make([]domain.CleanupDecision, len(planned))
+	for i, p := range planned {
+		out[i] = p.decision
+	}
+	return out
+}
+
+func (c *Cleanup) plan(ctx context.Context, wts []domain.Worktree, activity func(domain.Worktree) SessionActivity) []plannedWorktree {
+	paths := make([]string, len(wts))
+	for i, w := range wts {
+		paths[i] = w.Path
+	}
+	holders, procErr := c.procs.Holders(ctx, paths)
+	gitFacts := make([]WorktreeGitFacts, len(wts))
+	gitErrs := make([]error, len(wts))
+	var wg sync.WaitGroup
+	sem := make(chan struct{}, refreshParallelism)
+	for i := range wts {
+		wg.Add(1)
+		sem <- struct{}{}
+		go func() {
+			defer wg.Done()
+			defer func() { <-sem }()
+			gitFacts[i], gitErrs[i] = c.git.CleanupFacts(ctx, wts[i])
+		}()
+	}
+	wg.Wait()
+	out := make([]plannedWorktree, len(wts))
+	for i, w := range wts {
+		out[i] = c.decide(w, gitFacts[i], gitErrs[i], holders[w.Path], procErr, activity(w))
+	}
+	return out
+}
+
+func (c *Cleanup) decide(w domain.Worktree, g WorktreeGitFacts, gitErr error, holders []string, procErr error, act SessionActivity) plannedWorktree {
+	f := domain.CleanupFacts{
+		InDefault:    g.InDefault,
+		OnDefault:    g.OnDefault,
+		Uncommitted:  g.Uncommitted,
+		Holders:      holders,
+		SessionLive:  act.Live,
+		LastActivity: latest(g.ModifiedAt, act.LastActivity),
+	}
+	switch {
+	case procErr != nil:
+		f.Unknown = "process check failed: " + procErr.Error()
+	case gitErr != nil:
+		f.Unknown = gitErr.Error()
+	}
+	return plannedWorktree{decision: domain.PlanCleanup(w, f, c.now()), fingerprint: g.Fingerprint}
+}
+
+// recheck runs stillRemovable, at most refreshParallelism at once, on every
+// planned removal that passed the last process check.
+func (c *Cleanup) recheck(ctx context.Context, planned []plannedWorktree, holders map[string][]string, procErr error, activity func(domain.Worktree) SessionActivity) []string {
+	stale := make([]string, len(planned))
+	if procErr != nil {
+		return stale
+	}
+	var wg sync.WaitGroup
+	sem := make(chan struct{}, refreshParallelism)
+	for i, p := range planned {
+		w := p.decision.Worktree
+		if p.decision.Action != domain.CleanupRemove || len(holders[w.Path]) > 0 {
+			continue
+		}
+		wg.Add(1)
+		sem <- struct{}{}
+		go func() {
+			defer wg.Done()
+			defer func() { <-sem }()
+			stale[i] = c.stillRemovable(ctx, p, activity(w))
+		}()
+	}
+	wg.Wait()
+	return stale
+}
+
+// stillRemovable asks git again right before the move, so a write that
+// landed after planning keeps the worktree. It returns why not, or "".
+func (c *Cleanup) stillRemovable(ctx context.Context, p plannedWorktree, act SessionActivity) string {
+	w := p.decision.Worktree
+	g, err := c.git.CleanupFacts(ctx, w)
+	if err != nil {
+		return err.Error()
+	}
+	fresh := c.decide(w, g, nil, nil, nil, act)
+	if fresh.fingerprint != p.fingerprint || fresh.decision.Action != domain.CleanupRemove {
+		return "changed since it was planned"
+	}
+	return ""
+}
+
+func latest(a, b time.Time) time.Time {
+	if a.After(b) {
+		return a
+	}
+	return b
+}
+
+// Execute plans afresh and acts on it: dirty or detached worktrees are
+// backed up and kept for the user, merged clean ones go to the trash once a
+// last process check still finds nobody inside, and their repos are pruned.
+func (c *Cleanup) Execute(ctx context.Context, wts []domain.Worktree, activity func(domain.Worktree) SessionActivity) []CleanupResult {
+	c.trash.Purge()
+	planned := c.plan(ctx, wts, activity)
+	results := make([]CleanupResult, len(planned))
+	var removals []string
+	for i, p := range planned {
+		results[i] = CleanupResult{Decision: p.decision, Outcome: "kept"}
+		switch p.decision.Action {
+		case domain.CleanupBackupThenAsk:
+			results[i].Outcome = c.backup(ctx, p)
+		case domain.CleanupRemove:
+			removals = append(removals, p.decision.Worktree.Path)
+		}
+	}
+	// why: a shell or editor may have entered a worktree while facts were gathered.
+	var holders map[string][]string
+	var procErr error
+	if len(removals) > 0 {
+		holders, procErr = c.procs.Holders(ctx, removals)
+	}
+	stale := c.recheck(ctx, planned, holders, procErr, activity)
+	pruned := map[string]bool{}
+	var repos []string
+	for i, r := range results {
+		d := r.Decision
+		if d.Action != domain.CleanupRemove {
+			continue
+		}
+		if procErr != nil {
+			results[i].Outcome = "kept: process check failed: " + procErr.Error()
+			continue
+		}
+		if h := holders[d.Worktree.Path]; len(h) > 0 {
+			results[i].Outcome = "kept: in use by " + h[0]
+			continue
+		}
+		switch why := stale[i]; {
+		case why != "":
+			results[i].Outcome = "kept: " + why
+		default:
+			if err := c.trash.Move(d.Worktree.Path); err != nil {
+				results[i].Outcome = "failed: " + err.Error()
+				break
+			}
+			results[i].Outcome = "removed"
+			if !pruned[d.Worktree.Repo] {
+				pruned[d.Worktree.Repo] = true
+				repos = append(repos, d.Worktree.Repo)
+			}
+		}
+	}
+	for _, repo := range repos {
+		_ = c.git.Prune(ctx, repo)
+	}
+	for _, r := range results {
+		if r.Outcome != "kept" && r.Outcome != "already backed up" {
+			c.record(r)
+		}
+	}
+	return results
+}
+
+func (c *Cleanup) backup(ctx context.Context, p plannedWorktree) string {
+	w := p.decision.Worktree
+	c.mu.Lock()
+	done := p.fingerprint != "" && c.backedUp[w.ID] == p.fingerprint
+	c.mu.Unlock()
+	if done {
+		return "already backed up"
+	}
+	dir := c.claimBackupDir(w)
+	if err := c.git.Backup(ctx, w, dir); err != nil {
+		return "failed: " + err.Error()
+	}
+	outcome := "backed up to " + dir
+	if p.decision.BackupBranch != "" {
+		name, err := c.git.CreateBranch(ctx, w, p.decision.BackupBranch)
+		if err != nil {
+			return outcome + ", branch failed: " + err.Error()
+		}
+		outcome += ", branch " + name
+	}
+	c.mu.Lock()
+	c.backedUp[w.ID] = p.fingerprint
+	c.mu.Unlock()
+	return outcome
+}
+
+// claimBackupDir is <root>/<ts>/<name>, with -2, -3 and so on appended when
+// another worktree of the same name was backed up in the same second.
+func (c *Cleanup) claimBackupDir(w domain.Worktree) string {
+	base := filepath.Join(c.backupRoot, c.now().Format("20060102-150405"), filepath.Base(w.Path))
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	dir := base
+	for i := 2; c.usedDirs[dir]; i++ {
+		dir = fmt.Sprintf("%s-%d", base, i)
+	}
+	c.usedDirs[dir] = true
+	return dir
+}
+
+func (c *Cleanup) record(r CleanupResult) {
+	d := r.Decision
+	c.audit.Record(CleanupRecord{
+		At:      c.now(),
+		Path:    d.Worktree.Path,
+		Branch:  d.Worktree.Branch,
+		Action:  d.Action,
+		Reason:  d.Reason,
+		Outcome: r.Outcome,
+	})
+}

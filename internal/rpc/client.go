@@ -124,6 +124,18 @@ func (c *Client) KillPorts(ctx context.Context, pgids []int) ([]int, error) {
 	return out.Killed, err
 }
 
+func (c *Client) CleanupPlan(ctx context.Context) ([]CleanupItem, error) {
+	var items []CleanupItem
+	err := c.Call(ctx, MethodCleanupPlan, nil, &items)
+	return items, err
+}
+
+func (c *Client) CleanupRun(ctx context.Context) ([]CleanupItem, error) {
+	var items []CleanupItem
+	err := c.Call(ctx, MethodCleanupRun, nil, &items)
+	return items, err
+}
+
 func (c *Client) WorkspaceRemove(ctx context.Context, root string) error {
 	return c.Call(ctx, MethodWorkspaceRemove, WorkspaceRemoveParams{Root: root}, nil)
 }

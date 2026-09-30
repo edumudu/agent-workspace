@@ -125,6 +125,7 @@ type Daemon struct {
 	// restored is the sessions loaded from the store, checked once against tmux on Serve.
 	restored []domain.Session
 	rv       review
+	cl       cleanupWorker
 }
 
 // New restores state from store. pid is what status reports.
@@ -175,6 +176,7 @@ func New(store app.Store, pid int, opts ...Option) (*Daemon, error) {
 		ws:       workspaces{now: time.Now, refreshEvery: defaultRefreshInterval, ctx: context.Background()},
 		wt:       worktreeScanner{every: DefaultWorktreePoll, prEvery: DefaultPRPoll, baselined: map[string]bool{}},
 		ports:    portScanner{every: DefaultPortsPoll},
+		cl:       cleanupWorker{kick: make(chan struct{}, 1)},
 	}
 	st.requestUsage = func(sessionID, path string, force bool) { d.requestUsage(st, sessionID, path, force) }
 	st.sendSwitches = d.sendSwitches
@@ -217,6 +219,7 @@ func (d *Daemon) Serve(ctx context.Context, ln net.Listener) error {
 	go d.watchPorts(ctx)
 	go d.reconcilePanes(ctx)
 	go d.snapshotTurns(ctx)
+	go d.cleanupEvery(ctx)
 	loopDone := make(chan struct{})
 	go func() {
 		d.loop(ctx)
@@ -434,6 +437,8 @@ func (d *Daemon) dispatch(c *conn, line []byte) (*rpc.Response, bool) {
 		return d.worktreeAssign(req)
 	case rpc.MethodPortsKill:
 		return d.portsKill(req)
+	case rpc.MethodCleanupPlan, rpc.MethodCleanupRun:
+		return d.cleanupMethod(req)
 	default:
 		return errorResponse(req.ID, rpc.CodeUnknownMethod, "unknown method "+req.Method), true
 	}

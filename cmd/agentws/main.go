@@ -16,7 +16,7 @@ var (
 	commit  = ""
 )
 
-var stubs = []string{"cleanup"}
+var stubs []string
 
 func main() {
 	os.Exit(run(os.Args[1:], os.Stdout, os.Stderr))
@@ -53,6 +53,8 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return runSetupWorktree(args[1:], stdout, stderr)
 	case cmd == "workspace":
 		return runWorkspace(args[1:], stdout, stderr)
+	case cmd == "cleanup":
+		return runCleanup(args[1:], stdout, stderr)
 	case cmd == "worktree":
 		return runWorktree(args[1:], stdout, stderr)
 
