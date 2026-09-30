@@ -24,7 +24,12 @@ func (h *Host) OpenClient(ctx context.Context, name string, tui app.PaneSpec) (a
 	if err := h.addSlotPane(ctx, slot); err != nil {
 		return "", err
 	}
+	resize := "resize-pane -t " + string(slot) + ".0 -x " + strconv.Itoa(SidebarWidth)
 	if _, err := h.run(ctx, "", "resize-pane", "-t", string(slot)+".0", "-x", strconv.Itoa(SidebarWidth)); err != nil {
+		return "", err
+	}
+	// why: tmux spreads a window resize over both panes; the hook puts the sidebar back to its width.
+	if _, err := h.run(ctx, "", "set-hook", "-w", "-t", string(slot), "window-resized", resize); err != nil {
 		return "", err
 	}
 	return slot, nil
