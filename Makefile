@@ -1,0 +1,26 @@
+VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
+COMMIT  ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo none)
+LDFLAGS := -X main.version=$(VERSION) -X main.commit=$(COMMIT)
+GO_TEST_FLAGS ?= -p 2
+GREMLINS ?= $(shell go env GOPATH)/bin/gremlins
+
+.PHONY: build test lint bench mutate e2e
+
+build:
+	go build -ldflags "$(LDFLAGS)" -o bin/agentws ./cmd/agentws
+
+test:
+	go test $(GO_TEST_FLAGS) ./...
+
+lint:
+	golangci-lint run ./...
+	go run ./scripts/lint-comments .
+
+bench:
+	go test $(GO_TEST_FLAGS) -run '^$$' -bench . -benchtime 1s ./...
+
+mutate:
+	./scripts/mutate $(GREMLINS)
+
+e2e:
+	go test $(GO_TEST_FLAGS) ./test/e2e/...

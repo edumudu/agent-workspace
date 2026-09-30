@@ -1,0 +1,36 @@
+version: "2"
+
+linters:
+  enable:
+    - depguard
+  settings:
+    depguard:
+      rules:
+        domain:
+          files:
+            - "**/internal/domain/**"
+          deny:
+            - pkg: github.com/giovaniif/agent-workspace/internal
+              desc: domain has no imports from other internal packages
+        app:
+          files:
+            - "**/internal/app/**"
+          deny:
+            - pkg: github.com/giovaniif/agent-workspace/internal/adapters
+              desc: app depends only on domain
+            - pkg: github.com/giovaniif/agent-workspace/internal/daemon
+              desc: app depends only on domain
+            - pkg: github.com/giovaniif/agent-workspace/internal/rpc
+              desc: app depends only on domain
+            - pkg: github.com/giovaniif/agent-workspace/internal/tui
+              desc: app depends only on domain
+        tui:
+          files:
+            - "**/internal/tui/**"
+          deny:
+            - pkg: github.com/giovaniif/agent-workspace/internal/adapters
+              desc: tui talks only to rpc
+            - pkg: github.com/giovaniif/agent-workspace/internal/app
+              desc: tui talks only to rpc
+            - pkg: github.com/giovaniif/agent-workspace/internal/daemon
+              desc: tui talks only to rpc
