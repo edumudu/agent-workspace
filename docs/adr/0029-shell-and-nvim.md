@@ -1,0 +1,40 @@
+# ADR 0029: Shell and nvim panes, the nvim plugin and draft comments
+
+Status: accepted, 2026-09-30.
+
+## Decision
+
+- **Shell.** `shell.toggle` `{session, worktree, popup}` finds or creates the shell for `(session, worktree)` and shows or hides it. `domain.ChooseShell` picks the directory: the wanted worktree, else the session's first by ID, else the cwd its hooks last reported. The daemon keeps `key → pane` in memory and checks `Alive` before reuse, so a shell that exited is replaced.
+- **Split.** The shell is joined below the agent pane (`join-pane -v -l 35%`, `select-pane`) and hidden with `break-pane -d`, so it keeps running in a window of its own. Toggling shows the session's agent pane first, without moving focus, unless the session's nvim is in the slot.
+- **Popup.** `T` runs `display-popup -E` on the attached client. The popup runs a second client on a grouped session (`agentws-popup-*`, `destroy-unattached on`) with the shell's window selected, so the shell is the same one the split shows and survives the popup. `M-t` detaches the popup client; a shell that exits closes it too.
+- **nvim.** One per session, started `nvim --listen $AGENTWS_HOME/nvim/<session>.sock` in a pane with `AGENTWS_SESSION` and `AGENTWS_HOME` set. `nvim.toggle` (`e`) swaps it into the main slot and back. `nvim.open` (`o` in the review) starts it on `+<line> <file>`, or, when it is running, evaluates `execute('edit +N ' . fnameescape('<file>'))` through `nvim --server <sock> --remote-expr`, then shows and focuses it. The review closes first so nvim gets the room. A path must be inside the worktree.
+- **Keys.** `t` shell, `T` popup, `e` nvim, `o` in the review. The worktree is the review's last `w` choice for the selected session, else the session's first.
+- **Navigation.** The tmux config binds `C-h/j/k/l` in the root table: when the pane's command is `nvim` the key goes to nvim, else `select-pane` unless `#{pane_at_<edge>}`. The plugin does the reverse: `wincmd`, and at nvim's edge `tmux if -F '#{pane_at_<edge>}' '' 'select-pane -<dir>'`. Neither wraps around.
+- **Plugin** (`nvim/`). It calls the CLI, never the socket. `:AgentwsComment` (range, optional text, else `vim.ui.input`) runs `agentws review comment --file <realpath> --start --end --code --body`. `:AgentwsDiff [scope]` runs `agentws review scope`, picks the worktree holding the buffer (else the first with a base) and runs `:DiffviewOpen <from> --untracked-files=true -C<path>`. The session comes from `$AGENTWS_SESSION`. `setup{bin, tmux, navigate}` maps `C-h/j/k/l`.
+- **Scope.** `WorktreeReview.From` is the commit the diff starts from. `review.open` with no scope uses the session's last opened one (`uncommitted` at first), so `:AgentwsDiff` shows what the TUI shows.
+- **Draft comments.** `review.comment` `{session, file | worktree+path, start_line, end_line, code, body}` places the file in one of the session's worktrees (`domain.ResolveCommentFile`, innermost wins), adds a `domain.DraftComment` and emits it as `Diff.Comment`. `State.Comments` carries them for late subscribers. The review shows `N draft comments`.
+- **Adapter.** `adapters/nvim` runs `nvim --server`; `app.Editor` is its port. `adapters/tmux` gains `ShowBelow`, `HideBelow`, `BelowPane`, `Popup`.
+- **Tests.** Plugin specs (`nvim/test/spec.lua`) run headless with `--clean` and throwaway XDG dirs, against a fake `agentws`, `tmux` and `DiffviewOpen`. `TestNvimPluginSpecs` runs them in `test/integration`.
+
+## Why
+
+- `nvim --remote +N file` treats `+N` as a file. An expression with `fnameescape` opens any path at a line without a shell or `:` command in between.
+- Calling the CLI keeps the plugin free of a socket client and follows the architecture note.
+- A grouped session gives the popup its own current window, so showing the shell there does not change what the main client shows. A plain `attach -t <window>` would.
+- `display-message -t <window>.2` falls back to another pane when the index is missing, so `BelowPane` lists panes.
+- The no-wrap guard matters: tmux's `select-pane -D` at the bottom wraps to the top.
+
+## Rejected
+
+- **Talking to nvim over msgpack-rpc from the daemon:** more code than one `--remote-expr`.
+- **`display-popup` running the shell directly:** the shell would die with the popup and could not be the one the split shows.
+- **Persisting shell panes across daemon restarts:** needs a pane option to recover the key; not worth it yet. A shell left by a dead daemon stays in its parked window until the tmux server ends.
+- **A worktree cursor in the sidebar:** the review's `w` filter already names a worktree.
+
+## Consequences
+
+- `C-h/j/k/l` are taken in every pane of the agentws server, including the agents'. `C-k` and `C-l` are readline keys in Claude Code's prompt, and `C-h` is backspace in some terminals.
+- `M-t` needs Option-as-Meta in macOS Terminal and iTerm.
+- Draft comments live in memory and are lost on a daemon restart. Persisting, sending and archiving them belong to the review-comments issue, which will replace `domain.DraftComment` handling in the daemon.
+- A shell kept alive in a worktree counts as a process using it, which cleanup must respect.
+- `o` opens the top visible row of the diff, not a cursor line: the review has no cursor yet.
