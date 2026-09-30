@@ -127,6 +127,35 @@ func TestWorktreeDetectReconcileUnchangedListing(t *testing.T) {
 	}
 }
 
+func TestWorktreeDetectReclaimSeenBeforeItsClaim(t *testing.T) {
+	now := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
+	recent := now.Add(-5 * time.Second)
+	known := []Worktree{
+		{ID: "/w/api", Repo: "/w/api", Path: "/w/api", Branch: "main"},
+		{ID: "/w/api-a", Repo: "/w/api", Path: "/w/api-a", Branch: "feat-a"},
+		{ID: "/w/api-b", Repo: "/w/api", Path: "/w/api-b", Branch: "feat-b"},
+		{ID: "/w/api-c", Repo: "/w/api", Path: "/w/api-c", Branch: "feat-c", SessionID: "s2"},
+		{ID: "/w/api-old", Repo: "/w/api", Path: "/w/api-old", Branch: "old"},
+		{ID: "/w/api-z", Repo: "/w/api", Path: "/w/api-z", Branch: "z"},
+	}
+	claims := []WorktreeClaim{
+		{SessionID: "s1", Command: "git worktree add -q -b feat-a ../api-a", At: recent},
+		{SessionID: "s1", Command: "git worktree add ../api-b", At: recent},
+		{SessionID: "s1", Command: "git worktree add ../api-c", At: recent},
+		{SessionID: "s1", Command: "git worktree add ../api-old", At: now.Add(-ClaimWindow - time.Second)},
+		{SessionID: "s1", Command: "git worktree add ../api-z", At: recent},
+		{SessionID: "s3", Command: "git worktree add -b z ../elsewhere", At: recent},
+	}
+	got := ReclaimWorktrees(known, claims, now)
+	want := []Worktree{
+		{ID: "/w/api-a", Repo: "/w/api", Path: "/w/api-a", Branch: "feat-a", SessionID: "s1"},
+		{ID: "/w/api-b", Repo: "/w/api", Path: "/w/api-b", Branch: "feat-b", SessionID: "s1"},
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("got %+v, want %+v", got, want)
+	}
+}
+
 func TestWorktreeDetectRollupChecks(t *testing.T) {
 	cases := []struct {
 		name   string
