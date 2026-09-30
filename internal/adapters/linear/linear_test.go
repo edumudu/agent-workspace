@@ -110,8 +110,10 @@ func TestNamingLinearFailures(t *testing.T) {
 }
 
 func TestNamingLinearGivesUpWhenTheContextEnds(t *testing.T) {
-	slow := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) { <-r.Context().Done() }))
+	release := make(chan struct{})
+	slow := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { <-release }))
 	defer slow.Close()
+	defer close(release)
 	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
 	defer cancel()
 	if _, err := (linear.Client{Token: "k", Endpoint: slow.URL}).Title(ctx, linearTask()); err == nil {
