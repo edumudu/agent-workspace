@@ -9,28 +9,6 @@ import (
 	"github.com/giovaniif/agent-workspace/internal/app"
 )
 
-type fakeHost struct {
-	app.TerminalHost
-	panes   []app.PaneInfo
-	listErr error
-}
-
-func (f fakeHost) List(context.Context) ([]app.PaneInfo, error) { return f.panes, f.listErr }
-
-type fakeStore struct {
-	bindings []app.PaneBinding
-	idled    []string
-}
-
-func (s *fakeStore) PaneBindings(context.Context) ([]app.PaneBinding, error) {
-	return s.bindings, nil
-}
-
-func (s *fakeStore) MarkIdle(_ context.Context, sessionID string) error {
-	s.idled = append(s.idled, sessionID)
-	return nil
-}
-
 func TestReconcilePanesIdlesSessionsWhosePaneIsGone(t *testing.T) {
 	tests := []struct {
 		name     string

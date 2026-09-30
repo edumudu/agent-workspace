@@ -10,7 +10,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"sync"
 	"testing"
 	"time"
 
@@ -20,56 +19,6 @@ import (
 	"github.com/giovaniif/agent-workspace/internal/domain"
 	"github.com/giovaniif/agent-workspace/internal/rpc"
 )
-
-type memStore struct {
-	mu   sync.Mutex
-	snap app.Snapshot
-}
-
-func (s *memStore) PutWorkspace(w domain.Workspace) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.snap.Workspaces = append(s.snap.Workspaces, w)
-}
-
-func (s *memStore) DeleteWorkspace(root string) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	kept := s.snap.Workspaces[:0]
-	for _, w := range s.snap.Workspaces {
-		if w.Root != root {
-			kept = append(kept, w)
-		}
-	}
-	s.snap.Workspaces = kept
-}
-
-func (s *memStore) PutTask(x domain.Task) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.snap.Tasks = append(s.snap.Tasks, x)
-}
-
-func (s *memStore) PutWorktree(w domain.Worktree) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.snap.Worktrees = append(s.snap.Worktrees, w)
-}
-
-func (s *memStore) PutSession(x domain.Session) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.snap.Sessions = append(s.snap.Sessions, x)
-}
-
-func (s *memStore) Load() (app.Snapshot, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return s.snap, nil
-}
-
-func (s *memStore) Flush() error { return nil }
-func (s *memStore) Close() error { return nil }
 
 func shortDir(t *testing.T) string {
 	t.Helper()

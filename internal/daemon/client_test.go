@@ -4,57 +4,11 @@ import (
 	"context"
 	"errors"
 	"slices"
-	"sync"
 	"testing"
 
 	"github.com/giovaniif/agent-workspace/internal/app"
 	"github.com/giovaniif/agent-workspace/internal/rpc"
 )
-
-type fakeClientHost struct {
-	mu      sync.Mutex
-	opened  []app.PaneSpec
-	open    map[app.Slot]bool
-	focused []app.Slot
-}
-
-func (h *fakeClientHost) OpenClient(_ context.Context, name string, tui app.PaneSpec) (app.Slot, error) {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-	h.opened = append(h.opened, tui)
-	slot := app.Slot("@" + name + string(rune('0'+len(h.opened))))
-	if h.open == nil {
-		h.open = map[app.Slot]bool{}
-	}
-	h.open[slot] = true
-	return slot, nil
-}
-
-func (h *fakeClientHost) ClientOpen(_ context.Context, slot app.Slot) bool {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-	return h.open[slot]
-}
-
-func (h *fakeClientHost) AttachCommand(slot app.Slot) []string {
-	return []string{"tmux", "attach", "-t", string(slot)}
-}
-
-func (h *fakeClientHost) FocusSlot(_ context.Context, slot app.Slot) error {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-	if !h.open[slot] {
-		return errors.New("no such slot")
-	}
-	h.focused = append(h.focused, slot)
-	return nil
-}
-
-func (h *fakeClientHost) close(slot app.Slot) {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-	delete(h.open, slot)
-}
 
 func TestOpenClientCreatesTheLayoutOnceAndReattachesAfter(t *testing.T) {
 	d, path := start(t, &memStore{})

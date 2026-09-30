@@ -4,8 +4,6 @@ import (
 	"context"
 	"errors"
 	"reflect"
-	"sync"
-	"sync/atomic"
 	"testing"
 	"time"
 
@@ -14,47 +12,6 @@ import (
 	"github.com/giovaniif/agent-workspace/internal/domain"
 	"github.com/giovaniif/agent-workspace/internal/rpc"
 )
-
-type fakeFS struct {
-	gate     chan struct{}
-	markers  map[string]domain.GitMarker
-	children map[string][]domain.Child
-}
-
-func (f fakeFS) Marker(path string) (domain.GitMarker, error) {
-	if f.gate != nil {
-		<-f.gate
-	}
-	m, ok := f.markers[path]
-	if !ok {
-		return domain.GitNone, errors.New("no such directory")
-	}
-	return m, nil
-}
-
-func (f fakeFS) Children(path string) ([]domain.Child, error) { return f.children[path], nil }
-
-type fakeGit map[string]app.RepoFacts
-
-func (g fakeGit) Inspect(_ context.Context, path string) (app.RepoFacts, error) {
-	f, ok := g[path]
-	if !ok {
-		return app.RepoFacts{}, errors.New("not a repo")
-	}
-	return f, nil
-}
-
-type fakeClock struct {
-	mu  sync.Mutex
-	now time.Time
-}
-
-func (c *fakeClock) Now() time.Time {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	c.now = c.now.Add(time.Minute)
-	return c.now
-}
 
 var shop = fakeFS{
 	markers: map[string]domain.GitMarker{"/shop": domain.GitNone, "/solo": domain.GitDir},
@@ -274,12 +231,6 @@ func TestWorkspaceAddDoesNotStallTheLoop(t *testing.T) {
 	if err := <-added; err != nil {
 		t.Fatal(err)
 	}
-}
-
-type liveGit struct{ branch atomic.Value }
-
-func (g *liveGit) Inspect(context.Context, string) (app.RepoFacts, error) {
-	return app.RepoFacts{Branch: g.branch.Load().(string)}, nil
 }
 
 func TestWorkspacesAreRefreshedPeriodically(t *testing.T) {
