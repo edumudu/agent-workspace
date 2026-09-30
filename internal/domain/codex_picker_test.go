@@ -41,6 +41,7 @@ func TestCodexPickerParsesTheLastPickerOnScreen(t *testing.T) {
 		}}, true},
 		{"numbered list without a picker title", "• Plan\n  1. read\n  2. write\n› ", Picker{}, false},
 		{"title with no rows", "  Select Model\n\n› ", Picker{}, false},
+		{"a closed picker left in the scrollback, under the prompt", codexEffortScreen + "\n• earlier output\n\n› ", Picker{}, false},
 	}
 	for _, c := range cases {
 		got, ok := ParsePicker(c.screen)
