@@ -184,7 +184,7 @@ func TestPopupWithoutAClientFails(t *testing.T) {
 	}
 }
 
-func TestPaneNavigationKeysMoveBetweenPanes(t *testing.T) {
+func TestNavigationKeysReachTheAppInAPaneThatIsNotNvim(t *testing.T) {
 	ctx := context.Background()
 	h := newHost(t)
 	slot, _ := h.OpenClient(ctx, "main", app.PaneSpec{Name: "tui", Command: []string{"cat"}})
@@ -196,27 +196,19 @@ func TestPaneNavigationKeysMoveBetweenPanes(t *testing.T) {
 	if err := h.ShowBelow(ctx, shell, slot); err != nil {
 		t.Fatal(err)
 	}
+	if err := h.FocusSlot(ctx, slot); err != nil {
+		t.Fatal(err)
+	}
 	outer := outerTerminal(t, h, slot)
-	active := func() string {
-		return tmuxIn(t, h, slot, "display-message", "-p", "-t", string(slot), "#{pane_id}")
+	for _, key := range []string{"C-h", "C-j", "C-k", "C-l"} {
+		outer("send-keys", "-t", "outer", key)
 	}
-	sidebar := tmuxIn(t, h, slot, "display-message", "-p", "-t", string(slot)+".0", "#{pane_id}")
-	steps := []struct {
-		key  string
-		want string
-	}{
-		{"C-k", string(agent)},
-		{"C-h", sidebar},
-		{"C-l", string(agent)},
-		{"C-j", string(shell)},
-		{"C-j", string(shell)},
-		{"C-k", string(agent)},
-	}
-	if active() != string(shell) {
-		t.Fatalf("active = %s before moving; want the shell", active())
-	}
-	for _, s := range steps {
-		outer("send-keys", "-t", "outer", s.key)
-		waitFor(t, s.key+" to select "+s.want, func() bool { return active() == s.want })
+	want := "^H^J^K^L"
+	waitFor(t, "the agent's terminal to receive all four keys", func() bool {
+		got, _ := h.Capture(ctx, agent, 10)
+		return strings.Contains(strings.ReplaceAll(got, "\n", ""), want)
+	})
+	if active := tmuxIn(t, h, slot, "display-message", "-p", "-t", string(slot), "#{pane_id}"); active != string(agent) {
+		t.Fatalf("active pane = %s; the keys must not move focus away from the agent %s", active, agent)
 	}
 }

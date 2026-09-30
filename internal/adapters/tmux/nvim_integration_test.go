@@ -79,9 +79,8 @@ func TestNavigationKeysPassThroughNvimAndLeaveItAtTheEdge(t *testing.T) {
 		{"C-l", "2", string(editor)},
 		{"C-h", "1", string(editor)},
 		{"C-h", "1", sidebar},
-		{"C-l", "1", string(editor)},
-		{"C-l", "2", string(editor)},
 	}
+	tmuxIn(t, h, slot, "select-pane", "-t", string(editor))
 	for i, s := range steps {
 		outer("send-keys", "-t", "outer", s.key)
 		waitFor(t, "step "+string(rune('1'+i))+" ("+s.key+") to reach window "+s.wantWindow+" of pane "+s.wantPane, func() bool {
