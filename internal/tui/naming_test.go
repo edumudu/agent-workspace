@@ -124,6 +124,26 @@ func TestNamingRenamePromptEditsAndCancels(t *testing.T) {
 	}
 }
 
+func TestNamingRenamePromptKeepsTheCursorVisibleForWideNames(t *testing.T) {
+	wide := strings.Repeat("界", 30)
+	m, _ := namingModel(t, domain.Task{ID: "t1", Text: "x"})
+	m = press(m, "R")
+	m = update(m, keyCtrlU)
+	m = typeText(m, wide+"end")
+	var prompt string
+	for _, l := range strings.Split(screen(m), "\n") {
+		if strings.Contains(l, "RENAME") {
+			prompt = l
+		}
+	}
+	if !strings.Contains(prompt, "end▏") || !strings.Contains(prompt, "界") {
+		t.Errorf("the prompt should end at the cursor with the tail of the text: %q", prompt)
+	}
+	if w := ansi.StringWidth(prompt); w > 48 {
+		t.Errorf("prompt is %d cells wide, over the pane: %q", w, prompt)
+	}
+}
+
 func TestNamingAKeyUnpinsOnlyAPinnedName(t *testing.T) {
 	m, c := namingModel(t, domain.Task{ID: "t1", Text: "tidy the parser", PinnedName: "mine"})
 	pressCmd(m, key("A"))
