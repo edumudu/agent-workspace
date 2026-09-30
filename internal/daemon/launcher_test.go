@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -285,5 +286,47 @@ func TestLauncherQueueReachesSubscribersAsDiffs(t *testing.T) {
 		case <-deadline:
 			t.Fatal("no queue diff with ENG-2 waiting")
 		}
+	}
+}
+
+type overlapDetector struct {
+	mu         sync.Mutex
+	running    int
+	overlapped bool
+}
+
+func (o *overlapDetector) AddWorktree(_ context.Context, repo, path, _, _ string) (app.AddedWorktree, error) {
+	o.mu.Lock()
+	o.running++
+	o.overlapped = o.overlapped || o.running > 1
+	o.mu.Unlock()
+	time.Sleep(30 * time.Millisecond)
+	o.mu.Lock()
+	o.running--
+	o.mu.Unlock()
+	return app.AddedWorktree{Main: repo, Path: path}, nil
+}
+
+func TestLauncherAddsOneWorktreeAtATimeSoGitDoesNotRaceOnItsConfig(t *testing.T) {
+	store := &memStore{}
+	store.snap.Workspaces = append(store.snap.Workspaces, singleWS)
+	adder := &overlapDetector{}
+	_, path := start(t, store,
+		daemon.WithHarnesses(&fakeHost{distinct: true}, claude.Adapter{}),
+		daemon.WithSessions(adder, nil, "/h/worktrees"),
+		daemon.WithLauncher(3))
+	c := dial(t, path)
+	p := rpc.LauncherEnqueueParams{Workspace: "/src/api", Input: issueURLs(3), Harness: "claude"}
+	if err := c.Call(context.Background(), rpc.MethodLauncherEnqueue, p, nil); err != nil {
+		t.Fatal(err)
+	}
+	waitFor(t, func() bool {
+		sub, err := dial(t, path).Subscribe(context.Background())
+		return err == nil && len(sub.State.Sessions) == 3
+	})
+	adder.mu.Lock()
+	defer adder.mu.Unlock()
+	if adder.overlapped {
+		t.Fatal("two worktrees were added at the same time")
 	}
 }
