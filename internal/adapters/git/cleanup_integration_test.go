@@ -21,7 +21,7 @@ import (
 
 var _ app.CleanupGit = git.Worktrees{}
 
-func gitOut(t *testing.T, dir string, args ...string) string {
+func cleanupGitOut(t *testing.T, dir string, args ...string) string {
 	t.Helper()
 	cmd := exec.Command("git", args...)
 	cmd.Dir = dir
@@ -228,18 +228,18 @@ func TestCleanupCreateBranchNeverMovesAnExistingOne(t *testing.T) {
 	write(t, filepath.Join(wt, "d.txt"), "d\n")
 	run(t, wt, "add", ".")
 	run(t, wt, "commit", "-q", "-m", "d")
-	head := gitOut(t, wt, "rev-parse", "HEAD")
+	head := cleanupGitOut(t, wt, "rev-parse", "HEAD")
 	run(t, repo, "branch", "backup/wt-api-x", "main")
-	taken := gitOut(t, repo, "rev-parse", "backup/wt-api-x")
+	taken := cleanupGitOut(t, repo, "rev-parse", "backup/wt-api-x")
 
 	name, err := git.Worktrees{}.CreateBranch(context.Background(), domain.Worktree{Repo: repo, Path: wt}, "backup/wt-api-x")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if name != "backup/wt-api-x-2" || gitOut(t, repo, "rev-parse", name) != head {
+	if name != "backup/wt-api-x-2" || cleanupGitOut(t, repo, "rev-parse", name) != head {
 		t.Errorf("created %q, want backup/wt-api-x-2 at %s", name, head)
 	}
-	if gitOut(t, repo, "rev-parse", "backup/wt-api-x") != taken {
+	if cleanupGitOut(t, repo, "rev-parse", "backup/wt-api-x") != taken {
 		t.Error("existing backup branch moved")
 	}
 }
@@ -254,7 +254,7 @@ func TestCleanupPruneDropsMovedWorktreeAndKeepsItsBranch(t *testing.T) {
 	if err := (git.Worktrees{}).Prune(context.Background(), repo); err != nil {
 		t.Fatal(err)
 	}
-	if list := gitOut(t, repo, "worktree", "list"); strings.Contains(list, "api-gone") {
+	if list := cleanupGitOut(t, repo, "worktree", "list"); strings.Contains(list, "api-gone") {
 		t.Errorf("worktree list still has it:\n%s", list)
 	}
 	gitOut(t, repo, "rev-parse", "--verify", "refs/heads/gone")
