@@ -1,4 +1,4 @@
-# ADR 0008: tdd-check exempts port fake files
+# ADR 0009: tdd-check exempts port fake files
 
 Status: accepted, 2026-09-29.
 

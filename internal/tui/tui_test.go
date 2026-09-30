@@ -1,7 +1,6 @@
 package tui_test
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -21,13 +20,6 @@ import (
 )
 
 var clock = func() time.Time { return time.Date(2026, 9, 29, 21, 42, 0, 0, time.UTC) }
-
-type fakeFocuser struct{ calls int }
-
-func (f *fakeFocuser) FocusMain(context.Context) error {
-	f.calls++
-	return nil
-}
 
 var fixtureStates = []domain.AgentState{
 	domain.StateRunning, domain.StateIdle, domain.StateWaiting, domain.StateDone, domain.StatePermission,
