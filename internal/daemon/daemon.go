@@ -114,6 +114,7 @@ type state struct {
 	// kickLauncher is set by New and must not block.
 	kickLauncher func()
 	comments    map[string]domain.DraftComment
+	scopes      map[string]domain.ReviewScope
 }
 
 type Daemon struct {
@@ -158,6 +159,7 @@ func New(store app.Store, pid int, opts ...Option) (*Daemon, error) {
 		viewed:     map[string]domain.ViewedMark{},
 		launched:   map[string]bool{},
 		comments:   map[string]domain.DraftComment{},
+		scopes:     map[string]domain.ReviewScope{},
 	}
 	for _, m := range snap.Viewed {
 		st.viewed[m.Key()] = m
