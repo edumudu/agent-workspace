@@ -13,6 +13,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/giovaniif/agent-workspace/internal/adapters/codex"
 	"github.com/giovaniif/agent-workspace/internal/app"
 	"github.com/giovaniif/agent-workspace/internal/domain"
 	"github.com/giovaniif/agent-workspace/internal/rpc"
@@ -64,6 +65,9 @@ type state struct {
 	worktrees  map[string]domain.Worktree
 	sessions   map[string]domain.Session
 	subs       map[*conn]uint64
+	usage      map[string]*usageJob
+	// requestUsage is set by New; state cannot reach the Daemon that owns it.
+	requestUsage func(sessionID, path string, force bool)
 }
 
 type Daemon struct {
@@ -90,6 +94,7 @@ func New(store app.Store, pid int, opts ...Option) (*Daemon, error) {
 		worktrees:  map[string]domain.Worktree{},
 		sessions:   map[string]domain.Session{},
 		subs:       map[*conn]uint64{},
+		usage:      map[string]*usageJob{},
 	}
 	for _, w := range snap.Workspaces {
 		st.workspaces[w.Root] = w
@@ -112,6 +117,7 @@ func New(store app.Store, pid int, opts ...Option) (*Daemon, error) {
 		st:      st,
 		ws:      workspaces{now: time.Now, refreshEvery: defaultRefreshInterval, ctx: context.Background()},
 	}
+	st.requestUsage = func(sessionID, path string, force bool) { d.requestUsage(st, sessionID, path, force) }
 	for _, o := range opts {
 		o(d)
 	}
@@ -227,6 +233,9 @@ func (s *state) hook(h rpc.Hook) {
 	}
 	// why: TODO(#13) performs the effects Apply returns; nothing consumes them yet.
 	next, _ := session.Apply(domain.HarnessEvent{Kind: kind})
+	if domain.Harness(h.Harness) == domain.HarnessCodex {
+		next = s.codexObservation(h, kind, session, next)
+	}
 	s.emit(SessionChanged{Session: next})
 }
 
@@ -392,4 +401,21 @@ func (c *conn) write() {
 			return
 		}
 	}
+}
+
+// codexObservation takes the model Codex reports at once, and asks for a
+// read of the rollout, which has the effort and usage the hook lacks.
+func (s *state) codexObservation(h rpc.Hook, kind domain.HarnessEventKind, before, next domain.Session) domain.Session {
+	obs, err := codex.ParseHook(h.Event, h.Payload)
+	if err != nil {
+		return next
+	}
+	if obs.Model != "" {
+		next.Model = obs.Model
+	}
+	if obs.TranscriptPath != "" {
+		force := kind == domain.EventStop || kind == domain.EventSessionStart || kind == domain.EventUserPromptSubmit
+		s.requestUsage(before.ID, obs.TranscriptPath, force)
+	}
+	return next
 }

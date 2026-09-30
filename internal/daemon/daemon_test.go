@@ -405,3 +405,65 @@ func TestRunServesStateRestoredFromTheStore(t *testing.T) {
 		}
 	}
 }
+
+func codexRollout(t *testing.T) string {
+	t.Helper()
+	data, err := os.ReadFile(filepath.Join("..", "adapters", "codex", "testdata", "rollout", "turns.jsonl"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(t.TempDir(), "rollout.jsonl")
+	if err := os.WriteFile(path, data, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	return path
+}
+
+func TestCodexHookReportsModelAtOnceAndEffortAndUsageFromTheRollout(t *testing.T) {
+	d, path := start(t, &memStore{})
+	c := dial(t, path)
+	ctx := context.Background()
+	sub, err := c.Subscribe(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	d.Post(daemon.SessionChanged{Session: domain.Session{ID: "a", Harness: domain.HarnessCodex, Pane: "%3", State: domain.StateRunning}})
+	next(t, sub.Diffs)
+	payload, _ := json.Marshal(map[string]string{"model": "gpt-6.1-sol", "transcript_path": codexRollout(t)})
+	hook := rpc.Hook{Harness: "codex", Event: "Stop", Pane: "%3", At: time.Now(), Payload: payload}
+	if err := c.Call(ctx, rpc.MethodHook, hook, nil); err != nil {
+		t.Fatal(err)
+	}
+	first := next(t, sub.Diffs)
+	if first.Session == nil || first.Session.State != domain.StateDone || first.Session.Model != "gpt-6.1-sol" {
+		t.Fatalf("first diff %+v", first.Session)
+	}
+	second := next(t, sub.Diffs)
+	if second.Session == nil || second.Session.State != domain.StateDone || second.Session.Effort != "medium" ||
+		second.Session.Usage != (domain.Usage{ContextLeftPercent: 56, LimitUsedPercent: 41}) {
+		t.Fatalf("second diff %+v", second.Session)
+	}
+}
+
+func TestCodexHookWithAnUnreadableRolloutStillMovesTheState(t *testing.T) {
+	d, path := start(t, &memStore{})
+	c := dial(t, path)
+	ctx := context.Background()
+	sub, err := c.Subscribe(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	d.Post(daemon.SessionChanged{Session: domain.Session{ID: "a", Harness: domain.HarnessCodex, Pane: "%3", State: domain.StateRunning}})
+	next(t, sub.Diffs)
+	payload, _ := json.Marshal(map[string]string{"transcript_path": filepath.Join(t.TempDir(), "missing.jsonl")})
+	if err := c.Call(ctx, rpc.MethodHook, rpc.Hook{Harness: "codex", Event: "Stop", Pane: "%3", Payload: payload}, nil); err != nil {
+		t.Fatal(err)
+	}
+	if diff := next(t, sub.Diffs); diff.Session == nil || diff.Session.State != domain.StateDone {
+		t.Fatalf("diff %+v", diff.Session)
+	}
+	d.Post(daemon.WorktreeChanged{Worktree: domain.Worktree{ID: "w"}})
+	if diff := next(t, sub.Diffs); diff.Worktree == nil {
+		t.Fatalf("unexpected diff %+v", diff)
+	}
+}

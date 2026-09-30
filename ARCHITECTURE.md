@@ -19,7 +19,7 @@ This covers how `agentws` is built. What it does is in [FEATURES.md](FEATURES.md
 ## Layers
 
 ```
-cmd/agentws            main: subcommands (daemon, tui, hook, new, cleanup, ...)
+cmd/agentws            main: subcommands (daemon, tui, hook, setup, new, cleanup, ...)
 internal/domain        pure types and rules. No IO, no imports from other internal packages.
 internal/app           use cases + ports (interfaces the use cases need)
 internal/adapters/...  tmux, git, github, claude, codex, sqlite, notify, procs (lsof/ports), fs
@@ -100,6 +100,10 @@ Everything here is table-tested, with no mocks.
 `agentws tui` (`internal/tui`) opens two connections: one subscribes and feeds diffs to the Bubble Tea program, the other makes calls such as `client.focus_main`, so a burst of diffs never delays a keypress. The model keeps the snapshot in maps and rebuilds the sidebar rows only when a diff arrives; grouping and order come from `domain.Sidebar` (sessions that need you first in each task group). Keys only move the selection, and `View` renders from memory. One 200 ms ticker drives every running spinner and the clock. The renderer runs at 120 fps: at the default 60 a key can wait a whole 16 ms frame before it is drawn.
 
 Colors are Catppuccin Latte, overridden per key in the `[theme]` table of `$AGENTWS_HOME/config.toml` (`text`, `subtext`, `overlay`, `surface`, `mantle`, `base`, `blue`, `peach`, `green`, `red`, `teal`, `mauve`, `selected`), read once at startup.
+
+## Harness adapters
+
+`internal/adapters/codex` covers Codex: the `setup codex` merge into `hooks.json`, hook and notify payload parsing, the rollout reader that supplies model, effort, context and limits, pane lookup, and launching. The daemon applies a Codex hook's model at once and reads the rollout in a worker, never on the loop. The mapping, formulas and where each number comes from are in [internal/adapters/codex/README.md](internal/adapters/codex/README.md) and [docs/adr/0010-codex-adapter.md](docs/adr/0010-codex-adapter.md).
 
 ## Staying fast
 

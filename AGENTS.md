@@ -23,7 +23,10 @@
 - `agentws workspace add <path>|list|remove <path>` registers workspaces through the daemon (auto-started). `list` shows `-` for a repo's git facts until the first background refresh lands.
 - `agentws` attaches to the client layout (creating it and the daemon if needed); `agentws tui` is what runs in its left pane. `agentws debug seed N` adds N fake sessions for trying the TUI.
 - `AGENTWS_TMUX_SOCKET` points the daemon at another tmux server. Use it with a temporary `AGENTWS_HOME` when running the TUI by hand, so the real `agentws` server is untouched.
-- TUI goldens live in `internal/tui/testdata/*.golden`; regenerate with `go test ./internal/tui/ -run Golden -update` and review the diff.- `domain`, `app`, `tui`, `rpc` and `daemon` may not import `os/exec` (depguard). `internal/adapters/tmux` is the only code that runs tmux, and only `internal/daemon` may import it.
+- TUI goldens live in `internal/tui/testdata/*.golden`; regenerate with `go test ./internal/tui/ -run Golden -update` and review the diff.
+- `agentws debug session [--once] <id>` prints a session's state, harness, pane, model, effort, context left and limit used, then each change to it until interrupted (`--once` prints just the current line).
+- `agentws setup codex [--remove]` merges (or removes) the agentws hooks in `$CODEX_HOME/hooks.json`. Tests of it, and of anything else that touches Codex config, use a temp `CODEX_HOME`; never point them at the real `~/.codex`.
+- `domain`, `app`, `tui`, `rpc` and `daemon` may not import `os/exec` (depguard). `internal/adapters/tmux` is the only code that runs tmux, and only `internal/daemon` may import it.
 
 ## Rules
 

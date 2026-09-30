@@ -1,0 +1,179 @@
+package codex
+
+import (
+	"bufio"
+	"bytes"
+	"encoding/json"
+	"io"
+	"math"
+	"os"
+	"time"
+
+	"github.com/giovaniif/agent-workspace/internal/domain"
+)
+
+const (
+	UnknownPercent = -1
+
+	// promptBaselineTokens is the fixed system prompt Codex leaves out when
+	// it works out the context it shows the user.
+	promptBaselineTokens = 12000
+)
+
+type LimitWindow struct {
+	WindowMinutes int
+	UsedPercent   float64
+	ResetsAt      time.Time
+}
+
+// Snapshot is what a Codex rollout file says about a session right now.
+// ContextLeftPercent is UnknownPercent until the first token count.
+type Snapshot struct {
+	Model              string
+	Effort             string
+	ContextLeftPercent int
+	Limits             []LimitWindow
+}
+
+// Usage folds the limit windows into the highest one, which is the one that
+// blocks the session first.
+func (s Snapshot) Usage() domain.Usage {
+	var highest float64
+	for _, w := range s.Limits {
+		highest = math.Max(highest, w.UsedPercent)
+	}
+	return domain.Usage{
+		ContextLeftPercent: s.ContextLeftPercent,
+		LimitUsedPercent:   int(math.Round(highest)),
+	}
+}
+
+// ContextLeftPercent is the share of the context window still free, after
+// setting aside the baseline prompt.
+func ContextLeftPercent(usedTokens, window int) int {
+	effective := window - promptBaselineTokens
+	if effective <= 0 {
+		return 0
+	}
+	used := max(usedTokens-promptBaselineTokens, 0)
+	left := max(effective-used, 0)
+	return int(math.Round(float64(left) / float64(effective) * 100))
+}
+
+type rolloutLine struct {
+	Type    string          `json:"type"`
+	Payload json.RawMessage `json:"payload"`
+}
+
+type turnContext struct {
+	Model  string `json:"model"`
+	Effort string `json:"effort"`
+}
+
+type eventMsg struct {
+	Type       string      `json:"type"`
+	Info       *tokenInfo  `json:"info"`
+	RateLimits *rateLimits `json:"rate_limits"`
+}
+
+type tokenInfo struct {
+	Last struct {
+		TotalTokens int `json:"total_tokens"`
+	} `json:"last_token_usage"`
+	ContextWindow int `json:"model_context_window"`
+}
+
+type rateLimits struct {
+	Primary   *rateWindow `json:"primary"`
+	Secondary *rateWindow `json:"secondary"`
+}
+
+type rateWindow struct {
+	UsedPercent   float64 `json:"used_percent"`
+	WindowMinutes int     `json:"window_minutes"`
+	ResetsAt      int64   `json:"resets_at"`
+}
+
+// ReadSnapshot scans a rollout, a JSON line per event, and keeps the newest
+// value of each field. Lines that do not parse, such as one cut short by a
+// tail read, are skipped.
+func ReadSnapshot(r io.Reader) (Snapshot, error) {
+	snap := Snapshot{ContextLeftPercent: UnknownPercent}
+	sc := bufio.NewScanner(r)
+	sc.Buffer(make([]byte, 0, 64*1024), 64*1024*1024)
+	for sc.Scan() {
+		var line rolloutLine
+		if json.Unmarshal(sc.Bytes(), &line) != nil {
+			continue
+		}
+		switch line.Type {
+		case "turn_context":
+			var tc turnContext
+			if json.Unmarshal(line.Payload, &tc) == nil {
+				snap.Model = orKeep(tc.Model, snap.Model)
+				snap.Effort = orKeep(tc.Effort, snap.Effort)
+			}
+		case "event_msg":
+			var ev eventMsg
+			if json.Unmarshal(line.Payload, &ev) == nil && ev.Type == "token_count" {
+				snap.applyTokenCount(ev)
+			}
+		}
+	}
+	return snap, sc.Err()
+}
+
+func orKeep(next, current string) string {
+	if next == "" {
+		return current
+	}
+	return next
+}
+
+func (s *Snapshot) applyTokenCount(ev eventMsg) {
+	if ev.Info != nil && ev.Info.ContextWindow > 0 {
+		s.ContextLeftPercent = ContextLeftPercent(ev.Info.Last.TotalTokens, ev.Info.ContextWindow)
+	}
+	if ev.RateLimits == nil {
+		return
+	}
+	s.Limits = nil
+	for _, w := range []*rateWindow{ev.RateLimits.Primary, ev.RateLimits.Secondary} {
+		if w != nil {
+			s.Limits = append(s.Limits, LimitWindow{
+				WindowMinutes: w.WindowMinutes,
+				UsedPercent:   w.UsedPercent,
+				ResetsAt:      time.Unix(w.ResetsAt, 0),
+			})
+		}
+	}
+}
+
+// ReadSnapshotFile reads at most the last maxBytes of a rollout, which keeps
+// a days-old session's multi-megabyte file cheap to poll.
+func ReadSnapshotFile(path string, maxBytes int64) (Snapshot, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return Snapshot{}, err
+	}
+	defer func() { _ = f.Close() }()
+	info, err := f.Stat()
+	if err != nil {
+		return Snapshot{}, err
+	}
+	if info.Size() > maxBytes {
+		if _, err := f.Seek(-maxBytes, io.SeekEnd); err != nil {
+			return Snapshot{}, err
+		}
+		tail, err := io.ReadAll(f)
+		if err != nil {
+			return Snapshot{}, err
+		}
+		// why: the seek lands mid-line, so the first partial line is dropped.
+		if i := bytes.IndexByte(tail, '\n'); i >= 0 {
+			tail = tail[i+1:]
+		}
+		return ReadSnapshot(bytes.NewReader(tail))
+	}
+	return ReadSnapshot(f)
+}

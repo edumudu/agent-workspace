@@ -23,6 +23,11 @@ func TestHookEventNamesMapToHarnessEvents(t *testing.T) {
 		{HarnessCodex, "PreToolUse", EventPreToolUse, true},
 		{HarnessCodex, "PostToolUse", EventPostToolUse, true},
 		{HarnessCodex, "Stop", EventStop, true},
+		{HarnessCodex, "PermissionRequest", EventPermissionRequest, true},
+		{HarnessCodex, "Interrupt", EventStop, true},
+		{HarnessCodex, "SessionEnd", EventSessionEnd, true},
+		{HarnessCodex, "SubagentStop", "", false},
+		{HarnessCodex, "PreCompact", "", false},
 		{HarnessCodex, "Notification", "", false},
 		{"other", "Stop", "", false},
 	}
