@@ -181,18 +181,24 @@ func (f fakeLister) ListWorktrees(_ context.Context, dir string) (domain.RepoLis
 type fakeFinder struct {
 	mu    sync.Mutex
 	prs   map[string][]domain.PullRequest
-	calls map[string]int
+	err   error
+	calls [][]string
 }
 
-func (f *fakeFinder) PRs(_ context.Context, repo string) ([]domain.PullRequest, error) {
+func (f *fakeFinder) PRs(_ context.Context, repos []string) (map[string][]domain.PullRequest, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	f.calls[repo]++
-	prs, ok := f.prs[repo]
-	if !ok {
-		return nil, errors.New("gh failed")
+	f.calls = append(f.calls, repos)
+	if f.err != nil {
+		return nil, f.err
 	}
-	return prs, nil
+	out := map[string][]domain.PullRequest{}
+	for _, r := range repos {
+		if prs, ok := f.prs[r]; ok {
+			out[r] = prs
+		}
+	}
+	return out, nil
 }
 
 type typingHost struct {
