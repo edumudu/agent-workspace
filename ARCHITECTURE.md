@@ -11,7 +11,7 @@ This covers how `agentws` is built. What it does is in [FEATURES.md](FEATURES.md
 - **GitHub:** `cli/go-gh`, which reuses the user's `gh` auth. GraphQL with ETag/backoff for polling.
 - **Terminals:** the `tmux` CLI against a dedicated server (`tmux -L agentws`) with its own config, driven only by `internal/adapters/tmux`. Panes are parked in their own windows and `swap-pane` puts one in the client's main slot. See [docs/adr/0003-tmux-terminal-host.md](docs/adr/0003-tmux-terminal-host.md).
 - **Storage:** SQLite via `modernc.org/sqlite` (no cgo), with embedded migrations and write-behind. Stored at `~/.agentws/state.db` (`$AGENTWS_HOME/state.db` if set). See [docs/adr/0004-sqlite-store.md](docs/adr/0004-sqlite-store.md).
-- **IPC:** a Unix socket at `~/.agentws/agentws.sock` carrying newline-delimited JSON. Request/response calls, plus a subscribe stream for state updates.
+- **IPC:** a Unix socket at `~/.agentws/agentws.sock` carrying newline-delimited JSON. Request/response calls, plus a subscribe stream for state updates. See [Daemon and RPC](#daemon-and-rpc) and [docs/adr/0005-daemon-rpc.md](docs/adr/0005-daemon-rpc.md).
 - **Notifications:** `osascript` in v1. A native helper can replace it later behind the same port.
 - **nvim:** a small Lua plugin in `nvim/` that talks to the daemon through `agentws` CLI calls.
 - **Tooling:** `go test`, `golangci-lint`, `testscript` for the e2e suite, `gremlins` for mutation testing, a `tdd` CI job that runs new tests against the base branch, `scripts/lint-comments`, GitHub Actions on macOS, and goreleaser later. Rules: [AGENTS.md](AGENTS.md).
@@ -44,6 +44,38 @@ Dependency rule: `domain` ← `app` ← `adapters`/`daemon`, and `tui` → `rpc`
 Everything here is table-tested, with no mocks.
 
 **App** (`internal/app`): use cases such as `StartSession`, `IngestHookEvent`, `AttachWorktree`, `RefreshPRs`, `PlanCleanup`/`ExecuteCleanup`, `BuildReview`, `SendReview`. They depend on port interfaces (`TerminalHost`, `Git`, `GitHub`, `HarnessAdapter`, `Store`, `Notifier`, `ProcessTable`) that the adapters implement. Tests use in-memory fakes.
+
+## Daemon and RPC
+
+**Process.** `agentws daemon` runs in the foreground until SIGINT/SIGTERM. `agentws daemon start` spawns it detached (`setsid`, output to `$AGENTWS_HOME/daemon.log`) and waits for the socket. `daemon status` prints pid, uptime, and session and worktree counts; `daemon stop` sends SIGTERM and waits for the pid file to go. Files in `$AGENTWS_HOME` (default `~/.agentws`):
+
+| File | Purpose |
+|---|---|
+| `agentws.lock` | `flock` held for the daemon's life; the kernel drops it if the daemon dies. A second daemon exits 1 with `already running (pid N)`. |
+| `agentws.pid` | written after taking the lock, removed on clean exit |
+| `agentws.sock` | the socket, mode 0600; a stale one is removed by the next lock holder |
+| `state.db` | the SQLite store; loaded once on start |
+
+**Event loop** (`internal/daemon`). One goroutine owns all state. Adapters call `Daemon.Post(event)` with `WorkspaceChanged`, `TaskChanged`, `WorktreeChanged` or `SessionChanged`; each one replaces the entity by key, enqueues a store write, bumps `seq` and fans the diff out to every subscriber in order. Connections read state only through closures run on the loop. Each connection has a 1024-message outbox; one that falls behind is disconnected, never waited on.
+
+**Protocol** (`internal/rpc`, types in `protocol.go`). One JSON object per line, at most 16 MiB. Every message carries `"v":1`.
+
+```
+→ {"v":1,"id":1,"method":"status"}
+← {"v":1,"id":1,"result":{"pid":42,"started_at":"…","sessions":2,"worktrees":3}}
+→ {"v":1,"id":2,"method":"subscribe"}
+← {"v":1,"id":2,"result":{"seq":17,"workspaces":[…],"tasks":[…],"worktrees":[…],"sessions":[…]}}
+← {"v":1,"id":2,"diff":{"seq":18,"session":{…}}}
+→ {"v":2,"id":3,"method":"status"}
+← {"v":1,"id":3,"error":{"code":"unsupported_version","message":"this daemon speaks protocol v1"}}
+```
+
+- The client picks `id`; responses and a subscription's diffs carry it back. A connection may have several requests in flight.
+- `subscribe` answers with the full `State` at `seq`, then one `diff` per change starting at `seq+1`. A diff sets exactly one of `workspace`, `task`, `worktree`, `session`, and replaces that entity by key. Domain structs encode with their Go field names.
+- Error codes: `unsupported_version` (missing or other `v`), `unknown_method`, `bad_request` (not JSON; `id` 0).
+- Adding a method or an optional field keeps `v:1`. Removing or changing the meaning of a field bumps `v`.
+
+**Client.** `rpc.Dial(path)` connects; `rpc.Connect(ctx, path, start)` calls `start` once if nothing listens and retries for `rpc.StartTimeout` (2 s). `Client.Call(ctx, method, params, out)` is the generic call and returns `*rpc.Error` for daemon errors; `Status` and `Subscribe` wrap it. `Subscribe` returns the `State` and a `Diffs` channel closed when the connection ends; its diffs share the connection's reader, so a slow consumer should use its own `Client`. `rpc` cannot exec, so the caller supplies `start` (`cmd/agentws` spawns `agentws daemon`).
 
 ## Staying fast
 
