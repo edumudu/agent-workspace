@@ -91,6 +91,7 @@ func (p *fakeProcs) Holders(_ context.Context, paths []string) (map[string][]str
 }
 
 type fakeTrash struct {
+	purges  int
 	moved   []string
 	failFor map[string]bool
 }
@@ -102,6 +103,8 @@ func (t *fakeTrash) Move(path string) error {
 	t.moved = append(t.moved, path)
 	return nil
 }
+
+func (t *fakeTrash) Purge() { t.purges++ }
 
 type fakeAudit struct{ records []app.CleanupRecord }
 

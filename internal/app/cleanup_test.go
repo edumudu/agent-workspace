@@ -271,3 +271,15 @@ func TestCleanupExecKeptWorktreesAreNotAudited(t *testing.T) {
 		t.Errorf("outcome %q, audit %+v", got["/w/a"], w.audit.records)
 	}
 }
+
+func TestCleanupOnlyExecutePurgesTheTrash(t *testing.T) {
+	w := newCleanupWorld(map[string]app.WorktreeGitFacts{"/w/a": {ModifiedAt: cleanupNow}})
+	w.c.Plan(context.Background(), []domain.Worktree{merged("/w/a", "a", 1)}, idle)
+	if w.trash.purges != 0 {
+		t.Errorf("Plan purged the trash")
+	}
+	w.c.Execute(context.Background(), []domain.Worktree{merged("/w/a", "a", 1)}, idle)
+	if w.trash.purges != 1 {
+		t.Errorf("purges after Execute = %d, want 1", w.trash.purges)
+	}
+}
