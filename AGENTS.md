@@ -35,6 +35,7 @@
 - **Protect the core concepts:** the domain state machine, naming, cleanup decisions, discovery, review scopes and the prompt format. Test through public behavior: inputs and outputs, not internals.
 - **No useless tests:** no tests of getters, constructors, framework code or mocks calling mocks. CI runs mutation testing (`gremlins`) on `internal/domain` and `internal/app`; the mutation score must stay ≥ 80%. A test that kills no mutants gets deleted.
 - **Fakes, not mocks:** unit tests use in-memory fakes of the ports. Integration tests use real temporary git repos and a real tmux server.
+- **Domain tests are in-package** (`package domain`): depguard bans `domain` from importing `internal/...`, and that includes an external `domain_test` package importing `domain`.
 - **Small core e2e suite:** `test/e2e` uses `testscript` with fake `claude`, `codex` and `gh` binaries. It covers: start a session → hook events → state; an agent-created worktree gets attached; a merged PR gets its worktree cleaned; review comments get sent. Keep it small and fast (< 60 s). It is required in CI.
 
 ## Comments
