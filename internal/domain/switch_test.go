@@ -177,6 +177,8 @@ func TestModelSwitchCommandIsTheHarnessesOwnSlashCommand(t *testing.T) {
 	}{
 		{HarnessClaude, Switch{Kind: SwitchModel, Value: "opus"}, "/model opus"},
 		{HarnessClaude, Switch{Kind: SwitchEffort, Value: "high"}, "/effort high"},
+		{HarnessCodex, Switch{Kind: SwitchModel, Value: "gpt-6-luna"}, "/model"},
+		{HarnessCodex, Switch{Kind: SwitchEffort, Value: "high"}, "/model"},
 	}
 	for _, c := range cases {
 		if got := SwitchCommand(c.h, c.sw); got != c.want {
@@ -185,17 +187,22 @@ func TestModelSwitchCommandIsTheHarnessesOwnSlashCommand(t *testing.T) {
 	}
 }
 
-func TestModelSwitchOnlyClaudeIsSupported(t *testing.T) {
-	for _, kind := range []SwitchKind{SwitchModel, SwitchEffort} {
-		if len(SwitchChoices(HarnessClaude, kind)) == 0 {
-			t.Errorf("claude %s: no choices", kind)
+func TestModelSwitchBothHarnessesAreSupported(t *testing.T) {
+	for _, h := range []Harness{HarnessClaude, HarnessCodex} {
+		for _, kind := range []SwitchKind{SwitchModel, SwitchEffort} {
+			if len(SwitchChoices(h, kind)) == 0 {
+				t.Errorf("%s %s: no choices", h, kind)
+			}
 		}
-		if len(SwitchChoices(HarnessCodex, kind)) != 0 {
-			t.Errorf("codex %s: choices offered", kind)
+		if !SwitchSupported(h) {
+			t.Errorf("%s not supported", h)
 		}
 	}
-	if !SwitchSupported(HarnessClaude) || SwitchSupported(HarnessCodex) {
-		t.Fatal("support flags")
+	if SwitchSupported("other") || SwitchChoices("other", SwitchModel) != nil {
+		t.Fatal("unknown harness supported")
+	}
+	if got := SwitchChoices(HarnessCodex, SwitchModel); got[0] == "opus" {
+		t.Fatalf("codex offers claude models %q", got)
 	}
 }
 
