@@ -182,6 +182,20 @@ func TestWorktreeDetectReclaimOnlyFromClaimsInTheSameRepo(t *testing.T) {
 	}
 }
 
+func TestWorktreeDetectReclaimTakesTheInnermostRepoOfANestedCwd(t *testing.T) {
+	now := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
+	known := []Worktree{
+		{ID: "/w/api-x", Repo: "/w/api", Path: "/w/api-x", Branch: "feat"},
+		{ID: "/w/api/lib-x", Repo: "/w/api/lib", Path: "/w/api/lib-x", Branch: "feat"},
+	}
+	claims := []WorktreeClaim{{SessionID: "s1", Cwd: "/w/api/lib/src", Command: "git worktree add -b feat ../lib-x", At: now}}
+	got := ReclaimWorktrees(known, claims, now)
+	want := []Worktree{{ID: "/w/api/lib-x", Repo: "/w/api/lib", Path: "/w/api/lib-x", Branch: "feat", SessionID: "s1"}}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("got %+v, want %+v", got, want)
+	}
+}
+
 func TestWorktreeDetectRollupChecks(t *testing.T) {
 	cases := []struct {
 		name   string
