@@ -12,7 +12,7 @@ func limited(h Harness, at time.Time, limits ...RateLimit) Session {
 	return Session{Harness: h, Limits: limits, LimitsAt: at}
 }
 
-func TestQuotasAreLeftPercentPerHarnessWindowShortestFirst(t *testing.T) {
+func TestUsageQuotasAreLeftPercentPerHarnessWindowShortestFirst(t *testing.T) {
 	got := Quotas([]Session{
 		limited(HarnessCodex, t0, RateLimit{Window: "seven_day", UsedPercent: 12, ResetsAt: 900}, RateLimit{Window: "five_hour", UsedPercent: 41, ResetsAt: 800}),
 		limited(HarnessClaude, t0, RateLimit{Window: "seven_day_opus", UsedPercent: 88}, RateLimit{Window: "five_hour", UsedPercent: 57, ResetsAt: 700}, RateLimit{Window: "seven_day", UsedPercent: 71}),
@@ -30,7 +30,7 @@ func TestQuotasAreLeftPercentPerHarnessWindowShortestFirst(t *testing.T) {
 	}
 }
 
-func TestQuotasTakeEachWindowFromTheNewestReport(t *testing.T) {
+func TestUsageQuotasTakeEachWindowFromTheNewestReport(t *testing.T) {
 	older := limited(HarnessClaude, t0, RateLimit{Window: "five_hour", UsedPercent: 10}, RateLimit{Window: "seven_day", UsedPercent: 20})
 	newer := limited(HarnessClaude, t0.Add(time.Minute), RateLimit{Window: "five_hour", UsedPercent: 30})
 	for _, sessions := range [][]Session{{older, newer}, {newer, older}} {
@@ -41,14 +41,14 @@ func TestQuotasTakeEachWindowFromTheNewestReport(t *testing.T) {
 	}
 }
 
-func TestQuotaLeftIsClampedToZeroAndOneHundred(t *testing.T) {
+func TestUsageQuotaLeftIsClampedToZeroAndOneHundred(t *testing.T) {
 	got := Quotas([]Session{limited(HarnessClaude, t0, RateLimit{Window: "five_hour", UsedPercent: 130}, RateLimit{Window: "seven_day", UsedPercent: -4})})
 	if got[0].LeftPercent != 0 || got[1].LeftPercent != 100 {
 		t.Fatalf("got %+v", got)
 	}
 }
 
-func TestNoLimitsMeansNoQuotas(t *testing.T) {
+func TestUsageNoLimitsMeansNoQuotas(t *testing.T) {
 	if got := Quotas([]Session{{Harness: HarnessClaude}, {Harness: HarnessCodex}}); len(got) != 0 {
 		t.Fatalf("got %+v", got)
 	}
@@ -57,7 +57,7 @@ func TestNoLimitsMeansNoQuotas(t *testing.T) {
 	}
 }
 
-func TestQuotaIsLowBelowTwentyPercentLeft(t *testing.T) {
+func TestUsageQuotaIsLowBelowTwentyPercentLeft(t *testing.T) {
 	for left, want := range map[int]bool{0: true, 19: true, 20: false, 21: false, 100: false} {
 		if got := (Quota{LeftPercent: left}).Low(); got != want {
 			t.Errorf("left %d: Low = %v, want %v", left, got, want)
@@ -65,7 +65,7 @@ func TestQuotaIsLowBelowTwentyPercentLeft(t *testing.T) {
 	}
 }
 
-func TestQuotaIsStaleAfterFifteenMinutes(t *testing.T) {
+func TestUsageQuotaIsStaleAfterFifteenMinutes(t *testing.T) {
 	q := Quota{ReportedAt: t0}
 	for age, want := range map[time.Duration]bool{0: false, 15 * time.Minute: false, 15*time.Minute + time.Second: true, 2 * time.Hour: true} {
 		if got := q.Stale(t0.Add(age)); got != want {
@@ -77,7 +77,7 @@ func TestQuotaIsStaleAfterFifteenMinutes(t *testing.T) {
 	}
 }
 
-func TestWindowLabels(t *testing.T) {
+func TestUsageWindowLabels(t *testing.T) {
 	for window, want := range map[string]string{
 		"five_hour":      "5h",
 		"seven_day":      "7d",
@@ -93,7 +93,7 @@ func TestWindowLabels(t *testing.T) {
 	}
 }
 
-func TestWindowNameForMinutes(t *testing.T) {
+func TestUsageWindowNameForMinutes(t *testing.T) {
 	for minutes, want := range map[int]string{300: "five_hour", 10080: "seven_day", 60: "60m", 0: "0m"} {
 		if got := WindowNameForMinutes(minutes); got != want {
 			t.Errorf("WindowNameForMinutes(%d) = %q, want %q", minutes, got, want)
@@ -101,7 +101,7 @@ func TestWindowNameForMinutes(t *testing.T) {
 	}
 }
 
-func TestAdviseWarnsBelowTwentyFivePercentOnTheShortestWindow(t *testing.T) {
+func TestUsageAdviseWarnsBelowTwentyFivePercentOnTheShortestWindow(t *testing.T) {
 	quotas := []Quota{
 		{Harness: HarnessClaude, Window: "five_hour", LeftPercent: 24},
 		{Harness: HarnessClaude, Window: "seven_day", LeftPercent: 90},
@@ -114,7 +114,7 @@ func TestAdviseWarnsBelowTwentyFivePercentOnTheShortestWindow(t *testing.T) {
 	}
 }
 
-func TestAdviseIgnoresLongerWindowsAndTheThresholdItself(t *testing.T) {
+func TestUsageAdviseIgnoresLongerWindowsAndTheThresholdItself(t *testing.T) {
 	quotas := []Quota{
 		{Harness: HarnessClaude, Window: "five_hour", LeftPercent: 25},
 		{Harness: HarnessClaude, Window: "seven_day", LeftPercent: 3},
@@ -124,14 +124,14 @@ func TestAdviseIgnoresLongerWindowsAndTheThresholdItself(t *testing.T) {
 	}
 }
 
-func TestAdviseWithoutTheOtherHarnessFigureCannotOfferASwitch(t *testing.T) {
+func TestUsageAdviseWithoutTheOtherHarnessFigureCannotOfferASwitch(t *testing.T) {
 	got, ok := Advise([]Quota{{Harness: HarnessCodex, Window: "five_hour", LeftPercent: 5}}, HarnessCodex)
 	if !ok || got.Other != HarnessClaude || got.OtherShortest != nil {
 		t.Fatalf("got %+v ok=%v", got, ok)
 	}
 }
 
-func TestAdviseWithNoDataForTheChosenHarnessStaysQuiet(t *testing.T) {
+func TestUsageAdviseWithNoDataForTheChosenHarnessStaysQuiet(t *testing.T) {
 	if got, ok := Advise([]Quota{{Harness: HarnessCodex, Window: "five_hour", LeftPercent: 1}}, HarnessClaude); ok {
 		t.Fatalf("got %+v", got)
 	}

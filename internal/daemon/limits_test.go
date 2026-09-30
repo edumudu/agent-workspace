@@ -12,7 +12,7 @@ import (
 	"github.com/giovaniif/agent-workspace/internal/rpc"
 )
 
-func TestStatusLineLimitsAreStampedWhenTheDaemonReceivesThem(t *testing.T) {
+func TestUsageStatusLineLimitsAreStampedWhenTheDaemonReceivesThem(t *testing.T) {
 	c, sub := runningOn(t, "%3")
 	before := time.Now()
 	report := domain.StatusReport{Limits: []domain.RateLimit{{Window: "five_hour", UsedPercent: 40}}}
@@ -25,7 +25,7 @@ func TestStatusLineLimitsAreStampedWhenTheDaemonReceivesThem(t *testing.T) {
 	}
 }
 
-func TestCodexRolloutLimitsLandOnTheSessionStampedWithTheRolloutTime(t *testing.T) {
+func TestUsageCodexRolloutLimitsLandOnTheSessionStampedWithTheRolloutTime(t *testing.T) {
 	d, path := start(t, &memStore{})
 	c := dial(t, path)
 	ctx := context.Background()

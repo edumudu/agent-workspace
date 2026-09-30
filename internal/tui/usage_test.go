@@ -39,7 +39,7 @@ func limitLines(m tui.Model) []string {
 	return out
 }
 
-func TestTopBarShowsEachWindowWithPercentLeftAndTimeToReset(t *testing.T) {
+func TestUsageTopBarShowsEachWindowWithPercentLeftAndTimeToReset(t *testing.T) {
 	st := limitedState(
 		domain.Session{Harness: domain.HarnessClaude, LimitsAt: clock(), Limits: []domain.RateLimit{
 			{Window: "five_hour", UsedPercent: 57, ResetsAt: resetIn(2*time.Hour + 10*time.Minute)},
@@ -60,14 +60,14 @@ func TestTopBarShowsEachWindowWithPercentLeftAndTimeToReset(t *testing.T) {
 	}
 }
 
-func TestTopBarHidesTheLimitsSlotWithoutData(t *testing.T) {
+func TestUsageTopBarHidesTheLimitsSlotWithoutData(t *testing.T) {
 	st := fixture(2, 1)
 	if got := limitLines(newModel(&st, nil)); len(got) != 0 {
 		t.Fatalf("limit lines %q", got)
 	}
 }
 
-func TestLowWindowsTurnRedBelowTwentyPercentLeft(t *testing.T) {
+func TestUsageLowWindowsTurnRedBelowTwentyPercentLeft(t *testing.T) {
 	st := limitedState(domain.Session{Harness: domain.HarnessClaude, LimitsAt: clock(), Limits: []domain.RateLimit{
 		{Window: "five_hour", UsedPercent: 81},
 		{Window: "seven_day", UsedPercent: 80},
@@ -92,7 +92,7 @@ func TestLowWindowsTurnRedBelowTwentyPercentLeft(t *testing.T) {
 	}
 }
 
-func TestValuesOlderThanFifteenMinutesAreDimmedWithTheirAge(t *testing.T) {
+func TestUsageValuesOlderThanFifteenMinutesAreDimmedWithTheirAge(t *testing.T) {
 	stale := clock().Add(-20 * time.Minute)
 	st := limitedState(domain.Session{Harness: domain.HarnessClaude, LimitsAt: stale, Limits: []domain.RateLimit{
 		{Window: "five_hour", UsedPercent: 40},
@@ -117,7 +117,7 @@ func TestValuesOlderThanFifteenMinutesAreDimmedWithTheirAge(t *testing.T) {
 	}
 }
 
-func TestLimitsFollowTheNewestReportAcrossDiffs(t *testing.T) {
+func TestUsageLimitsFollowTheNewestReportAcrossDiffs(t *testing.T) {
 	st := limitedState(domain.Session{Harness: domain.HarnessClaude, LimitsAt: clock(), Limits: []domain.RateLimit{{Window: "five_hour", UsedPercent: 10}}})
 	m := newModel(&st, nil)
 	next := st.Sessions[0]

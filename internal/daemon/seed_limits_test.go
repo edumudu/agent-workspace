@@ -8,7 +8,7 @@ import (
 	"github.com/giovaniif/agent-workspace/internal/domain"
 )
 
-func TestDebugSeedGivesEachHarnessFreshLimitsIncludingALowOne(t *testing.T) {
+func TestUsageDebugSeedGivesEachHarnessFreshLimitsIncludingALowOne(t *testing.T) {
 	_, path := start(t, &memStore{})
 	ctx := context.Background()
 	if err := dial(t, path).DebugSeed(ctx, 2); err != nil {

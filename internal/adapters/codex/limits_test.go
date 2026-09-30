@@ -11,7 +11,7 @@ import (
 	"github.com/giovaniif/agent-workspace/internal/domain"
 )
 
-func TestSnapshotLimitsAreNamedLikeClaudesAndStampedWithTheReportTime(t *testing.T) {
+func TestUsageSnapshotLimitsAreNamedLikeClaudesAndStampedWithTheReportTime(t *testing.T) {
 	f, err := os.Open(filepath.Join("testdata", "rollout", "turns.jsonl"))
 	if err != nil {
 		t.Fatal(err)
@@ -33,7 +33,7 @@ func TestSnapshotLimitsAreNamedLikeClaudesAndStampedWithTheReportTime(t *testing
 	}
 }
 
-func TestSnapshotLimitsTimeIsTheNewestTokenCountThatCarriedLimits(t *testing.T) {
+func TestUsageSnapshotLimitsTimeIsTheNewestTokenCountThatCarriedLimits(t *testing.T) {
 	rollout := `{"timestamp":"2026-09-29T10:00:00Z","type":"event_msg","payload":{"type":"token_count","rate_limits":{"primary":{"used_percent":10,"window_minutes":300,"resets_at":5}}}}` + "\n" +
 		`{"timestamp":"2026-09-29T10:30:00Z","type":"event_msg","payload":{"type":"token_count","info":null,"rate_limits":null}}` + "\n"
 	snap, err := ReadSnapshot(strings.NewReader(rollout))
@@ -45,7 +45,7 @@ func TestSnapshotLimitsTimeIsTheNewestTokenCountThatCarriedLimits(t *testing.T) 
 	}
 }
 
-func TestSnapshotWithoutLimitsHasNoRateLimits(t *testing.T) {
+func TestUsageSnapshotWithoutLimitsHasNoRateLimits(t *testing.T) {
 	if got := (Snapshot{}).RateLimits(); len(got) != 0 {
 		t.Fatalf("got %+v", got)
 	}

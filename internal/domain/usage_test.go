@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-func TestReportStampsWhenTheLimitsWereReported(t *testing.T) {
+func TestUsageReportStampsWhenTheLimitsWereReported(t *testing.T) {
 	at := time.Date(2026, 9, 29, 12, 0, 0, 0, time.UTC)
 	s := Session{LimitsAt: at.Add(-time.Hour), Limits: []RateLimit{{Window: "five_hour", UsedPercent: 10}}}
 	got := s.Report(StatusReport{ContextLeft: 50, HasContext: true, At: at})
