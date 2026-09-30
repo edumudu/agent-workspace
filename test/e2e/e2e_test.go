@@ -37,7 +37,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestScripts(t *testing.T) {
-	fakes, err := filepath.Abs("bin")
+	fakes, err := filepath.Abs("testdata/bin")
 	if err != nil {
 		t.Fatal(err)
 	}
