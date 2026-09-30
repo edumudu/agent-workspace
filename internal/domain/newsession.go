@@ -130,7 +130,14 @@ func PlanSessionStart(ws Workspace, slug, worktreeHome string, taken []string) S
 // pane, so a later pane with the same ID is not mistaken for it.
 func (s Session) End() Session {
 	s.State = StateIdle
+	s.Ended = true
 	s.Pane = ""
 	s.Focused = false
 	return s
+}
+
+// Forgotten is true once an ended session has no worktree left for cleanup
+// to weigh it against, so nothing needs its record any more.
+func (s Session) Forgotten() bool {
+	return s.Ended && len(s.WorktreeIDs) == 0
 }

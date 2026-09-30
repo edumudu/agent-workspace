@@ -5,12 +5,13 @@ import (
 	"testing"
 
 	"github.com/giovaniif/agent-workspace/internal/domain"
+	"github.com/giovaniif/agent-workspace/internal/rpc"
 )
 
 func TestSubagentDebugSeedGivesASessionThreeSubagentsWithARunningOne(t *testing.T) {
 	_, path := start(t, &memStore{})
 	ctx := context.Background()
-	if err := dial(t, path).DebugSeed(ctx, 3); err != nil {
+	if err := dial(t, path).DebugSeed(ctx, rpc.DebugSeedParams{Count: 3}); err != nil {
 		t.Fatal(err)
 	}
 	sub, err := dial(t, path).Subscribe(ctx)
