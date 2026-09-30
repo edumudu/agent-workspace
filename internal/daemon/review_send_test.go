@@ -202,6 +202,32 @@ func TestReviewSendStoresADraftAsSentOnlyOnceItIsPasted(t *testing.T) {
 	})
 }
 
+func TestReviewSendWaitsForTheDraftBeingPastedBeforeTheNext(t *testing.T) {
+	env := startSend(t, domain.StateIdle)
+	addComments(t, env.c, commentA)
+	release := env.host.holdPane("%1")
+	if _, err := env.c.SendReview(context.Background(), "s1"); err != nil {
+		t.Fatal(err)
+	}
+	addComments(t, env.c, commentB)
+	second, err := env.c.SendReview(context.Background(), "s1")
+	if err != nil || second.Status != domain.DraftQueued {
+		t.Fatalf("a send during another paste = %+v, %v; want it queued", second, err)
+	}
+	release()
+	want := []string{
+		"%1 paste=true " + domain.ReviewPrompt([]domain.ReviewComment{commentA}), "%1 keys Enter",
+		"%1 paste=true " + domain.ReviewPrompt([]domain.ReviewComment{commentB}), "%1 keys Enter",
+	}
+	if typed := env.host.waitTyped(t, len(want)); !reflect.DeepEqual(typed, want) {
+		t.Fatalf("typed %q", typed)
+	}
+	waitUntil(t, "both stored as sent", func() bool {
+		st := env.store.drafts()
+		return len(st) == 2 && st[0].Status == domain.DraftSent && st[1].Status == domain.DraftSent
+	})
+}
+
 func TestReviewSendAFailedPasteGoesBackToTheQueueWithCommentsAddedSince(t *testing.T) {
 	env := startSend(t, domain.StateIdle)
 	addComments(t, env.c, commentA)
