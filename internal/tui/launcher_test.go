@@ -11,7 +11,7 @@ import (
 	"github.com/giovaniif/agent-workspace/internal/tui"
 )
 
-const pasted = "https://linear.app/acme/issue/ENG-1/first\nhttps://linear.app/acme/issue/ENG-2/second\nnot a url"
+const pasted = "https://linear.app/acme/issue/ENG-1/first\nhttps://linear.app/acme/issue/ENG-2/second\nnotaurl"
 
 func launcherModel(t *testing.T, st rpc.State, opts tui.Options) (tui.Model, *fakeCaller) {
 	t.Helper()

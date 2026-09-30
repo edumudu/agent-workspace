@@ -173,6 +173,9 @@ func (m Model) body() ([]string, int) {
 	if m.dialog != nil {
 		return m.dialogLines()
 	}
+	if m.launching != nil {
+		return m.launcherLines(), 0
+	}
 	if m.help {
 		return m.helpLines(), 0
 	}
@@ -180,11 +183,11 @@ func (m Model) body() ([]string, int) {
 		return m.pickerLines(), 0
 	}
 	if len(m.entries) == 0 {
-		return []string{
+		return append([]string{
 			"",
 			m.line(false, []piece{{s.sub, " No sessions yet."}}, nil),
 			m.line(false, []piece{{s.dim, " Sessions you start show up here."}}, nil),
-		}, 0
+		}, m.queueLines()...), 0
 	}
 	var out []string
 	selRow := 0
@@ -198,7 +201,7 @@ func (m Model) body() ([]string, int) {
 		}
 		out = append(out, m.sessionLines(e, sel)...)
 	}
-	return out, selRow
+	return append(out, m.queueLines()...), selRow
 }
 
 func (m Model) sessionLines(e entry, sel bool) []string {
@@ -287,6 +290,9 @@ func (m Model) helpLines() []string {
 		{"enter", "focus agent pane"},
 		{`ctrl+\`, "in an agent pane: back to the sidebar"},
 		{"n", "new session"},
+		{"L", "launch Linear issues"},
+		{"c", "queued issues to codex"},
+		{"X", "clear the queue"},
 		{"x", "end session"},
 		{"?", "close help"},
 		{"q", "quit (sessions keep running)"},
