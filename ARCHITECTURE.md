@@ -8,7 +8,7 @@ This covers how `agentws` is built. What it does is in [FEATURES.md](FEATURES.md
 - **TUI:** Bubble Tea v2, Lip Gloss and Bubbles (charmbracelet).
 - **Syntax highlighting:** chroma's lexer engine with a curated set of its lexers in `internal/tui/syntax/`, not its `lexers`/`styles` packages, whose init would slow every hook. Diffs are parsed from `git diff` output, not computed in Go. See [Review](#review).
 - **Git:** the `git` CLI via exec, never a Go git library. It is the only thing that handles worktrees, sparse checkouts and user config correctly.
-- **GitHub:** `cli/go-gh`, which reuses the user's `gh` auth. GraphQL with ETag/backoff for polling.
+- **GitHub:** the `gh` CLI (`gh api graphql`), which reuses the user's `gh` auth. One GraphQL request per poll, with backoff.
 - **Terminals:** the `tmux` CLI against a dedicated server (`tmux -L agentws`) with its own config, driven only by `internal/adapters/tmux`. Panes are parked in their own windows and `swap-pane` puts one in the client's main slot. See [docs/adr/0003-tmux-terminal-host.md](docs/adr/0003-tmux-terminal-host.md).
 - **Config:** `github.com/BurntSushi/toml` reads the per-repo `.agentws.toml` setup recipe.
 - **Storage:** SQLite via `modernc.org/sqlite` (no cgo), with embedded migrations and write-behind. Stored at `~/.agentws/state.db` (`$AGENTWS_HOME/state.db` if set). See [docs/adr/0004-sqlite-store.md](docs/adr/0004-sqlite-store.md).
@@ -158,7 +158,7 @@ See [docs/adr/0012-worktree-detection.md](docs/adr/0012-worktree-detection.md). 
 - **Scan.** One goroutine runs `git worktree list --porcelain -z` (`adapters/git.Worktrees`, at most 4 in flight) from every registered repo and every session's last hook `cwd`, one listing per main checkout. It runs at start, every 10 s, on `workspace.add`, and when a hook reports a new cwd or a `git worktree add`. A repo git cannot read is skipped, so its worktrees are never dropped by mistake. Prunable entries (directory gone) count as removed.
 - **Attribution** (`domain.AttributeWorktree`), for worktrees not seen before: the parent session of a subagent worktree (`<cwd>/.claude/worktrees/agent-*`), then a session whose cwd is inside it, then a `git worktree add` claim from a `PostToolUse` hook in the last 30 s. With claims from several sessions, only one whose command names the path or branch wins. Otherwise unassigned.
 - **Adoption.** The first scan of a repo in a daemon's life adopts its unknown worktrees as unassigned; stored worktrees keep their owner across restarts.
-- **PRs.** Every 60 s, one `gh pr list --state all --json ...` per repo (`adapters/github`), matched by head branch: the open PR, else the newest. A diff goes out only when the PR or its checks changed.
+- **PRs.** Every 60 s, one read-only `gh api graphql` request for all repos (`adapters/github`), matched by head branch: the open PR, else the newest. It carries checks with failing job names and run URLs, review decision, unresolved threads, bot comments since the last push and mergeable state; `domain` derives merge blockers from them. The wait is a quarter of that while checks run and doubles per failed poll up to 10x. A diff goes out only when the PR changed. See [docs/adr/0024-pr-board.md](docs/adr/0024-pr-board.md). `agentws pr <session> [--json]` prints a session's board from daemon state.
 - Hooks are parsed on the loop (a small JSON decode); all git and gh calls run on the scanner goroutine.
 
 ## Ports
@@ -199,7 +199,7 @@ Clean layers must not cost latency, so these rules apply:
 - **TUI renders from a snapshot.** The daemon pushes state diffs, and the TUI never runs git, gh or tmux on the render path.
 - **Heavy work goes to workers:** `du`, cleanup, diffs, and PR polling run in a bounded pool with debounce. Diffs are cached by tree hash.
 - **Batch git:** one `git status --porcelain=v2 -z` per worktree per change burst, triggered by fsnotify with a 300 ms debounce.
-- **Poll GitHub politely:** ETags, 60 s base interval, faster only for worktrees whose checks are running.
+- **Poll GitHub politely:** one GraphQL request per poll for every repo, 60 s base interval, faster only while checks are running, exponential backoff on failure. GraphQL POSTs cannot use ETags (ADR 0024).
 
 **Budgets** (CI benchmarks enforce these where possible):
 

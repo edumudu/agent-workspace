@@ -84,7 +84,7 @@ One terminal tool for running Claude Code and Codex sessions in parallel, each i
 
 ## P1
 
-- A PR board per session: checks, review-bot comments, unresolved threads, merge readiness. babysit-pr reads this instead of polling `gh`.
+- A PR board per session: checks with failing job names linked to their runs, review-bot comments since the last push, unresolved threads, merge readiness. It shows on the session card and as `agentws pr <session> [--json]`, which babysit-pr reads instead of polling `gh` (see ADR 0024).
 - A session card: task, PR, last agent action, what it's waiting on.
 - A subagent tree per session under its sidebar row, from the harness's subagent hooks. Claude only today; stop and steer controls are not offered because neither harness exposes them per subagent (see ADR 0019).
 - A Linear launcher: paste one or more issue URLs and get a worktree, session and PR for each.

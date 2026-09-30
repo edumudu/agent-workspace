@@ -51,7 +51,7 @@ func TestPRBoardBlockers(t *testing.T) {
 	}
 }
 
-func TestBotCommentsSinceCountsOnlyBotCommentsAfterThePush(t *testing.T) {
+func TestPRBoardBotCommentsSinceCountsOnlyBotCommentsAfterThePush(t *testing.T) {
 	push := time.Date(2026, 9, 1, 12, 0, 0, 0, time.UTC)
 	comments := []PRComment{
 		{Bot: true, At: push.Add(-time.Minute)},
@@ -68,7 +68,7 @@ func TestBotCommentsSinceCountsOnlyBotCommentsAfterThePush(t *testing.T) {
 	}
 }
 
-func TestNextPRPoll(t *testing.T) {
+func TestPRBoardNextPoll(t *testing.T) {
 	base := 60 * time.Second
 	tests := []struct {
 		name     string
