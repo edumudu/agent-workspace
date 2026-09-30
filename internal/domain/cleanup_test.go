@@ -31,7 +31,7 @@ func TestCleanupPlan(t *testing.T) {
 		{"merged and in use", onBranch(merged), CleanupFacts{Holders: []string{"nvim (pid 7)", "zsh (pid 8)"}, LastActivity: idle}, CleanupKeep, "in use by nvim (pid 7)", ""},
 		{"in use beats dirty", onBranch(merged), CleanupFacts{Uncommitted: 1, Holders: []string{"zsh (pid 8)"}, LastActivity: idle}, CleanupKeep, "in use by zsh (pid 8)", ""},
 		{"merged with a live session", onBranch(merged), CleanupFacts{SessionLive: true, LastActivity: idle}, CleanupKeep, "its session is live", ""},
-		{"merged but active recently", onBranch(merged), CleanupFacts{LastActivity: now.Add(-CleanupGrace + time.Minute)}, CleanupKeep, "active within the last 1h0m0s", ""},
+		{"merged but active recently", onBranch(merged), CleanupFacts{LastActivity: now.Add(-CleanupGrace + time.Minute)}, CleanupKeep, "active within the last 4h0m0s", ""},
 		{"unmerged", onBranch(open), CleanupFacts{LastActivity: idle}, CleanupKeep, "not merged", ""},
 		{"no PR and not in default", onBranch(nil), CleanupFacts{LastActivity: idle}, CleanupKeep, "not merged", ""},
 		{"closed and not in default", onBranch(closed), CleanupFacts{LastActivity: idle}, CleanupKeep, "not merged", ""},
@@ -59,5 +59,16 @@ func TestCleanupPlanActivityExactlyAtGraceIsIdle(t *testing.T) {
 	wt := Worktree{ID: "/w/a", Path: "/w/a", Branch: "a", PR: &PullRequest{Number: 1, Head: "a", State: PRMerged}}
 	if got := PlanCleanup(wt, CleanupFacts{LastActivity: now.Add(-CleanupGrace)}, now); got.Action != CleanupRemove {
 		t.Errorf("at the grace edge = %+v, want remove", got)
+	}
+}
+
+func TestCleanupKeepsAMergedWorktreeTouchedWithinFourHours(t *testing.T) {
+	now := time.Date(2026, 9, 30, 12, 0, 0, 0, time.UTC)
+	wt := Worktree{ID: "/w/api-feat", Path: "/w/api-feat", Branch: "feat", PR: &PullRequest{Number: 42, Head: "feat", State: PRMerged}}
+	if got := PlanCleanup(wt, CleanupFacts{LastActivity: now.Add(-3*time.Hour - 59*time.Minute)}, now); got.Action != CleanupKeep {
+		t.Fatalf("touched 3h59m ago: got %v, want keep", got.Action)
+	}
+	if got := PlanCleanup(wt, CleanupFacts{LastActivity: now.Add(-4 * time.Hour)}, now); got.Action != CleanupRemove {
+		t.Fatalf("touched 4h ago: got %v, want remove", got.Action)
 	}
 }

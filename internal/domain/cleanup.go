@@ -8,7 +8,7 @@ import (
 
 // CleanupGrace is how long after its last activity a worktree is left alone,
 // so one an agent just created from the default branch is not taken as merged.
-const CleanupGrace = time.Hour
+const CleanupGrace = 4 * time.Hour
 
 type CleanupAction string
 
