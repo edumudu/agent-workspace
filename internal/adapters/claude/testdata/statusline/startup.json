@@ -1,0 +1,1 @@
+{"session_id":"4c98cb16-01d6-458a-864f-212ebabda876","cwd":"/home/dev/api","effort":{"level":"low"},"model":{"id":"claude-opus-5-5","display_name":"Opus 5.5"},"version":"2.1.285","context_window":{"total_input_tokens":0,"total_output_tokens":0,"context_window_size":1000000,"current_usage":null,"used_percentage":null,"remaining_percentage":null}}

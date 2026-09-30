@@ -8,7 +8,22 @@ var claudeHooks = map[string]HarnessEventKind{
 	"PermissionRequest": EventPermissionRequest,
 	"Notification":      EventWaitingForInput,
 	"Stop":              EventStop,
-	"SessionEnd":        EventSessionEnd,
+	// why: a subagent finishing is progress inside the parent's turn, not the end of it.
+	"SubagentStop": EventPostToolUse,
+	"SessionEnd":   EventSessionEnd,
+}
+
+// ClaudeNotification refines a Claude Notification hook by its
+// notification_type: a permission prompt needs approval, anything else that
+// waits on the user is waiting. Types that ask nothing of the user report false.
+func ClaudeNotification(notificationType string) (HarnessEventKind, bool) {
+	switch notificationType {
+	case "permission_prompt":
+		return EventPermissionRequest, true
+	case "auth_success":
+		return "", false
+	}
+	return EventWaitingForInput, true
 }
 
 var codexHooks = map[string]HarnessEventKind{

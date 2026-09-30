@@ -152,3 +152,20 @@ func (h *fakeClientHost) close(slot app.Slot) {
 	defer h.mu.Unlock()
 	delete(h.open, slot)
 }
+
+type fakeHost struct {
+	app.TerminalHost
+	mu    sync.Mutex
+	specs []app.PaneSpec
+	err   error
+}
+
+func (h *fakeHost) Create(_ context.Context, spec app.PaneSpec) (app.PaneID, error) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if h.err != nil {
+		return "", h.err
+	}
+	h.specs = append(h.specs, spec)
+	return "%7", nil
+}

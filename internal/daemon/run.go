@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/giovaniif/agent-workspace/internal/adapters/claude"
 	wsfs "github.com/giovaniif/agent-workspace/internal/adapters/fs"
 	gitadapter "github.com/giovaniif/agent-workspace/internal/adapters/git"
 	"github.com/giovaniif/agent-workspace/internal/adapters/sqlite"
@@ -29,16 +30,16 @@ func Run(ctx context.Context, home string) (err error) {
 	}
 	defer func() { err = errors.Join(err, store.Close()) }()
 
-	d, err := New(store, os.Getpid(), WithWorkspaces(wsfs.FS{}, gitadapter.Inspector{}))
+	// why: tests and manual validation point this at a throwaway server so the real one is untouched.
+	host := tmux.New(tmux.Config{
+		Socket:     os.Getenv("AGENTWS_TMUX_SOCKET"),
+		ConfigPath: filepath.Join(home, "tmux.conf"),
+	})
+	d, err := New(store, os.Getpid(), WithWorkspaces(wsfs.FS{}, gitadapter.Inspector{}), WithHarnesses(host, claude.Adapter{}))
 	if err != nil {
 		return err
 	}
-
-	// why: tests and manual validation point this at a throwaway server so the real one is untouched.
-	d.SetClientHost(tmux.New(tmux.Config{
-		Socket:     os.Getenv("AGENTWS_TMUX_SOCKET"),
-		ConfigPath: filepath.Join(home, "tmux.conf"),
-	}))
+	d.SetClientHost(host)
 
 	sock := rpc.SocketPath(home)
 	// why: holding the lock means any socket file left here belongs to a dead daemon.

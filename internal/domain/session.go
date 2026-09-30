@@ -48,13 +48,14 @@ type Session struct {
 	TaskID      string
 	Harness     Harness
 	Pane        string
-	Model      string
+	Model       string
 	Effort      string
 	State       AgentState
 	Unread      bool
 	Focused     bool
 	WorktreeIDs []string
 	Usage       Usage
+	Limits      []RateLimit
 }
 
 // Apply is the agent state machine. Events that no longer fit the current

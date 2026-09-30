@@ -1,0 +1,29 @@
+{
+  "theme": "dark",
+  "model": "opus",
+  "permissions": {
+    "allow": ["Bash(ls:*)"]
+  },
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          { "type": "command", "command": "tmux set -w @agent-done 1" }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          { "type": "command", "command": "~/.claude/guard.sh" }
+        ]
+      }
+    ]
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "~/.claude/statusline.sh",
+    "padding": 1
+  }
+}

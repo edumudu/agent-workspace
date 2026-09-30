@@ -67,7 +67,47 @@ type Worktree struct {
 	SubtaskSlug string
 }
 
+// Usage is what the harness last reported. LimitUsedPercent is the fullest
+// of the session's Limits, the one that blocks it first.
 type Usage struct {
 	ContextLeftPercent int
 	LimitUsedPercent   int
+}
+
+// RateLimit is one usage window, such as five_hour, seven_day, or a
+// per-model seven_day window. ResetsAt is Unix seconds, 0 when unknown.
+type RateLimit struct {
+	Window      string
+	UsedPercent int
+	ResetsAt    int64
+}
+
+// StatusReport is one status-line update. Empty fields and HasContext false
+// mean the harness does not know the value yet.
+type StatusReport struct {
+	Model       string
+	Effort      string
+	ContextLeft int
+	HasContext  bool
+	Limits      []RateLimit
+}
+
+func (s Session) Report(r StatusReport) Session {
+	if r.Model != "" {
+		s.Model = r.Model
+	}
+	if r.Effort != "" {
+		s.Effort = r.Effort
+	}
+	if r.HasContext {
+		s.Usage.ContextLeftPercent = r.ContextLeft
+	}
+	if len(r.Limits) > 0 {
+		s.Limits = r.Limits
+		s.Usage.LimitUsedPercent = 0
+		for _, l := range r.Limits {
+			s.Usage.LimitUsedPercent = max(s.Usage.LimitUsedPercent, l.UsedPercent)
+		}
+	}
+	return s
 }
