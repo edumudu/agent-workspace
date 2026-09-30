@@ -388,3 +388,15 @@ func TestReviewDraftsSurviveARestart(t *testing.T) {
 		t.Errorf("drafts = %+v, want %+v", snap.Drafts, want)
 	}
 }
+
+func TestReviewASentDraftWithNoTurnStaysClosedAfterARestart(t *testing.T) {
+	s, path := openTemp(t)
+	s.PutDraft(domain.ReviewDraft{ID: "s1-1", Session: "s1", Status: domain.DraftSent}.LinkTurn(nil))
+	snap, err := reopen(t, s, path).Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(snap.Drafts) != 1 || snap.Drafts[0].AwaitsTurn() {
+		t.Errorf("drafts = %+v; a draft closed with no turn must not wait for one again", snap.Drafts)
+	}
+}
