@@ -14,6 +14,7 @@ import (
 	wsfs "github.com/giovaniif/agent-workspace/internal/adapters/fs"
 	gitadapter "github.com/giovaniif/agent-workspace/internal/adapters/git"
 	"github.com/giovaniif/agent-workspace/internal/adapters/github"
+	"github.com/giovaniif/agent-workspace/internal/adapters/linear"
 	"github.com/giovaniif/agent-workspace/internal/adapters/notify"
 	"github.com/giovaniif/agent-workspace/internal/adapters/procs"
 	"github.com/giovaniif/agent-workspace/internal/adapters/setup"
@@ -62,6 +63,10 @@ func Run(ctx context.Context, home string) (err error) {
 	if err != nil {
 		log.Printf("notify.json ignored: %v", err)
 	}
+	linearToken, err := linear.LoadToken(filepath.Join(home, "linear.json"))
+	if err != nil {
+		log.Printf("linear.json ignored: %v", err)
+	}
 	banners := notify.New()
 	trash := wsfs.NewTrash(filepath.Join(home, "trash"), 4)
 	cleanup := app.NewCleanup(gitadapter.Worktrees{}, procs.Table{}, trash,
@@ -72,6 +77,7 @@ func Run(ctx context.Context, home string) (err error) {
 		WithSessions(gitadapter.Adder{}, runRecipe, worktreeHome),
 		WithNotifier(banners, banners, sounds),
 		WithWorktrees(gitadapter.Worktrees{}, &github.Finder{}),
+		WithTitles(app.TitleResolvers{linear.Client{Token: linearToken}, github.Titles{}}),
 		WithProcessTable(procs.Table{}),
 		WithReview(gitadapter.Review{}),
 		WithCleanup(cleanup, DefaultCleanupEvery),

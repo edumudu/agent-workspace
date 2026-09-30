@@ -122,6 +122,7 @@ type Daemon struct {
 	wt      worktreeScanner
 	ports   portScanner
 	sess    sessionDeps
+	titles  app.TitleResolver
 	// restored is the sessions loaded from the store, checked once against tmux on Serve.
 	restored []domain.Session
 	rv       review
@@ -414,6 +415,8 @@ func (d *Daemon) dispatch(c *conn, line []byte) (*rpc.Response, bool) {
 		return d.endSession(req)
 	case rpc.MethodSwitch:
 		return d.switchSession(req)
+	case rpc.MethodSessionRename, rpc.MethodSessionUnpin:
+		return d.pinName(req)
 	case rpc.MethodWorkspaceAdd, rpc.MethodWorkspaceList, rpc.MethodWorkspaceRemove:
 		if resp, ok, handled := d.workspaceMethod(req); handled {
 			return resp, ok
