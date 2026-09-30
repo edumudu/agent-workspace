@@ -49,3 +49,35 @@ func TestUsageCodexRolloutLimitsLandOnTheSessionStampedWithTheRolloutTime(t *tes
 		t.Fatalf("session %+v", got)
 	}
 }
+
+func TestModelSwitchCodexRolloutConfirmsOnlyFromATurnAfterTheSwitch(t *testing.T) {
+	turn := time.Date(2026, 9, 29, 10, 5, 0, 0, time.UTC)
+	cases := []struct {
+		name        string
+		sw          domain.Switch
+		wantPending int
+	}{
+		{"a later turn shows it", domain.Switch{Kind: domain.SwitchEffort, Value: "medium", SentAt: turn.Add(-time.Minute)}, 0},
+		{"an earlier turn says nothing yet", domain.Switch{Kind: domain.SwitchEffort, Value: "high", SentAt: turn.Add(time.Minute)}, 1},
+	}
+	for _, c := range cases {
+		d, path := start(t, &memStore{})
+		cl := dial(t, path)
+		ctx := context.Background()
+		sub, err := cl.Subscribe(ctx)
+		if err != nil {
+			t.Fatal(err)
+		}
+		d.Post(daemon.SessionChanged{Session: domain.Session{ID: "a", Harness: domain.HarnessCodex, Pane: "%3", State: domain.StateRunning, Effort: "low", Switches: []domain.Switch{c.sw}}})
+		next(t, sub.Diffs)
+		payload, _ := json.Marshal(map[string]string{"transcript_path": codexRollout(t)})
+		if err := cl.Call(ctx, rpc.MethodHook, rpc.Hook{Harness: "codex", Event: "Stop", Pane: "%3", At: time.Now(), Payload: payload}, nil); err != nil {
+			t.Fatal(err)
+		}
+		next(t, sub.Diffs)
+		got := next(t, sub.Diffs).Session
+		if got == nil || got.Effort != "medium" || len(got.Switches) != c.wantPending || got.SwitchWarning {
+			t.Fatalf("%s: session %+v", c.name, got)
+		}
+	}
+}

@@ -11,7 +11,7 @@ import (
 	"github.com/giovaniif/agent-workspace/internal/rpc"
 )
 
-const sendSwitchTimeout = 5 * time.Second
+const sendSwitchTimeout = 10 * time.Second
 
 func (d *Daemon) switchSession(req rpc.Request) (*rpc.Response, bool) {
 	var p rpc.SwitchParams
@@ -80,7 +80,7 @@ func (d *Daemon) sendSwitches(session domain.Session, sws []domain.Switch) {
 		if len(deliver) == 0 {
 			return
 		}
-		err := app.SendSwitches(ctx, d.hs.host, app.PaneID(session.Pane), session.Harness, deliver, app.PasteSettle)
+		err := app.SendSwitches(ctx, d.hs.host, session, deliver, app.PasteSettle)
 		if err == nil {
 			return
 		}

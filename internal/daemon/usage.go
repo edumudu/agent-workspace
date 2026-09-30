@@ -53,7 +53,8 @@ func (d *Daemon) readUsage(sessionID, path string) {
 			if current, ok := s.sessions[sessionID]; ok && err == nil {
 				if next := withSnapshot(current, snap); next.Model != current.Model ||
 					next.Effort != current.Effort || next.Usage != current.Usage ||
-					!next.LimitsAt.Equal(current.LimitsAt) {
+					!next.LimitsAt.Equal(current.LimitsAt) || next.SwitchWarning != current.SwitchWarning ||
+					!reflect.DeepEqual(next.Switches, current.Switches) {
 					s.emit(SessionChanged{Session: next})
 				}
 			}
@@ -67,12 +68,7 @@ func (d *Daemon) readUsage(sessionID, path string) {
 }
 
 func withSnapshot(s domain.Session, snap codex.Snapshot) domain.Session {
-	if snap.Model != "" {
-		s.Model = snap.Model
-	}
-	if snap.Effort != "" {
-		s.Effort = snap.Effort
-	}
+	s = s.Report(domain.StatusReport{Model: snap.Model, Effort: snap.Effort, At: snap.TurnAt})
 	usage := snap.Usage()
 	if snap.ContextLeftPercent != codex.UnknownPercent {
 		s.Usage.ContextLeftPercent = usage.ContextLeftPercent

@@ -36,6 +36,8 @@ type Snapshot struct {
 	// LimitsAt is the rollout's time for the event that carried Limits, zero
 	// when the rollout has no timestamp.
 	LimitsAt time.Time
+	// TurnAt is the rollout's time for the turn that set Model and Effort.
+	TurnAt time.Time
 }
 
 // RateLimits is Limits as the session shows them, named like Claude's windows.
@@ -129,6 +131,7 @@ func ReadSnapshot(r io.Reader) (Snapshot, error) {
 			if json.Unmarshal(line.Payload, &tc) == nil {
 				snap.Model = orKeep(tc.Model, snap.Model)
 				snap.Effort = orKeep(tc.Effort, snap.Effort)
+				snap.TurnAt, _ = time.Parse(time.RFC3339Nano, line.Timestamp)
 			}
 		case "event_msg":
 			var ev eventMsg
