@@ -16,7 +16,7 @@ func newAttendModel(st *rpc.State, a tui.Attender) tui.Model {
 	return update(m, tui.StateMsg(*st))
 }
 
-func TestMKeyTogglesMuteOnTheSelectedSession(t *testing.T) {
+func TestNotifyMKeyTogglesMuteOnTheSelectedSession(t *testing.T) {
 	st := fixture(2, 0)
 	a := &fakeAttender{}
 	m := newAttendModel(&st, a)
@@ -38,7 +38,7 @@ func TestMKeyTogglesMuteOnTheSelectedSession(t *testing.T) {
 	}
 }
 
-func TestMutedSessionShowsTheMuteMarker(t *testing.T) {
+func TestNotifyMutedSessionShowsTheMuteMarker(t *testing.T) {
 	st := fixture(2, 0)
 	m := newAttendModel(&st, &fakeAttender{})
 	if strings.Contains(screen(m), "⊘") {
@@ -51,7 +51,7 @@ func TestMutedSessionShowsTheMuteMarker(t *testing.T) {
 	}
 }
 
-func TestEnterMarksTheSessionSeen(t *testing.T) {
+func TestNotifyEnterMarksTheSessionSeen(t *testing.T) {
 	st := fixture(2, 0)
 	a := &fakeAttender{}
 	m := newAttendModel(&st, a)
@@ -63,7 +63,7 @@ func TestEnterMarksTheSessionSeen(t *testing.T) {
 	}
 }
 
-func TestHelpListsMute(t *testing.T) {
+func TestNotifyHelpListsMute(t *testing.T) {
 	st := fixture(1, 0)
 	if out := screen(press(newModel(&st, nil), "?")); !strings.Contains(out, "mute session") {
 		t.Fatalf("help missing mute:\n%s", out)

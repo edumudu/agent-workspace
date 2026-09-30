@@ -54,7 +54,7 @@ func TestNotifyReturnsRunnerError(t *testing.T) {
 	}
 }
 
-func TestTerminalFrontmostRecognizesTerminalApps(t *testing.T) {
+func TestNotifyTerminalFrontmostRecognizesTerminalApps(t *testing.T) {
 	cases := map[string]bool{
 		"Terminal\n":  true,
 		"iTerm2\n":    true,
@@ -73,14 +73,14 @@ func TestTerminalFrontmostRecognizesTerminalApps(t *testing.T) {
 	}
 }
 
-func TestTerminalFrontmostIsFalseWhenTheQueryFails(t *testing.T) {
+func TestNotifyTerminalFrontmostIsFalseWhenTheQueryFails(t *testing.T) {
 	o := notify.Osascript{Run: (&recorder{out: "Terminal\n", err: errors.New("no access")}).run}
 	if o.TerminalFrontmost(context.Background()) {
 		t.Fatal("a failed query counted as frontmost")
 	}
 }
 
-func TestLoadSounds(t *testing.T) {
+func TestNotifyLoadSounds(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "notify.json")
 	if err := os.WriteFile(path, []byte(`{"sounds":{"permission":"Glass","done":"Hero","bogus":"x"}}`), 0o600); err != nil {
@@ -96,14 +96,14 @@ func TestLoadSounds(t *testing.T) {
 	}
 }
 
-func TestLoadSoundsMissingFileMeansSilence(t *testing.T) {
+func TestNotifyLoadSoundsMissingFileMeansSilence(t *testing.T) {
 	got, err := notify.LoadSounds(filepath.Join(t.TempDir(), "absent.json"))
 	if err != nil || len(got) != 0 {
 		t.Fatalf("got %v, %v", got, err)
 	}
 }
 
-func TestLoadSoundsRejectsBadJSON(t *testing.T) {
+func TestNotifyLoadSoundsRejectsBadJSON(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "notify.json")
 	if err := os.WriteFile(path, []byte(`{`), 0o600); err != nil {
 		t.Fatal(err)

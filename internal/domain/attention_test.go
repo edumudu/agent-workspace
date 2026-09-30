@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-func TestBannerFor(t *testing.T) {
+func TestNotifyBannerFor(t *testing.T) {
 	cases := []struct {
 		name    string
 		session Session
@@ -29,7 +29,7 @@ func TestBannerFor(t *testing.T) {
 	}
 }
 
-func TestMutedSessionStillGoesUnread(t *testing.T) {
+func TestNotifyMutedSessionStillGoesUnread(t *testing.T) {
 	s := Session{State: StateRunning, Muted: true}
 	next, effects := s.Apply(HarnessEvent{Kind: EventStop})
 	if !next.Unread {
@@ -42,7 +42,7 @@ func TestMutedSessionStillGoesUnread(t *testing.T) {
 	}
 }
 
-func TestSetMutedOnlyChangesMuted(t *testing.T) {
+func TestNotifySetMutedOnlyChangesMuted(t *testing.T) {
 	s := Session{ID: "a", State: StateWaiting, Unread: true}
 	got := s.SetMuted(true)
 	if got.ID != "a" || got.State != StateWaiting || !got.Unread || !got.Muted {
@@ -53,7 +53,7 @@ func TestSetMutedOnlyChangesMuted(t *testing.T) {
 	}
 }
 
-func TestCoalescerAllowsOneBannerPerSessionPerWindow(t *testing.T) {
+func TestNotifyCoalescerAllowsOneBannerPerSessionPerWindow(t *testing.T) {
 	c := NewCoalescer()
 	t0 := time.Date(2026, 9, 29, 12, 0, 0, 0, time.UTC)
 	steps := []struct {
@@ -75,7 +75,7 @@ func TestCoalescerAllowsOneBannerPerSessionPerWindow(t *testing.T) {
 	}
 }
 
-func TestBurstOfTwentyAttentionEventsIsOneBanner(t *testing.T) {
+func TestNotifyBurstOfTwentyAttentionEventsIsOneBanner(t *testing.T) {
 	c := NewCoalescer()
 	now := time.Date(2026, 9, 29, 12, 0, 0, 0, time.UTC)
 	s := Session{ID: "a", State: StateRunning}

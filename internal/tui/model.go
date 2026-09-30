@@ -19,6 +19,13 @@ type Focuser interface {
 	FocusMain(ctx context.Context) error
 }
 
+// Attender tells the daemon what the user did about a session's attention
+// state; *rpc.Client is one.
+type Attender interface {
+	MuteSession(ctx context.Context, id string, muted bool) error
+	FocusSession(ctx context.Context, id string) error
+}
+
 type Options struct {
 	Theme Theme
 	// Now is the clock for the top bar; nil means time.Now.
@@ -26,6 +33,8 @@ type Options struct {
 	// Tick is the spinner and clock interval; zero turns the ticker off.
 	Tick  time.Duration
 	Focus Focuser
+	// Attend may be nil, which turns off m and the seen marker on enter.
+	Attend Attender
 }
 
 // StateMsg replaces the whole state, as a subscribe snapshot does.
@@ -272,6 +281,8 @@ func (m Model) key(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		if m.selected != "" {
 			m.collapsed[m.selected] = !m.collapsed[m.selected]
 		}
+	case "m":
+		return m, m.toggleMute()
 	case "enter":
 		return m, m.focus()
 	default:
@@ -298,10 +309,32 @@ func (m Model) focus() tea.Cmd {
 	if f == nil || m.selected == "" {
 		return nil
 	}
+	id, attend := m.selected, m.opts.Attend
 	return func() tea.Msg {
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 		defer cancel()
 		if err := f.FocusMain(ctx); err != nil {
+			return errMsg{err}
+		}
+		if attend != nil {
+			if err := attend.FocusSession(ctx, id); err != nil {
+				return errMsg{err}
+			}
+		}
+		return nil
+	}
+}
+
+func (m Model) toggleMute() tea.Cmd {
+	a := m.opts.Attend
+	x, ok := m.sessions[m.selected]
+	if a == nil || !ok {
+		return nil
+	}
+	return func() tea.Msg {
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		defer cancel()
+		if err := a.MuteSession(ctx, x.ID, !x.Muted); err != nil {
 			return errMsg{err}
 		}
 		return nil

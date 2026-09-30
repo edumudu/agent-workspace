@@ -110,7 +110,7 @@ func TestClaudeAndCodexNotifyOnTheSameEvents(t *testing.T) {
 	}
 }
 
-func TestBannerTitleIsTheSessionName(t *testing.T) {
+func TestNotifyBannerTitleIsTheSessionName(t *testing.T) {
 	r := newRig(t, &memStore{}, nil)
 	r.d.Post(daemon.TaskChanged{Task: domain.Task{ID: "t1", Text: "fix login", PinnedName: "login flow"}})
 	next(t, r.sub.Diffs)
@@ -122,7 +122,7 @@ func TestBannerTitleIsTheSessionName(t *testing.T) {
 	}
 }
 
-func TestSoundComesFromTheEventType(t *testing.T) {
+func TestNotifySoundComesFromTheEventType(t *testing.T) {
 	r := newRig(t, &memStore{}, map[domain.AgentState]string{domain.StatePermission: "Glass"})
 	r.addRunning(t, "a", domain.HarnessClaude, "%1")
 	r.hook(t, "claude", "PermissionRequest", "%1", "")
@@ -136,7 +136,7 @@ func TestSoundComesFromTheEventType(t *testing.T) {
 	}
 }
 
-func TestMutedSessionGetsNoBannerButGoesUnread(t *testing.T) {
+func TestNotifyMutedSessionGetsNoBannerButGoesUnread(t *testing.T) {
 	r := newRig(t, &memStore{}, nil)
 	r.addRunning(t, "a", domain.HarnessClaude, "%1")
 	if err := r.c.Call(context.Background(), rpc.MethodSessionMute, rpc.SessionMuteParams{ID: "a", Muted: true}, nil); err != nil {
@@ -152,7 +152,7 @@ func TestMutedSessionGetsNoBannerButGoesUnread(t *testing.T) {
 	r.expectOnlySentinel(t)
 }
 
-func TestUnmuteRestoresBanners(t *testing.T) {
+func TestNotifyUnmuteRestoresBanners(t *testing.T) {
 	r := newRig(t, &memStore{}, nil)
 	r.addRunning(t, "a", domain.HarnessClaude, "%1")
 	for _, muted := range []bool{true, false} {
@@ -167,7 +167,7 @@ func TestUnmuteRestoresBanners(t *testing.T) {
 	}
 }
 
-func TestBurstOfTwentyEventsIsOneBanner(t *testing.T) {
+func TestNotifyBurstOfTwentyEventsIsOneBanner(t *testing.T) {
 	r := newRig(t, &memStore{}, nil)
 	r.addRunning(t, "a", domain.HarnessClaude, "%1")
 	for range 20 {
@@ -180,7 +180,7 @@ func TestBurstOfTwentyEventsIsOneBanner(t *testing.T) {
 	r.expectOnlySentinel(t)
 }
 
-func TestFocusedSessionInAFrontTerminalGetsNoBanner(t *testing.T) {
+func TestNotifyFocusedSessionInAFrontTerminalGetsNoBanner(t *testing.T) {
 	r := newRig(t, &memStore{}, nil)
 	r.addRunning(t, "a", domain.HarnessClaude, "%1")
 	if err := r.c.Call(context.Background(), rpc.MethodSessionFocus, rpc.SessionFocusParams{ID: "a"}, nil); err != nil {
@@ -194,7 +194,7 @@ func TestFocusedSessionInAFrontTerminalGetsNoBanner(t *testing.T) {
 	r.expectOnlySentinel(t)
 }
 
-func TestFocusedSessionStillNotifiesWhenAnotherAppIsInFront(t *testing.T) {
+func TestNotifyFocusedSessionStillNotifiesWhenAnotherAppIsInFront(t *testing.T) {
 	r := newRig(t, &memStore{}, nil)
 	r.addRunning(t, "a", domain.HarnessClaude, "%1")
 	if err := r.c.Call(context.Background(), rpc.MethodSessionFocus, rpc.SessionFocusParams{ID: "a"}, nil); err != nil {
@@ -207,7 +207,7 @@ func TestFocusedSessionStillNotifiesWhenAnotherAppIsInFront(t *testing.T) {
 	}
 }
 
-func TestUnfocusedSessionNotifiesEvenWithTheTerminalInFront(t *testing.T) {
+func TestNotifyUnfocusedSessionNotifiesEvenWithTheTerminalInFront(t *testing.T) {
 	r := newRig(t, &memStore{}, nil)
 	r.addRunning(t, "a", domain.HarnessClaude, "%1")
 	r.fg.terminal.Store(true)
@@ -217,7 +217,7 @@ func TestUnfocusedSessionNotifiesEvenWithTheTerminalInFront(t *testing.T) {
 	}
 }
 
-func TestFocusingClearsUnreadAndBlursTheOtherSession(t *testing.T) {
+func TestNotifyFocusingClearsUnreadAndBlursTheOtherSession(t *testing.T) {
 	r := newRig(t, &memStore{}, nil)
 	r.addRunning(t, "a", domain.HarnessClaude, "%1")
 	r.addRunning(t, "b", domain.HarnessClaude, "%2")
@@ -247,7 +247,7 @@ func TestFocusingClearsUnreadAndBlursTheOtherSession(t *testing.T) {
 	}
 }
 
-func TestMuteAndFocusUnknownSessionAreNotFound(t *testing.T) {
+func TestNotifyMuteAndFocusUnknownSessionAreNotFound(t *testing.T) {
 	r := newRig(t, &memStore{}, nil)
 	var rerr *rpc.Error
 	err := r.c.Call(context.Background(), rpc.MethodSessionMute, rpc.SessionMuteParams{ID: "nope", Muted: true}, nil)
@@ -260,7 +260,7 @@ func TestMuteAndFocusUnknownSessionAreNotFound(t *testing.T) {
 	}
 }
 
-func TestFocusFromBeforeARestartDoesNotSuppressBanners(t *testing.T) {
+func TestNotifyFocusFromBeforeARestartDoesNotSuppressBanners(t *testing.T) {
 	store := &memStore{}
 	store.snap.Sessions = []domain.Session{{ID: "a", Harness: domain.HarnessClaude, Pane: "%1", State: domain.StateRunning, Focused: true}}
 	r := newRig(t, store, nil)
