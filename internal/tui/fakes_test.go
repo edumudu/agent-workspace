@@ -3,6 +3,7 @@ package tui_test
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"sync"
 
 	"github.com/giovaniif/agent-workspace/internal/domain"
@@ -83,4 +84,14 @@ func (f *fakeCaller) methods() []string {
 		out = append(out, c.method)
 	}
 	return out
+}
+
+type fakeSwitcher struct {
+	calls []string
+	err   error
+}
+
+func (f *fakeSwitcher) SwitchSession(_ context.Context, id string, kind domain.SwitchKind, value string) (domain.Session, error) {
+	f.calls = append(f.calls, fmt.Sprintf("%s %s %s", id, kind, value))
+	return domain.Session{ID: id}, f.err
 }
