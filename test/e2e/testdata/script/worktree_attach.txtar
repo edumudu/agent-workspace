@@ -1,0 +1,14 @@
+# The agent runs `git worktree add` twice; both worktrees attach to its session.
+repo api
+exec agentws workspace add api
+exec agentws new --workspace api 'split the work'
+capture SID '^session (\S+) on pane'
+
+eventually '/api-a\s+feat-a\s+'$SID'\s' agentws worktree list
+eventually '/api-b\s+feat-b\s+'$SID'\s' agentws worktree list
+
+-- claude.steps --
+hook UserPromptSubmit {"prompt":"split the work"}
+run git worktree add -q -b feat-a ../api-a
+run git worktree add -q -b feat-b ../api-b
+hook Stop
