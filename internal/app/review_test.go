@@ -87,6 +87,27 @@ func TestReviewScopesPickTheirBase(t *testing.T) {
 	}
 }
 
+func TestReviewNamesTheCommitEachScopeStartsFrom(t *testing.T) {
+	g := newFakeReviewGit()
+	g.trees["/wt"] = "now"
+	g.revs["/wt HEAD"] = "head"
+	g.mergeBases["/wt origin/main"] = "base"
+	g.refs["/wt"] = map[string]string{domain.TurnRef("s1", "/wt", 2): "turn2"}
+	target := app.ReviewTarget{Session: "s1", Worktree: domain.Worktree{ID: "/wt", Path: "/wt"}, DefaultBranch: "main"}
+	r := app.NewReviewer(g)
+	for scope, want := range map[domain.ReviewScope]string{domain.ScopeLastTurn: "turn2", domain.ScopeUncommitted: "head", domain.ScopeBranch: "base"} {
+		g.diffs[want+"..now"] = oneFileDiff
+		got := r.Review(context.Background(), scope, []app.ReviewTarget{target})
+		if len(got) != 1 || got[0].From != want {
+			t.Errorf("%s: From = %+v, want %q", scope, got, want)
+		}
+	}
+	got := r.Review(context.Background(), domain.ScopeUncommitted, []app.ReviewTarget{target})
+	if got[0].From != "head" {
+		t.Errorf("a cached review lost its From: %+v", got)
+	}
+}
+
 func TestReviewErrorsStayWithTheirWorktree(t *testing.T) {
 	g := newFakeReviewGit()
 	g.trees["/ok"] = "now"
