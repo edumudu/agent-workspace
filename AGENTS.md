@@ -11,10 +11,12 @@
 
 - `make build`: produces `./bin/agentws`.
 - `make test`: `go test ./...`.
-- `make lint`: `golangci-lint`, including the layer rules.
+- `make lint`: `golangci-lint` (including the `depguard` layer rules in `.golangci.yml`), then `scripts/lint-comments`.
 - `make bench`: benchmarks that guard the performance budgets.
-- `make mutate`: mutation testing on `domain` and `app`.
-- `make e2e`: the core e2e suite.
+- `make mutate`: `scripts/mutate` runs `gremlins` on `domain` and `app`, failing below 80% efficacy. A package with no tests is skipped. Install with `go install github.com/go-gremlins/gremlins/cmd/gremlins@v0.6.0`.
+- `make e2e`: the core e2e suite. It builds the binary once and runs the `test/e2e/testdata/script/*.txtar` scripts.
+- `scripts/tdd-check <base> <head>`: what CI's `tdd` job runs. Run it locally on a clean tree to check a branch before pushing; it leaves you on a detached base checkout.
+- `make test`, `make bench` and `make e2e` pass `GO_TEST_FLAGS` (default `-p 2`) to keep local runs light.
 - Integration tests use `-tags integration`. They need `git` and `tmux` installed, and use a temporary `AGENTWS_HOME`.
 
 ## Rules
@@ -29,7 +31,7 @@
 ## Tests: TDD, enforced by CI
 
 - **Test first, always:** write the failing test, see it fail, then write the code. Never add a test after the behavior already exists.
-- **Commit order proves it:** the test commit comes before the implementation commit. CI's `tdd` job runs the PR's new and changed tests against the base branch. They must fail there (a compile error counts as failing). A PR whose new tests pass on base fails the check.
+- **Commit order proves it:** the test commit comes before the implementation commit. CI's `tdd` job runs the PR's new and changed tests against the base branch. They must fail there (a compile error counts as failing). A PR whose new tests pass on base fails the check. The check is per package: if any package with an added or changed `*_test.go` passes on base, the job fails, so keep test-only refactors in their own PR.
 - **Protect the core concepts:** the domain state machine, naming, cleanup decisions, discovery, review scopes and the prompt format. Test through public behavior: inputs and outputs, not internals.
 - **No useless tests:** no tests of getters, constructors, framework code or mocks calling mocks. CI runs mutation testing (`gremlins`) on `internal/domain` and `internal/app`; the mutation score must stay ≥ 80%. A test that kills no mutants gets deleted.
 - **Fakes, not mocks:** unit tests use in-memory fakes of the ports. Integration tests use real temporary git repos and a real tmux server.
@@ -41,6 +43,8 @@
 - Inside function bodies, the only comments allowed are ones starting with `// why:` and tool directives (`//go:`, `//nolint:` with a reason). `scripts/lint-comments` enforces this in CI.
 - Doc comments only where they add information a caller needs. No boilerplate docs that restate the name.
 - A TODO must reference an issue: `// TODO(#12): ...`.
+- A `//nolint:` directive needs a reason after it: `//nolint:gosec // why: ...`.
+- `scripts/lint-comments` fixtures live in its `testdata/` as `*.go.txt` so no other tool compiles them.
 
 ## Working an issue
 
