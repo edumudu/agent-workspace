@@ -1,0 +1,40 @@
+▌agentws                                   21:42
+
+ SESSIONS                             4 need you
+
+ #40 · task number 1               api web infra
+▌◐ 1 session 1 change                        CC 
+▌    opus-5.5 high  ctx 64%  3 worktrees        
+▌     └ api:part-1                      #3600   
+▌     └ web:part-2                          –   
+▌     └ infra:part-3                        –   
+ ○ 2 session 2 change                        CX 
+     gpt-6 med  ctx 63%  3 worktrees            
+      └ api:part-1                      #3601   
+      └ web:part-2                          –   
+      └ infra:part-3                        –   
+
+ #41 · task number 2               api web infra
+ ✳ 3 session 3 change                        CC 
+     opus-5.5 high  ctx 62%  3 worktrees        
+      └ api:part-1                      #3602   
+      └ web:part-2                          –   
+      └ infra:part-3                        –   
+ ● 4 session 4 change                        CX 
+     gpt-6 med  ctx 61%  3 worktrees            
+      └ api:part-1                      #3603   
+      └ web:part-2                          –   
+      └ infra:part-3                        –   
+
+ #42 · task number 3               api web infra
+ ✳ 5 session 5 change                        CC 
+     opus-5.5 high  ctx 60%  3 worktrees        
+      └ api:part-1                      #3604   
+      └ web:part-2                          –   
+      └ infra:part-3                        –   
+ ◐ 6 session 6 change                        CX 
+     gpt-6 med  ctx 59%  3 worktrees            
+
+ ⏎ focus      ␣ next waiting                    
+ ⇥ last       ? keys                            
+ SESSION  j/k move … 10 sessions · 30 worktrees 

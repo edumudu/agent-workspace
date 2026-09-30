@@ -201,7 +201,7 @@ func TestSessionsThatNeedYouSortToTheTopOfTheirTaskGroup(t *testing.T) {
 	s.State = domain.StatePermission
 	m = update(m, tui.DiffMsg(rpc.Diff{Seq: 1, Session: &s}))
 	out := screen(m)
-	if strings.Index(out, "✳ 1") < 0 || strings.Index(out, "CX") > strings.Index(out, "CC") {
+	if !strings.Contains(out, "✳ 1") || strings.Index(out, "CX") > strings.Index(out, "CC") {
 		t.Fatalf("the codex session asking permission should be first:\n%s", out)
 	}
 	if !strings.Contains(out, "1 need you") {
