@@ -1,6 +1,7 @@
 package tui_test
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
 	"sort"
@@ -230,6 +231,16 @@ func TestReviewLabelsNameTheRepoNotItsPath(t *testing.T) {
 	out := screen(m)
 	if strings.Contains(out, "/src/shop") || !strings.Contains(out, "api:part-1 #3600") {
 		t.Errorf("labels should use the repo's name:\n%s", out)
+	}
+}
+
+func TestReviewAFailedFetchShowsTheErrorNotTheOldScopesFiles(t *testing.T) {
+	m, rv := reviewModel(t, 150, 40)
+	m = drive(m, key("r"))
+	rv.err = errors.New("daemon timed out")
+	out := screen(drive(m, key("]")))
+	if !strings.Contains(out, "daemon timed out") || strings.Contains(out, "resolvers.ts") {
+		t.Errorf("a failed fetch must show its error and drop the old files:\n%s", out)
 	}
 }
 

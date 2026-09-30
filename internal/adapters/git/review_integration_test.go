@@ -178,6 +178,19 @@ func TestReviewSeesASameSizeEditRightAfterACommit(t *testing.T) {
 	}
 }
 
+func TestReviewBlobIsTheFullHashWhateverCoreAbbrev(t *testing.T) {
+	repo := reviewRepo(t)
+	gitOut(t, repo, "config", "core.abbrev", "5")
+	put(t, filepath.Join(repo, "a.txt"), "changed\n")
+	got := app.NewReviewer(git.Review{}).Review(context.Background(), domain.ScopeUncommitted, []app.ReviewTarget{{
+		Session: "s1", Worktree: domain.Worktree{ID: repo, Path: repo},
+	}})
+	want := strings.TrimSpace(gitOut(t, repo, "hash-object", "a.txt"))
+	if len(got[0].Files) != 1 || got[0].Files[0].Blob != want {
+		t.Fatalf("review = %+v, want blob %s", got[0], want)
+	}
+}
+
 // BenchmarkReviewOpen50Files builds a cold review (no cache) of a 50-file,
 // 3,000-line diff and fails above the 300 ms budget.
 func BenchmarkReviewOpen50Files(b *testing.B) {

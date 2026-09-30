@@ -13,6 +13,7 @@ import (
 // fakeReviewer answers every review with reply, recording what it was asked.
 type fakeReviewer struct {
 	reply   rpc.Review
+	err     error
 	asked   []rpc.ReviewParams
 	marked  []viewedCall
 	layouts []bool
@@ -25,6 +26,9 @@ type viewedCall struct {
 
 func (f *fakeReviewer) Review(_ context.Context, p rpc.ReviewParams) (rpc.Review, error) {
 	f.asked = append(f.asked, p)
+	if f.err != nil {
+		return rpc.Review{}, f.err
+	}
 	r := f.reply
 	r.Scope = p.Scope
 	return r, nil
