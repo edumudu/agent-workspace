@@ -10,6 +10,7 @@ This covers how `agentws` is built. What it does is in [FEATURES.md](FEATURES.md
 - **Git:** the `git` CLI via exec, never a Go git library. It is the only thing that handles worktrees, sparse checkouts and user config correctly.
 - **GitHub:** `cli/go-gh`, which reuses the user's `gh` auth. GraphQL with ETag/backoff for polling.
 - **Terminals:** the `tmux` CLI against a dedicated server (`tmux -L agentws`) with its own config, driven only by `internal/adapters/tmux`. Panes are parked in their own windows and `swap-pane` puts one in the client's main slot. See [docs/adr/0003-tmux-terminal-host.md](docs/adr/0003-tmux-terminal-host.md).
+- **Config:** `github.com/BurntSushi/toml` reads the per-repo `.agentws.toml` setup recipe.
 - **Storage:** SQLite via `modernc.org/sqlite` (no cgo), with embedded migrations and write-behind. Stored at `~/.agentws/state.db` (`$AGENTWS_HOME/state.db` if set). See [docs/adr/0004-sqlite-store.md](docs/adr/0004-sqlite-store.md).
 - **IPC:** a Unix socket at `~/.agentws/agentws.sock` carrying newline-delimited JSON. Request/response calls, plus a subscribe stream for state updates. See [Daemon and RPC](#daemon-and-rpc) and [docs/adr/0005-daemon-rpc.md](docs/adr/0005-daemon-rpc.md).
 - **Notifications:** `osascript` in v1. A native helper can replace it later behind the same port.
@@ -108,6 +109,16 @@ Colors are Catppuccin Latte, overridden per key in the `[theme]` table of `$AGEN
 
 - **Codex**: `internal/adapters/codex` covers the `setup codex` merge into `hooks.json`, hook and notify payload parsing, the rollout reader that supplies model, effort, context and limits, pane lookup, and launching. The daemon applies a Codex hook's model at once and reads the rollout in a worker, never on the loop. The mapping, formulas and where each number comes from are in [internal/adapters/codex/README.md](internal/adapters/codex/README.md) and [docs/adr/0010-codex-adapter.md](docs/adr/0010-codex-adapter.md).
 - **Claude** (`adapters/claude`): `agentws setup claude [--remove]` merges hooks and the status-line wrapper into Claude's `settings.json`, backs it up, and undoes it. `agentws statusline` chains the user's own status line and reports model, effort, context left and rate limits. See [docs/adr/0011-claude-harness-adapter.md](docs/adr/0011-claude-harness-adapter.md).
+
+## Worktree setup
+
+`agentws setup-worktree <path>` applies a repo's recipe to a new worktree. See [docs/adr/0009-setup-recipes.md](docs/adr/0009-setup-recipes.md).
+
+- **Recipe.** The `[setup]` table of `<main checkout>/.agentws.toml`: `copy`, `link`, `run` and `deps` (`clone`, `link` or `install`). Order: copy, link, deps, run; the first failure stops. Paths already in the worktree are never overwritten.
+- **Deps.** `clone` is `cp -c -R` (APFS clonefile). A lockfile that differs from main's, or a main without `node_modules`, falls back to a frozen install (`bun`, `pnpm`, `yarn` or `npm ci`, chosen by lockfile) and logs why.
+- **Layers.** Rules in `domain` (`Recipe.Validate`, `PlanDeps`, `InstallCommand`). `app.WorktreeSetup` uses the `RecipeSource`, `MainCheckouts`, `SetupFS` and `CommandRunner` ports. Adapters: `adapters/setup` and `adapters/git`.
+- **Process.** It runs in the CLI process, not the daemon, and reports duration and the change in free bytes on the volume.
+- **Budget.** Cloning a 1 GB `node_modules` must take under 5 s and use under 50 MB. Measured on APFS with 1000 files: 0.13 s and 0.3 MB.
 
 ## Staying fast
 
