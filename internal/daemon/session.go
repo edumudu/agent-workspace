@@ -151,13 +151,42 @@ func (d *Daemon) endSession(req rpc.Request) (*rpc.Response, bool) {
 	if err != nil {
 		return errorResponse(req.ID, rpc.CodeFailed, err.Error()), true
 	}
+	var next domain.Session
+	var hasNext bool
 	ok = d.query(func(s *state) {
 		if cur, found := s.sessions[ended.ID]; found {
 			ended = cur.End()
 			s.emit(SessionChanged{Session: ended})
+			if session.Focused {
+				next, hasNext = domain.NextInView(sorted(s.tasks), sorted(s.sessions), ended.ID)
+			}
 		}
 	})
+	if ok && session.Focused {
+		d.refillMain(next, hasNext)
+	}
 	return result(req.ID, ended), ok
+}
+
+// refillMain keeps the main slot from going blank after the session in it
+// ended. Keyboard focus stays where it was: the user pressed the keys in the sidebar.
+func (d *Daemon) refillMain(next domain.Session, hasNext bool) {
+	d.clients.mu.Lock()
+	defer d.clients.mu.Unlock()
+	if d.clients.host == nil || d.clients.slot == "" {
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), clientTimeout)
+	defer cancel()
+	if hasNext && d.hs.host.Show(ctx, app.PaneID(next.Pane), d.clients.slot) == nil {
+		d.query(func(s *state) {
+			if cur, found := s.sessions[next.ID]; found {
+				s.focus(cur)
+			}
+		})
+		return
+	}
+	_ = d.clients.host.EnsureSlot(ctx, d.clients.slot)
 }
 
 var errNoLayout = errors.New("no client layout is open")

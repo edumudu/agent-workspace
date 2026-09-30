@@ -18,6 +18,7 @@ type ClientHost interface {
 	AttachCommand(slot app.Slot) []string
 	FocusSlot(ctx context.Context, slot app.Slot) error
 	WidenSidebar(ctx context.Context, slot app.Slot, wide bool) error
+	EnsureSlot(ctx context.Context, slot app.Slot) error
 }
 
 const clientName = "main"
