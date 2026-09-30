@@ -317,3 +317,18 @@ type titleFake struct {
 }
 
 func (f titleFake) Title(context.Context, domain.Task) (string, error) { return f.title, f.err }
+
+// fakeHunkGit records each patch it is asked to stage or revert.
+type fakeHunkGit struct {
+	staged, reverted []string
+}
+
+func (g *fakeHunkGit) Stage(_ context.Context, dir, patch string) error {
+	g.staged = append(g.staged, dir+"\n"+patch)
+	return nil
+}
+
+func (g *fakeHunkGit) Revert(_ context.Context, dir, patch string) error {
+	g.reverted = append(g.reverted, dir+"\n"+patch)
+	return nil
+}
