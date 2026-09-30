@@ -86,6 +86,7 @@ type state struct {
 	events     map[string][]domain.SessionEvent
 	subs       map[*conn]uint64
 	usage      map[string]*usageJob
+	attn       *attention
 	// requestUsage is set by New; state cannot reach the Daemon that owns it.
 	requestUsage func(sessionID, path string, force bool)
 }
@@ -128,7 +129,8 @@ func New(store app.Store, pid int, opts ...Option) (*Daemon, error) {
 		st.worktrees[w.ID] = w
 	}
 	for _, x := range snap.Sessions {
-		st.sessions[x.ID] = x
+		// why: nobody is looking at a session across a daemon restart, and a stale flag would hide its banners.
+		st.sessions[x.ID] = x.Blur()
 	}
 	for _, ev := range snap.Events {
 		st.events[ev.SessionID] = append(st.events[ev.SessionID], ev)
@@ -175,6 +177,9 @@ func (d *Daemon) query(f func(*state)) bool {
 func (d *Daemon) Serve(ctx context.Context, ln net.Listener) error {
 	d.ws.ctx = ctx
 	go d.refreshWorkspacesEvery(ctx)
+	if d.st.attn != nil {
+		go d.st.attn.run(ctx)
+	}
 	loopDone := make(chan struct{})
 	go func() {
 		d.loop(ctx)
@@ -252,8 +257,7 @@ func (s *state) hook(h rpc.Hook) {
 	if !ok {
 		return
 	}
-	// why: TODO(#13) performs the effects Apply returns; nothing consumes them yet.
-	next, _ := session.Apply(domain.HarnessEvent{Kind: kind})
+	next, effects := session.Apply(domain.HarnessEvent{Kind: kind})
 	if domain.Harness(h.Harness) == domain.HarnessCodex {
 		next = s.codexObservation(h, kind, session, next)
 	}
@@ -264,6 +268,7 @@ func (s *state) hook(h rpc.Hook) {
 	ev := domain.SessionEventFromHook(kind, at, h.Payload)
 	ev.SessionID = session.ID
 	s.emit(SessionHooked{Session: next, Event: ev})
+	s.announce(next, effects)
 }
 
 // commit applies e on the loop and returns once it has taken effect, so a
@@ -331,6 +336,8 @@ func (d *Daemon) dispatch(c *conn, line []byte) (*rpc.Response, bool) {
 		return result(req.ID, struct{}{}), ok
 	case rpc.MethodLaunch:
 		return d.launch(req)
+	case rpc.MethodSessionMute, rpc.MethodSessionFocus:
+		return d.dispatchAttention(req)
 	case rpc.MethodWorkspaceAdd, rpc.MethodWorkspaceList, rpc.MethodWorkspaceRemove:
 		if resp, ok, handled := d.workspaceMethod(req); handled {
 			return resp, ok

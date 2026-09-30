@@ -129,7 +129,8 @@ func TestSoundComesFromTheEventType(t *testing.T) {
 	if got := r.banner(t); got.Sound != "Glass" {
 		t.Fatalf("permission sound %q", got.Sound)
 	}
-	r.hook(t, "claude", "Stop", "%1", "")
+	r.addRunning(t, "b", domain.HarnessClaude, "%2")
+	r.hook(t, "claude", "Stop", "%2", "")
 	if got := r.banner(t); got.Sound != "" {
 		t.Fatalf("done sound %q", got.Sound)
 	}
@@ -220,23 +221,23 @@ func TestFocusingClearsUnreadAndBlursTheOtherSession(t *testing.T) {
 	r := newRig(t, &memStore{}, nil)
 	r.addRunning(t, "a", domain.HarnessClaude, "%1")
 	r.addRunning(t, "b", domain.HarnessClaude, "%2")
-	focus := func(id string) []domain.Session {
+	focus := func(id string, diffs int) []domain.Session {
 		if err := r.c.Call(context.Background(), rpc.MethodSessionFocus, rpc.SessionFocusParams{ID: id}, nil); err != nil {
 			t.Fatal(err)
 		}
 		var out []domain.Session
-		for range 2 {
+		for range diffs {
 			if diff := next(t, r.sub.Diffs); diff.Session != nil {
 				out = append(out, *diff.Session)
 			}
 		}
 		return out
 	}
-	focus("a")
+	focus("a", 1)
 	if diff := r.hook(t, "claude", "Stop", "%2", ""); diff.Session == nil || !diff.Session.Unread {
 		t.Fatalf("b not unread: %+v", diff.Session)
 	}
-	got := focus("b")
+	got := focus("b", 2)
 	byID := map[string]domain.Session{}
 	for _, s := range got {
 		byID[s.ID] = s
