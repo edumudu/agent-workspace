@@ -12,14 +12,16 @@ func TestReportSetsModelEffortAndUsage(t *testing.T) {
 	if got.Model != "Opus" || got.Effort != "high" || got.State != StateRunning {
 		t.Fatalf("got %+v", got)
 	}
-	want := Usage{ContextLeftPercent: 94, LimitUsedPercent: 71, Limits: limits}
-	if !reflect.DeepEqual(got.Usage, want) {
+	if want := (Usage{ContextLeftPercent: 94, LimitUsedPercent: 71}); got.Usage != want {
 		t.Fatalf("usage = %+v, want %+v", got.Usage, want)
+	}
+	if !reflect.DeepEqual(got.Limits, limits) {
+		t.Fatalf("limits = %+v", got.Limits)
 	}
 }
 
 func TestReportKeepsWhatTheStatusLineDoesNotKnowYet(t *testing.T) {
-	s := Session{Model: "Opus", Effort: "high", Usage: Usage{ContextLeftPercent: 40, LimitUsedPercent: 30, Limits: []RateLimit{{Window: "five_hour", UsedPercent: 30}}}}
+	s := Session{Model: "Opus", Effort: "high", Usage: Usage{ContextLeftPercent: 40, LimitUsedPercent: 30}, Limits: []RateLimit{{Window: "five_hour", UsedPercent: 30}}}
 	got := s.Report(StatusReport{})
 	if !reflect.DeepEqual(got, s) {
 		t.Fatalf("got %+v, want %+v", got, s)

@@ -57,7 +57,7 @@ func TestStatusLineReportUpdatesTheSessionOnItsPane(t *testing.T) {
 	}
 	got := *diff.Session
 	if got.Model != "Opus 5.5" || got.Effort != "high" || got.State != domain.StateRunning ||
-		got.Usage.ContextLeftPercent != 80 || got.Usage.LimitUsedPercent != 65 || !reflect.DeepEqual(got.Usage.Limits, report.Limits) {
+		got.Usage.ContextLeftPercent != 80 || got.Usage.LimitUsedPercent != 65 || !reflect.DeepEqual(got.Limits, report.Limits) {
 		t.Fatalf("session %+v", got)
 	}
 }
