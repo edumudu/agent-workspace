@@ -43,13 +43,27 @@ func TotalSize(rows []DiskRow) (total int64, pending int) {
 	return total, pending
 }
 
-func DiskState(a CleanupAction) string {
-	switch a {
-	case CleanupRemove:
-		return "merged"
-	case CleanupBackupThenAsk:
-		return "needs you"
-	default:
-		return "keep"
+// WorktreeStatus is the worktrees view's state column, as in the mockup: what
+// the worktree is doing, from its owner session and cleanup's decision. owner
+// is nil for a worktree no session owns.
+func WorktreeStatus(w Worktree, owner *Session, a CleanupAction) string {
+	switch {
+	case a == CleanupBackupThenAsk && w.Branch == "":
+		return "! detached"
+	case a == CleanupBackupThenAsk:
+		return "! merged, dirty"
+	case a == CleanupRemove, w.PR != nil && w.PR.State == PRMerged:
+		return "✓ merged"
+	case owner == nil || owner.Ended:
+		return "○ idle"
 	}
+	switch owner.State {
+	case StateRunning:
+		return "◐ in use"
+	case StateWaiting, StatePermission:
+		return "✳ in use"
+	case StateDone:
+		return "● in use"
+	}
+	return "○ idle"
 }
