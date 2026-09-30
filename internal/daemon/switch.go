@@ -3,6 +3,7 @@ package daemon
 import (
 	"context"
 	"encoding/json"
+	"slices"
 	"time"
 
 	"github.com/giovaniif/agent-workspace/internal/app"
@@ -42,22 +43,25 @@ func (d *Daemon) switchSession(req rpc.Request) (*rpc.Response, bool) {
 	return resp, ok
 }
 
-// stillAccepts asks the loop whether the session can still take the switches,
-// since it may have started a turn while the worker waited its turn. If not,
-// they go back to the queue for the next Dispatch.
-func (d *Daemon) stillAccepts(sessionID string, sws []domain.Switch) bool {
-	accepted := false
+// deliverable asks the loop which of the switches are still wanted and can be
+// typed: a newer request may have replaced one, and the session may have started
+// a turn while the worker waited its turn. In that case they go back to the
+// queue for the next Dispatch.
+func (d *Daemon) deliverable(sessionID string, sws []domain.Switch) []domain.Switch {
+	var deliver []domain.Switch
 	d.query(func(s *state) {
 		current, ok := s.sessions[sessionID]
-		switch {
-		case !ok:
-		case current.AcceptsSwitch():
-			accepted = true
-		default:
-			s.emit(SessionChanged{Session: current.Requeue(sws)})
+		if !ok {
+			return
 		}
+		wanted := slices.DeleteFunc(slices.Clone(sws), func(sw domain.Switch) bool { return !slices.Contains(current.Switches, sw) })
+		if current.AcceptsSwitch() {
+			deliver = wanted
+			return
+		}
+		s.emit(SessionChanged{Session: current.Requeue(wanted)})
 	})
-	return accepted
+	return deliver
 }
 
 // sendSwitches types the switches into the session's pane on a worker, since
@@ -72,16 +76,17 @@ func (d *Daemon) sendSwitches(session domain.Session, sws []domain.Switch) {
 		defer d.hs.sendMu.Unlock()
 		ctx, cancel := context.WithTimeout(context.Background(), sendSwitchTimeout)
 		defer cancel()
-		if !d.stillAccepts(session.ID, sws) {
+		deliver := d.deliverable(session.ID, sws)
+		if len(deliver) == 0 {
 			return
 		}
-		err := app.SendSwitches(ctx, d.hs.host, app.PaneID(session.Pane), session.Harness, sws, app.PasteSettle)
+		err := app.SendSwitches(ctx, d.hs.host, app.PaneID(session.Pane), session.Harness, deliver, app.PasteSettle)
 		if err == nil {
 			return
 		}
 		d.query(func(s *state) {
 			if current, ok := s.sessions[session.ID]; ok {
-				s.emit(SessionChanged{Session: current.SwitchFailed(sws)})
+				s.emit(SessionChanged{Session: current.SwitchFailed(deliver)})
 			}
 		})
 	}()
