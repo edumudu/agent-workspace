@@ -54,6 +54,10 @@ make mutate            # gremlins on internal/domain and internal/app
 
 Integration tests use `-tags integration` and need `git` and `tmux`.
 
+## Codex setup
+
+`agentws setup codex` adds the hooks Codex needs to report state, and prints the one-time trust step Codex requires. `agentws setup codex --remove` takes them out. It backs up an existing `hooks.json` first and leaves your other hooks alone.
+
 ## Contributing
 
 The build is test-driven and CI enforces it. Read [AGENTS.md](AGENTS.md) before opening a PR: it covers the layer rules, tests first, no low-value tests or comments, and one PR per issue.
