@@ -12,11 +12,10 @@ type WorktreeAdder interface {
 	AddWorktree(ctx context.Context, repo, path, branch, base string) error
 }
 
-// SetupFunc runs a repo's setup recipe in a fresh worktree.
 type SetupFunc func(ctx context.Context, worktree string) error
 
-// Sessions starts and ends sessions. Every method runs git or tmux, so it
-// is for connection goroutines and workers, never the daemon loop.
+// Every Sessions method runs git or tmux, so it is for connection
+// goroutines and workers, never the daemon loop.
 type Sessions struct {
 	Host      TerminalHost
 	Worktrees WorktreeAdder
@@ -78,8 +77,7 @@ func (s Sessions) Start(ctx context.Context, req NewSession) (Started, error) {
 	return Started{Session: session, Worktree: wt}, nil
 }
 
-// End kills the session's pane and returns it ended. Its worktrees stay;
-// cleanup decides about them.
+// End leaves the session's worktrees; cleanup decides about them.
 func (s Sessions) End(ctx context.Context, session domain.Session) (domain.Session, error) {
 	if session.Pane != "" {
 		if err := s.Host.Kill(ctx, PaneID(session.Pane)); err != nil {

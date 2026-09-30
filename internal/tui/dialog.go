@@ -35,8 +35,7 @@ var (
 	effortChoices  = []string{"", "low", "medium", "high"}
 )
 
-// dialog is the new-session form. Roots are the registered workspaces in
-// order; ws, harness and effort index their choices.
+// ws, harness and effort index roots, harnessChoices and effortChoices.
 type dialog struct {
 	field    field
 	workItem string
@@ -219,8 +218,6 @@ func (m Model) endSelected() tea.Cmd {
 	return m.call(rpc.MethodEndSession, rpc.SessionRef{ID: m.selected})
 }
 
-// advice is the low-quota warning for the chosen harness, from the limits
-// every session last reported.
 func (m Model) advice() (domain.SwitchAdvice, bool) {
 	sessions := make([]domain.Session, 0, len(m.sessions))
 	for _, x := range m.sessions {

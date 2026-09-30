@@ -7,7 +7,6 @@ import (
 	"strings"
 )
 
-// Adder creates worktrees with `git worktree add`.
 type Adder struct{}
 
 // AddWorktree makes branch at base and checks it out at path, creating

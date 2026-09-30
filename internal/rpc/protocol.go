@@ -73,8 +73,7 @@ type NewSessionParams struct {
 	Effort    string `json:"effort,omitempty"`
 }
 
-// SessionRef names one session. session.end answers with the ended
-// domain.Session.
+// session.end answers a SessionRef with the ended domain.Session.
 type SessionRef struct {
 	ID string `json:"id"`
 }
