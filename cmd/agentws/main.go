@@ -61,6 +61,8 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return runPR(args[1:], stdout, stderr)
 	case cmd == "new":
 		return runNew(args[1:], stdout, stderr)
+	case cmd == "review":
+		return runReview(args[1:], stdout, stderr)
 	case slices.Contains(stubs, cmd):
 		fmt.Fprintf(stderr, "agentws %s: not implemented yet\n", cmd)
 		return 1
@@ -86,5 +88,5 @@ func buildCommit() string {
 }
 
 func usage(w io.Writer) {
-	fmt.Fprintln(w, "usage: agentws [daemon|workspace|worktree|pr|setup|setup-worktree|tui|debug|hook|statusline|new|cleanup|version]")
+	fmt.Fprintln(w, "usage: agentws [daemon|workspace|worktree|pr|setup|setup-worktree|tui|debug|hook|statusline|new|review|cleanup|version]")
 }
