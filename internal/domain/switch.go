@@ -39,12 +39,12 @@ func SwitchCommand(_ Harness, sw Switch) string {
 	return "/" + string(sw.Kind) + " " + sw.Value
 }
 
-// RequestSwitch queues a switch, replacing an unsent one of the same kind,
+// RequestSwitch queues a switch, replacing any earlier one of the same kind,
 // and clears the warning of an earlier failed switch.
 func (s Session) RequestSwitch(kind SwitchKind, value string) Session {
 	kept := make([]Switch, 0, len(s.Switches)+1)
 	for _, sw := range s.Switches {
-		if sw.Kind != kind || sw.sent() {
+		if sw.Kind != kind {
 			kept = append(kept, sw)
 		}
 	}
@@ -113,12 +113,13 @@ func (s Session) confirmSwitches(r StatusReport) Session {
 	return s
 }
 
-// switchShows accepts a reported model that contains the requested one, since
-// Claude reports "Opus 4.7" for the alias "opus".
+// switchShows matches the whole reported name, or its first word: Claude
+// reports "Opus 4.7" for the alias "opus", while "gpt-5" must not match "gpt-5-codex".
 func switchShows(sw Switch, reported string) bool {
 	want, got := strings.ToLower(sw.Value), strings.ToLower(reported)
 	if sw.Kind == SwitchEffort {
 		return want == got
 	}
-	return strings.Contains(got, want)
+	first, _, _ := strings.Cut(got, " ")
+	return got == want || first == want
 }
