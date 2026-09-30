@@ -173,6 +173,19 @@ func TestCleanupWorktreeNeverTouchesAWorktreeAProcessHolds(t *testing.T) {
 	}
 }
 
+func TestCleanupWorktreeFindsAWorktreeByPathEvenWhenItsIDDiffers(t *testing.T) {
+	seeded := mergedWT("a", 1)
+	seeded.ID = "wt-1"
+	env := startDisk(t, seeded)
+	item, err := dial(t, env.path).CleanupWorktree(context.Background(), "/solo-a", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if item.Outcome != "removed" || !slices.Equal(env.world.movedPaths(), []string{"/solo-a"}) {
+		t.Errorf("item %+v, moved %v", item, env.world.movedPaths())
+	}
+}
+
 func TestCleanupWorktreeUnknownPathIsNotFound(t *testing.T) {
 	env := startDisk(t, mergedWT("a", 1))
 	var rerr *rpc.Error
