@@ -244,6 +244,25 @@ func TestReviewAFailedFetchShowsTheErrorNotTheOldScopesFiles(t *testing.T) {
 	}
 }
 
+func TestReviewBranchScopeNamesTheDefaultBranchWhenItIsKnown(t *testing.T) {
+	st, rv := reviewFixture()
+	st.Workspaces = []domain.Workspace{{Root: "/src", Repos: []domain.Repo{
+		{Name: "api", Path: "api", DefaultBranch: "trunk"},
+		{Name: "web", Path: "web", DefaultBranch: "trunk"},
+	}}}
+	m := tui.New(tui.Options{Theme: tui.Latte(), Now: clock, Review: rv})
+	m = update(m, tea.WindowSizeMsg{Width: 150, Height: 40})
+	m = drive(m, tui.StateMsg(st), key("r"))
+	if out := screen(m); !strings.Contains(out, "branch vs trunk") {
+		t.Errorf("the scope should name the default branch:\n%s", out)
+	}
+	st.Workspaces[0].Repos[1].DefaultBranch = "main"
+	m = drive(m, tui.StateMsg(st))
+	if out := screen(m); !strings.Contains(out, "branch vs base") {
+		t.Errorf("repos that disagree fall back to base:\n%s", out)
+	}
+}
+
 func TestReviewWithoutAReviewerDoesNothing(t *testing.T) {
 	st := fixture(1, 1)
 	m := drive(newModel(&st, nil), key("r"))
