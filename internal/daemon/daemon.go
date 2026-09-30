@@ -62,7 +62,9 @@ func (e TaskChanged) apply(s *state) rpc.Diff {
 
 func (e WorktreeChanged) apply(s *state) rpc.Diff {
 	s.worktrees[e.Worktree.ID] = e.Worktree
-	s.store.PutWorktree(e.Worktree)
+	stored := e.Worktree
+	stored.Ports = nil
+	s.store.PutWorktree(stored)
 	return rpc.Diff{Worktree: &e.Worktree}
 }
 
@@ -99,6 +101,7 @@ type state struct {
 	// requestUsage is set by New; state cannot reach the Daemon that owns it.
 	requestUsage func(sessionID, path string, force bool)
 	hints        worktreeHints
+	listeners    []domain.Listener
 }
 
 type Daemon struct {
@@ -112,6 +115,7 @@ type Daemon struct {
 	clients clients
 	hs      harnesses
 	wt      worktreeScanner
+	ports   portScanner
 }
 
 // New restores state from store. pid is what status reports.
@@ -156,6 +160,7 @@ func New(store app.Store, pid int, opts ...Option) (*Daemon, error) {
 		st:      st,
 		ws:      workspaces{now: time.Now, refreshEvery: defaultRefreshInterval, ctx: context.Background()},
 		wt:      worktreeScanner{every: DefaultWorktreePoll, prEvery: DefaultPRPoll, baselined: map[string]bool{}},
+		ports:   portScanner{every: DefaultPortsPoll},
 	}
 	st.requestUsage = func(sessionID, path string, force bool) { d.requestUsage(st, sessionID, path, force) }
 	for _, o := range opts {
@@ -194,6 +199,7 @@ func (d *Daemon) Serve(ctx context.Context, ln net.Listener) error {
 		go d.st.attn.run(ctx)
 	}
 	go d.watchWorktrees(ctx)
+	go d.watchPorts(ctx)
 	loopDone := make(chan struct{})
 	go func() {
 		d.loop(ctx)
@@ -394,6 +400,8 @@ func (d *Daemon) dispatch(c *conn, line []byte) (*rpc.Response, bool) {
 		return result(req.ID, struct{}{}), ok
 	case rpc.MethodWorktreeAssign:
 		return d.worktreeAssign(req)
+	case rpc.MethodPortsKill:
+		return d.portsKill(req)
 	default:
 		return errorResponse(req.ID, rpc.CodeUnknownMethod, "unknown method "+req.Method), true
 	}
