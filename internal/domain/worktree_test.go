@@ -140,18 +140,42 @@ func TestWorktreeDetectReclaimSeenBeforeItsClaim(t *testing.T) {
 		{ID: "/w/api-hand", Repo: "/w/api", Path: "/w/api-hand", Branch: "old"},
 	}
 	claims := []WorktreeClaim{
-		{SessionID: "s1", Command: "git worktree add -q -b feat-a ../api-a", At: recent},
-		{SessionID: "s1", Command: "git worktree add ../api-b", At: recent},
-		{SessionID: "s1", Command: "git worktree add ../api-c", At: recent},
-		{SessionID: "s1", Command: "git worktree add ../api-old", At: now.Add(-ClaimWindow - time.Second)},
-		{SessionID: "s1", Command: "git worktree add ../api-z", At: recent},
-		{SessionID: "s3", Command: "git worktree add -b z ../elsewhere", At: recent},
-		{SessionID: "s1", Command: "git worktree add /var/folders/x/api-hand-2", At: recent},
+		{SessionID: "s1", Cwd: "/w/api", Command: "git worktree add -q -b feat-a ../api-a", At: recent},
+		{SessionID: "s1", Cwd: "/w/api", Command: "git worktree add ../api-b", At: recent},
+		{SessionID: "s1", Cwd: "/w/api", Command: "git worktree add ../api-c", At: recent},
+		{SessionID: "s1", Cwd: "/w/api", Command: "git worktree add ../api-old", At: now.Add(-ClaimWindow - time.Second)},
+		{SessionID: "s1", Cwd: "/w/api", Command: "git worktree add ../api-z", At: recent},
+		{SessionID: "s3", Cwd: "/w/api", Command: "git worktree add -b z ../elsewhere", At: recent},
+		{SessionID: "s1", Cwd: "/w/api", Command: "git worktree add /var/folders/x/api-hand-2", At: recent},
 	}
 	got := ReclaimWorktrees(known, claims, now)
 	want := []Worktree{
 		{ID: "/w/api-a", Repo: "/w/api", Path: "/w/api-a", Branch: "feat-a", SessionID: "s1"},
 		{ID: "/w/api-b", Repo: "/w/api", Path: "/w/api-b", Branch: "feat-b", SessionID: "s1"},
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("got %+v, want %+v", got, want)
+	}
+}
+
+func TestWorktreeDetectReclaimOnlyFromClaimsInTheSameRepo(t *testing.T) {
+	now := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
+	known := []Worktree{
+		{ID: "/w/api-s", Repo: "/w/api", Path: "/w/api-s", Branch: "s", SessionID: "s1"},
+		{ID: "/w/web-s", Repo: "/w/web", Path: "/w/web-s", Branch: "t", SessionID: "s2"},
+		{ID: "/w/api-x", Repo: "/w/api", Path: "/w/api-x", Branch: "feat"},
+		{ID: "/w/web-x", Repo: "/w/web", Path: "/w/web-x", Branch: "feat"},
+		{ID: "/w/lib-x", Repo: "/w/lib", Path: "/w/lib-x", Branch: "feat"},
+	}
+	claims := []WorktreeClaim{
+		{SessionID: "s1", Cwd: "/w/api-s/src", Command: "git worktree add -b feat ../api-x", At: now},
+		{SessionID: "s2", Cwd: "/w/web", Command: "git worktree add -b feat ../web-x", At: now},
+		{SessionID: "s3", Command: "git worktree add -b feat ../lib-x", At: now},
+	}
+	got := ReclaimWorktrees(known, claims, now)
+	want := []Worktree{
+		{ID: "/w/api-x", Repo: "/w/api", Path: "/w/api-x", Branch: "feat", SessionID: "s1"},
+		{ID: "/w/web-x", Repo: "/w/web", Path: "/w/web-x", Branch: "feat", SessionID: "s2"},
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("got %+v, want %+v", got, want)
