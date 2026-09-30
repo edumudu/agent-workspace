@@ -51,7 +51,7 @@ func serve() {
 	}
 	port := ln.Addr().(*net.TCPAddr).Port
 	fmt.Printf("%d %d\n", port, child.Process.Pid)
-	select {}
+	time.Sleep(time.Hour)
 }
 
 type server struct {
@@ -132,6 +132,9 @@ func TestPortsTerminateKillsTheGroupAndFreesThePort(t *testing.T) {
 	if !alive(s.child) {
 		t.Fatal("child not running")
 	}
+	if _, ok := listener(t, s.port); !ok {
+		t.Fatalf("port %d not listed before the kill", s.port)
+	}
 	if err := (procs.Table{}).Terminate(context.Background(), s.cmd.Process.Pid); err != nil {
 		t.Fatal(err)
 	}
@@ -145,6 +148,9 @@ func TestPortsTerminateKillsTheGroupAndFreesThePort(t *testing.T) {
 
 func TestPortsTerminateEscalatesWhenTermIsIgnored(t *testing.T) {
 	s := startServer(t, "ignore-term")
+	if _, ok := listener(t, s.port); !ok {
+		t.Fatalf("port %d not listed before the kill", s.port)
+	}
 	table := procs.Table{Grace: 300 * time.Millisecond}
 	start := time.Now()
 	if err := table.Terminate(context.Background(), s.cmd.Process.Pid); err != nil {

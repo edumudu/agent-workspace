@@ -7,45 +7,66 @@ import (
 	"github.com/giovaniif/agent-workspace/internal/domain"
 )
 
-func TestPortsParseListenAndCwd(t *testing.T) {
-	listen := "p101\ng100\ncnode\nf23\nn*:8081\nf24\nn[::1]:8081\nf25\nn127.0.0.1:9229\n" +
-		"p202\ng202\ncControlCenter helper\nf9\nn*:7000\n" +
-		"p303\ng300\ncbun\nf11\nn[fe80::1%lo0]:3000\n"
-	cwd := "p101\nfcwd\nn/w/api-feat\np202\nfcwd\nn/\n"
+const netstatFixture = `Active Internet connections (including servers)
+Proto Recv-Q Send-Q  Local Address          Foreign Address        (state)          rxbytes      txbytes  rhiwat  shiwat          process:pid    state  options           gencnt    flags   flags1 usecnt rtncnt fltrs
+tcp4       0      0  127.0.0.1.8081         *.*                    LISTEN                 0            0  131072  131072            node:101  00100 00000006 0000000002a72b1e 00000000 00080800      1      0 000000
+tcp6       0      0  ::1.8081               *.*                    LISTEN                 0            0  131072  131072            node:101  00100 00000006 0000000002a72b1f 00000000 00080800      1      0 000000
+tcp46      0      0  *.9229                 *.*                    LISTEN                 0            0  131072  131072            node:101  00100 00000006 0000000002a72b20 00000000 00080800      1      0 000000
+tcp4       0      0  *.7000                 *.*                    LISTEN                 0            0  131072  131072  ControlCenter:202  00100 00000006 0000000002a72b21 00000000 00080800      1      0 000000
+tcp6       0      0  fe80::1%lo0.3000       *.*                    LISTEN                 0            0  131072  131072            bun:303  00100 00000006 0000000002a72b22 00000000 00080800      1      0 000000
+tcp4       0      0  127.0.0.1.8081         127.0.0.1.55000        ESTABLISHED         1024         2048  131072  131072            node:101  00100 00000006 0000000002a72b23 00000000 00080800      1      0 000000
+tcp4       0      0  *.4000                 *.*                    CLOSED                 0            0  131072  131072            node:404  00100 00000006 0000000002a72b24 00000000 00080800      1      0 000000
+`
 
-	got := merge(parseListen(listen), parseCwd(cwd))
+const lsofFixture = "p101\ng100\ncnode server\nfcwd\nn/w/api-feat\n" +
+	"p202\ng202\ncControlCenter\nfcwd\nn/\n"
+
+func TestPortsParseNetstatAndLsof(t *testing.T) {
+	got := merge(parseNetstat(netstatFixture), parseDetails(lsofFixture))
 
 	want := []domain.Listener{
-		{Port: 8081, PID: 101, PGID: 100, Command: "node", Cwd: "/w/api-feat"},
-		{Port: 8081, PID: 101, PGID: 100, Command: "node", Cwd: "/w/api-feat"},
-		{Port: 9229, PID: 101, PGID: 100, Command: "node", Cwd: "/w/api-feat"},
-		{Port: 7000, PID: 202, PGID: 202, Command: "ControlCenter helper", Cwd: "/"},
-		{Port: 3000, PID: 303, PGID: 300, Command: "bun"},
+		{Port: 8081, PID: 101, PGID: 100, Command: "node server", Cwd: "/w/api-feat"},
+		{Port: 8081, PID: 101, PGID: 100, Command: "node server", Cwd: "/w/api-feat"},
+		{Port: 9229, PID: 101, PGID: 100, Command: "node server", Cwd: "/w/api-feat"},
+		{Port: 7000, PID: 202, PGID: 202, Command: "ControlCenter", Cwd: "/"},
+		{Port: 3000, PID: 303, Command: "bun"},
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("got  %+v\nwant %+v", got, want)
 	}
 }
 
-func TestPortsParseSkipsMalformedLines(t *testing.T) {
-	listen := "pabc\ncbad\nn*:1\np5\ng5\ncok\nn*:notaport\nn*:80\nn\nf3\n"
-	got := parseListen(listen)
-	want := []domain.Listener{{Port: 80, PID: 5, PGID: 5, Command: "ok"}}
+func TestPortsParseSkipsMalformedRows(t *testing.T) {
+	out := "tcp4 0 0 *.abc *.* LISTEN 0 0 1 1 node:5\n" +
+		"tcp4 0 0 *.80 *.* LISTEN 0 0 1 1 node:x\n" +
+		"tcp4 0 0 *.81 *.* LISTEN 0 0 1 1 nopid\n" +
+		"tcp4 0 0 *.82 *.* LISTEN\n" +
+		"tcp4 0 0 *.83 *.* LISTEN 0 0 1 1 ok:7\n"
+	got := parseNetstat(out)
+	want := []domain.Listener{{Port: 83, PID: 7, Command: "ok"}}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("got %+v, want %+v", got, want)
+	}
+}
+
+func TestPortsParseDetailsSkipsBadPid(t *testing.T) {
+	got := parseDetails("pabc\ng9\ncbad\nn/x\np5\nnnot-a-group-line\ngzz\nc\n")
+	want := map[int]details{5: {pgid: 5, cwd: "not-a-group-line"}}
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("got %+v, want %+v", got, want)
 	}
 }
 
 func TestPortsParseEmpty(t *testing.T) {
-	if got := parseListen(""); len(got) != 0 {
+	if got := parseNetstat(""); len(got) != 0 {
 		t.Errorf("got %+v", got)
 	}
-	if got := parseCwd(""); len(got) != 0 {
+	if got := parseDetails(""); len(got) != 0 {
 		t.Errorf("got %+v", got)
 	}
 }
 
-func TestPortsPIDsOfDeduplicatesAndSorts(t *testing.T) {
+func TestPortsPIDListDeduplicatesAndSorts(t *testing.T) {
 	got := pidList([]domain.Listener{{PID: 9}, {PID: 3}, {PID: 9}, {PID: 5}})
 	if want := "3,5,9"; got != want {
 		t.Errorf("got %q, want %q", got, want)
