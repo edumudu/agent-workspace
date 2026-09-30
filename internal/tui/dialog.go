@@ -301,7 +301,7 @@ func (m Model) quotas() []domain.Quota {
 	for _, x := range m.sessions {
 		sessions = append(sessions, x)
 	}
-	return domain.Quotas(sessions)
+	return domain.Current(domain.Quotas(sessions), m.opts.Now())
 }
 
 func (m Model) chosenHarness() domain.Harness {
@@ -335,11 +335,11 @@ func (m Model) adviceLine() (string, bool) {
 	}
 	s := m.styles
 	low := advice.Low
-	left := []piece{{s.peach, fmt.Sprintf(" ⚠ %s %s %d%% left", low.Harness, domain.WindowLabel(low.Window), low.LeftPercent)}}
+	left := []piece{{s.peach, fmt.Sprintf(" ⚠ %s %s %d%% used", low.Harness, domain.WindowLabel(low.Window), usedPercent(low))}}
 	if offer, ok := m.fallbackOffer(); ok {
-		left = append(left, piece{s.dim, " · "}, piece{s.bold, "ctrl+s"}, piece{s.sub, strings.TrimRight(fmt.Sprintf(" %s %d%% %s", offer.Request.Harness, offer.Advice.OtherShortest.LeftPercent, offer.Request.Model), " ")})
+		left = append(left, piece{s.dim, " · "}, piece{s.bold, "ctrl+s"}, piece{s.sub, strings.TrimRight(fmt.Sprintf(" %s %d%% %s", offer.Request.Harness, usedPercent(*offer.Advice.OtherShortest), offer.Request.Model), " ")})
 	} else if o := advice.OtherShortest; o != nil && advice.Other != domain.HarnessCodex {
-		left = append(left, piece{s.dim, " · "}, piece{s.bold, "ctrl+s"}, piece{s.sub, fmt.Sprintf(" %s %d%%", advice.Other, o.LeftPercent)})
+		left = append(left, piece{s.dim, " · "}, piece{s.bold, "ctrl+s"}, piece{s.sub, fmt.Sprintf(" %s %d%%", advice.Other, usedPercent(*o))})
 	}
 	return m.line(false, left, nil), true
 }

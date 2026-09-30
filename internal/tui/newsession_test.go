@@ -193,11 +193,11 @@ var keyCtrlS = tea.KeyPressMsg{Code: 's', Mod: tea.ModCtrl}
 func TestNewSessionDialogWarnsOnLowQuotaAndSwitchesHarness(t *testing.T) {
 	m, c := dialogModel(t, lowClaudeState())
 	out := screen(m)
-	if !strings.Contains(out, "claude 5h 10% left") || !strings.Contains(out, "ctrl+s codex 64%") {
+	if !strings.Contains(out, "claude 5h 90% used") || !strings.Contains(out, "ctrl+s codex 36%") {
 		t.Fatalf("no low-quota warning with a switch:\n%s", out)
 	}
 	m = pressCmd(m, keyCtrlS)
-	if out := screen(m); !strings.Contains(out, "‹ codex ›") || strings.Contains(out, "10% left") {
+	if out := screen(m); !strings.Contains(out, "‹ codex ›") || strings.Contains(out, "90% used") {
 		t.Fatalf("ctrl+s did not switch to codex:\n%s", out)
 	}
 	pressCmd(typeText(m, "x"), keyEnter)
@@ -211,7 +211,7 @@ func TestNewSessionDialogWarnsWithoutASwitchWhenTheOtherHarnessIsUnknown(t *test
 	st.Sessions = st.Sessions[:1]
 	m, _ := dialogModel(t, st)
 	out := screen(m)
-	if !strings.Contains(out, "claude 5h 10% left") || strings.Contains(out, "ctrl+s") {
+	if !strings.Contains(out, "claude 5h 90% used") || strings.Contains(out, "ctrl+s") {
 		t.Fatalf("warning should have no switch:\n%s", out)
 	}
 	if out := screen(pressCmd(m, keyCtrlS)); !strings.Contains(out, "‹ claude ›") {
