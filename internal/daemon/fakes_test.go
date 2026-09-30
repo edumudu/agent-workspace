@@ -162,6 +162,11 @@ type fakeClientHost struct {
 	gone    bool
 	// duringCheck runs inside the SlotHasPane call that reports the pane missing.
 	duringCheck func()
+
+	slotPane map[app.Slot]app.PaneID
+	below    app.PaneID
+	belowLog []string
+	popups   []app.PaneID
 }
 
 // SlotHasPane reports the slot pane as missing once after loseSlotPane.
@@ -233,6 +238,56 @@ func (h *fakeClientHost) WidenSidebar(_ context.Context, slot app.Slot, wide boo
 	}
 	h.wide = append(h.wide, wide)
 	return nil
+}
+
+func (h *fakeClientHost) setShownIn(slot app.Slot, pane app.PaneID) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if h.slotPane == nil {
+		h.slotPane = map[app.Slot]app.PaneID{}
+	}
+	h.slotPane[slot] = pane
+}
+
+func (h *fakeClientHost) ShownIn(_ context.Context, slot app.Slot) app.PaneID {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	return h.slotPane[slot]
+}
+
+func (h *fakeClientHost) BelowPane(context.Context, app.Slot) app.PaneID {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	return h.below
+}
+
+func (h *fakeClientHost) ShowBelow(_ context.Context, pane app.PaneID, _ app.Slot) error {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.below = pane
+	h.belowLog = append(h.belowLog, "show "+string(pane))
+	return nil
+}
+
+func (h *fakeClientHost) HideBelow(context.Context, app.Slot) error {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.belowLog = append(h.belowLog, "hide "+string(h.below))
+	h.below = ""
+	return nil
+}
+
+func (h *fakeClientHost) Popup(_ context.Context, pane app.PaneID) error {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.popups = append(h.popups, pane)
+	return nil
+}
+
+func (h *fakeClientHost) belowCalls() []string {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	return append([]string(nil), h.belowLog...)
 }
 
 func (h *fakeClientHost) close(slot app.Slot) {
