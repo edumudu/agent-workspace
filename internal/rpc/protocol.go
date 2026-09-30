@@ -61,6 +61,9 @@ const (
 	// MethodClientReview widens the client's sidebar pane for the review, or
 	// puts it back.
 	MethodClientReview = "client.review"
+	// MethodClientPopup runs a command in a centred popup over the attached
+	// client; the popup closes when the command exits.
+	MethodClientPopup = "client.popup"
 	// MethodCleanupPlan returns the cleanup plan without acting on it;
 	// MethodCleanupRun executes it. Both answer []CleanupItem.
 	MethodCleanupPlan = "cleanup.plan"
@@ -150,6 +153,11 @@ type ViewedParams struct {
 
 type ClientReviewParams struct {
 	Open bool `json:"open"`
+}
+
+type ClientPopupParams struct {
+	Command []string          `json:"command"`
+	Env     map[string]string `json:"env,omitempty"`
 }
 
 // PortsKillParams names process groups by PGID, as a domain.Port carries it.
