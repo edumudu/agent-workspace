@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"fmt"
 	"path/filepath"
 	"sync"
 	"time"
@@ -77,10 +78,11 @@ type Cleanup struct {
 
 	mu       sync.Mutex
 	backedUp map[string]string
+	usedDirs map[string]bool
 }
 
 func NewCleanup(git CleanupGit, procs ProcessTable, trash Trash, audit CleanupAudit, backupRoot string, now func() time.Time) *Cleanup {
-	return &Cleanup{git: git, procs: procs, trash: trash, audit: audit, backupRoot: backupRoot, now: now, backedUp: map[string]string{}}
+	return &Cleanup{git: git, procs: procs, trash: trash, audit: audit, backupRoot: backupRoot, now: now, backedUp: map[string]string{}, usedDirs: map[string]bool{}}
 }
 
 type plannedWorktree struct {
@@ -213,7 +215,7 @@ func (c *Cleanup) backup(ctx context.Context, p plannedWorktree) string {
 	if done {
 		return "already backed up"
 	}
-	dir := filepath.Join(c.backupRoot, c.now().Format("20060102-150405"), filepath.Base(w.Path))
+	dir := c.claimBackupDir(w)
 	if err := c.git.Backup(ctx, w, dir); err != nil {
 		return "failed: " + err.Error()
 	}
@@ -229,6 +231,20 @@ func (c *Cleanup) backup(ctx context.Context, p plannedWorktree) string {
 	c.backedUp[w.ID] = p.fingerprint
 	c.mu.Unlock()
 	return outcome
+}
+
+// claimBackupDir is <root>/<ts>/<name>, with -2, -3 and so on appended when
+// another worktree of the same name was backed up in the same second.
+func (c *Cleanup) claimBackupDir(w domain.Worktree) string {
+	base := filepath.Join(c.backupRoot, c.now().Format("20060102-150405"), filepath.Base(w.Path))
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	dir := base
+	for i := 2; c.usedDirs[dir]; i++ {
+		dir = fmt.Sprintf("%s-%d", base, i)
+	}
+	c.usedDirs[dir] = true
+	return dir
 }
 
 func (c *Cleanup) record(r CleanupResult) {
