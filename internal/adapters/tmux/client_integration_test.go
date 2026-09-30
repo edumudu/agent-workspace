@@ -52,6 +52,14 @@ func TestClientLayoutCanBeFoundFocusedAndAttached(t *testing.T) {
 	if got := strings.TrimSpace(string(out)); got != strconv.Itoa(tmux.SidebarWidth) {
 		t.Fatalf("sidebar pane is %s columns wide, want %d", got, tmux.SidebarWidth)
 	}
+	resize := append(slices.Clone(attach[:len(attach)-3]), "resize-window", "-t", string(slot), "-x", "130")
+	if out, err := exec.Command(resize[0], resize[1:]...).CombinedOutput(); err != nil {
+		t.Fatalf("%v: %s", err, out)
+	}
+	waitFor(t, "sidebar to keep its width after a resize", func() bool {
+		out, err := exec.Command(width[0], width[1:]...).Output()
+		return err == nil && strings.TrimSpace(string(out)) == strconv.Itoa(tmux.SidebarWidth)
+	})
 
 	if _, err := exec.Command(active[0], append(slices.Clone(attach[1:len(attach)-3]), "kill-window", "-t", string(slot))...).CombinedOutput(); err != nil {
 		t.Fatal(err)
