@@ -38,6 +38,8 @@ set -g escape-time 0
 set -g remain-on-exit off
 set -g history-limit 50000
 set -g default-terminal "tmux-256color"
+set -g pane-border-status top
+set -g pane-border-format "#{?@agentws_title, #{@agentws_title} ,}"
 bind -n M-t if -F '#{m:agentws-popup-*,#{session_name}}' 'detach-client' 'send-keys M-t'
 `
 

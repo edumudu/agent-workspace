@@ -103,3 +103,10 @@ func parsePanes(out string) []app.PaneInfo {
 	}
 	return panes
 }
+
+// SetTitle sets the text the pane's top border shows, through a pane option
+// the border format reads.
+func (h *Host) SetTitle(ctx context.Context, pane app.PaneID, title string) error {
+	_, err := h.run(ctx, "", "set-option", "-p", "-t", string(pane), "@agentws_title", title)
+	return err
+}
