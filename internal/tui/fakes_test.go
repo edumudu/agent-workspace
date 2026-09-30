@@ -17,6 +17,12 @@ type fakeReviewer struct {
 	asked   []rpc.ReviewParams
 	marked  []viewedCall
 	layouts []bool
+
+	comments   []rpc.CommentParams
+	draft      domain.ReviewDraft
+	sent       []string
+	sendStatus domain.DraftStatus
+	hunks      []rpc.HunkParams
 }
 
 type viewedCall struct {
@@ -36,6 +42,24 @@ func (f *fakeReviewer) Review(_ context.Context, p rpc.ReviewParams) (rpc.Review
 
 func (f *fakeReviewer) MarkViewed(_ context.Context, m domain.ViewedMark, viewed bool) error {
 	f.marked = append(f.marked, viewedCall{m, viewed})
+	return nil
+}
+
+func (f *fakeReviewer) AddReviewComment(_ context.Context, p rpc.CommentParams) (domain.ReviewDraft, error) {
+	f.comments = append(f.comments, p)
+	f.draft = f.draft.Add(domain.ReviewComment{Path: p.Path, Start: p.StartLine, End: p.EndLine, Body: p.Body})
+	f.draft.Session = p.Session
+	return f.draft, nil
+}
+
+func (f *fakeReviewer) SendReview(_ context.Context, session string) (domain.ReviewDraft, error) {
+	f.sent = append(f.sent, session)
+	f.draft.Status = f.sendStatus
+	return f.draft, nil
+}
+
+func (f *fakeReviewer) ApplyHunk(_ context.Context, p rpc.HunkParams) error {
+	f.hunks = append(f.hunks, p)
 	return nil
 }
 

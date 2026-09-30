@@ -370,3 +370,33 @@ func TestReviewViewedMarksSurviveARestart(t *testing.T) {
 		t.Errorf("viewed = %+v, want %+v", snap.Viewed, want)
 	}
 }
+
+func TestReviewDraftsSurviveARestart(t *testing.T) {
+	s, path := openTemp(t)
+	c := domain.ReviewComment{Worktree: "/wt/api", Path: "a.go", Start: 3, End: 4, Code: []string{"x", "y"}, Body: "why?"}
+	open := domain.ReviewDraft{ID: "s1-2", Session: "s1", Status: domain.DraftQueued, Comments: []domain.ReviewComment{c}}
+	sent := domain.ReviewDraft{ID: "s1-1", Session: "s1", Status: domain.DraftSent, Comments: []domain.ReviewComment{c}, SentAt: time.Unix(50, 0).UTC(), Turns: []string{"refs/agentws/turns/s1/k/2"}}
+	s.PutDraft(domain.ReviewDraft{ID: "s1-2", Session: "s1", Status: domain.DraftOpen})
+	s.PutDraft(open)
+	s.PutDraft(sent)
+
+	snap, err := reopen(t, s, path).Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := []domain.ReviewDraft{sent, open}; !reflect.DeepEqual(snap.Drafts, want) {
+		t.Errorf("drafts = %+v, want %+v", snap.Drafts, want)
+	}
+}
+
+func TestReviewASentDraftWithNoTurnStaysClosedAfterARestart(t *testing.T) {
+	s, path := openTemp(t)
+	s.PutDraft(domain.ReviewDraft{ID: "s1-1", Session: "s1", Status: domain.DraftSent}.LinkTurn(nil))
+	snap, err := reopen(t, s, path).Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(snap.Drafts) != 1 || snap.Drafts[0].AwaitsTurn() {
+		t.Errorf("drafts = %+v; a draft closed with no turn must not wait for one again", snap.Drafts)
+	}
+}

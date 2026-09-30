@@ -1,0 +1,15 @@
+Review comments on your changes. Each one names the worktree, file and lines it is about; make the edit in that worktree.
+
+1. /work/api-part-1:src/resolvers.ts:44-45
+   > const token = await verifyShareToken(ctx.shareToken);
+   > if (!token) throw new ForbiddenError('invalid share token');
+   Check the token's expiry too.
+
+2. /work/api-part-1:src/resolvers.ts:42 (removed lines)
+   > const orgId = ctx.user?.orgId;
+   Keep this for the audit log.
+   It was used by the logger.
+
+3. /work/web-part-2:src/ShareSheet.tsx:1
+   > export const ShareSheet = () => <Sheet />;
+   Needs a close button.

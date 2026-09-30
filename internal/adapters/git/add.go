@@ -16,6 +16,7 @@ type Adder struct{}
 // path's parents. It fails if branch or path already exists.
 func (Adder) AddWorktree(ctx context.Context, repo, path, branch, base string) (app.AddedWorktree, error) {
 	cmd := exec.CommandContext(ctx, "git", "-C", repo, "worktree", "add", "-q", "-b", branch, path, base)
+	cmd.Env = isolated(cmd.Environ())
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return app.AddedWorktree{}, fmt.Errorf("git worktree add %s: %w: %s", branch, err, strings.TrimSpace(string(out)))
 	}

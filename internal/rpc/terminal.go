@@ -60,4 +60,6 @@ type CommentParams struct {
 	EndLine   int    `json:"end_line,omitempty"`
 	Code      string `json:"code,omitempty"`
 	Body      string `json:"body"`
+	// Removed says the lines are old-side numbers: every one was deleted.
+	Removed bool `json:"removed,omitempty"`
 }

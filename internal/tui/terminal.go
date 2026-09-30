@@ -67,19 +67,16 @@ func (m Model) openInNvim() (tea.Model, tea.Cmd) {
 	}
 }
 
-// topLine is the new-side line number of the first row at or below the top of
-// the diff view that has one, so a deleted line opens the line after it.
+// topLine is the new-side line number of the first row at or below the
+// cursor that has one, so a deleted line opens the line after it.
 func (m Model) topLine(f reviewFile) int {
-	rows := f.unified
-	if m.rv.split {
-		rows = f.split
-	}
-	for i := max(m.rv.scroll, 0); i < len(rows); i++ {
+	rows := m.rv.rows(f)
+	for i := max(m.rv.line, 0); i < len(rows); i++ {
 		if n := newLine(rows[i]); n > 0 {
 			return n
 		}
 	}
-	for i := min(m.rv.scroll, len(rows)) - 1; i >= 0; i-- {
+	for i := min(m.rv.line, len(rows)) - 1; i >= 0; i-- {
 		if n := newLine(rows[i]); n > 0 {
 			return n
 		}
@@ -97,14 +94,16 @@ func newLine(r diffRow) int {
 	return 0
 }
 
-func (m Model) draftCount(session string) int {
-	n := 0
-	for _, c := range m.comments {
-		if c.Session == session {
-			n++
-		}
-	}
-	return n
-}
+func (m Model) draftCount(session string) int { return len(m.drafts[session].Comments) }
 
-func (m *Model) putComment(c domain.DraftComment) { m.comments[c.ID] = c }
+// putDraft keeps a session's draft while it is open or queued; a sent or
+// merged one is gone from the count.
+func (m *Model) putDraft(d domain.ReviewDraft) {
+	if d.Status == domain.DraftOpen || d.Status == domain.DraftQueued {
+		m.drafts[d.Session] = d
+		return
+	}
+	if m.drafts[d.Session].ID == d.ID {
+		delete(m.drafts, d.Session)
+	}
+}

@@ -90,7 +90,8 @@ func Run(ctx context.Context, home string) (err error) {
 		WithCleanup(cleanup, DefaultCleanupEvery),
 		WithSlotWatch(slotWatchEvery),
 		WithDisk(DiskDeps{Sizes: sizes, Volume: wsfs.Volume{}, History: audit, VolumePath: home, DepsStore: DepsStorePath()}),
-		WithTerminals(home, nvim.Editor{}))
+		WithTerminals(home, nvim.Editor{}),
+		WithHunks(gitadapter.Review{}))
 	if err != nil {
 		return err
 	}

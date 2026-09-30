@@ -90,7 +90,7 @@ func TestReviewCommentLandsInTheDaemonsDraft(t *testing.T) {
 	}
 	select {
 	case diff := <-sub.Diffs:
-		if diff.Comment == nil || diff.Comment.Path != "pkg/a.go" || diff.Comment.Worktree != "w1" || diff.Comment.Body != "nit" {
+		if diff.Comment == nil || diff.Comment.Path != "pkg/a.go" || diff.Comment.Worktree != "/wt/api" || diff.Comment.Body != "nit" {
 			t.Fatalf("diff %+v", diff)
 		}
 		if !strings.Contains(stdout.String(), diff.Comment.ID) {

@@ -277,59 +277,70 @@ func (d *Daemon) addComment(req rpc.Request) (*rpc.Response, bool) {
 			resp = errorResponse(req.ID, rpc.CodeNotFound, "no session "+p.Session)
 			return
 		}
-		worktree, path, placed := s.commentTarget(p)
+		wt, path, placed := s.commentTarget(p)
 		if !placed {
 			resp = errorResponse(req.ID, rpc.CodeBadRequest, "the file is in none of the session's worktrees")
 			return
 		}
-		c := domain.DraftComment{
-			ID: newID(), Session: p.Session, Worktree: worktree, Path: path,
-			StartLine: start, EndLine: end, Code: p.Code, Body: p.Body, At: d.ws.now(),
+		c := domain.ReviewComment{
+			ID: newID(), Worktree: wt.Path, Path: path, Start: start, End: end,
+			Removed: p.Removed, Body: strings.TrimSpace(p.Body),
 		}
-		s.emit(CommentAdded{Comment: c})
-		resp = result(req.ID, c)
+		if p.Code != "" {
+			c.Code = strings.Split(p.Code, "\n")
+		}
+		draft, open := s.drafts[p.Session]
+		if !open {
+			draft = domain.ReviewDraft{ID: p.Session + "-" + strconv.FormatInt(time.Now().UnixNano(), 10), Session: p.Session}
+		}
+		draft = draft.Add(c)
+		s.drafts[p.Session] = draft
+		s.putDraft(draft, &c)
+		resp = result(req.ID, draft)
 	})
 	return resp, ok
 }
 
-func (s *state) commentTarget(p rpc.CommentParams) (worktree, path string, ok bool) {
+// commentTarget places the file in one of the worktrees the session reviews,
+// which includes its hook directory when it owns none.
+func (s *state) commentTarget(p rpc.CommentParams) (domain.Worktree, string, bool) {
 	var owned []domain.Worktree
-	for _, w := range s.worktrees {
-		if w.SessionID == p.Session {
-			owned = append(owned, w)
-		}
+	for _, t := range s.reviewTargets(p.Session) {
+		owned = append(owned, t.Worktree)
 	}
 	if p.File != "" {
-		w, rel, found := domain.ResolveCommentFile(p.Session, owned, p.File)
-		return w.ID, rel, found
+		return domain.ResolveCommentFile(p.Session, owned, p.File)
 	}
 	for _, w := range owned {
 		if w.ID == p.Worktree && p.Path != "" && !filepath.IsAbs(p.Path) {
 			// why: only the chosen worktree may resolve the path, or ../sibling/file would land in another one.
-			found, rel, ok := domain.ResolveCommentFile(p.Session, []domain.Worktree{w}, filepath.Join(w.Path, p.Path))
-			return found.ID, rel, ok
+			return domain.ResolveCommentFile(p.Session, []domain.Worktree{w}, filepath.Join(w.Path, p.Path))
 		}
 	}
-	return "", "", false
+	return domain.Worktree{}, "", false
 }
 
-type CommentAdded struct{ Comment domain.DraftComment }
-
-func (e CommentAdded) apply(s *state) rpc.Diff {
-	s.comments[e.Comment.ID] = e.Comment
-	return rpc.Diff{Comment: &e.Comment}
+// DraftChanged publishes a draft that was already stored; Comment is the one
+// just added, if any.
+type DraftChanged struct {
+	Draft   domain.ReviewDraft
+	Comment *domain.ReviewComment
 }
 
-func (s *state) commentList() []domain.DraftComment {
-	out := make([]domain.DraftComment, 0, len(s.comments))
-	for _, c := range s.comments {
-		out = append(out, c)
+func (e DraftChanged) apply(*state) rpc.Diff {
+	return rpc.Diff{Draft: &e.Draft, Comment: e.Comment}
+}
+
+func (s *state) putDraft(d domain.ReviewDraft, added *domain.ReviewComment) {
+	s.store.PutDraft(d)
+	s.emit(DraftChanged{Draft: d, Comment: added})
+}
+
+func (s *state) draftList() []domain.ReviewDraft {
+	out := make([]domain.ReviewDraft, 0, len(s.drafts))
+	for _, d := range s.drafts {
+		out = append(out, d)
 	}
-	sort.Slice(out, func(i, j int) bool {
-		if !out[i].At.Equal(out[j].At) {
-			return out[i].At.Before(out[j].At)
-		}
-		return out[i].ID < out[j].ID
-	})
+	sort.Slice(out, func(i, j int) bool { return out[i].ID < out[j].ID })
 	return out
 }

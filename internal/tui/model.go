@@ -118,7 +118,8 @@ type Model struct {
 	dk       diskState
 	paint    *painter
 	renaming *renamePrompt
-	comments map[string]domain.DraftComment
+	// drafts is each session's open or queued review draft.
+	drafts map[string]domain.ReviewDraft
 
 	queue     []domain.LaunchItem
 	launching *launchInput
@@ -142,7 +143,7 @@ func New(opts Options) Model {
 		width:      40,
 		height:     24,
 		workspaces: map[string]domain.Workspace{},
-		comments:   map[string]domain.DraftComment{},
+		drafts:     map[string]domain.ReviewDraft{},
 		tasks:      map[string]domain.Task{},
 		worktrees:  map[string]domain.Worktree{},
 		sessions:   map[string]domain.Session{},
@@ -194,12 +195,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.status = msg.err.Error()
 	case reviewMsg:
 		m.gotReview(msg)
+	case draftMsg:
+		return m.gotDraft(msg)
 	case tea.KeyPressMsg:
 		if m.dialog != nil {
 			return m.dialogKey(msg)
 		}
 		if m.rv.open {
-			return m.reviewKey(msg.String())
+			return m.reviewKey(msg)
 		}
 		if m.launching != nil {
 			return m.launcherKey(msg)
@@ -261,9 +264,9 @@ func (m *Model) load(st rpc.State) {
 	m.subagents = map[string][]domain.Subagent{}
 	m.taskOrder = nil
 	m.queue = st.Queue
-	m.comments = map[string]domain.DraftComment{}
-	for _, c := range st.Comments {
-		m.putComment(c)
+	m.drafts = map[string]domain.ReviewDraft{}
+	for _, d := range st.Drafts {
+		m.putDraft(d)
 	}
 	for _, t := range st.Tasks {
 		m.putTask(t)
@@ -296,8 +299,8 @@ func (m *Model) apply(d rpc.Diff) {
 		m.addEvent(*d.Event)
 	}
 	switch {
-	case d.Comment != nil:
-		m.putComment(*d.Comment)
+	case d.Draft != nil:
+		m.putDraft(*d.Draft)
 		return
 	case d.Workspace != nil:
 		m.workspaces[d.Workspace.Root] = *d.Workspace

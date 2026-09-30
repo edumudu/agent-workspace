@@ -158,23 +158,23 @@ func TestReviewParseDiff(t *testing.T) {
 					{Kind: LineContext, Old: 44, New: 45, Text: "}"},
 				}},
 				{Header: "@@ -60 +61 @@", Lines: []DiffLine{
-					{Kind: LineDeleted, Old: 60, Text: "a"},
+					{Kind: LineDeleted, Old: 60, Text: "a", NoEOL: true},
 					{Kind: LineAdded, New: 61, Text: "b"},
 				}},
 			},
 		},
-		{Path: "new.ts", Status: FileAdded, Added: 2, Blob: "3333333", Hunks: []Hunk{{Header: "@@ -0,0 +1,2 @@", Lines: []DiffLine{
+		{Path: "new.ts", Status: FileAdded, Mode: "100644", Added: 2, Blob: "3333333", Hunks: []Hunk{{Header: "@@ -0,0 +1,2 @@", Lines: []DiffLine{
 			{Kind: LineAdded, New: 1, Text: "one"},
 			{Kind: LineAdded, New: 2, Text: "two"},
 		}}}},
-		{Path: "gone.ts", Status: FileDeleted, Deleted: 1, Blob: "0000000", Hunks: []Hunk{{Header: "@@ -1 +0,0 @@", Lines: []DiffLine{
+		{Path: "gone.ts", Status: FileDeleted, Mode: "100644", Deleted: 1, Blob: "0000000", Hunks: []Hunk{{Header: "@@ -1 +0,0 @@", Lines: []DiffLine{
 			{Kind: LineDeleted, Old: 1, Text: "bye"},
 		}}}},
 		{Path: "new name.ts", OldPath: "old name.ts", Status: FileRenamed, Added: 1, Deleted: 1, Blob: "6666666", Hunks: []Hunk{{Header: "@@ -1 +1 @@", Lines: []DiffLine{
 			{Kind: LineDeleted, Old: 1, Text: "x"},
 			{Kind: LineAdded, New: 1, Text: "y"},
 		}}}},
-		{Path: "logo.png", Status: FileAdded, Binary: true, Blob: "7777777"},
+		{Path: "logo.png", Status: FileAdded, Mode: "100644", Binary: true, Blob: "7777777"},
 		{Path: "same.sh", Status: FileModified},
 	}
 	if !reflect.DeepEqual(files, want) {

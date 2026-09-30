@@ -16,6 +16,7 @@ func (nopStore) PutSession(domain.Session)     {}
 func (nopStore) PutEvent(domain.SessionEvent)  {}
 func (nopStore) PutViewed(domain.ViewedMark)   {}
 func (nopStore) DeleteViewed(string)           {}
+func (nopStore) PutDraft(domain.ReviewDraft)   {}
 func (nopStore) Load() (app.Snapshot, error)   { return app.Snapshot{}, nil }
 func (nopStore) Flush() error                  { return nil }
 func (nopStore) Close() error                  { return nil }

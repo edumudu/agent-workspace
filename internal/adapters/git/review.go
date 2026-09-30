@@ -98,6 +98,7 @@ func (Review) DeleteRefs(ctx context.Context, dir string, refs []string) error {
 		stdin.WriteString("delete " + r + "\n")
 	}
 	cmd := exec.CommandContext(ctx, "git", "-C", dir, "update-ref", "--stdin")
+	cmd.Env = isolated(cmd.Environ())
 	cmd.Stdin = strings.NewReader(stdin.String())
 	return cmd.Run()
 }
@@ -122,6 +123,6 @@ func (Review) Diff(ctx context.Context, dir, from, tree string) (string, error) 
 
 func outputEnv(ctx context.Context, dir string, env []string, args ...string) ([]byte, error) {
 	cmd := exec.CommandContext(ctx, "git", append([]string{"-C", dir}, args...)...)
-	cmd.Env = append(append(cmd.Environ(), "GIT_OPTIONAL_LOCKS=0"), env...)
+	cmd.Env = append(append(isolated(cmd.Environ()), "GIT_OPTIONAL_LOCKS=0"), env...)
 	return cmd.Output()
 }

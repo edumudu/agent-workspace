@@ -96,6 +96,24 @@ func (s *memStore) deleteViewedLocked(key string) {
 	s.snap.Viewed = kept
 }
 
+func (s *memStore) PutDraft(d domain.ReviewDraft) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for i, x := range s.snap.Drafts {
+		if x.ID == d.ID {
+			s.snap.Drafts[i] = d
+			return
+		}
+	}
+	s.snap.Drafts = append(s.snap.Drafts, d)
+}
+
+func (s *memStore) drafts() []domain.ReviewDraft {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return append([]domain.ReviewDraft(nil), s.snap.Drafts...)
+}
+
 func (s *memStore) Load() (app.Snapshot, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -677,4 +695,33 @@ func (f *fakeTitles) calls() []domain.Task {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	return append([]domain.Task(nil), f.called...)
+}
+
+// fakeHunkGit records "<action> <dir>" for each patch and keeps the patches.
+type fakeHunkGit struct {
+	mu      sync.Mutex
+	calls   []string
+	patches []string
+}
+
+func (g *fakeHunkGit) Stage(_ context.Context, dir, patch string) error {
+	return g.record("stage "+dir, patch)
+}
+
+func (g *fakeHunkGit) Revert(_ context.Context, dir, patch string) error {
+	return g.record("revert "+dir, patch)
+}
+
+func (g *fakeHunkGit) record(call, patch string) error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	g.calls = append(g.calls, call)
+	g.patches = append(g.patches, patch)
+	return nil
+}
+
+func (g *fakeHunkGit) done() []string {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	return append([]string(nil), g.calls...)
 }
