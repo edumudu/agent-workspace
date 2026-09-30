@@ -238,3 +238,59 @@ func (f *fakeFinder) set(repo string, prs ...domain.PullRequest) {
 	defer f.mu.Unlock()
 	f.prs[repo] = prs
 }
+
+type fakeTable struct {
+	mu           sync.Mutex
+	listeners    []domain.Listener
+	scans        int
+	terminated   []int
+	terminateErr error
+}
+
+func (f *fakeTable) Listeners(context.Context) ([]domain.Listener, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.scans++
+	return append([]domain.Listener(nil), f.listeners...), nil
+}
+
+func (f *fakeTable) Terminate(_ context.Context, pgid int) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.terminateErr != nil {
+		return f.terminateErr
+	}
+	f.terminated = append(f.terminated, pgid)
+	var kept []domain.Listener
+	for _, l := range f.listeners {
+		if l.PGID != pgid {
+			kept = append(kept, l)
+		}
+	}
+	f.listeners = kept
+	return nil
+}
+
+func (f *fakeTable) failTerminate(err error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.terminateErr = err
+}
+
+func (f *fakeTable) set(ls ...domain.Listener) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.listeners = ls
+}
+
+func (f *fakeTable) scanCount() int {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.scans
+}
+
+func (f *fakeTable) killed() []int {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return append([]int(nil), f.terminated...)
+}
