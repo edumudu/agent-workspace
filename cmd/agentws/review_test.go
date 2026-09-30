@@ -67,8 +67,6 @@ func TestReviewCommentLandsInTheDaemonsDraft(t *testing.T) {
 	done := make(chan struct{})
 	go func() { _ = d.Serve(ctx, ln); close(done) }()
 	t.Cleanup(func() { cancel(); <-done })
-	d.Post(daemon.SessionChanged{Session: domain.Session{ID: "s1"}})
-	d.Post(daemon.WorktreeChanged{Worktree: domain.Worktree{ID: "w1", Path: "/wt/api", SessionID: "s1"}})
 
 	c, err := rpc.Dial(rpc.SocketPath(home))
 	if err != nil {
@@ -79,6 +77,10 @@ func TestReviewCommentLandsInTheDaemonsDraft(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	d.Post(daemon.SessionChanged{Session: domain.Session{ID: "s1"}})
+	d.Post(daemon.WorktreeChanged{Worktree: domain.Worktree{ID: "w1", Path: "/wt/api", SessionID: "s1"}})
+	<-sub.Diffs
+	<-sub.Diffs
 
 	var stdout, stderr bytes.Buffer
 	started := time.Now()
