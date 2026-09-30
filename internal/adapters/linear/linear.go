@@ -9,9 +9,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"net/http"
-	"os"
 	"strings"
+
+	"github.com/BurntSushi/toml"
 
 	"github.com/giovaniif/agent-workspace/internal/app"
 	"github.com/giovaniif/agent-workspace/internal/domain"
@@ -90,21 +92,20 @@ func (c Client) Title(ctx context.Context, task domain.Task) (string, error) {
 	return strings.TrimSpace(reply.Data.Issue.Title), nil
 }
 
-// LoadToken reads the token from the file's "token" field. A missing file
-// means no token.
+// LoadToken reads the token from the [linear] table of a config.toml. A
+// missing file, or one without the table, means no token.
 func LoadToken(path string) (string, error) {
-	raw, err := os.ReadFile(path)
-	if errors.Is(err, os.ErrNotExist) {
+	var cfg struct {
+		Linear struct {
+			Token string `toml:"token"`
+		} `toml:"linear"`
+	}
+	_, err := toml.DecodeFile(path, &cfg)
+	if errors.Is(err, fs.ErrNotExist) {
 		return "", nil
 	}
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("linear: %s: %w", path, err)
 	}
-	var cfg struct {
-		Token string `json:"token"`
-	}
-	if err := json.Unmarshal(raw, &cfg); err != nil {
-		return "", err
-	}
-	return strings.TrimSpace(cfg.Token), nil
+	return strings.TrimSpace(cfg.Linear.Token), nil
 }

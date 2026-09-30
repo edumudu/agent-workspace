@@ -63,9 +63,9 @@ func Run(ctx context.Context, home string) (err error) {
 	if err != nil {
 		log.Printf("notify.json ignored: %v", err)
 	}
-	linearToken, err := linear.LoadToken(filepath.Join(home, "linear.json"))
+	linearToken, err := linear.LoadToken(filepath.Join(home, "config.toml"))
 	if err != nil {
-		log.Printf("linear.json ignored: %v", err)
+		log.Printf("linear token ignored: %v", err)
 	}
 	banners := notify.New()
 	trash := wsfs.NewTrash(filepath.Join(home, "trash"), 4)
