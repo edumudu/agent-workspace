@@ -3,6 +3,7 @@ package daemon
 import (
 	"context"
 	"encoding/json"
+	"slices"
 	"sort"
 	"time"
 
@@ -107,6 +108,9 @@ func (d *Daemon) dispatchReview(req rpc.Request) (*rpc.Response, bool) {
 	var p rpc.ReviewParams
 	if err := json.Unmarshal(req.Params, &p); err != nil || p.Session == "" {
 		return errorResponse(req.ID, rpc.CodeBadRequest, "review.open needs a session"), true
+	}
+	if p.Scope != "" && !slices.Contains(domain.ReviewScopes, p.Scope) {
+		return errorResponse(req.ID, rpc.CodeBadRequest, "unknown review scope "+string(p.Scope)), true
 	}
 	var targets []app.ReviewTarget
 	var marks []domain.ViewedMark

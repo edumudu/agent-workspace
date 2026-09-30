@@ -304,8 +304,10 @@ func (s *state) commentTarget(p rpc.CommentParams) (worktree, path string, ok bo
 		return w.ID, rel, found
 	}
 	for _, w := range owned {
-		if w.ID == p.Worktree && p.Path != "" {
-			return w.ID, p.Path, true
+		if w.ID == p.Worktree && p.Path != "" && !filepath.IsAbs(p.Path) {
+			// why: only the chosen worktree may resolve the path, or ../sibling/file would land in another one.
+			found, rel, ok := domain.ResolveCommentFile(p.Session, []domain.Worktree{w}, filepath.Join(w.Path, p.Path))
+			return found.ID, rel, ok
 		}
 	}
 	return "", "", false
