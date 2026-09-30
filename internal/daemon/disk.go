@@ -92,7 +92,7 @@ func (d *Daemon) cleanupWorktree(req rpc.Request) (*rpc.Response, bool) {
 		return nil, false
 	}
 	for _, w := range wts {
-		if w.ID != p.Path {
+		if w.Path != p.Path {
 			continue
 		}
 		res := d.cl.c.RemoveWorktree(d.ws.ctx, w, activity, p.Backup)
