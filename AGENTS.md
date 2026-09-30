@@ -73,7 +73,7 @@
 5. Open one PR per issue that says `Closes #<n>`. Title it with a conventional prefix (`feat:`, `fix:`, `chore:`, `docs:`, `refactor:`, `test:`).
 6. If a criterion turns out wrong or impossible, don't quietly drop it. Say so in the PR and on the issue.
 7. main is protected: merge only via PR with build, tdd and mutate green and the branch up to date with main.
-8. CodeRabbit reviews every PR (`.coderabbit.yaml`). Address its correctness findings or reply why not before merging; it is advisory, not a required check.
+8. CodeRabbit reviews every PR and is a required check; fix or answer every finding and resolve all review threads before merging.
 
 ## Repo hygiene
 
