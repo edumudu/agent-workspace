@@ -107,7 +107,7 @@ func TestShowPutsPaneInSlotAndParksThePrevious(t *testing.T) {
 	}
 	a, _ := h.Create(ctx, catPane("a"))
 	b, _ := h.Create(ctx, catPane("b"))
-	for _, p := range []app.PaneID{a, b, a} {
+	for _, p := range []app.PaneID{a, b, b, a} {
 		if err := h.Show(ctx, p, slot); err != nil {
 			t.Fatal(err)
 		}

@@ -8,11 +8,11 @@ import (
 )
 
 func TestParsePanesKeepsOnlyManagedPanes(t *testing.T) {
-	out := "%0\t0\t\n" +
-		"%1\t0\t1\n" +
-		"%2\t1\t1\n" +
+	out := "%0 0 \n" +
+		"%1 0 1\n" +
+		"%2 1 1\n" +
 		"\n" +
-		"%3\t0\t\n"
+		"%3 0 \n"
 	want := []app.PaneInfo{
 		{ID: "%1", Alive: true},
 		{ID: "%2", Alive: false},
