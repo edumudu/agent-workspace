@@ -359,3 +359,23 @@ func TestCountsUseTheSingularForOne(t *testing.T) {
 		t.Errorf("plural after one:\n%s", out)
 	}
 }
+
+func TestFooterListsTheMockupKeys(t *testing.T) {
+	st := fixture(1, 0)
+	out := screen(newModel(&st, nil))
+	for _, want := range []string{"n new session", "r review", "t shell", "e nvim", "w worktrees", "␣ next waiting"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("footer has no %q:\n%s", want, out)
+		}
+	}
+}
+
+func TestStatusBarListsThePortsInUse(t *testing.T) {
+	st := fixture(2, 1)
+	st.Worktrees[1].Ports = []domain.Port{{Port: 8084}, {Port: 8081}}
+	lines := strings.Split(screen(newModel(&st, nil)), "\n")
+	last := lines[len(lines)-1]
+	if !strings.Contains(last, "2 sessions · 2 worktrees · ports 8081 8084") {
+		t.Fatalf("status bar %q; want the counts and the ports in use", last)
+	}
+}
