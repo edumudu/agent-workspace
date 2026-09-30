@@ -7,6 +7,10 @@ import (
 	"unicode/utf8"
 )
 
+// SessionEventsKept is how many of a session's newest events the daemon, the
+// store and the TUI keep; the card needs only the last few.
+const SessionEventsKept = 20
+
 const (
 	// MaxDetail is the most runes of a tool's input kept for the actions list.
 	MaxDetail = 80

@@ -3,7 +3,7 @@ package app
 import "github.com/giovaniif/agent-workspace/internal/domain"
 
 // EventsPerSession is how many of a session's newest events the store keeps.
-const EventsPerSession = 20
+const EventsPerSession = domain.SessionEventsKept
 
 // Snapshot is everything the daemon restores on start.
 type Snapshot struct {
