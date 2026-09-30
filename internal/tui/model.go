@@ -45,6 +45,8 @@ type Options struct {
 	Kill Killer
 	// Defaults pre-fill the new-session dialog per harness.
 	Defaults map[domain.Harness]Defaults
+	// Fallback sets when the dialog warns of low Claude quota and what it offers in Codex.
+	Fallback domain.FallbackConfig
 	// Calls may be nil, which turns off n and x.
 	Calls Caller
 	// Switch applies model and effort switches; nil turns M and E off.

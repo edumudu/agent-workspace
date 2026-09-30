@@ -37,3 +37,24 @@ func LoadDefaults(path string) (map[domain.Harness]Defaults, error) {
 	}
 	return out, nil
 }
+
+// LoadFallback reads the [fallback] table: the low-quota threshold and the
+// Claude-to-Codex model and effort maps. A missing file gives the zero config.
+func LoadFallback(path string) (domain.FallbackConfig, error) {
+	var cfg struct {
+		Fallback struct {
+			Threshold int               `toml:"threshold"`
+			Models    map[string]string `toml:"models"`
+			Efforts   map[string]string `toml:"efforts"`
+		} `toml:"fallback"`
+	}
+	_, err := toml.DecodeFile(path, &cfg)
+	if errors.Is(err, fs.ErrNotExist) {
+		return domain.FallbackConfig{}, nil
+	}
+	if err != nil {
+		return domain.FallbackConfig{}, fmt.Errorf("tui: %s: %w", path, err)
+	}
+	f := cfg.Fallback
+	return domain.FallbackConfig{Threshold: f.Threshold, Models: f.Models, Efforts: f.Efforts}, nil
+}
