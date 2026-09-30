@@ -215,3 +215,22 @@ func TestNavigationKeysReachTheAppInAPaneThatIsNotNvim(t *testing.T) {
 		t.Fatalf("active pane = %s; the keys must not move focus away from the agent %s", active, agent)
 	}
 }
+
+func TestSetTitleShowsOnThePanesTopBorder(t *testing.T) {
+	ctx := context.Background()
+	h := newHost(t)
+	slot, _ := h.OpenClient(ctx, "main", app.PaneSpec{Name: "tui", Command: []string{"sleep", "600"}})
+	agent, _ := h.Create(ctx, catPane("agent"))
+	if err := h.Show(ctx, agent, slot); err != nil {
+		t.Fatal(err)
+	}
+	if err := h.SetTitle(ctx, agent, "◐ claude · opus-5.5 │ api:x #7 ✓"); err != nil {
+		t.Fatal(err)
+	}
+	if got := tmuxIn(t, h, slot, "display-message", "-p", "-t", string(agent), "#{@agentws_title}"); got != "◐ claude · opus-5.5 │ api:x #7 ✓" {
+		t.Fatalf("pane title = %q", got)
+	}
+	if got := tmuxIn(t, h, slot, "show-options", "-gv", "pane-border-status"); got != "top" {
+		t.Fatalf("pane-border-status = %q; want titles on top borders", got)
+	}
+}
