@@ -524,7 +524,7 @@ func (m Model) diskRowLine(r domain.DiskRow, w domain.Worktree, cols diskColumns
 		sizeStyle = s.dim
 	}
 	return m.line(sel, []piece{
-		bar, state, {s.text, cell(m.taskOf(w), cols.task)}, {s.sub, cell(filepath.Base(w.Repo), colRepo)},
+		bar, state, {s.text, cell(m.taskOf(w), cols.task)}, {s.sub, cell(repoName(w), colRepo)},
 		{s.bold, cell(w.Branch, cols.branch)}, {s.blue, cell(pr, colPR)}, {s.text, cell(m.sessionNumber(w.SessionID), colSession)},
 		{s.teal, cell(ports, colPort)}, {sizeStyle, rightCell(sizeText(r.Size), colSize)},
 	}, nil)
