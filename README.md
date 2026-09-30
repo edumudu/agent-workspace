@@ -46,6 +46,7 @@ Needs Go (version in `go.mod`), `golangci-lint` v2, and for `make mutate` `greml
 make build             # ./bin/agentws
 ./bin/agentws version
 ./bin/agentws debug seed 3 && ./bin/agentws   # the sidebar with 3 fake sessions
+./bin/agentws workspace add ~/src/api && ./bin/agentws new "fix the flaky test"   # or press n in the TUI
 make test              # go test ./...
 make lint              # golangci-lint + scripts/lint-comments
 make e2e               # testscript suite in test/e2e
