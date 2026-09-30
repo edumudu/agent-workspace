@@ -40,6 +40,15 @@ type SessionHooked struct {
 	Event   domain.SessionEvent
 }
 
+// SubagentChanged replaces one subagent, or adds it.
+type SubagentChanged struct{ Subagent domain.Subagent }
+
+func (e SubagentChanged) apply(s *state) rpc.Diff {
+	var merged domain.Subagent
+	s.subagents, merged = domain.TrackSubagent(s.subagents, e.Subagent)
+	return rpc.Diff{Subagent: &merged}
+}
+
 func (e WorkspaceChanged) apply(s *state) rpc.Diff {
 	s.workspaces[e.Workspace.Root] = e.Workspace
 	s.store.PutWorkspace(e.Workspace)
@@ -84,6 +93,7 @@ type state struct {
 	worktrees  map[string]domain.Worktree
 	sessions   map[string]domain.Session
 	events     map[string][]domain.SessionEvent
+	subagents  []domain.Subagent
 	subs       map[*conn]uint64
 	usage      map[string]*usageJob
 	attn       *attention
@@ -274,7 +284,28 @@ func (s *state) hook(h rpc.Hook, now time.Time) {
 	ev := domain.SessionEventFromHook(kind, at, h.Payload)
 	ev.SessionID = session.ID
 	s.emit(SessionHooked{Session: next, Event: ev})
+	s.trackSubagents(session.ID, kind, at, h.Payload)
 	s.announce(next, effects)
+}
+
+// trackSubagents follows a subagent start or stop, and stops what a session
+// spawned when it starts over or ends.
+func (s *state) trackSubagents(sessionID string, kind domain.HarnessEventKind, at time.Time, payload []byte) {
+	switch kind {
+	case domain.EventSubagentStart, domain.EventSubagentStop:
+		sub, ok := domain.SubagentFromHook(kind, at, payload)
+		if !ok {
+			return
+		}
+		sub.SessionID = sessionID
+		s.emit(SubagentChanged{Subagent: sub})
+	case domain.EventSessionStart, domain.EventSessionEnd:
+		var changed []domain.Subagent
+		s.subagents, changed = domain.EndSubagents(s.subagents, sessionID, at)
+		for _, sub := range changed {
+			s.emit(SubagentChanged{Subagent: sub})
+		}
+	}
 }
 
 // commit applies e on the loop and returns once it has taken effect, so a
@@ -377,6 +408,7 @@ func (s *state) snapshot() rpc.State {
 		Worktrees:  sorted(s.worktrees),
 		Sessions:   sorted(s.sessions),
 		Events:     flatten(s.events),
+		Subagents:  append([]domain.Subagent{}, s.subagents...),
 	}
 }
 

@@ -171,13 +171,16 @@ type State struct {
 	Sessions   []domain.Session   `json:"sessions"`
 	// Events are each session's newest hook events, oldest first.
 	Events []domain.SessionEvent `json:"events"`
+	// Subagents are every session's tracked subagents, in the order they started.
+	Subagents []domain.Subagent `json:"subagents"`
 }
 
 // Diff is one change: exactly one field besides Seq is set, except that a hook
 // sets Session and Event together. Every field but the Removed ones and Event
 // replaces the entity with the same key; RemovedWorkspace is the root of a
 // workspace to drop, RemovedWorktree the ID of a worktree, and Event is
-// appended to its session's events.
+// appended to its session's events. A subagent change is a diff of its own,
+// replacing the subagent with the same session and ID.
 type Diff struct {
 	Seq              uint64               `json:"seq"`
 	RemovedWorkspace string               `json:"removed_workspace,omitempty"`
@@ -187,6 +190,7 @@ type Diff struct {
 	Worktree         *domain.Worktree     `json:"worktree,omitempty"`
 	Session          *domain.Session      `json:"session,omitempty"`
 	Event            *domain.SessionEvent `json:"event,omitempty"`
+	Subagent         *domain.Subagent     `json:"subagent,omitempty"`
 }
 
 // Home is $AGENTWS_HOME, or ~/.agentws.
