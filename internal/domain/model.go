@@ -87,7 +87,7 @@ type Worktree struct {
 	Branch      string
 	PR          *PullRequest
 	SubtaskSlug string
-	// SessionID is the owning session; empty means unassigned.
+	// SessionID is empty when unassigned.
 	SessionID string
 }
 

@@ -10,35 +10,32 @@ import (
 // still credited to the session that ran it.
 const ClaimWindow = 30 * time.Second
 
-// ListedWorktree is one entry of `git worktree list`. Branch is empty when
-// the worktree is detached.
+// Branch is empty when the worktree is detached.
 type ListedWorktree struct {
 	Path   string
 	Branch string
 }
 
-// RepoListing is one repo's worktrees; Main is the main checkout's path and
-// is not among Worktrees.
+// Main is the main checkout's path and is not among Worktrees.
 type RepoListing struct {
 	Main      string
 	Worktrees []ListedWorktree
 }
 
-// SessionHint is where a session was last seen working, from its hooks.
+// SessionHint.Cwd is the cwd from the session's latest hook.
 type SessionHint struct {
 	ID  string
 	Cwd string
 }
 
-// WorktreeClaim records that a session ran `git worktree add` at At.
 type WorktreeClaim struct {
 	SessionID string
 	Command   string
 	At        time.Time
 }
 
-// IsWorktreeAdd reports whether a shell command runs `git worktree add` in
-// any of its pipeline or list segments.
+// IsWorktreeAdd matches any pipeline or list segment, and skips git's global
+// options such as -C.
 func IsWorktreeAdd(command string) bool {
 	segments := strings.FieldsFunc(command, func(r rune) bool {
 		return r == ';' || r == '&' || r == '|' || r == '\n'
