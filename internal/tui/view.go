@@ -287,6 +287,7 @@ func (m Model) helpLines() []string {
 		{"K", "kill the session's dev servers"},
 		{"w", "worktrees and disk"},
 		{"t / T", "shell below / popup"},
+		{"s", "type in the shell (ctrl+\\ back)"},
 		{"e", "nvim (o in a review opens the line)"},
 		{"M / E", "switch model / effort"},
 		{"enter", "focus agent pane"},

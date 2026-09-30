@@ -468,7 +468,7 @@ func (d *Daemon) dispatch(c *conn, line []byte) (*rpc.Response, bool) {
 		return errorResponse(req.ID, rpc.CodeUnknownMethod, "unknown method "+req.Method), true
 	case rpc.MethodReviewOpen, rpc.MethodReviewViewed, rpc.MethodReviewSend, rpc.MethodReviewHunk:
 		return d.dispatchReview(req)
-	case rpc.MethodShellToggle, rpc.MethodNvimToggle, rpc.MethodNvimOpen:
+	case rpc.MethodShellToggle, rpc.MethodShellFocus, rpc.MethodNvimToggle, rpc.MethodNvimOpen:
 		return d.dispatchTerminal(req)
 	case rpc.MethodReviewComment:
 		return d.addComment(req)

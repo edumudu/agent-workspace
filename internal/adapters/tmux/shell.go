@@ -33,23 +33,30 @@ func (h *Host) BelowPane(ctx context.Context, slot app.Slot) app.PaneID {
 	return ""
 }
 
-// ShowBelow splits pane below the agent pane and focuses it. A pane already
-// there is parked first, alive.
+// ShowBelow splits pane below the agent pane, leaving focus where it was.
+// A pane already there is parked first, alive.
 func (h *Host) ShowBelow(ctx context.Context, pane app.PaneID, slot app.Slot) error {
 	switch h.BelowPane(ctx, slot) {
 	case pane:
-		_, err := h.run(ctx, "", "select-pane", "-t", string(pane))
-		return err
+		return nil
 	case "":
 	default:
 		if err := h.HideBelow(ctx, slot); err != nil {
 			return err
 		}
 	}
-	if _, err := h.run(ctx, "", "join-pane", "-v", "-l", ShellHeight, "-s", string(pane), "-t", string(slot)+"."+slotPaneIndex); err != nil {
-		return err
+	// why: -d keeps focus where it was, so the sidebar keys still work after t.
+	_, err := h.run(ctx, "", "join-pane", "-d", "-v", "-l", ShellHeight, "-s", string(pane), "-t", string(slot)+"."+slotPaneIndex)
+	return err
+}
+
+// FocusBelow puts keyboard focus in the pane below the agent pane.
+func (h *Host) FocusBelow(ctx context.Context, slot app.Slot) error {
+	below := h.BelowPane(ctx, slot)
+	if below == "" {
+		return errors.New("no shell is shown below the agent pane")
 	}
-	_, err := h.run(ctx, "", "select-pane", "-t", string(pane))
+	_, err := h.run(ctx, "", "select-pane", "-t", string(below))
 	return err
 }
 
