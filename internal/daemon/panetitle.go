@@ -2,6 +2,8 @@ package daemon
 
 import (
 	"context"
+	"slices"
+	"strings"
 	"time"
 
 	"github.com/giovaniif/agent-workspace/internal/app"
@@ -11,14 +13,24 @@ import (
 // titleEvery is how often agent pane titles are brought up to date.
 const titleEvery = 250 * time.Millisecond
 
+// titleInput is what one agent pane's title is made from, copied off the
+// loop's state so the worker never shares it.
+type titleInput struct {
+	session domain.Session
+	cwd     string
+}
+
 // paneTitles keeps each agent pane's top border in step with its session
-// (ADR 0038). It reads state on the loop and runs tmux off it, only for
-// titles that changed.
+// (ADR 0038). On the loop it only copies the sessions on a pane and the
+// worktrees, and only when the state changed since the last tick; it
+// formats the titles and runs tmux here, and only for titles that changed.
 func (d *Daemon) paneTitles(ctx context.Context) {
 	if d.hs.host == nil {
 		return
 	}
 	set := map[app.PaneID]string{}
+	var seen uint64
+	stale := true
 	tick, stop := ticker(titleEvery)
 	defer stop()
 	for {
@@ -27,22 +39,47 @@ func (d *Daemon) paneTitles(ctx context.Context) {
 			return
 		case <-tick:
 		}
-		want := map[app.PaneID]string{}
+		var inputs []titleInput
+		var wts []domain.Worktree
+		changed := false
 		ok := d.query(func(s *state) {
-			wts := sorted(s.worktrees)
+			if !stale && s.seq == seen {
+				return
+			}
+			seen, changed, stale = s.seq, true, false
 			for _, x := range s.sessions {
 				if x.Pane != "" {
-					want[app.PaneID(x.Pane)] = domain.AgentTitle(x, wts, s.hints.cwd[x.ID])
+					x.WorktreeIDs = slices.Clone(x.WorktreeIDs)
+					inputs = append(inputs, titleInput{session: x, cwd: s.hints.cwd[x.ID]})
 				}
 			}
+			wts = make([]domain.Worktree, 0, len(s.worktrees))
+			for _, w := range s.worktrees {
+				if w.PR != nil {
+					pr := *w.PR
+					w.PR = &pr
+				}
+				wts = append(wts, w)
+			}
 		})
-		if !ok {
+		if !ok || !changed {
 			continue
 		}
+		slices.SortFunc(wts, func(a, b domain.Worktree) int { return strings.Compare(a.ID, b.ID) })
+		want := make(map[app.PaneID]string, len(inputs))
+		for _, in := range inputs {
+			want[app.PaneID(in.session.Pane)] = domain.AgentTitle(in.session, wts, in.cwd)
+		}
 		for pane, title := range want {
-			if set[pane] != title && d.hs.host.SetTitle(ctx, pane, title) == nil {
-				set[pane] = title
+			if set[pane] == title {
+				continue
 			}
+			if d.hs.host.SetTitle(ctx, pane, title) != nil {
+				// why: an unchanged state skips the next tick, so a failed set must force one.
+				stale = true
+				continue
+			}
+			set[pane] = title
 		}
 		for pane := range set {
 			if _, live := want[pane]; !live {
