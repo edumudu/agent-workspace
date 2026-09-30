@@ -169,8 +169,10 @@ func TestSetupWithANewBinaryReplacesItsOwnEntries(t *testing.T) {
 
 func TestSetupAndRemoveWithoutASettingsFile(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "claude", "settings.json")
-	if err := claude.Setup(path, bin); err != nil {
-		t.Fatal(err)
+	for range 2 {
+		if err := claude.Setup(path, bin); err != nil {
+			t.Fatal(err)
+		}
 	}
 	cmds := hookCommands(t, read(t, path))
 	if len(cmds["Stop"]) != 1 {
