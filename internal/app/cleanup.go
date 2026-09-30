@@ -120,27 +120,70 @@ func (c *Cleanup) plan(ctx context.Context, wts []domain.Worktree, activity func
 		}()
 	}
 	wg.Wait()
-	now := c.now()
 	out := make([]plannedWorktree, len(wts))
 	for i, w := range wts {
-		g, act := gitFacts[i], activity(w)
-		f := domain.CleanupFacts{
-			InDefault:    g.InDefault,
-			OnDefault:    g.OnDefault,
-			Uncommitted:  g.Uncommitted,
-			Holders:      holders[w.Path],
-			SessionLive:  act.Live,
-			LastActivity: latest(g.ModifiedAt, act.LastActivity),
-		}
-		switch {
-		case procErr != nil:
-			f.Unknown = "process check failed: " + procErr.Error()
-		case gitErrs[i] != nil:
-			f.Unknown = gitErrs[i].Error()
-		}
-		out[i] = plannedWorktree{decision: domain.PlanCleanup(w, f, now), fingerprint: g.Fingerprint}
+		out[i] = c.decide(w, gitFacts[i], gitErrs[i], holders[w.Path], procErr, activity(w))
 	}
 	return out
+}
+
+func (c *Cleanup) decide(w domain.Worktree, g WorktreeGitFacts, gitErr error, holders []string, procErr error, act SessionActivity) plannedWorktree {
+	f := domain.CleanupFacts{
+		InDefault:    g.InDefault,
+		OnDefault:    g.OnDefault,
+		Uncommitted:  g.Uncommitted,
+		Holders:      holders,
+		SessionLive:  act.Live,
+		LastActivity: latest(g.ModifiedAt, act.LastActivity),
+	}
+	switch {
+	case procErr != nil:
+		f.Unknown = "process check failed: " + procErr.Error()
+	case gitErr != nil:
+		f.Unknown = gitErr.Error()
+	}
+	return plannedWorktree{decision: domain.PlanCleanup(w, f, c.now()), fingerprint: g.Fingerprint}
+}
+
+// recheck runs stillRemovable, at most refreshParallelism at once, on every
+// planned removal that passed the last process check.
+func (c *Cleanup) recheck(ctx context.Context, planned []plannedWorktree, holders map[string][]string, procErr error, activity func(domain.Worktree) SessionActivity) []string {
+	stale := make([]string, len(planned))
+	if procErr != nil {
+		return stale
+	}
+	var wg sync.WaitGroup
+	sem := make(chan struct{}, refreshParallelism)
+	for i, p := range planned {
+		w := p.decision.Worktree
+		if p.decision.Action != domain.CleanupRemove || len(holders[w.Path]) > 0 {
+			continue
+		}
+		wg.Add(1)
+		sem <- struct{}{}
+		go func() {
+			defer wg.Done()
+			defer func() { <-sem }()
+			stale[i] = c.stillRemovable(ctx, p, activity(w))
+		}()
+	}
+	wg.Wait()
+	return stale
+}
+
+// stillRemovable asks git again right before the move, so a write that
+// landed after planning keeps the worktree. It returns why not, or "".
+func (c *Cleanup) stillRemovable(ctx context.Context, p plannedWorktree, act SessionActivity) string {
+	w := p.decision.Worktree
+	g, err := c.git.CleanupFacts(ctx, w)
+	if err != nil {
+		return err.Error()
+	}
+	fresh := c.decide(w, g, nil, nil, nil, act)
+	if fresh.fingerprint != p.fingerprint || fresh.decision.Action != domain.CleanupRemove {
+		return "changed since it was planned"
+	}
+	return ""
 }
 
 func latest(a, b time.Time) time.Time {
@@ -172,6 +215,7 @@ func (c *Cleanup) Execute(ctx context.Context, wts []domain.Worktree, activity f
 	if len(removals) > 0 {
 		holders, procErr = c.procs.Holders(ctx, removals)
 	}
+	stale := c.recheck(ctx, planned, holders, procErr, activity)
 	pruned := map[string]bool{}
 	var repos []string
 	for i, r := range results {
@@ -179,11 +223,17 @@ func (c *Cleanup) Execute(ctx context.Context, wts []domain.Worktree, activity f
 		if d.Action != domain.CleanupRemove {
 			continue
 		}
-		switch h := holders[d.Worktree.Path]; {
-		case procErr != nil:
+		if procErr != nil {
 			results[i].Outcome = "kept: process check failed: " + procErr.Error()
-		case len(h) > 0:
+			continue
+		}
+		if h := holders[d.Worktree.Path]; len(h) > 0 {
 			results[i].Outcome = "kept: in use by " + h[0]
+			continue
+		}
+		switch why := stale[i]; {
+		case why != "":
+			results[i].Outcome = "kept: " + why
 		default:
 			if err := c.trash.Move(d.Worktree.Path); err != nil {
 				results[i].Outcome = "failed: " + err.Error()

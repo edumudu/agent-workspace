@@ -27,8 +27,17 @@ func (Worktrees) CleanupFacts(ctx context.Context, w domain.Worktree) (app.Workt
 		return app.WorktreeGitFacts{}, fmt.Errorf("git status in %s: %w", w.Path, err)
 	}
 	branch, changed := parseStatus(status)
-	sum := sha256.Sum256(status)
-	f := app.WorktreeGitFacts{Uncommitted: changed, Fingerprint: hex.EncodeToString(sum[:])}
+	h := sha256.New()
+	h.Write(status)
+	// why: status alone stays the same across a second edit of an already modified file.
+	if changed > 0 {
+		diff, err := output(ctx, w.Path, "diff", "HEAD", "--binary")
+		if err != nil {
+			return app.WorktreeGitFacts{}, fmt.Errorf("git diff in %s: %w", w.Path, err)
+		}
+		h.Write(diff)
+	}
+	f := app.WorktreeGitFacts{Uncommitted: changed, Fingerprint: hex.EncodeToString(h.Sum(nil))}
 	if def, ok := defaultBranch(ctx, w.Path); ok {
 		f.OnDefault = branch != "" && branch == def
 		_, err := output(ctx, w.Path, "merge-base", "--is-ancestor", "HEAD", "refs/remotes/origin/"+def)

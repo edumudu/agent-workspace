@@ -186,7 +186,7 @@ See [docs/adr/0023-review-pane.md](docs/adr/0023-review-pane.md). In the TUI, `r
 See [docs/adr/0021-worktree-cleanup.md](docs/adr/0021-worktree-cleanup.md). `agentws cleanup --dry-run` prints the plan; `agentws cleanup` runs it.
 
 - **Facts.** Per worktree: one `git status`, the `origin/HEAD` lookup and `git merge-base --is-ancestor` (`adapters/git`, at most 4 in flight), plus one `lsof -d cwd` for all of them (`adapters/procs`). The daemon adds whether the owning session is live and its newest event time.
-- **Execute** (`app.Cleanup`): plan, back up `backup_then_ask` worktrees under `~/.agentws/backups/<ts>/<name>/`, check lsof once more, rename `remove` worktrees into `~/.agentws/trash/`, then `git worktree prune` per repo. The trash is emptied in the background, 4 at a time.
+- **Execute** (`app.Cleanup`): plan, back up `backup_then_ask` worktrees under `~/.agentws/backups/<ts>/<name>/`, check lsof and the git facts once more, rename `remove` worktrees into `~/.agentws/trash/`, then `git worktree prune` per repo. The trash is emptied in the background, 4 at a time.
 - **When.** Every 10 min and when the PR poll first sees a PR merged, on a daemon goroutine (never the loop). Each action is appended to `~/.agentws/cleanup.log`.
 - Branches are never deleted. A detached HEAD with commits not in the default branch gets `backup/wt-<name>` first.
 
