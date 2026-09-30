@@ -310,3 +310,36 @@ func BenchmarkReviewScroll(b *testing.B) {
 		b.Fatalf("review frame p95 %v exceeds the 16ms budget", p95)
 	}
 }
+
+func agentColumnModel(t *testing.T, width int) tui.Model {
+	t.Helper()
+	st, rv := reviewFixture()
+	st.Events = []domain.SessionEvent{
+		{SessionID: "s01", Kind: domain.EventPreToolUse, Tool: "Edit", Detail: "resolvers.ts"},
+		{SessionID: "s01", Kind: domain.EventPreToolUse, Tool: "Bash", Detail: "bun test"},
+		{SessionID: "s01", Kind: domain.EventStop, Text: "Org scoping now comes from the share token."},
+	}
+	st.Drafts = []domain.ReviewDraft{{ID: "d1", Session: "s01", Status: domain.DraftOpen, Comments: []domain.ReviewComment{
+		{Worktree: st.Worktrees[0].ID, Path: "a.ts", Start: 1, Body: "x"},
+		{Worktree: st.Worktrees[1].ID, Path: "b.ts", Start: 2, Body: "y"},
+	}}}
+	m := tui.New(tui.Options{Theme: tui.Latte(), Now: clock, Review: rv})
+	m = update(m, tea.WindowSizeMsg{Width: width, Height: 40})
+	m = update(m, tui.StateMsg(st))
+	return drive(m, keys("r")...)
+}
+
+func TestReviewShowsTheAgentColumnBesideTheDiff(t *testing.T) {
+	out := screen(agentColumnModel(t, 180))
+	for _, want := range []string{"Edit resolvers.ts", "Bash bun test", "Org scoping now comes", "Draft review → this session", "2 comments · 2 worktrees"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("no %q in the review:\n%s", want, out)
+		}
+	}
+}
+
+func TestReviewLeavesTheAgentColumnOutWhenNarrow(t *testing.T) {
+	if out := screen(agentColumnModel(t, 110)); strings.Contains(out, "Draft review") {
+		t.Fatalf("the agent column is drawn at 110 columns:\n%s", out)
+	}
+}
