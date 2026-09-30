@@ -1,0 +1,50 @@
+# A root with repos, a symlinked repo, a worktree and a plain dir lists only the repos.
+symlink shop/linked -> ../elsewhere/linked
+
+exec agentws workspace add shop
+stdout '^added .*/shop \(orchestration, 3 repos\)$'
+
+exec agentws workspace add solo
+stdout '^added .*/solo \(single, 1 repo\)$'
+
+exec agentws workspace list
+stdout '^\S*/shop \(orchestration\)$'
+stdout '^\S*/solo \(single, last used\)$'
+stdout '^  api\s'
+stdout '^  linked\s'
+stdout '^  web\s'
+stdout '^  solo\s'
+! stdout 'api-feature'
+! stdout 'docs'
+
+# The workspace survives a daemon restart, with its last-used mark.
+exec agentws daemon stop
+exec agentws workspace list
+stdout '^\S*/solo \(single, last used\)$'
+
+exec agentws workspace remove shop
+stdout '^removed .*/shop$'
+exec agentws workspace list
+! stdout 'shop'
+
+! exec agentws workspace remove shop
+stderr 'agentws workspace: not_found: no workspace '
+
+! exec agentws workspace add missing
+stderr '^agentws workspace: bad_request: .*missing'
+
+! exec agentws workspace
+stderr '^usage: agentws workspace <add\|list\|remove>'
+
+-- shop/api/.git/HEAD --
+ref: refs/heads/main
+-- shop/web/.git/HEAD --
+ref: refs/heads/main
+-- shop/api-feature/.git --
+gitdir: /elsewhere/api/.git/worktrees/feature
+-- shop/docs/README.md --
+notes
+-- elsewhere/linked/.git/HEAD --
+ref: refs/heads/main
+-- solo/.git/HEAD --
+ref: refs/heads/main
