@@ -48,7 +48,9 @@ type Started struct {
 
 // Start adds the planned worktree, runs its setup, then opens the harness
 // pane in Plan.Dir. It stops at the first failure. A worktree already added
-// stays on disk: it may hold the setup's work, and cleanup owns removal.
+// stays on disk, since it may hold the setup's work and cleanup owns
+// removal; it comes back unowned in Started.Worktree beside the error, so the
+// caller can record it and a retry plans a fresh path.
 func (s Sessions) Start(ctx context.Context, req NewSession) (Started, error) {
 	var wt *domain.Worktree
 	dir := req.Plan.Dir
@@ -57,18 +59,18 @@ func (s Sessions) Start(ctx context.Context, req NewSession) (Started, error) {
 		if err != nil {
 			return Started{}, fmt.Errorf("worktree %s: %w", p.Path, err)
 		}
+		wt = &domain.Worktree{ID: added.Path, Repo: added.Main, Path: added.Path, Branch: p.Branch}
+		dir = added.Path
 		if s.Setup != nil {
 			if err := s.Setup(ctx, added.Path); err != nil {
-				return Started{}, fmt.Errorf("setup %s: %w", added.Path, err)
+				return Started{Worktree: wt}, fmt.Errorf("setup %s: %w", added.Path, err)
 			}
 		}
-		wt = &domain.Worktree{ID: added.Path, Repo: added.Main, Path: added.Path, Branch: p.Branch, SessionID: req.ID}
-		dir = added.Path
 	}
 	spec := req.Harness.Launch(LaunchRequest{Name: req.Name, Dir: dir, Model: req.Model, Effort: req.Effort, Prompt: req.Prompt})
 	pane, err := s.Host.Create(ctx, spec)
 	if err != nil {
-		return Started{}, fmt.Errorf("launch %s: %w", req.Harness.Harness(), err)
+		return Started{Worktree: wt}, fmt.Errorf("launch %s: %w", req.Harness.Harness(), err)
 	}
 	session := domain.Session{
 		ID:      req.ID,
@@ -80,6 +82,7 @@ func (s Sessions) Start(ctx context.Context, req NewSession) (Started, error) {
 		State:   domain.StateIdle,
 	}
 	if wt != nil {
+		wt.SessionID = req.ID
 		session.WorktreeIDs = []string{wt.ID}
 	}
 	return Started{Session: session, Worktree: wt}, nil

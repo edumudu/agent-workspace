@@ -160,7 +160,7 @@ func (m Model) topBar() string {
 func (m Model) body() ([]string, int) {
 	s := m.styles
 	if m.dialog != nil {
-		return m.dialogLines(), 0
+		return m.dialogLines()
 	}
 	if m.help {
 		return m.helpLines(), 0

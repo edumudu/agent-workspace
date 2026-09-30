@@ -72,6 +72,9 @@ func (d *Daemon) newSession(req rpc.Request) (*rpc.Response, bool) {
 		Name: name, Model: p.Model, Effort: p.Effort, Prompt: p.WorkItem,
 	})
 	if err != nil {
+		if started.Worktree != nil && !d.query(func(s *state) { s.putWorktree(*started.Worktree) }) {
+			return nil, false
+		}
 		return errorResponse(req.ID, rpc.CodeFailed, err.Error()), true
 	}
 	ok = d.query(func(s *state) {

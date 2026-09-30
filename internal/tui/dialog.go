@@ -123,12 +123,18 @@ func (m Model) dialogPaste(s string) Model {
 
 func (m Model) dialogKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	d := m.own()
+	switch msg.String() {
+	case "ctrl+c":
+		return m, tea.Quit
+	case "esc":
+		// why: a start already sent keeps going; its reply still selects and shows the session.
+		m.dialog = nil
+		return m, nil
+	}
 	if d.busy {
 		return m, nil
 	}
 	switch msg.String() {
-	case "esc", "ctrl+c":
-		m.dialog = nil
 	case "tab", "down":
 		d.field = field(cycle(int(d.field), 1, int(fieldCount)))
 	case "shift+tab", "up":
@@ -211,11 +217,11 @@ func (m Model) showNew(id string) tea.Cmd {
 	return m.call(rpc.MethodSessionFocus, rpc.SessionFocusParams{ID: id})
 }
 
-func (m Model) endSelected() tea.Cmd {
-	if m.selected == "" {
+func (m Model) endSession(id string) tea.Cmd {
+	if id == "" {
 		return nil
 	}
-	return m.call(rpc.MethodEndSession, rpc.SessionRef{ID: m.selected})
+	return m.call(rpc.MethodEndSession, rpc.SessionRef{ID: id})
 }
 
 func (m Model) advice() (domain.SwitchAdvice, bool) {
@@ -251,7 +257,9 @@ func workItemKind(input string) string {
 	return "text"
 }
 
-func (m Model) dialogLines() []string {
+// dialogLines also returns the row to keep in view: the active field, or
+// the status line under the fields once there is one.
+func (m Model) dialogLines() ([]string, int) {
 	s := m.styles
 	d := m.dialog
 	row := func(f field, label string, value []piece) string {
@@ -282,28 +290,31 @@ func (m Model) dialogLines() []string {
 	if d.model == "" && d.field != fieldModel {
 		model = []piece{{s.dim, "default"}}
 	}
-	out := []string{
-		"",
-		m.line(false, []piece{{s.header, " NEW SESSION"}}, nil),
-		"",
-		row(fieldWorkItem, "Work item", input(d.workItem, fieldWorkItem)),
-		m.line(false, []piece{{s.dim, fmt.Sprintf(" %-11s%s", "", workItemKind(d.workItem))}}, nil),
-		row(fieldWorkspace, "Workspace", ws),
-		row(fieldHarness, "Harness", choice(harnessChoices[d.harness])),
+	out := []string{"", m.line(false, []piece{{s.header, " NEW SESSION"}}, nil), ""}
+	keep := 0
+	add := func(f field, line string) {
+		if d.field == f {
+			keep = len(out)
+		}
+		out = append(out, line)
 	}
+	add(fieldWorkItem, row(fieldWorkItem, "Work item", input(d.workItem, fieldWorkItem)))
+	out = append(out, m.line(false, []piece{{s.dim, fmt.Sprintf(" %-11s%s", "", workItemKind(d.workItem))}}, nil))
+	add(fieldWorkspace, row(fieldWorkspace, "Workspace", ws))
+	add(fieldHarness, row(fieldHarness, "Harness", choice(harnessChoices[d.harness])))
 	if line, ok := m.adviceLine(); ok {
 		out = append(out, line)
 	}
-	out = append(out,
-		row(fieldModel, "Model", model),
-		row(fieldEffort, "Effort", choice(effort)),
-		"",
-	)
+	add(fieldModel, row(fieldModel, "Model", model))
+	add(fieldEffort, row(fieldEffort, "Effort", choice(effort)))
+	out = append(out, "")
 	switch {
 	case d.busy:
+		keep = len(out)
 		out = append(out, m.line(false, []piece{{s.sub, " starting…"}}, nil))
 	case d.err != "":
+		keep = len(out)
 		out = append(out, m.line(false, []piece{{s.peach, " ✗ " + d.err}}, nil))
 	}
-	return append(out, m.line(false, []piece{{s.dim, " ⏎ start · ⇥ next · ←/→ change · esc cancel"}}, nil))
+	return append(out, m.line(false, []piece{{s.dim, " ⏎ start · ⇥ next · ←/→ change · esc cancel"}}, nil)), keep
 }

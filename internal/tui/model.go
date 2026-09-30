@@ -104,8 +104,9 @@ type Model struct {
 	status   string
 	confirm  *killPrompt
 
-	dialog     *dialog
-	confirmEnd bool
+	dialog *dialog
+	// ending is the session an open end confirmation is about.
+	ending string
 	// pending is a session just started, selected once its diff arrives.
 	pending string
 }
@@ -337,10 +338,11 @@ func (m Model) key(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 	cur := m.index(m.selected)
-	if m.confirmEnd {
-		m.confirmEnd, m.status = false, ""
+	if m.ending != "" {
+		id := m.ending
+		m.ending, m.status = "", ""
 		if k == "y" {
-			return m, m.endSelected()
+			return m, m.endSession(id)
 		}
 		return m, nil
 	}
@@ -351,7 +353,7 @@ func (m Model) key(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		}
 	case "x":
 		if cur >= 0 && m.opts.Calls != nil {
-			m.confirmEnd = true
+			m.ending = m.selected
 			m.status = fmt.Sprintf("end session %d? y/n", m.entries[cur].num)
 		}
 	case "q", "ctrl+c":
