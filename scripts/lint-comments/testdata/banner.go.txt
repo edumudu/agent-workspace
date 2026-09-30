@@ -1,0 +1,18 @@
+package fixture
+
+// ---- helpers ----
+
+func a() {}
+
+// Helpers
+
+func b() {}
+
+// =====================
+
+// c is kept: the caller holds the lock.
+func c() {}
+
+// Test helpers.
+
+func d() {}
