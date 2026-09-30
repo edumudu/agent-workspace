@@ -99,17 +99,14 @@ func tuiIn(home string) error {
 	return err
 }
 
-func runDebug(args []string, stdout, stderr io.Writer) int {
-	if len(args) > 0 && args[0] == "session" {
-		return runDebugSession(args[1:], stdout, stderr)
-	}
+func runDebugSeed(args []string, stdout, stderr io.Writer) int {
 	if len(args) != 2 || args[0] != "seed" {
-		fmt.Fprintln(stderr, "usage: agentws debug seed <count> | session [--once] <id>")
+		fmt.Fprintln(stderr, debugUsage)
 		return 2
 	}
 	n, err := strconv.Atoi(args[1])
 	if err != nil || n < 1 {
-		fmt.Fprintln(stderr, "usage: agentws debug seed <count> | session [--once] <id>")
+		fmt.Fprintln(stderr, debugUsage)
 		return 2
 	}
 	home, err := rpc.Home()

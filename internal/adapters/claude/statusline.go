@@ -87,7 +87,7 @@ func Chain(ctx context.Context, command string, input []byte, stdout io.Writer) 
 	return cmd.Run()
 }
 
-const statusLineVerb = " statusline"
+const statusLineVerb = " statusline --harness claude"
 const chainFlag = " --chain "
 
 // StatusLineCommand is the statusLine command setup installs: the agentws
@@ -104,7 +104,7 @@ func StatusLineCommand(bin, chain string) string {
 // and the user command it chains to.
 func ChainedStatusLine(command string) (string, bool) {
 	i := strings.Index(command, statusLineVerb)
-	if i < 0 || !strings.HasSuffix(unquote(command[:i]), "agentws") {
+	if i < 0 {
 		return "", false
 	}
 	rest := command[i+len(statusLineVerb):]
@@ -118,12 +118,15 @@ func ChainedStatusLine(command string) (string, bool) {
 }
 
 func shellQuote(s string) string {
-	if s != "" && strings.IndexFunc(s, func(r rune) bool {
-		return !(r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' || strings.ContainsRune("/._-+=:,@%", r))
-	}) < 0 {
+	if s != "" && strings.IndexFunc(s, unsafeInShell) < 0 {
 		return s
 	}
 	return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'"
+}
+
+func unsafeInShell(r rune) bool {
+	safe := r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' || strings.ContainsRune("/._-+=:,@%", r)
+	return !safe
 }
 
 // unquote reverses shellQuote. It is not a general shell parser.

@@ -44,6 +44,9 @@ func run(args []string, stdout, stderr io.Writer) int {
 			return 1
 		}
 		return runSetup(args[1:], stdout, stderr, os.Getenv, self)
+	case cmd == "statusline":
+		home, _ := rpc.Home()
+		return runStatusLine(args[1:], os.Stdin, stdout, home, os.Getenv("TMUX_PANE"))
 	case cmd == "daemon":
 		return runDaemon(args[1:], stdout, stderr)
 	case cmd == "workspace":
@@ -73,5 +76,5 @@ func buildCommit() string {
 }
 
 func usage(w io.Writer) {
-	fmt.Fprintln(w, "usage: agentws [daemon|workspace|tui|debug|hook|setup|new|cleanup|version]")
+	fmt.Fprintln(w, "usage: agentws [daemon|workspace|setup|tui|debug|hook|statusline|new|cleanup|version]")
 }
