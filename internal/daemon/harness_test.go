@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"reflect"
-	"sync"
 	"testing"
 
 	"github.com/giovaniif/agent-workspace/internal/adapters/claude"
@@ -14,23 +13,6 @@ import (
 	"github.com/giovaniif/agent-workspace/internal/domain"
 	"github.com/giovaniif/agent-workspace/internal/rpc"
 )
-
-type fakeHost struct {
-	app.TerminalHost
-	mu    sync.Mutex
-	specs []app.PaneSpec
-	err   error
-}
-
-func (h *fakeHost) Create(_ context.Context, spec app.PaneSpec) (app.PaneID, error) {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-	if h.err != nil {
-		return "", h.err
-	}
-	h.specs = append(h.specs, spec)
-	return "%7", nil
-}
 
 func runningOn(t *testing.T, pane string, opts ...daemon.Option) (*rpc.Client, rpc.Subscription) {
 	t.Helper()
