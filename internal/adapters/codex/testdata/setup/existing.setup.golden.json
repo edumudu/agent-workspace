@@ -1,0 +1,113 @@
+{
+  "description": "user hooks",
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/home/dev/hooks/reset.sh"
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/opt/agentws/bin/agentws hook --harness codex --event SessionStart",
+            "async": true
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/home/dev/hooks/state.sh running && echo <ok>",
+            "async": true
+          }
+        ]
+      },
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/opt/agentws/bin/agentws hook --harness codex --event PreToolUse",
+            "async": true
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/opt/agentws/bin/agentws hook --harness codex --event UserPromptSubmit"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/opt/agentws/bin/agentws hook --harness codex --event PostToolUse",
+            "async": true
+          }
+        ]
+      }
+    ],
+    "PermissionRequest": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/opt/agentws/bin/agentws hook --harness codex --event PermissionRequest",
+            "async": true
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/opt/agentws/bin/agentws hook --harness codex --event Stop",
+            "async": true
+          }
+        ]
+      }
+    ],
+    "Interrupt": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/opt/agentws/bin/agentws hook --harness codex --event Interrupt",
+            "async": true
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/opt/agentws/bin/agentws hook --harness codex --event SessionEnd",
+            "async": true
+          }
+        ]
+      }
+    ]
+  }
+}

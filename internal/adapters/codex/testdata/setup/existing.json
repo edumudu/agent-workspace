@@ -1,0 +1,27 @@
+{
+  "description": "user hooks",
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/home/dev/hooks/reset.sh"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/home/dev/hooks/state.sh running && echo <ok>",
+            "async": true
+          }
+        ]
+      }
+    ]
+  }
+}
