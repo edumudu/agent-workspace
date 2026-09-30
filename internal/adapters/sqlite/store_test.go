@@ -86,6 +86,28 @@ func TestLaterPutReplacesEarlier(t *testing.T) {
 	}
 }
 
+func TestDeleteWorkspaceRemovesTheRowAndBeatsAnUnflushedPut(t *testing.T) {
+	s, path := openTemp(t)
+	s.PutWorkspace(domain.Workspace{Root: "/a"})
+	s.PutWorkspace(domain.Workspace{Root: "/b"})
+	if err := s.Flush(); err != nil {
+		t.Fatal(err)
+	}
+	s.DeleteWorkspace("/a")
+	s.PutWorkspace(domain.Workspace{Root: "/c"})
+	s.DeleteWorkspace("/c")
+	s.DeleteWorkspace("/b")
+	s.PutWorkspace(domain.Workspace{Root: "/b", Kind: domain.WorkspaceSingle})
+
+	snap, err := reopen(t, s, path).Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(snap.Workspaces) != 1 || snap.Workspaces[0].Root != "/b" || snap.Workspaces[0].Kind != domain.WorkspaceSingle {
+		t.Errorf("workspaces = %+v, want only /b", snap.Workspaces)
+	}
+}
+
 func TestWritesReachDiskWithoutExplicitFlush(t *testing.T) {
 	s, path := openTemp(t)
 	s.PutTask(domain.Task{ID: "t1"})

@@ -9,6 +9,8 @@ import (
 	"net"
 	"sync"
 	"time"
+
+	"github.com/giovaniif/agent-workspace/internal/domain"
 )
 
 // StartTimeout is how long Connect waits for a daemon it started.
@@ -96,6 +98,22 @@ func (c *Client) Status(ctx context.Context) (Status, error) {
 	var st Status
 	err := c.Call(ctx, MethodStatus, nil, &st)
 	return st, err
+}
+
+func (c *Client) WorkspaceAdd(ctx context.Context, path string) (domain.Workspace, error) {
+	var ws domain.Workspace
+	err := c.Call(ctx, MethodWorkspaceAdd, WorkspaceAddParams{Path: path}, &ws)
+	return ws, err
+}
+
+func (c *Client) WorkspaceList(ctx context.Context) (WorkspaceList, error) {
+	var list WorkspaceList
+	err := c.Call(ctx, MethodWorkspaceList, nil, &list)
+	return list, err
+}
+
+func (c *Client) WorkspaceRemove(ctx context.Context, root string) error {
+	return c.Call(ctx, MethodWorkspaceRemove, WorkspaceRemoveParams{Root: root}, nil)
 }
 
 type Subscription struct {
