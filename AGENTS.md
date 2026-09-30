@@ -56,6 +56,7 @@
 4. Meet every acceptance criterion. Run the commands in the issue's **Validate** section and paste their output into the PR body.
 5. Open one PR per issue that says `Closes #<n>`. Title it with a conventional prefix (`feat:`, `fix:`, `chore:`, `docs:`, `refactor:`, `test:`).
 6. If a criterion turns out wrong or impossible, don't quietly drop it. Say so in the PR and on the issue.
+7. main is protected: merge only via PR with build, tdd and mutate green and the branch up to date with main.
 
 ## Repo hygiene
 
