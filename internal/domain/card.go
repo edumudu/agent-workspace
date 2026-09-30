@@ -13,7 +13,9 @@ const (
 // its PRs, the last few tool calls (newest first) and what the agent waits
 // on. Waiting is empty when it waits on nothing.
 type SessionCard struct {
-	Title   string
+	Title string
+	// Name is the session's name in full, as the sidebar shows it cut to fit.
+	Name    string
 	Ref     string
 	PRs     []PullRequest
 	Actions []string
@@ -23,7 +25,8 @@ type SessionCard struct {
 // BuildSessionCard derives the card from the task, the session's worktrees
 // and its stored events, oldest first. Events of other sessions are ignored.
 func BuildSessionCard(task Task, session Session, worktrees []Worktree, events []SessionEvent) SessionCard {
-	card := SessionCard{Title: NameFor(task, nil), Ref: task.Ref, PRs: pullRequests(worktrees)}
+	prs := pullRequests(worktrees)
+	card := SessionCard{Title: NameFor(task, nil), Name: NameFor(task, prs), Ref: task.Ref, PRs: prs}
 	var own []SessionEvent
 	for _, ev := range events {
 		if ev.SessionID == session.ID {

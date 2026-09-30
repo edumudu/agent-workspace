@@ -114,6 +114,7 @@ type Model struct {
 	confirm  *killPrompt
 	rv       reviewState
 	paint    *painter
+	renaming *renamePrompt
 
 	dialog  *dialog
 	dialogs int
@@ -181,10 +182,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.rv.open {
 			return m.reviewKey(msg.String())
 		}
+		if m.renaming != nil {
+			return m.renameKey(msg)
+		}
 		return m.key(msg)
 	case tea.PasteMsg:
 		if m.dialog != nil {
 			return m.dialogPaste(msg.Content), nil
+		}
+		if m.renaming != nil {
+			return m.renamePaste(msg.Content), nil
 		}
 	case sessionStartedMsg:
 		if m.dialog != nil && m.dialog.seq == msg.seq {
@@ -401,6 +408,10 @@ func (m Model) key(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		if m.selected != "" {
 			m.collapsed[m.selected] = !m.collapsed[m.selected]
 		}
+	case "R":
+		return m.askRename(), nil
+	case "A":
+		return m, m.unpin()
 	case "m":
 		return m, m.toggleMute()
 	case "K":

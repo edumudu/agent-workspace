@@ -23,9 +23,9 @@
 ▌    opus-5.5 high  ctx 60%  1 worktree         
 ▌     └ api:part-1                      #3604   
 
-
  CARD                                           
  #42 · task number 3                            
+ name  session 5 change                         
  PRs #3604                                      
  last  Bash: git status                         
        Bash: go test ./...                      

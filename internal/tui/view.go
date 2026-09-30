@@ -208,13 +208,7 @@ func (m Model) sessionLines(e entry, sel bool) []string {
 	if x.Harness == domain.HarnessCodex {
 		tag = piece{s.teal.Bold(true), "CX"}
 	}
-	var prs []domain.PullRequest
-	for _, w := range e.worktrees {
-		if w.PR != nil {
-			prs = append(prs, *w.PR)
-		}
-	}
-	name := domain.NameFor(e.task, prs)
+	name := domain.NameFor(e.task, entryPRs(e))
 	if name == "" {
 		name = x.ID
 	}
@@ -280,6 +274,8 @@ func (m Model) helpLines() []string {
 		{"j / k", "move"},
 		{"o", "expand / collapse worktrees"},
 		{"m", "mute session"},
+		{"R", "rename and pin the name"},
+		{"A", "unpin (name is automatic)"},
 		{"K", "kill the session's dev servers"},
 		{"M / E", "switch model / effort"},
 		{"enter", "focus agent pane"},
@@ -322,6 +318,9 @@ func (m Model) footer() []string {
 // the room the counts would take, so they leave the counts out.
 func (m Model) statusLeft() (left []piece, withCounts bool) {
 	s := m.styles
+	if m.renaming != nil {
+		return m.renameLeft(), false
+	}
 	if m.confirm != nil {
 		return []piece{{s.badge, " KILL "}, {s.peach, " kill " + m.confirm.label + "? y/n"}}, false
 	}
@@ -398,6 +397,7 @@ func (m Model) cardLines() []string {
 		label = e.session.ID
 	}
 	out = append(out, m.line(false, []piece{{s.bold, " " + label}}, nil))
+	out = append(out, m.nameLines(cleanText(card.Name))...)
 
 	if len(card.PRs) > 0 {
 		chips := []piece{{s.dim, " PRs "}}
@@ -455,6 +455,23 @@ func (m Model) prBoardLines(prs []domain.PullRequest) []string {
 		if pr.BotComments > 0 {
 			out = append(out, m.line(false, []piece{{s.dim, "   " + count(pr.BotComments, "bot comment") + " since push"}}, nil))
 		}
+	}
+	return out
+}
+
+// nameLines is the session's full name, wrapped, since the sidebar row cuts it.
+func (m Model) nameLines(name string) []string {
+	if name == "" {
+		return nil
+	}
+	const lead = " name  "
+	var out []string
+	for i, part := range strings.Split(ansi.Wrap(name, max(m.width-len(lead), 1), ""), "\n") {
+		prefix := strings.Repeat(" ", len(lead))
+		if i == 0 {
+			prefix = lead
+		}
+		out = append(out, m.line(false, []piece{{m.styles.dim, prefix}, {m.styles.text, part}}, nil))
 	}
 	return out
 }
