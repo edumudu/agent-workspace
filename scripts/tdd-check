@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Runs the PR's added and changed *_test.go files against the base branch.
+# Runs the PR's added and changed *_test.go and testdata/ files against the
+# base branch; a testdata file counts for the package that holds testdata/.
 # They must fail there (a compile error counts); if any affected package
 # passes, the PR added tests for behavior that already exists.
 # Usage: scripts/tdd-check <base-ref> <head-ref>
@@ -7,9 +8,9 @@ set -euo pipefail
 base="$1"
 head="$2"
 
-files=$(git diff --name-only --diff-filter=AM "$base...$head" -- '*_test.go')
+files=$(git diff --name-only --diff-filter=AM "$base...$head" -- '*_test.go' '*/testdata/*')
 if [ -z "$files" ]; then
-  echo "tdd: no added or changed test files"
+  echo "tdd: no added or changed test files or testdata"
   exit 0
 fi
 
@@ -17,7 +18,12 @@ git checkout --quiet --detach "$base"
 # shellcheck disable=SC2086
 git checkout "$head" -- $files
 
-pkgs=$(for f in $files; do echo "./$(dirname "$f")"; done | sort -u)
+pkgs=$(for f in $files; do
+  case "$f" in
+    (*/testdata/*) echo "./${f%%/testdata/*}" ;;
+    (*) echo "./$(dirname "$f")" ;;
+  esac
+done | sort -u)
 passed=()
 for pkg in $pkgs; do
   echo "tdd: go test $pkg on base"
