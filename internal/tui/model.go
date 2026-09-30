@@ -77,6 +77,7 @@ type Model struct {
 	worktrees map[string]domain.Worktree
 	sessions  map[string]domain.Session
 	events    map[string][]domain.SessionEvent
+	subagents map[string][]domain.Subagent
 	entries   []entry
 	collapsed map[string]bool
 
@@ -101,6 +102,7 @@ func New(opts Options) Model {
 		worktrees: map[string]domain.Worktree{},
 		sessions:  map[string]domain.Session{},
 		events:    map[string][]domain.SessionEvent{},
+		subagents: map[string][]domain.Subagent{},
 		collapsed: map[string]bool{},
 	}
 }
@@ -145,6 +147,7 @@ func (m *Model) load(st rpc.State) {
 	m.worktrees = map[string]domain.Worktree{}
 	m.sessions = map[string]domain.Session{}
 	m.events = map[string][]domain.SessionEvent{}
+	m.subagents = map[string][]domain.Subagent{}
 	m.taskOrder = nil
 	for _, t := range st.Tasks {
 		m.putTask(t)
@@ -157,6 +160,9 @@ func (m *Model) load(st rpc.State) {
 	}
 	for _, ev := range st.Events {
 		m.addEvent(ev)
+	}
+	for _, sub := range st.Subagents {
+		m.putSubagent(sub)
 	}
 	m.rebuild()
 }
@@ -180,6 +186,9 @@ func (m *Model) apply(d rpc.Diff) {
 		m.worktrees[d.Worktree.ID] = *d.Worktree
 	case d.Session != nil:
 		m.sessions[d.Session.ID] = *d.Session
+	case d.Subagent != nil:
+		m.putSubagent(*d.Subagent)
+		return
 	default:
 		return
 	}

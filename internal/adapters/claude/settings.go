@@ -13,7 +13,7 @@ import (
 // HookEvents are the Claude hooks setup installs, in the order it adds them.
 var HookEvents = []string{
 	"SessionStart", "UserPromptSubmit", "PreToolUse", "PostToolUse", "Notification",
-	"PermissionRequest", "Stop", "SubagentStop", "SessionEnd",
+	"PermissionRequest", "Stop", "SubagentStart", "SubagentStop", "SessionEnd",
 }
 
 const hookMarker = " hook --harness claude --event "

@@ -13,7 +13,7 @@ var allStates = []AgentState{
 var allEvents = []HarnessEventKind{
 	EventSessionStart, EventUserPromptSubmit, EventPreToolUse,
 	EventPostToolUse, EventPermissionRequest, EventWaitingForInput,
-	EventStop, EventSessionEnd,
+	EventStop, EventSessionEnd, EventSubagentStart, EventSubagentStop,
 }
 
 type transition struct {
@@ -38,6 +38,8 @@ var expected = map[AgentState]map[HarnessEventKind]transition{
 		EventUserPromptSubmit:  {StateRunning, nil},
 		EventPreToolUse:        {StateIdle, nil},
 		EventPostToolUse:       {StateIdle, nil},
+		EventSubagentStart:     {StateIdle, nil},
+		EventSubagentStop:      {StateIdle, nil},
 		EventPermissionRequest: {StateIdle, nil},
 		EventWaitingForInput:   {StateIdle, nil},
 		EventStop:              {StateDone, doneEffects},
@@ -48,6 +50,8 @@ var expected = map[AgentState]map[HarnessEventKind]transition{
 		EventUserPromptSubmit:  {StateRunning, nil},
 		EventPreToolUse:        {StateRunning, nil},
 		EventPostToolUse:       {StateRunning, nil},
+		EventSubagentStart:     {StateRunning, nil},
+		EventSubagentStop:      {StateRunning, nil},
 		EventPermissionRequest: {StatePermission, []Effect{notify(StatePermission)}},
 		EventWaitingForInput:   {StateWaiting, []Effect{notify(StateWaiting)}},
 		EventStop:              {StateDone, doneEffects},
@@ -58,6 +62,8 @@ var expected = map[AgentState]map[HarnessEventKind]transition{
 		EventUserPromptSubmit:  {StateRunning, nil},
 		EventPreToolUse:        {StateRunning, nil},
 		EventPostToolUse:       {StateRunning, nil},
+		EventSubagentStart:     {StateRunning, nil},
+		EventSubagentStop:      {StateRunning, nil},
 		EventPermissionRequest: {StatePermission, []Effect{notify(StatePermission)}},
 		EventWaitingForInput:   {StateWaiting, nil},
 		EventStop:              {StateDone, doneEffects},
@@ -68,6 +74,8 @@ var expected = map[AgentState]map[HarnessEventKind]transition{
 		EventUserPromptSubmit:  {StateRunning, nil},
 		EventPreToolUse:        {StateRunning, nil},
 		EventPostToolUse:       {StateRunning, nil},
+		EventSubagentStart:     {StateRunning, nil},
+		EventSubagentStop:      {StateRunning, nil},
 		EventPermissionRequest: {StatePermission, nil},
 		EventWaitingForInput:   {StateWaiting, []Effect{notify(StateWaiting)}},
 		EventStop:              {StateDone, doneEffects},
@@ -78,6 +86,8 @@ var expected = map[AgentState]map[HarnessEventKind]transition{
 		EventUserPromptSubmit:  {StateRunning, nil},
 		EventPreToolUse:        {StateDone, nil},
 		EventPostToolUse:       {StateDone, nil},
+		EventSubagentStart:     {StateDone, nil},
+		EventSubagentStop:      {StateDone, nil},
 		EventPermissionRequest: {StateDone, nil},
 		EventWaitingForInput:   {StateDone, nil},
 		EventStop:              {StateDone, nil},

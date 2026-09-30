@@ -94,6 +94,16 @@
         ]
       }
     ],
+    "SubagentStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/opt/agentws/bin/agentws hook --harness claude --event SubagentStart"
+          }
+        ]
+      }
+    ],
     "SubagentStop": [
       {
         "hooks": [

@@ -25,6 +25,8 @@ const (
 	EventWaitingForInput   HarnessEventKind = "waiting_for_input"
 	EventStop              HarnessEventKind = "stop"
 	EventSessionEnd        HarnessEventKind = "session_end"
+	EventSubagentStart     HarnessEventKind = "subagent_start"
+	EventSubagentStop      HarnessEventKind = "subagent_stop"
 )
 
 type HarnessEvent struct {
@@ -74,7 +76,7 @@ func (s Session) Apply(ev HarnessEvent) (Session, []Effect) {
 		s.State = StateRunning
 		s.Unread = false
 		return s, nil
-	case EventPreToolUse, EventPostToolUse:
+	case EventPreToolUse, EventPostToolUse, EventSubagentStart, EventSubagentStop:
 		if s.inTurn() {
 			s.State = StateRunning
 		}

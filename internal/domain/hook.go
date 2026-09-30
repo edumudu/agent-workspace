@@ -8,9 +8,9 @@ var claudeHooks = map[string]HarnessEventKind{
 	"PermissionRequest": EventPermissionRequest,
 	"Notification":      EventWaitingForInput,
 	"Stop":              EventStop,
-	// why: a subagent finishing is progress inside the parent's turn, not the end of it.
-	"SubagentStop": EventPostToolUse,
-	"SessionEnd":   EventSessionEnd,
+	"SubagentStart":     EventSubagentStart,
+	"SubagentStop":      EventSubagentStop,
+	"SessionEnd":        EventSessionEnd,
 }
 
 // ClaudeNotification refines a Claude Notification hook by its

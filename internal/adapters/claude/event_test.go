@@ -23,6 +23,7 @@ func TestEveryHookFixtureMovesTheSessionToItsState(t *testing.T) {
 		{"Notification.permission_prompt", domain.StateRunning, domain.StatePermission},
 		{"Notification.idle_prompt", domain.StateRunning, domain.StateWaiting},
 		{"Stop", domain.StateRunning, domain.StateDone},
+		{"SubagentStart", domain.StateWaiting, domain.StateRunning},
 		{"SubagentStop", domain.StateWaiting, domain.StateRunning},
 		{"SessionEnd", domain.StateRunning, domain.StateIdle},
 	}
