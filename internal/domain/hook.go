@@ -17,6 +17,10 @@ var codexHooks = map[string]HarnessEventKind{
 	"PreToolUse":       EventPreToolUse,
 	"PostToolUse":      EventPostToolUse,
 	"Stop":             EventStop,
+	// why: Codex fires Interrupt instead of Stop when the user aborts a turn.
+	"Interrupt":         EventStop,
+	"PermissionRequest": EventPermissionRequest,
+	"SessionEnd":        EventSessionEnd,
 }
 
 // HookEvent translates a harness hook name, as passed to `agentws hook

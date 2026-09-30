@@ -23,18 +23,6 @@ type Observation struct {
 	TranscriptPath string
 }
 
-var hookKinds = map[string]domain.HarnessEventKind{
-	"SessionStart":      domain.EventSessionStart,
-	"UserPromptSubmit":  domain.EventUserPromptSubmit,
-	"PreToolUse":        domain.EventPreToolUse,
-	"PostToolUse":       domain.EventPostToolUse,
-	"PermissionRequest": domain.EventPermissionRequest,
-	"Stop":              domain.EventStop,
-	// why: Codex fires Interrupt instead of Stop when the user aborts a turn.
-	"Interrupt":  domain.EventStop,
-	"SessionEnd": domain.EventSessionEnd,
-}
-
 var notifyKinds = map[string]domain.HarnessEventKind{
 	"agent-turn-complete": domain.EventStop,
 }
@@ -49,7 +37,7 @@ type hookPayload struct {
 // ParseHook maps a hook by its Codex name. A payload that is not valid JSON
 // still yields the event: the name alone is enough to move the state.
 func ParseHook(name string, stdin []byte) (Observation, error) {
-	kind, ok := hookKinds[name]
+	kind, ok := domain.HookEvent(domain.HarnessCodex, name)
 	if !ok {
 		return Observation{}, fmt.Errorf("%w: hook %q", ErrUnmapped, name)
 	}
