@@ -39,7 +39,7 @@ Dependency rule: `domain` ← `app` ← `adapters`/`daemon`, and `tui` → `rpc`
 - `Session.Apply(event) (Session, []Effect)`: the state machine. Adapters map hooks to harness-neutral events (`session_start`, `user_prompt_submit`, `pre_tool_use`, `post_tool_use`, `permission_request`, `waiting_for_input`, `stop`, `session_end`). Tool, permission and waiting events that arrive while `idle` or `done` are stale and ignored. `done` marks the session unread only when it is not focused; `Focus()` clears it.
 - `NameFor(task, prs)`: naming precedence.
 - `PlanCleanup(worktrees, facts)`: the cleanup decision.
-- Discovery rules.
+- Discovery rules: `KindOfRoot`, `ReposIn`, `SingleRepo`, `MergeRepoState`, `LastUsedWorkspace`. See [Workspaces](#workspaces).
 
 Everything here is table-tested, with no mocks.
 
@@ -56,7 +56,7 @@ Everything here is table-tested, with no mocks.
 | `agentws.sock` | the socket, mode 0600; a stale one is removed by the next lock holder |
 | `state.db` | the SQLite store; loaded once on start |
 
-**Event loop** (`internal/daemon`). One goroutine owns all state. Adapters call `Daemon.Post(event)` with `WorkspaceChanged`, `TaskChanged`, `WorktreeChanged` or `SessionChanged`; each one replaces the entity by key, enqueues a store write, bumps `seq` and fans the diff out to every subscriber in order. Connections read state only through closures run on the loop. Each connection has a 1024-message outbox; one that falls behind is disconnected, never waited on.
+**Event loop** (`internal/daemon`). One goroutine owns all state. Adapters call `Daemon.Post(event)` with `WorkspaceChanged`, `TaskChanged`, `WorktreeChanged` or `SessionChanged`; each one replaces the entity by key (`WorkspaceRemoved` deletes it), enqueues a store write, bumps `seq` and fans the diff out to every subscriber in order. Connections read state only through closures run on the loop. Each connection has a 1024-message outbox; one that falls behind is disconnected, never waited on.
 
 **Protocol** (`internal/rpc`, types in `protocol.go`). One JSON object per line, at most 16 MiB. Every message carries `"v":1`.
 
@@ -72,11 +72,24 @@ Everything here is table-tested, with no mocks.
 
 - The client picks `id`; responses and a subscription's diffs carry it back. A connection may have several requests in flight.
 - `subscribe` answers with the full `State` at `seq`, then one `diff` per change starting at `seq+1`. A diff sets exactly one of `workspace`, `task`, `worktree`, `session`, and replaces that entity by key. Domain structs encode with their Go field names.
-- Error codes: `unsupported_version` (missing or other `v`), `unknown_method`, `bad_request` (not JSON; `id` 0).
 - `hook` carries one harness hook: `{"harness","event","pane","at","payload"}`, with the hook's stdin JSON as `payload`. The daemon maps `pane` to the session whose `Pane` matches (`domain.SessionOnPane`) and the name to a harness event (`domain.HookEvent`), then applies it; unknown panes and names are ignored. The result is a `HookReply` whose optional `output` the hook prints for the harness.
+- A diff may instead set `removed_workspace` (a root): drop that workspace.
+- Methods: `status`, `subscribe`, `hook`, and `workspace.add` (`{"path": abs}` → `Workspace`), `workspace.list` (→ `{"workspaces": [...], "last_used": root}`), `workspace.remove` (`{"root": …}`). The workspace methods exist only when the daemon is built with `WithWorkspaces`; otherwise they answer `unknown_method`.
+- Error codes: `unsupported_version` (missing or other `v`), `unknown_method`, `bad_request` (not JSON, bad params, or a path that is not a directory; `id` 0 when not JSON), `not_found` (removing an unknown workspace).
 - Adding a method or an optional field keeps `v:1`. Removing or changing the meaning of a field bumps `v`.
 
 **Client.** `rpc.Dial(path)` connects; `rpc.Connect(ctx, path, start)` calls `start` once if nothing listens and retries for `rpc.StartTimeout` (2 s). `Client.Call(ctx, method, params, out)` is the generic call and returns `*rpc.Error` for daemon errors; `Status` and `Subscribe` wrap it. `Subscribe` returns the `State` and a `Diffs` channel closed when the connection ends; its diffs share the connection's reader, so a slow consumer should use its own `Client`. `rpc` cannot exec, so the caller supplies `start` (`cmd/agentws` spawns `agentws daemon`).
+
+## Workspaces
+
+`agentws workspace add <path>`, `list` and `remove <path>` call `workspace.add`, `workspace.list` and `workspace.remove` on the daemon. See [docs/adr/0007-workspace-discovery.md](docs/adr/0006-workspace-discovery.md).
+
+- **Kind.** `<path>/.git` a directory means `single`, with the path itself as the only repo. Anything else is an `orchestration` root: its direct children are scanned, symlinks followed, and each child with a `.git` directory is a repo. A child whose `.git` is a file is a worktree and is skipped, as is a dangling link. Nothing deeper than one level is read. Repos are sorted by name, and a symlinked repo keeps the link's name and path.
+- **Layers.** The rules are pure functions in `domain`. `app.DiscoverWorkspace` uses the `WorkspaceFS` port (`adapters/fs`, stat and readdir only, no git). `app.RefreshRepoFacts` uses the `RepoInspector` port (`adapters/git`, at most 4 repos in flight).
+- **Repo facts.** Default branch from `origin/HEAD` (empty without one), current branch (empty when detached) and changed-file count, from one `git status --porcelain=v2 --branch -z` plus one `git symbolic-ref` per repo.
+- **Background refresh.** `workspace.add` answers from the filesystem alone, publishes the workspace, then refreshes facts off the loop and publishes again only if something changed. The daemon repeats that for every workspace every 30 s. Discovery and git run on connection goroutines and refresh workers, never the event loop.
+- **Last used.** `Workspace.LastUsed` is set on every `add`, stored with the workspace, and `workspace.list` returns the most recent as `last_used`. The new-session dialog defaults to it.
+- **Budget.** Discovery over 15 repos must finish in < 300 ms; `BenchmarkDiscovery` fails above that.
 
 ## Staying fast
 
