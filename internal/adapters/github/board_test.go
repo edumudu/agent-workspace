@@ -124,7 +124,7 @@ func fakeGH(t *testing.T, canned string, exit int) (bin, log string) {
 	if err := os.WriteFile(cannedPath, []byte(canned), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	script := fmt.Sprintf("#!/bin/sh\necho \"$@\" >> '%s'\ncat '%s'\necho boom >&2\nexit %d\n", log, cannedPath, exit)
+	script := fmt.Sprintf("#!/bin/sh\necho \"$1 $2\" >> '%s'\ncat '%s'\necho boom >&2\nexit %d\n", log, cannedPath, exit)
 	bin = filepath.Join(dir, "gh")
 	if err := os.WriteFile(bin, []byte(script), 0o755); err != nil {
 		t.Fatal(err)
