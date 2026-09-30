@@ -404,6 +404,7 @@ func (m Model) cardLines() []string {
 			chips = append(chips, piece{s.blue, fmt.Sprintf("#%d ", pr.Number)})
 		}
 		out = append(out, m.line(false, chips, nil))
+		out = append(out, m.prBoardLines(card.PRs)...)
 	}
 	for j, action := range card.Actions {
 		lead := "       "
@@ -420,6 +421,38 @@ func (m Model) cardLines() []string {
 		out = append(out, m.line(false, []piece{{s.need, " ✳ " + reason}}, nil))
 		for _, line := range strings.Split(card.Waiting, "\n") {
 			out = append(out, m.line(false, []piece{{s.text, "   " + cleanText(line)}}, nil))
+		}
+	}
+	return out
+}
+
+// prBoardLines is the board under the card's PR chips. A PR the daemon has
+// no state for yet gets none.
+func (m Model) prBoardLines(prs []domain.PullRequest) []string {
+	s := m.styles
+	var out []string
+	for _, pr := range prs {
+		if pr.State == "" {
+			continue
+		}
+		head := fmt.Sprintf(" #%d ", pr.Number)
+		switch {
+		case pr.State != domain.PROpen:
+			out = append(out, m.line(false, []piece{{s.blue, head}, {s.dim, strings.ToLower(string(pr.State))}}, nil))
+			continue
+		case pr.ReadyToMerge():
+			out = append(out, m.line(false, []piece{{s.blue, head}, {s.green, "ready to merge"}}, nil))
+		default:
+			out = append(out, m.line(false, []piece{{s.blue, head}, {s.need, "blocked"}}, nil))
+			for _, b := range pr.Blockers() {
+				out = append(out, m.line(false, []piece{{s.sub, "   " + b}}, nil))
+			}
+		}
+		for _, f := range pr.Failing {
+			out = append(out, m.line(false, []piece{{s.peach, "   ✗ " + cleanText(f.Name)}}, nil))
+		}
+		if pr.BotComments > 0 {
+			out = append(out, m.line(false, []piece{{s.dim, "   " + count(pr.BotComments, "bot comment") + " since push"}}, nil))
 		}
 	}
 	return out
