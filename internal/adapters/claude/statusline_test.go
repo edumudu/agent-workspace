@@ -28,7 +28,7 @@ func TestParseStatusReadsModelEffortContextAndEveryLimit(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := domain.StatusReport{
-		Model:       "Opus 5.5",
+		Model:       "opus-5.5",
 		Effort:      "high",
 		ContextLeft: 94,
 		HasContext:  true,
@@ -48,7 +48,7 @@ func TestParseStatusBeforeTheFirstTurnKnowsNoContextOrLimits(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := domain.StatusReport{Model: "Opus 5.5", Effort: "low"}
+	want := domain.StatusReport{Model: "opus-5.5", Effort: "low"}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("got %+v, want %+v", got, want)
 	}
@@ -95,5 +95,24 @@ func TestChainedStatusLineRoundTripsQuotes(t *testing.T) {
 	}
 	if got, ok := claude.ChainedStatusLine(claude.StatusLineCommand("/tmp/b001/agentws.test", "")); !ok || got != "" {
 		t.Fatalf("no chain: %q, %v", got, ok)
+	}
+}
+
+func TestParseStatusShortensTheModelIDAndFallsBackToTheDisplayName(t *testing.T) {
+	cases := []struct{ model, want string }{
+		{`{"id":"claude-opus-5-5","display_name":"Opus 5.5"}`, "opus-5.5"},
+		{`{"id":"claude-haiku-4-5-20251001","display_name":"Haiku 4.5"}`, "haiku-4.5"},
+		{`{"id":"claude-sonnet-5-5[1m]","display_name":"Sonnet 5.5"}`, "sonnet-5.5"},
+		{`{"id":"claude-fable-5-1","display_name":"Fable 5.1"}`, "fable-5.1"},
+		{`{"display_name":"Opus"}`, "Opus"},
+	}
+	for _, c := range cases {
+		got, err := claude.ParseStatus([]byte(`{"model":` + c.model + `}`))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got.Model != c.want {
+			t.Errorf("%s: model %q, want %q", c.model, got.Model, c.want)
+		}
 	}
 }

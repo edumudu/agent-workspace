@@ -3,6 +3,7 @@ package tui
 import (
 	"fmt"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
@@ -241,7 +242,13 @@ func (m Model) sessionLines(e entry, sel bool) []string {
 	if label := portLabel(e.ports()); label != "" {
 		open = []piece{{s.teal, label}, {s.text, " "}}
 	}
-	out = append(out, m.line(sel, []piece{bar, {s.sub, fmt.Sprintf("    %s  ctx %d%%  %s", detail, x.Usage.ContextLeftPercent, trees)}}, append(open, m.switchMarks(x)...)))
+	facts := []string{detail}
+	if x.Usage.HasContext {
+		facts = append(facts, fmt.Sprintf("ctx %d%%", x.Usage.ContextLeftPercent))
+	}
+	facts = append(facts, trees)
+	row := strings.Join(slices.DeleteFunc(facts, func(f string) bool { return f == "" }), "  ")
+	out = append(out, m.line(sel, []piece{bar, {s.sub, "    " + row}}, append(open, m.switchMarks(x)...)))
 	if m.collapsed[x.ID] {
 		return out
 	}
@@ -293,6 +300,7 @@ func (m Model) helpLines() []string {
 		{"R", "rename and pin the name"},
 		{"A", "unpin (name is automatic)"},
 		{"K", "kill the session's dev servers"},
+		{"r", "review the session's changes"},
 		{"w", "worktrees and disk"},
 		{"t / T", "shell below / popup"},
 		{"s", "type in the shell (ctrl+\\ back)"},
@@ -318,10 +326,16 @@ func (m Model) helpLines() []string {
 func (m Model) footer() []string {
 	s := m.styles
 	worktrees := 0
+	var ports []domain.Port
 	for _, e := range m.entries {
 		worktrees += len(e.session.WorktreeIDs)
+		ports = append(ports, e.ports()...)
 	}
-	right := []piece{{s.sub, count(len(m.entries), "session") + " · " + count(worktrees, "worktree") + " "}}
+	counts := count(len(m.entries), "session") + " · " + count(worktrees, "worktree")
+	if label := portLabel(ports); label != "" {
+		counts += " · ports " + strings.ReplaceAll(label, ":", "")
+	}
+	right := []piece{{s.sub, counts + " "}}
 	left, withCounts := m.statusLeft()
 	switch {
 	case m.status != "":
@@ -330,11 +344,17 @@ func (m Model) footer() []string {
 		right = nil
 	}
 	return []string{
-		"",
-		m.line(false, []piece{{s.bold, " ⏎"}, {s.sub, " focus      "}, {s.bold, "␣"}, {s.sub, " next waiting"}}, nil),
-		m.line(false, []piece{{s.bold, " ⇥"}, {s.sub, " last       "}, {s.bold, "?"}, {s.sub, " keys"}}, nil),
+		m.keyRow("n", "new session", "r", "review"),
+		m.keyRow("t", "shell", "e", "nvim"),
+		m.keyRow("w", "worktrees", "␣", "next waiting"),
 		m.line(false, left, right),
 	}
+}
+
+// keyRow is one footer row of two key hints in columns, as in the mockup.
+func (m Model) keyRow(k1, what1, k2, what2 string) string {
+	s := m.styles
+	return m.line(false, []piece{{s.bold, " " + k1}, {s.sub, fmt.Sprintf(" %-14s", what1)}, {s.bold, k2}, {s.sub, " " + what2}}, nil)
 }
 
 // statusLeft is the status line's left side. Ports and the kill prompt need

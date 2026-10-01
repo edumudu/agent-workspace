@@ -15,6 +15,7 @@ import (
 
 type statusInput struct {
 	Model struct {
+		ID          string `json:"id"`
 		DisplayName string `json:"display_name"`
 	} `json:"model"`
 	Effort struct {
@@ -37,7 +38,7 @@ func ParseStatus(b []byte) (domain.StatusReport, error) {
 	if err := json.Unmarshal(b, &in); err != nil {
 		return domain.StatusReport{}, err
 	}
-	r := domain.StatusReport{Model: in.Model.DisplayName, Effort: in.Effort.Level}
+	r := domain.StatusReport{Model: shortModel(in.Model.ID, in.Model.DisplayName), Effort: in.Effort.Level}
 	if p := in.ContextWindow.RemainingPercentage; p != nil {
 		r.ContextLeft, r.HasContext = percent(*p), true
 	}
@@ -56,6 +57,32 @@ func ParseStatus(b []byte) (domain.StatusReport, error) {
 }
 
 func percent(p float64) int { return int(math.Round(p)) }
+
+// shortModel turns a model id into the name the sidebar shows, as Codex's
+// ids read: "claude-opus-5-5" is "opus-5.5". A date suffix and a context
+// tag such as "[1m]" are dropped. With no id it keeps the display name.
+func shortModel(id, display string) string {
+	id, _, _ = strings.Cut(id, "[")
+	id = strings.TrimPrefix(id, "claude-")
+	if id == "" {
+		return display
+	}
+	parts := strings.Split(id, "-")
+	var name, version []string
+	for _, p := range parts {
+		switch {
+		case len(p) == 8 && strings.Trim(p, "0123456789") == "":
+		case p != "" && strings.Trim(p, "0123456789") == "":
+			version = append(version, p)
+		default:
+			name = append(name, p)
+		}
+	}
+	if len(version) == 0 {
+		return strings.Join(name, "-")
+	}
+	return strings.Join(name, "-") + "-" + strings.Join(version, ".")
+}
 
 // windowLess orders the shared windows first, shortest first, then the rest
 // by name.

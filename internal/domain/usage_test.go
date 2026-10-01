@@ -26,7 +26,7 @@ func TestReportSetsModelEffortAndUsage(t *testing.T) {
 	if got.Model != "Opus" || got.Effort != "high" || got.State != StateRunning {
 		t.Fatalf("got %+v", got)
 	}
-	if want := (Usage{ContextLeftPercent: 94, LimitUsedPercent: 71}); got.Usage != want {
+	if want := (Usage{ContextLeftPercent: 94, HasContext: true, LimitUsedPercent: 71}); got.Usage != want {
 		t.Fatalf("usage = %+v, want %+v", got.Usage, want)
 	}
 	if !reflect.DeepEqual(got.Limits, limits) {
@@ -44,7 +44,7 @@ func TestReportKeepsWhatTheStatusLineDoesNotKnowYet(t *testing.T) {
 
 func TestReportWithZeroContextLeftIsKnown(t *testing.T) {
 	got := Session{Usage: Usage{ContextLeftPercent: 40}}.Report(StatusReport{HasContext: true})
-	if got.Usage.ContextLeftPercent != 0 {
-		t.Fatalf("context left = %d", got.Usage.ContextLeftPercent)
+	if got.Usage.ContextLeftPercent != 0 || !got.Usage.HasContext {
+		t.Fatalf("usage = %+v; want 0%% left, known", got.Usage)
 	}
 }
