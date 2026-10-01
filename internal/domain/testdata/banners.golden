@@ -1,0 +1,20 @@
+[done]
+retry the client · api@42-retry-client
+Added exponential backoff to the HTTP client and covered it with tests. (6m3s)
+
+[permission]
+retry the client · api@42-retry-client
+needs permission: Bash: go test ./internal/client/...
+
+[permission]
+login redirect · web@fix/login-redirect
+needs permission: Edit: /src/routes/login.ts
+
+[waiting]
+login redirect · web@fix/login-redirect
+asks: Should I keep the old /signin route as an alias?
+
+[done]
+claude · api@42-retry-client +1
+usage limit: You've hit your usage limit · resets 5pm
+
