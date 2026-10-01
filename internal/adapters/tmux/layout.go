@@ -132,3 +132,14 @@ func (h *Host) ShownIn(ctx context.Context, slot app.Slot) app.PaneID {
 	}
 	return app.PaneID(strings.TrimSpace(out))
 }
+
+// Detach detaches every terminal attached to slot's session; the layout and
+// the sessions in it keep running for the next attach.
+func (h *Host) Detach(ctx context.Context, slot app.Slot) error {
+	session, err := h.run(ctx, "", "display-message", "-p", "-t", string(slot), "#{session_name}")
+	if err != nil {
+		return err
+	}
+	_, err = h.run(ctx, "", "detach-client", "-s", strings.TrimSpace(session))
+	return err
+}

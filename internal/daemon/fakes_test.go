@@ -187,6 +187,7 @@ type fakeClientHost struct {
 	popups        []app.PaneID
 	commandPopups []app.PaneSpec
 	focusedBelow  int
+	detached      []app.Slot
 }
 
 // SlotHasPane reports the slot pane as missing once after loseSlotPane.
@@ -799,4 +800,11 @@ func (h *fakeHost) titleSets(pane app.PaneID) int {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	return len(h.titles[pane])
+}
+
+func (h *fakeClientHost) Detach(_ context.Context, slot app.Slot) error {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.detached = append(h.detached, slot)
+	return nil
 }

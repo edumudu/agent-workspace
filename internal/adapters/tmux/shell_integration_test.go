@@ -305,3 +305,19 @@ func TestTitlesShowAHashAsText(t *testing.T) {
 		return strings.Contains(outer("capture-pane", "-p", "-t", "outer"), "cwd /wt/api#[default]x")
 	})
 }
+
+func TestDetachLeavesTheLayoutRunning(t *testing.T) {
+	ctx := context.Background()
+	h := newHost(t)
+	slot, _ := h.OpenClient(ctx, "main", app.PaneSpec{Name: "tui", Command: []string{"sleep", "600"}})
+	outerTerminal(t, h, slot)
+	if err := h.Detach(ctx, slot); err != nil {
+		t.Fatal(err)
+	}
+	waitFor(t, "the client to detach", func() bool {
+		return tmuxIn(t, h, slot, "list-clients") == ""
+	})
+	if !h.ClientOpen(ctx, slot) {
+		t.Fatal("detaching closed the layout")
+	}
+}
