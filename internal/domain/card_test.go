@@ -173,3 +173,20 @@ func TestSessionCardRunningOrIdleWaitsOnNothing(t *testing.T) {
 		}
 	}
 }
+
+func TestSessionCardCarriesWhatTheAgentLastSaid(t *testing.T) {
+	log := []SessionEvent{
+		{SessionID: "s", Kind: EventStop, Text: "First answer."},
+		{SessionID: "s", Kind: EventUserPromptSubmit},
+		{SessionID: "s", Kind: EventPreToolUse, Tool: "Edit"},
+		{SessionID: "s", Kind: EventStop, Text: "one\ntwo\nthree\nfour\nfive\nsix"},
+		{SessionID: "other", Kind: EventStop, Text: "not this session"},
+	}
+	card := BuildSessionCard(Task{}, Session{ID: "s", State: StateDone}, nil, log)
+	if card.Said != "one\ntwo\nthree\nfour…" {
+		t.Fatalf("said %q; want the latest stop text cut to %d lines", card.Said, CardSaidLines)
+	}
+	if BuildSessionCard(Task{}, Session{ID: "s"}, nil, log[1:3]).Said != "" {
+		t.Fatal("a session that has not stopped yet said something")
+	}
+}

@@ -7,6 +7,8 @@ const (
 	CardActions = 3
 	// CardWaitingLines is how many lines of a permission prompt the card shows.
 	CardWaitingLines = 3
+	// CardSaidLines is how many lines of the agent's last message the review shows.
+	CardSaidLines = 4
 )
 
 // SessionCard is what you need to get your bearings on a session: the task,
@@ -20,6 +22,8 @@ type SessionCard struct {
 	PRs     []PullRequest
 	Actions []string
 	Waiting string
+	// Said is the agent's last message, from its latest Stop.
+	Said string
 }
 
 // BuildSessionCard derives the card from the task, the session's worktrees
@@ -35,6 +39,9 @@ func BuildSessionCard(task Task, session Session, worktrees []Worktree, events [
 	}
 	card.Actions = lastActions(own)
 	card.Waiting = waitingOn(session.State, own)
+	if ev, ok := latest(own, EventStop); ok {
+		card.Said = cutLines(ev.Text, CardSaidLines)
+	}
 	return card
 }
 
