@@ -98,3 +98,5 @@ func (e *fakeEditor) evals() []string {
 	defer e.mu.Unlock()
 	return append([]string(nil), e.calls...)
 }
+
+func (t *termFake) SetTitle(context.Context, app.PaneID, string) error { return nil }

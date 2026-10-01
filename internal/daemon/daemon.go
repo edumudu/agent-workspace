@@ -262,6 +262,7 @@ func (d *Daemon) Serve(ctx context.Context, ln net.Listener) error {
 	go d.watchPorts(ctx)
 	go d.reconcilePanes(ctx)
 	go d.watchMainSlot(ctx)
+	go d.paneTitles(ctx)
 	go d.snapshotTurns(ctx)
 	go d.cleanupEvery(ctx)
 	go d.runLauncher(ctx)

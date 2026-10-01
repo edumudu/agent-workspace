@@ -251,3 +251,57 @@ func TestPopupCommandWithoutAClientFails(t *testing.T) {
 		t.Fatal("PopupCommand succeeded with no client attached")
 	}
 }
+
+func TestSetTitleShowsOnThePanesTopBorder(t *testing.T) {
+	ctx := context.Background()
+	h := newHost(t)
+	slot, _ := h.OpenClient(ctx, "main", app.PaneSpec{Name: "tui", Command: []string{"sleep", "600"}})
+	agent, _ := h.Create(ctx, catPane("agent"))
+	if err := h.Show(ctx, agent, slot); err != nil {
+		t.Fatal(err)
+	}
+	if err := h.SetTitle(ctx, agent, "◐ claude · opus-5.5 │ api:x #7 ✓"); err != nil {
+		t.Fatal(err)
+	}
+	if got := tmuxIn(t, h, slot, "display-message", "-p", "-t", string(agent), "#{@agentws_title}"); got != "◐ claude · opus-5.5 │ api:x #7 ✓" {
+		t.Fatalf("pane title = %q", got)
+	}
+	if got := tmuxIn(t, h, slot, "show-options", "-gv", "pane-border-status"); got != "top" {
+		t.Fatalf("pane-border-status = %q; want titles on top borders", got)
+	}
+}
+
+func TestSetTitleTurnsTitlesOnInAServerStartedBeforeThem(t *testing.T) {
+	ctx := context.Background()
+	h := newHost(t)
+	slot, _ := h.OpenClient(ctx, "main", app.PaneSpec{Name: "tui", Command: []string{"sleep", "600"}})
+	agent, _ := h.Create(ctx, catPane("agent"))
+	tmuxIn(t, h, slot, "set-option", "-g", "pane-border-status", "off")
+	tmuxIn(t, h, slot, "set-option", "-gu", "pane-border-format")
+	if err := h.SetTitle(ctx, agent, "x"); err != nil {
+		t.Fatal(err)
+	}
+	if got := tmuxIn(t, h, slot, "show-options", "-gv", "pane-border-status"); got != "top" {
+		t.Fatalf("pane-border-status = %q; want top on the running server", got)
+	}
+	if got := tmuxIn(t, h, slot, "show-options", "-gv", "pane-border-format"); !strings.Contains(got, "@agentws_title") {
+		t.Fatalf("pane-border-format = %q", got)
+	}
+}
+
+func TestTitlesShowAHashAsText(t *testing.T) {
+	ctx := context.Background()
+	h := newHost(t)
+	slot, _ := h.OpenClient(ctx, "main", app.PaneSpec{Name: "tui", Command: []string{"sleep", "600"}})
+	agent, _ := h.Create(ctx, catPane("agent"))
+	if err := h.Show(ctx, agent, slot); err != nil {
+		t.Fatal(err)
+	}
+	outer := outerTerminal(t, h, slot)
+	if err := h.SetTitle(ctx, agent, "cwd /wt/api#[default]x"); err != nil {
+		t.Fatal(err)
+	}
+	waitFor(t, "the title to be drawn as text", func() bool {
+		return strings.Contains(outer("capture-pane", "-p", "-t", "outer"), "cwd /wt/api#[default]x")
+	})
+}

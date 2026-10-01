@@ -324,6 +324,7 @@ type shown struct {
 type fakeHost struct {
 	app.TerminalHost
 	mu       sync.Mutex
+	titles   map[app.PaneID][]string
 	specs    []app.PaneSpec
 	err      error
 	panes    []app.PaneInfo
@@ -773,4 +774,29 @@ func (s *memStore) DeleteSession(id string) {
 		}
 	}
 	s.snap.Events = events
+}
+
+func (h *fakeHost) SetTitle(_ context.Context, pane app.PaneID, title string) error {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if h.titles == nil {
+		h.titles = map[app.PaneID][]string{}
+	}
+	h.titles[pane] = append(h.titles[pane], title)
+	return nil
+}
+
+func (h *fakeHost) title(pane app.PaneID) string {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if ts := h.titles[pane]; len(ts) > 0 {
+		return ts[len(ts)-1]
+	}
+	return ""
+}
+
+func (h *fakeHost) titleSets(pane app.PaneID) int {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	return len(h.titles[pane])
 }
