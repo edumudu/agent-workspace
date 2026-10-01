@@ -427,7 +427,7 @@ func (d *Daemon) dispatch(c *conn, line []byte) (*rpc.Response, bool) {
 	if req.V != rpc.Version {
 		return errorResponse(req.ID, rpc.CodeUnsupportedVersion, "this daemon speaks protocol v1"), true
 	}
-	if req.Build != "" && req.Build != version.String() && !rpc.AnyBuild(req.Method) {
+	if req.Build != version.String() && !rpc.AnyBuild(req.Method) {
 		var built int64
 		if t := version.BuiltAt(); !t.IsZero() {
 			built = t.Unix()
