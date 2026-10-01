@@ -18,8 +18,7 @@ type Banner struct {
 	State AgentState
 	Sound string
 	// why: one banner per group is kept, so a session's newer banner replaces its older one.
-	Group string
-	// why: the bundle id of the terminal running the client, brought to the front on click.
+	Group    string
 	Terminal string
 }
 
