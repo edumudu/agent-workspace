@@ -23,8 +23,6 @@ import (
 	"github.com/giovaniif/agent-workspace/internal/rpc"
 )
 
-// serveReview runs a daemon on home's state.db with real git and tmux and a
-// fake agent, and returns a client and a stop func.
 func serveReview(t *testing.T, home, socket, agent string) (*rpc.Client, func()) {
 	t.Helper()
 	store, err := sqlite.Open(filepath.Join(home, "state.db"))
@@ -93,9 +91,6 @@ func eventually(t *testing.T, within time.Duration, ok func() bool) bool {
 	return true
 }
 
-// TestReviewSendReachesARealAgentPaneAcrossARestart comments on two files
-// of a real worktree, restarts the daemon, sends the draft, and reads what
-// a fake agent in a real tmux pane received.
 func TestReviewSendReachesARealAgentPaneAcrossARestart(t *testing.T) {
 	for _, bin := range []string{"git", "tmux"} {
 		if _, err := exec.LookPath(bin); err != nil {

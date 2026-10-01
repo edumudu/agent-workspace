@@ -20,8 +20,7 @@ func (Review) Stage(ctx context.Context, dir, patch string) error {
 	return apply(ctx, dir, patch, "--cached")
 }
 
-// Revert checks the patch still applies in reverse, writes it to
-// <git dir>/agentws/reverted/<unix nanos>.patch, and only then applies it.
+// why: the patch is saved before it is applied, so a reverted hunk can be recovered.
 func (Review) Revert(ctx context.Context, dir, patch string) error {
 	if err := apply(ctx, dir, patch, "-R", "--check"); err != nil {
 		return err
@@ -41,8 +40,7 @@ func (Review) Revert(ctx context.Context, dir, patch string) error {
 	return apply(ctx, dir, patch, "-R")
 }
 
-// locationVars make git pick a repo, work tree or index other than the one
-// -C names; a daemon started from a git hook or alias can inherit them.
+// why: these make git pick a repo, work tree or index other than the one -C names; a daemon started from a git hook or alias can inherit them.
 var locationVars = []string{"GIT_DIR=", "GIT_WORK_TREE=", "GIT_INDEX_FILE=", "GIT_COMMON_DIR=", "GIT_OBJECT_DIRECTORY=", "GIT_NAMESPACE="}
 
 func isolated(env []string) []string {
@@ -61,8 +59,6 @@ func isolated(env []string) []string {
 	return out
 }
 
-// apply feeds patch to `git apply`, which changes nothing unless the whole
-// patch applies.
 func apply(ctx context.Context, dir, patch string, args ...string) error {
 	cmd := exec.CommandContext(ctx, "git", append([]string{"-C", dir, "apply", "--whitespace=nowarn"}, args...)...)
 	cmd.Env = isolated(cmd.Environ())

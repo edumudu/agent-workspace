@@ -10,8 +10,6 @@ import (
 	"github.com/giovaniif/agent-workspace/internal/domain"
 )
 
-// fakeCleanupGit answers from facts, except that a path in later answers
-// from later on every call after its first.
 type fakeCleanupGit struct {
 	mu             sync.Mutex
 	calls          map[string]int
@@ -65,7 +63,6 @@ func (g *fakeCleanupGit) Prune(_ context.Context, repo string) error {
 	return nil
 }
 
-// fakeProcs answers the nth Holders call with calls[n], repeating the last.
 type fakeProcs struct {
 	calls []map[string][]string
 	err   error

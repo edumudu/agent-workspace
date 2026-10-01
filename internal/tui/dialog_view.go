@@ -12,14 +12,10 @@ import (
 	"github.com/giovaniif/agent-workspace/internal/domain"
 )
 
-// dialogMaxWidth keeps the popup's form readable on a wide terminal.
 const dialogMaxWidth = 96
 
-// dialogColumnsFrom is the narrowest form that puts harness, model and
-// effort side by side; below it they stack.
 const dialogColumnsFrom = 72
 
-// dialogScreen is the whole popup: the form centred in the terminal.
 func (m Model) dialogScreen() string {
 	f := m
 	f.width = min(m.width-4, dialogMaxWidth)
@@ -35,8 +31,6 @@ func (m Model) dialogScreen() string {
 	return strings.Join(lines, "\n")
 }
 
-// dialogViewport fits the form into height rows: the title bar and the
-// action row stay, and the rows between scroll so keep stays in view.
 func dialogViewport(lines []string, keep, height int) []string {
 	if height <= 0 || len(lines) <= height {
 		return lines
@@ -50,9 +44,6 @@ func dialogViewport(lines []string, keep, height int) []string {
 	return append(append([]string{title}, body[start:start+room]...), actions)
 }
 
-// dialogLines draws the form at m.width, as in docs/images/new-session.png.
-// It also returns the row to keep in view: the active field, or the status
-// line once there is one.
 func (m Model) dialogLines() ([]string, int) {
 	s := m.styles
 	d := m.dialog
@@ -109,8 +100,6 @@ func (m Model) dialogLines() ([]string, int) {
 	return append(out, m.line(false, hint, buttons)), keep
 }
 
-// titleBar fills the whole width with the badge colour, as the mockup's
-// blue header does.
 func (m Model) titleBar(left, right string) string {
 	gap := max(m.width-ansi.StringWidth(left)-ansi.StringWidth(right), 1)
 	return m.styles.badge.Render(left + strings.Repeat(" ", gap) + right)
@@ -124,7 +113,6 @@ func (m Model) label(f field, name string) string {
 	return m.line(false, []piece{{st, " " + name}}, nil)
 }
 
-// box draws content in a rounded frame, blue while its field is active.
 func (m Model) box(w int, content []piece, active bool) []string {
 	border := m.styles.dim
 	if active {
@@ -155,8 +143,6 @@ func (m Model) box(w int, content []piece, active bool) []string {
 	}
 }
 
-// pickers draws harness, model and effort in three columns, or stacked when
-// the form is narrow. keep moves to the active picker's row.
 func (m Model) pickers(keep *int, at int) []string {
 	s := m.styles
 	d := m.dialog
@@ -227,8 +213,6 @@ func workspaceKind(w domain.Workspace) string {
 	return fmt.Sprintf("orchestration root · %d repos", len(w.Repos))
 }
 
-// workItemPreview says what the work item was read as and what the session
-// will be called.
 func workItemPreview(input string) string {
 	if strings.TrimSpace(input) == "" {
 		return "the session is named after it"
@@ -247,8 +231,7 @@ func workItemPreview(input string) string {
 	return "text · session named “" + t.Text + "”"
 }
 
-// startsAt explains where the session will run, from the same plan the
-// daemon makes.
+// why: uses the same plan the daemon makes.
 func (m Model) startsAt() []string {
 	s := m.styles
 	d := m.dialog
@@ -281,8 +264,6 @@ func (m Model) startsAt() []string {
 	}
 }
 
-// adviceBox is the low-quota warning, with the switch to the other harness
-// when there is one to offer.
 func (m Model) adviceBox() []string {
 	advice, ok := m.advice()
 	if !ok {
@@ -339,8 +320,6 @@ func defaultLabel(name string) string {
 	return "default · " + name
 }
 
-// defaultModel is the model the chosen harness starts with when none is
-// sent: its config's, else the one its sessions last reported.
 func (m Model) defaultModel() string {
 	h := m.chosenHarness()
 	if name := m.opts.HarnessDefaults[h].Model; name != "" {
@@ -356,8 +335,6 @@ func (m Model) defaultModel() string {
 	return name
 }
 
-// defaultEffort is the chosen harness's own effort, else the one it keeps for
-// the default model.
 func (m Model) defaultEffort() string {
 	d := m.opts.HarnessDefaults[m.chosenHarness()]
 	if d.Effort != "" {

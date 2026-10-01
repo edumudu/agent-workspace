@@ -1,6 +1,3 @@
-// Package tui is the Bubble Tea client. It renders only from the daemon's
-// state snapshot and diffs, and never runs commands or touches disk while
-// rendering.
 package tui
 
 import (
@@ -15,73 +12,59 @@ import (
 	"github.com/giovaniif/agent-workspace/internal/rpc"
 )
 
-// Focuser moves keyboard focus to the agent pane; *rpc.Client is one.
 type Focuser interface {
 	FocusMain(ctx context.Context) error
 }
 
-// Attender tells the daemon what the user did about a session's attention
-// state; *rpc.Client is one.
 type Attender interface {
 	MuteSession(ctx context.Context, id string, muted bool) error
 	FocusSession(ctx context.Context, id string) error
 }
 
-// Killer ends the process groups behind ports; *rpc.Client is one.
 type Killer interface {
 	KillPorts(ctx context.Context, pgids []int) ([]int, error)
 }
 
 type Options struct {
 	Theme Theme
-	// Now is the clock for the top bar; nil means time.Now.
-	Now func() time.Time
-	// Tick is the spinner and clock interval; zero turns the ticker off.
+	Now   func() time.Time
+	// why: zero turns the ticker off.
 	Tick  time.Duration
 	Focus Focuser
-	// Attend may be nil, which turns off m and the seen marker on enter.
+	// why: nil turns off m and the seen marker on enter.
 	Attend Attender
-	// Kill may be nil, which turns off K.
-	Kill Killer
-	// Defaults pre-fill the new-session dialog per harness.
+	// why: nil turns off K.
+	Kill     Killer
 	Defaults map[domain.Harness]Defaults
-	// Fallback sets when the dialog warns of low Claude quota and what it offers in Codex.
 	Fallback domain.FallbackConfig
-	// Calls may be nil, which turns off n and x.
+	// why: nil turns off n and x.
 	Calls Caller
-	// Switch applies model and effort switches; nil turns M and E off.
+	// why: nil turns M and E off.
 	Switch Switcher
-	// Review may be nil, which turns off r.
+	// why: nil turns off r.
 	Review Reviewer
-	// Disk may be nil, which turns off w.
+	// why: nil turns off w.
 	Disk Disker
-	// DialogPopup is the command n asks the daemon to run in a centred popup;
-	// with no command, or when the popup fails, n opens the dialog inline.
-	DialogPopup rpc.ClientPopupParams
-	// HarnessDefaults are what each harness starts with when the dialog sends
-	// no model or effort, read from its own config; the dialog names them.
+	// why: with no command, or when the popup fails, n opens the dialog inline.
+	DialogPopup     rpc.ClientPopupParams
 	HarnessDefaults map[domain.Harness]Defaults
-	// NewSessionOnly is the popup's own program: the dialog fills the screen
-	// from the start and the program ends when it closes.
+	// why: the popup's own program: the dialog fills the screen from the start and
+	// the program ends when it closes.
 	NewSessionOnly bool
-	// LaunchDir is where agentws was run; the dialog starts there.
-	LaunchDir string
+	LaunchDir      string
 }
 
-// Caller makes daemon calls such as session.new; *rpc.Client is one.
 type Caller interface {
 	Call(ctx context.Context, method string, params, out any) error
 }
 
-// StateMsg replaces the whole state, as a subscribe snapshot does.
 type StateMsg rpc.State
 
 type DiffMsg rpc.Diff
 
-// TickMsg advances the one ticker every running glyph shares.
 type TickMsg struct{}
 
-// TopBarMsg fills the top bar slots; an empty field hides its slot.
+// why: an empty field hides its slot.
 type TopBarMsg struct {
 	Claude string
 	Codex  string
@@ -129,8 +112,7 @@ type Model struct {
 	dk       diskState
 	paint    *painter
 	renaming *renamePrompt
-	// drafts is each session's open or queued review draft.
-	drafts map[string]domain.ReviewDraft
+	drafts   map[string]domain.ReviewDraft
 
 	queue     []domain.LaunchItem
 	launching *launchInput
@@ -138,9 +120,7 @@ type Model struct {
 
 	dialog  *dialog
 	dialogs int
-	// ending is the session an open end confirmation is about.
-	ending string
-	// pending is a session just started, selected once its diff arrives.
+	ending  string
 	pending string
 }
 
@@ -165,7 +145,6 @@ func New(opts Options) Model {
 	}
 }
 
-// Selected is the ID of the highlighted session, or "" when there is none.
 func (m Model) Selected() string { return m.selected }
 
 func (m Model) Init() tea.Cmd { return m.tick() }

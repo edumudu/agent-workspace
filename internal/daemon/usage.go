@@ -9,10 +9,8 @@ import (
 )
 
 const (
-	// usageTailBytes bounds how much of a rollout one read touches.
 	usageTailBytes = 512 << 10
-	// usageThrottle spaces out reads that tool-use hooks trigger; a turn can
-	// fire dozens of them a second.
+	// why: a turn can fire dozens of tool-use hooks a second.
 	usageThrottle = 2 * time.Second
 )
 
@@ -22,10 +20,6 @@ type usageJob struct {
 	lastStart time.Time
 }
 
-// requestUsage starts a worker that reads the session's rollout, unless one
-// is already running (then it reads once more when done) or the last start
-// was too recent and the request is not forced. It runs on the loop and never
-// blocks it.
 func (d *Daemon) requestUsage(s *state, sessionID, path string, force bool) {
 	job := s.usage[sessionID]
 	if job == nil {

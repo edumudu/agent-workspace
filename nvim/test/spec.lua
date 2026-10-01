@@ -1,4 +1,4 @@
--- Run with: nvim --clean -l nvim/test/spec.lua (AGENTWS_NVIM_PLUGIN = the nvim/ dir).
+-- why: usage: nvim --clean -l nvim/test/spec.lua (AGENTWS_NVIM_PLUGIN = the nvim/ dir).
 -- The specs use a fake agentws and a fake DiffviewOpen; nothing here reaches a
 -- real daemon, diffview or tmux.
 vim.opt.rtp:prepend(assert(vim.env.AGENTWS_NVIM_PLUGIN, "AGENTWS_NVIM_PLUGIN is not set"))

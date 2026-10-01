@@ -30,9 +30,7 @@ type statusInput struct {
 	} `json:"rate_limits"`
 }
 
-// ParseStatus reads the JSON Claude pipes into its status-line command.
-// Every key under rate_limits is a window, so per-model windows such as
-// seven_day_opus come through without a code change.
+// why: every key under rate_limits is a window, so per-model windows such as seven_day_opus come through without a code change.
 func ParseStatus(b []byte) (domain.StatusReport, error) {
 	var in statusInput
 	if err := json.Unmarshal(b, &in); err != nil {
@@ -58,9 +56,7 @@ func ParseStatus(b []byte) (domain.StatusReport, error) {
 
 func percent(p float64) int { return int(math.Round(p)) }
 
-// shortModel turns a model id into the name the sidebar shows, as Codex's
-// ids read: "claude-opus-5-5" is "opus-5.5". A date suffix and a context
-// tag such as "[1m]" are dropped. With no id it keeps the display name.
+// why: matches how Codex ids read: "claude-opus-5-5" is "opus-5.5"; a date suffix and a context tag such as "[1m]" are dropped.
 func shortModel(id, display string) string {
 	id, _, _ = strings.Cut(id, "[")
 	id = strings.TrimPrefix(id, "claude-")
@@ -84,8 +80,6 @@ func shortModel(id, display string) string {
 	return strings.Join(name, "-") + "-" + strings.Join(version, ".")
 }
 
-// windowLess orders the shared windows first, shortest first, then the rest
-// by name.
 func windowLess(a, b string) bool {
 	rank := func(w string) int {
 		switch w {
@@ -102,8 +96,6 @@ func windowLess(a, b string) bool {
 	return a < b
 }
 
-// Chain runs the user's own status-line command with the same input and
-// copies its output through unchanged. An empty command prints nothing.
 func Chain(ctx context.Context, command string, input []byte, stdout io.Writer) error {
 	if command == "" {
 		return nil
@@ -117,8 +109,6 @@ func Chain(ctx context.Context, command string, input []byte, stdout io.Writer) 
 const statusLineVerb = " statusline --harness claude"
 const chainFlag = " --chain "
 
-// StatusLineCommand is the statusLine command setup installs: the agentws
-// wrapper, carrying the user's original command, if any, as one quoted arg.
 func StatusLineCommand(bin, chain string) string {
 	cmd := shellQuote(bin) + statusLineVerb
 	if chain != "" {
@@ -127,8 +117,6 @@ func StatusLineCommand(bin, chain string) string {
 	return cmd
 }
 
-// ChainedStatusLine reports whether command is one StatusLineCommand built,
-// and the user command it chains to.
 func ChainedStatusLine(command string) (string, bool) {
 	i := strings.Index(command, statusLineVerb)
 	if i < 0 {
@@ -156,7 +144,7 @@ func unsafeInShell(r rune) bool {
 	return !safe
 }
 
-// unquote reverses shellQuote. It is not a general shell parser.
+// why: not a general shell parser; it only reverses shellQuote.
 func unquote(s string) string {
 	if len(s) < 2 || s[0] != '\'' || s[len(s)-1] != '\'' {
 		return s

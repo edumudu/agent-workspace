@@ -7,18 +7,14 @@ import (
 	"strings"
 )
 
-// ShellTarget is the shell a session gets for a directory. Key is unique per
-// session and worktree, so the same shell is found again.
 type ShellTarget struct {
-	Key string
-	Dir string
-	// Label names the worktree as the sidebar does, or "root".
+	Key   string
+	Dir   string
 	Label string
 }
 
-// ChooseShell picks the directory of a session's shell: the wanted worktree,
-// else the session's first worktree by ID, else cwd. A wanted worktree the
-// session does not own is refused rather than replaced by another.
+// why: a wanted worktree the session does not own is refused rather than
+// replaced by another.
 func ChooseShell(session string, worktrees []Worktree, wanted, cwd string) (ShellTarget, bool) {
 	var owned []Worktree
 	for _, w := range worktrees {
@@ -38,16 +34,13 @@ func ChooseShell(session string, worktrees []Worktree, wanted, cwd string) (Shel
 	return ShellTarget{Key: session + "/root", Dir: cwd, Label: "root"}, true
 }
 
-// NvimOpenExpr is the expression a running nvim evaluates to edit path at
-// line. The path goes in as a quoted string through fnameescape, so no
+// why: the path goes in as a quoted string through fnameescape, so no
 // character in it is read as a command.
 func NvimOpenExpr(path string, line int) string {
 	line = max(line, 1)
 	return fmt.Sprintf("execute('edit +%d ' . fnameescape('%s'))", line, strings.ReplaceAll(path, "'", "''"))
 }
 
-// ResolveCommentFile finds which of the session's worktrees holds the
-// absolute file, the innermost when they nest, and the file's path in it.
 func ResolveCommentFile(session string, worktrees []Worktree, file string) (Worktree, string, bool) {
 	if !filepath.IsAbs(file) {
 		return Worktree{}, "", false
@@ -70,8 +63,6 @@ func ResolveCommentFile(session string, worktrees []Worktree, file string) (Work
 	return best, rel, best.ID != ""
 }
 
-// NormalizeLines orders a comment's first and last line. An end of zero
-// means the comment is on one line.
 func NormalizeLines(start, end int) (int, int, bool) {
 	if end == 0 {
 		end = start

@@ -6,8 +6,8 @@ import (
 	"time"
 )
 
-// CleanupGrace is how long after its last activity a worktree is left alone,
-// so one an agent just created from the default branch is not taken as merged.
+// why: a worktree an agent just created from the default branch must not be
+// taken as merged.
 const CleanupGrace = 4 * time.Hour
 
 type CleanupAction string
@@ -18,26 +18,17 @@ const (
 	CleanupKeep          CleanupAction = "keep"
 )
 
-// CleanupFacts is what PlanCleanup needs beyond the Worktree itself, whose PR
-// says whether GitHub merged it.
 type CleanupFacts struct {
-	// InDefault: HEAD is reachable from origin/<default>.
-	InDefault bool
-	// OnDefault: the worktree has the default branch checked out.
-	OnDefault   bool
-	Uncommitted int
-	// Holders names the processes whose cwd is inside the worktree.
+	InDefault    bool
+	OnDefault    bool
+	Uncommitted  int
 	Holders      []string
 	SessionLive  bool
 	LastActivity time.Time
-	// Unknown is why the facts could not be gathered; a non-empty value keeps
-	// the worktree.
+	// why: a non-empty Unknown keeps the worktree.
 	Unknown string
 }
 
-// CleanupDecision.BackupBranch is the branch to create at HEAD before the
-// worktree goes, set only for a detached HEAD with commits not in the
-// default branch.
 type CleanupDecision struct {
 	Worktree     Worktree
 	Action       CleanupAction
@@ -45,9 +36,9 @@ type CleanupDecision struct {
 	BackupBranch string
 }
 
-// PlanCleanup decides one worktree. Anything in use, live or recent is kept
-// before merge state is even looked at; a merged but dirty worktree, or a
-// detached one with commits of its own, is backed up and left for the user.
+// why: anything in use, live or recent is kept before merge state is even
+// looked at; a merged but dirty worktree, or a detached one with commits of
+// its own, is backed up and left for the user.
 func PlanCleanup(w Worktree, f CleanupFacts, now time.Time) CleanupDecision {
 	d := CleanupDecision{Worktree: w, Action: CleanupKeep}
 	prMerged := w.PR != nil && w.PR.State == PRMerged

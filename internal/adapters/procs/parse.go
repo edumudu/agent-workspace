@@ -8,9 +8,7 @@ import (
 	"github.com/giovaniif/agent-workspace/internal/domain"
 )
 
-// parseNetstat reads `netstat -anv -p tcp` on macOS: one row per socket, with
-// the state in column 6, the local address as `host.port` in column 4 and
-// `name:pid` in column 11.
+// why: macOS netstat puts the state in column 6, the local address as `host.port` in column 4 and `name:pid` in column 11.
 func parseNetstat(out string) []domain.Listener {
 	var listeners []domain.Listener
 	for _, line := range strings.Split(out, "\n") {
@@ -47,9 +45,6 @@ type details struct {
 	cwd     string
 }
 
-// parseDetails reads `lsof -a -d cwd -F pgcn`: a `p` line starts a process,
-// `g` and `c` describe it, and `n` is its cwd. A process whose pid does not
-// parse is skipped with everything under it.
 func parseDetails(out string) map[int]details {
 	found := map[int]details{}
 	pid, have := 0, false
@@ -85,8 +80,6 @@ func parseDetails(out string) map[int]details {
 	return found
 }
 
-// merge adds lsof's facts to netstat's listeners. A process lsof could not
-// read keeps netstat's command name and has no group or cwd.
 func merge(listeners []domain.Listener, found map[int]details) []domain.Listener {
 	for i, l := range listeners {
 		d, ok := found[l.PID]

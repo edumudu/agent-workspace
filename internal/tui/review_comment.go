@@ -11,8 +11,6 @@ import (
 	"github.com/giovaniif/agent-workspace/internal/rpc"
 )
 
-// draftMsg is the daemon's answer to a comment or a send; sent says it came
-// from a send.
 type draftMsg struct {
 	draft domain.ReviewDraft
 	sent  bool
@@ -26,7 +24,6 @@ func (r reviewState) rows(f reviewFile) []diffRow {
 	return f.unified
 }
 
-// resetLine puts the cursor on the first code line of the file.
 func (m *Model) resetLine() {
 	m.rv.line, m.rv.marking = 0, false
 	if f, ok := m.rv.current(); ok && len(m.rv.rows(f)) > 1 {
@@ -44,7 +41,6 @@ func (m *Model) clampLine() {
 	m.follow()
 }
 
-// moveLine moves the cursor and scrolls just enough to keep it in view.
 func (m *Model) moveLine(delta int) {
 	m.rv.line += delta
 	m.clampLine()
@@ -61,7 +57,6 @@ func (m *Model) follow() {
 	m.rv.scroll = max(m.rv.scroll, 0)
 }
 
-// selected is the cursor's row range: from the V mark when marking.
 func (r reviewState) selected() (int, int) {
 	if !r.marking {
 		return r.line, r.line
@@ -69,8 +64,6 @@ func (r reviewState) selected() (int, int) {
 	return min(r.mark, r.line), max(r.mark, r.line)
 }
 
-// selectedLines are the diff lines in the selected rows, each once and in
-// diff order, whichever view is showing.
 func (r reviewState) selectedLines(f reviewFile) []domain.DiffLine {
 	rows := r.rows(f)
 	from, to := r.selected()
@@ -182,8 +175,6 @@ func (m Model) cursorHunk() (int, bool) {
 	return rows[m.rv.line].hunk, true
 }
 
-// applyHunk stages or reverts the cursor's hunk, then fetches the review
-// again so it shows what is left.
 func (m *Model) applyHunk(a domain.HunkAction) tea.Cmd {
 	h, ok := m.cursorHunk()
 	if !ok {

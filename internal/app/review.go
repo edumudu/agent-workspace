@@ -7,23 +7,18 @@ import (
 	"github.com/giovaniif/agent-workspace/internal/domain"
 )
 
-// ReviewGit is the git a review needs. A working tree hash covers tracked
-// and untracked files, not ignored ones, and never touches the real index.
+// why: the working tree hash covers tracked and untracked files and never
+// touches the real index.
 type ReviewGit interface {
 	WorkingTree(ctx context.Context, dir string) (string, error)
-	// PointRef makes ref a commit of tree.
 	PointRef(ctx context.Context, dir, ref, tree string) error
 	TurnRefs(ctx context.Context, dir string) ([]string, error)
 	DeleteRefs(ctx context.Context, dir string, refs []string) error
 	Resolve(ctx context.Context, dir, rev string) (string, error)
-	// MergeBase is the merge base of rev and HEAD.
 	MergeBase(ctx context.Context, dir, rev string) (string, error)
-	// Diff is `git diff` from the commit from to tree, with renames found.
 	Diff(ctx context.Context, dir, from, tree string) (string, error)
 }
 
-// SnapshotTurn records dir's working tree as session's next turn and drops
-// its older turns there, returning the new ref.
 func SnapshotTurn(ctx context.Context, g ReviewGit, session, dir string) (string, error) {
 	tree, err := g.WorkingTree(ctx, dir)
 	if err != nil {
@@ -41,8 +36,8 @@ func SnapshotTurn(ctx context.Context, g ReviewGit, session, dir string) (string
 	return ref, g.DeleteRefs(ctx, dir, domain.OlderTurns(refs, session, dir, n+1))
 }
 
-// DropTurns deletes every turn ref of worktree, from repoDir: any checkout
-// of the same repo, since the worktree itself may be gone.
+// why: repoDir is any checkout of the same repo, since the worktree itself
+// may be gone.
 func DropTurns(ctx context.Context, g ReviewGit, repoDir, worktree string) error {
 	refs, err := g.TurnRefs(ctx, repoDir)
 	if err != nil {
@@ -57,13 +52,8 @@ type ReviewTarget struct {
 	DefaultBranch string
 }
 
-// diffCacheSize bounds the parsed diffs a Reviewer keeps: a few scopes for
-// each of a few dozen worktrees.
 const diffCacheSize = 128
 
-// Reviewer builds reviews and caches parsed diffs by base commit and working
-// tree hash, so reopening an unchanged review runs no `git diff`. It is safe
-// for concurrent use.
 type Reviewer struct {
 	git   ReviewGit
 	mu    sync.Mutex
@@ -75,8 +65,6 @@ func NewReviewer(g ReviewGit) *Reviewer {
 	return &Reviewer{git: g, cache: map[string][]domain.FileDiff{}}
 }
 
-// Review builds each target's diff for scope, at most refreshParallelism at
-// once, in target order.
 func (r *Reviewer) Review(ctx context.Context, scope domain.ReviewScope, targets []ReviewTarget) []domain.WorktreeReview {
 	out := make([]domain.WorktreeReview, len(targets))
 	var wg sync.WaitGroup

@@ -12,8 +12,6 @@ import (
 
 var _ app.TitleResolver = Titles{}
 
-// Titles resolves the title of a task that came from a PR link, with
-// `gh pr view`. Bin is "gh" when empty.
 type Titles struct {
 	Bin string
 }

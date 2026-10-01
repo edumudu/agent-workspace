@@ -17,9 +17,7 @@ var (
 	_ app.CleanupAudit = (*AuditLog)(nil)
 )
 
-// Trash renames directories into Dir, which must be on the same volume for
-// the move to be instant, and deletes them in the background with at most
-// parallelism deletions at once.
+// why: Dir must be on the same volume as the trashed paths for the move to be instant.
 type Trash struct {
 	dir  string
 	sem  chan struct{}
@@ -31,7 +29,6 @@ func NewTrash(dir string, parallelism int) *Trash {
 	return &Trash{dir: dir, sem: make(chan struct{}, parallelism)}
 }
 
-// Move fails, leaving path in place, when it is missing or on another volume.
 func (t *Trash) Move(path string) error {
 	if err := os.MkdirAll(t.dir, 0o700); err != nil {
 		return err
@@ -44,7 +41,6 @@ func (t *Trash) Move(path string) error {
 	return nil
 }
 
-// Purge deletes whatever an earlier run left in the trash.
 func (t *Trash) Purge() {
 	entries, err := os.ReadDir(t.dir)
 	if err != nil {
@@ -55,7 +51,6 @@ func (t *Trash) Purge() {
 	}
 }
 
-// Wait blocks until every deletion started so far has finished.
 func (t *Trash) Wait() { t.wg.Wait() }
 
 func (t *Trash) delete(path string) {
@@ -68,7 +63,6 @@ func (t *Trash) delete(path string) {
 	}()
 }
 
-// AuditLog appends each record to Path as one JSON line.
 type AuditLog struct {
 	Path string
 	mu   sync.Mutex

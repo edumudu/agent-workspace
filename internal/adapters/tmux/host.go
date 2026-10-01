@@ -1,6 +1,3 @@
-// Package tmux is the only place that runs the tmux CLI. It drives a
-// dedicated server (`tmux -L <socket>`) with its own config, so the user's
-// default server and ~/.tmux.conf are never touched.
 package tmux
 
 import (
@@ -23,14 +20,11 @@ const (
 	placeholder   = "tail -f /dev/null"
 	emptyState    = `printf 'No session in view.\n\nPress n to start one.\n'; exec tail -f /dev/null`
 
-	// FocusSidebarKey moves focus from an agent pane back to the sidebar. It is
-	// a root-table key on the agentws server only; Claude Code and Codex leave
-	// ctrl+backslash unbound.
+	// why: Claude Code and Codex leave ctrl+backslash unbound.
 	FocusSidebarKey = `C-\`
 )
 
-// titleFormat draws a pane's @agentws_title on its top border; q/h keeps a # in
-// the title from being read as a style or a format.
+// why: q/h keeps a # in the title from being read as a style or a format.
 const titleFormat = "#{?@agentws_title, #{q/h:@agentws_title} ,}"
 
 const configContents = `set -g status off
@@ -57,8 +51,7 @@ type Host struct {
 
 	configOnce sync.Once
 	configErr  error
-	// titlesOn is set once the running server has the title border options,
-	// which a server started with an older config lacks.
+	// why: a server started with an older config lacks the title border options.
 	titlesMu  sync.Mutex
 	titlesOn  bool
 	bufferSeq atomic.Uint64
@@ -72,7 +65,6 @@ func New(cfg Config) *Host {
 	return &Host{socket: socket, configPath: cfg.ConfigPath}
 }
 
-// Close stops the dedicated server and every pane on it.
 func (h *Host) Close(ctx context.Context) error {
 	_, err := h.run(ctx, "", "kill-server")
 	if isServerGone(err) {
@@ -81,7 +73,6 @@ func (h *Host) Close(ctx context.Context) error {
 	return err
 }
 
-// ShowOption returns a global option of the dedicated server.
 func (h *Host) ShowOption(ctx context.Context, name string) (string, error) {
 	out, err := h.run(ctx, "", "show-options", "-gv", name)
 	return strings.TrimSpace(out), err

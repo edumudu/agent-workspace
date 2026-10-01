@@ -13,12 +13,10 @@ import (
 
 const sendDraftTimeout = 5 * time.Second
 
-// WithHunks enables review.hunk, which stages or reverts one hunk.
 func WithHunks(h app.HunkGit) Option {
 	return func(d *Daemon) { d.rv.hunks = h }
 }
 
-// reviewTarget is the first worktree session reviews that match accepts.
 func (s *state) reviewTarget(session string, match func(domain.Worktree) bool) (domain.Worktree, bool) {
 	for _, t := range s.reviewTargets(session) {
 		if match(t.Worktree) {
@@ -59,8 +57,6 @@ func (d *Daemon) sendReview(req rpc.Request) (*rpc.Response, bool) {
 	return resp, ok
 }
 
-// dispatchDraft sends session's queued draft if it is between tools,
-// archiving it as sent; the paste itself runs on a worker.
 func (s *state) dispatchDraft(session domain.Session) (domain.ReviewDraft, bool) {
 	draft, ok := s.drafts[session.ID]
 	if !ok || s.sendDraft == nil || s.pasting[session.ID] {
@@ -79,8 +75,7 @@ func (s *state) dispatchDraft(session domain.Session) (domain.ReviewDraft, bool)
 	return sent, true
 }
 
-// sendDraft pastes the prompt on a worker, taking turns with switches for
-// the pane. If the session started a turn meanwhile, or the paste fails, the
+// why: if the session started a turn meanwhile, or the paste fails, the
 // draft goes back to the queue.
 func (d *Daemon) sendDraft(session domain.Session, draft domain.ReviewDraft, prompt string) {
 	go func() {
@@ -104,8 +99,6 @@ func (d *Daemon) sendDraft(session domain.Session, draft domain.ReviewDraft, pro
 	}()
 }
 
-// pasted records draft as sent, unless its prompt was already seen and the
-// linked copy is on its way to the store.
 func (s *state) pasted(draft domain.ReviewDraft) {
 	delete(s.pasting, draft.Session)
 	if current, ok := s.awaiting[draft.Session]; ok && current.ID == draft.ID {
@@ -116,8 +109,6 @@ func (s *state) pasted(draft domain.ReviewDraft) {
 	}
 }
 
-// requeueDraft puts back a draft that was not pasted, ahead of any comments
-// added since.
 func (s *state) requeueDraft(draft domain.ReviewDraft) {
 	delete(s.pasting, draft.Session)
 	if s.awaiting[draft.Session].ID == draft.ID {

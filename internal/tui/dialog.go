@@ -14,7 +14,7 @@ import (
 	"github.com/giovaniif/agent-workspace/internal/rpc"
 )
 
-// startTimeout covers the setup recipe, which may install dependencies.
+// why: covers the setup recipe, which may install dependencies.
 const startTimeout = 15 * time.Minute
 
 const callTimeout = 5 * time.Second
@@ -35,26 +35,23 @@ var (
 	effortChoices  = []string{"", "low", "medium", "high"}
 )
 
-// ws, harness and effort index roots, harnessChoices and effortChoices.
 type dialog struct {
 	field    field
 	workItem string
 	model    string
 	spaces   []domain.Workspace
-	// last is the last used workspace root, named on its facts line.
-	last    string
-	ws      int
-	harness int
-	effort  int
-	// efforts is effortChoices plus any mapped effort a fallback brought that the picker lacks.
+	last     string
+	ws       int
+	harness  int
+	effort   int
+	// why: holds any mapped effort a fallback brought that the picker lacks.
 	efforts []string
-	// fallback remembers the Claude start a fallback replaced, so going back restores it.
+	// why: remembers the Claude start a fallback replaced, so going back restores it.
 	fallback *fallbackTrace
 	err      string
 	busy     bool
-	// started is set once the session exists, so only esc is left to press.
-	started bool
-	// seq tells this dialog's start reply from one sent by a dialog closed earlier.
+	started  bool
+	// why: tells this dialog's start reply from one sent by a dialog closed earlier.
 	seq      int
 	defaults map[domain.Harness]Defaults
 }
@@ -108,8 +105,8 @@ func effortIndex(choices []string, effort string) int {
 	return max(slices.Index(choices, effort), 0)
 }
 
-// cycleHarness moves to the next harness and carries the model and effort over
-// to its defaults, unless the user changed them from the previous defaults.
+// why: model and effort carry over only if the user left them at the previous
+// harness's defaults.
 func (d *dialog) cycleHarness(delta int) {
 	prev := d.defaults[domain.Harness(harnessChoices[d.harness])]
 	d.harness = cycle(d.harness, delta, len(harnessChoices))
@@ -132,9 +129,8 @@ func (d *dialog) cycleHarness(delta int) {
 	}
 }
 
-// takeFallback moves the dialog to the Codex start the offer proposes; a field
-// the mapping leaves empty gets Codex's own default. An effort the picker does
-// not list is added to it so it survives to submission.
+// why: an effort the picker does not list is added to it so it survives to
+// submission.
 func (d *dialog) takeFallback(req domain.StartRequest) {
 	trace := &fallbackTrace{fromModel: d.model, fromEffort: d.effort}
 	d.harness = slices.Index(harnessChoices, string(req.Harness))
@@ -163,8 +159,6 @@ func (d *dialog) text() *string {
 	return nil
 }
 
-// models is the default, the harness's switch choices, then the current model
-// when a default or a fallback brought one the list lacks.
 func (d *dialog) models() []string {
 	out := append([]string{""}, domain.SwitchChoices(domain.Harness(harnessChoices[d.harness]), domain.SwitchModel)...)
 	if !slices.Contains(out, d.model) {
@@ -187,8 +181,7 @@ func (d *dialog) change(delta int) {
 	}
 }
 
-// own gives m a copy of the dialog, so an earlier Model value never
-// changes with it.
+// why: a copy, so an earlier Model value never changes with it.
 func (m *Model) own() *dialog {
 	d := *m.dialog
 	m.dialog = &d
@@ -299,14 +292,12 @@ func (m Model) call(method string, params any) tea.Cmd {
 	}
 }
 
-// showNew puts a just-started session in view, which swaps its pane into
-// the main slot.
 func (m Model) showNew(id string) tea.Cmd {
 	return m.call(rpc.MethodSessionFocus, rpc.SessionFocusParams{ID: id})
 }
 
-// showNewAndQuit ends the popup's program only once the new session is in
-// view, so closing the popup never races the focus call.
+// why: ends the popup's program only once the new session is in view, so
+// closing the popup never races the focus call.
 func (m Model) showNewAndQuit(id string) tea.Cmd {
 	show := m.showNew(id)
 	return func() tea.Msg {
@@ -319,14 +310,12 @@ func (m Model) showNewAndQuit(id string) tea.Cmd {
 	}
 }
 
-// showFailedMsg keeps the popup open to say the session started but could
-// not be put in view, instead of closing on an error no one sees.
+// why: keeps the popup open instead of closing on an error no one sees.
 type showFailedMsg struct{ err error }
 
 type popupFailedMsg struct{}
 
-// openPopup asks the daemon to run the dialog in a popup; if it cannot, the
-// dialog opens inline instead.
+// why: if the daemon cannot run the popup, the dialog opens inline instead.
 func (m Model) openPopup() tea.Cmd {
 	c, p := m.opts.Calls, m.opts.DialogPopup
 	return func() tea.Msg {
@@ -378,8 +367,6 @@ func (m Model) fallbackOffer() (domain.FallbackOffer, bool) {
 	})
 }
 
-// startIn selects the registered workspace that holds dir, or adds dir as a
-// new one the daemon registers when the session is created.
 func (d *dialog) startIn(dir string) {
 	best := -1
 	for i, w := range d.spaces {

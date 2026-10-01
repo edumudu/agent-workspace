@@ -9,14 +9,12 @@ import (
 
 const slotWatchEvery = 2 * time.Second
 
-// WithSlotWatch sets how often the daemon checks that the main slot still has
-// a pane. Zero, the default, turns the check off.
 func WithSlotWatch(every time.Duration) Option {
 	return func(d *Daemon) { d.clients.watchEvery = every }
 }
 
-// watchMainSlot covers an agent that exits by itself: tmux drops its pane, so
-// the slot is gone without session.end. It is a worker, never the event loop.
+// why: covers an agent that exits by itself: tmux drops its pane, so the
+// slot is gone without session.end.
 func (d *Daemon) watchMainSlot(ctx context.Context) {
 	tick, stop := ticker(d.clients.watchEvery)
 	defer stop()

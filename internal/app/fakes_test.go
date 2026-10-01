@@ -54,7 +54,6 @@ type fakeWorktrees struct {
 	log   *[]string
 }
 
-// AddWorktree reports paths under /real, as git does once symlinks resolve.
 func (f *fakeWorktrees) AddWorktree(_ context.Context, repo, path, branch, base string) (app.AddedWorktree, error) {
 	if f.log != nil {
 		*f.log = append(*f.log, "add "+path)
@@ -222,8 +221,6 @@ func (h *typingHost) SendKeys(_ context.Context, pane app.PaneID, keys ...string
 	return nil
 }
 
-// fakeReviewGit keeps each dir's working tree hash, refs (ref → tree) and
-// canned diffs keyed by "<from>..<tree>".
 type fakeReviewGit struct {
 	mu         sync.Mutex
 	trees      map[string]string
@@ -319,7 +316,6 @@ type titleFake struct {
 
 func (f titleFake) Title(context.Context, domain.Task) (string, error) { return f.title, f.err }
 
-// fakeHunkGit records each patch it is asked to stage or revert.
 type fakeHunkGit struct {
 	staged, reverted []string
 }
@@ -334,8 +330,6 @@ func (g *fakeHunkGit) Revert(_ context.Context, dir, patch string) error {
 	return nil
 }
 
-// codexPickerHost plays Codex 0.159's `/model` flow: a model popup, then a
-// reasoning level popup for the chosen model, each moved with Up and Down.
 type codexPickerHost struct {
 	app.TerminalHost
 	models, efforts []string
@@ -346,11 +340,9 @@ type codexPickerHost struct {
 	chosen          []string
 	done            [][]string
 	pending         string
-	// lag is how many captures after each key press still show the screen
-	// from before it, as a slow redraw would.
-	lag, stale int
-	shown      string
-	captureErr error
+	lag, stale      int
+	shown           string
+	captureErr      error
 }
 
 func (h *codexPickerHost) SendText(_ context.Context, _ app.PaneID, text string, _ bool) error {

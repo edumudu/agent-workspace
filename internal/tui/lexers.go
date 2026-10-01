@@ -8,7 +8,7 @@ import (
 	. "github.com/alecthomas/chroma/v2" //nolint:staticcheck // why: the Go rules below are chroma's, kept close to their source.
 )
 
-// The syntax/*.xml lexers are copied from chroma (MIT, see syntax/COPYING).
+// why: the syntax/*.xml lexers are copied from chroma (MIT, see syntax/COPYING).
 // chroma's own lexers package builds all ~280 lexers in its init, which
 // would cost every `agentws hook` run several milliseconds, so the review
 // builds this smaller set on first use instead.

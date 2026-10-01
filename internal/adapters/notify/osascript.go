@@ -1,5 +1,3 @@
-// Package notify shows macOS banners through osascript and tells whether a
-// terminal app is in front.
 package notify
 
 import (
@@ -60,16 +58,12 @@ var terminalApps = map[string]bool{
 	"kitty": true, "alacritty": true, "hyper": true, "warp": true,
 }
 
-// TerminalFrontmost is false when the query fails, so a banner is never
-// suppressed on a guess.
+// why: false when the query fails, so a banner is never suppressed on a guess.
 func (o Osascript) TerminalFrontmost(ctx context.Context) bool {
 	out, err := o.Run(ctx, "osascript", "-e", frontmostScript)
 	return err == nil && terminalApps[strings.ToLower(strings.TrimSpace(string(out)))]
 }
 
-// LoadSounds reads the sound name per event state from the file's "sounds"
-// object, such as {"sounds":{"permission":"Glass"}}. A missing file means no
-// sounds. Names for states that never notify are dropped.
 func LoadSounds(path string) (map[domain.AgentState]string, error) {
 	raw, err := os.ReadFile(path)
 	if errors.Is(err, os.ErrNotExist) {

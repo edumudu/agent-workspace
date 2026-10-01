@@ -47,7 +47,6 @@ func put(tb testing.TB, path, body string) {
 	}
 }
 
-// reviewRepo is a clone of a bare origin whose main has a.txt and b.txt.
 func reviewRepo(tb testing.TB) string {
 	tb.Helper()
 	if _, err := exec.LookPath("git"); err != nil {
@@ -164,9 +163,7 @@ func TestReviewTurnRefsStayOutOfBranchesAndGoWithTheWorktree(t *testing.T) {
 	}
 }
 
-// A same-size edit in the same second as the commit leaves the index entry's
-// stat unchanged at git's one-second granularity; only git's racy-entry check
-// catches it, and that check needs the index file's own mtime.
+// bug: a same-size edit in the same second as the commit leaves the index entry's stat unchanged at git's one-second granularity; only git's racy-entry check catches it, and that check needs the index file's own mtime.
 func TestReviewSeesASameSizeEditRightAfterACommit(t *testing.T) {
 	repo := reviewRepo(t)
 	put(t, filepath.Join(repo, "a.txt"), "x\n")
@@ -191,8 +188,6 @@ func TestReviewBlobIsTheFullHashWhateverCoreAbbrev(t *testing.T) {
 	}
 }
 
-// BenchmarkReviewOpen50Files builds a cold review (no cache) of a 50-file,
-// 3,000-line diff and fails above the 300 ms budget.
 func BenchmarkReviewOpen50Files(b *testing.B) {
 	repo := reviewRepo(b)
 	const files, lines = 50, 60

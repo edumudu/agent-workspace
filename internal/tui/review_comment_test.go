@@ -11,8 +11,6 @@ import (
 	"github.com/giovaniif/agent-workspace/internal/rpc"
 )
 
-// asked is what the TUI sends for c: the worktree by ID, the lines, the
-// quoted code joined, the note.
 func asked(wt string, c domain.ReviewComment) rpc.CommentParams {
 	return rpc.CommentParams{Session: "s01", Worktree: wt, Path: c.Path, StartLine: c.Start, EndLine: c.End,
 		Code: strings.Join(c.Code, "\n"), Body: c.Body, Removed: c.Removed}

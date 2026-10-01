@@ -36,7 +36,7 @@ type prJSON struct {
 	Blockers          []string      `json:"blockers"`
 }
 
-// prReport is the documented output of `agentws pr --json`; see ADR 0024.
+// why: this is the documented output of `agentws pr --json`; see ADR 0024.
 type prReport struct {
 	Session string   `json:"session"`
 	Name    string   `json:"name"`
@@ -99,8 +99,8 @@ func prCommand(session string, asJSON bool, stdout io.Writer) error {
 	return nil
 }
 
-// prReportFor resolves arg as a session ID, else as a session name that
-// exactly one session has, and reports the PRs on that session's worktrees.
+// why: arg is a session ID, else a session name only when exactly one session
+// has it.
 func prReportFor(st rpc.State, arg string) (prReport, error) {
 	tasks := map[string]domain.Task{}
 	for _, t := range st.Tasks {

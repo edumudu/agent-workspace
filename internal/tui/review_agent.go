@@ -9,12 +9,8 @@ import (
 	"github.com/giovaniif/agent-workspace/internal/domain"
 )
 
-// agentColumnFrom is the narrowest review that has room for the agent
-// column between the session rail and the diff, as in the mockup.
 const agentColumnFrom = 120
 
-// agentColumnWidth is the agent column's width, or 0 when the review is too
-// narrow for it.
 func (m Model) agentColumnWidth() int {
 	if m.width < agentColumnFrom {
 		return 0
@@ -22,9 +18,6 @@ func (m Model) agentColumnWidth() int {
 	return min(max(m.width/4, 30), 44)
 }
 
-// agentColumn is height rows about the reviewed session: its name and state,
-// its recent actions oldest first, its last message, and at the bottom the
-// draft review waiting to be sent.
 func (m Model) agentColumn(width, height int) []string {
 	t := m.opts.Theme
 	p := m.paint
@@ -60,7 +53,6 @@ func (m Model) agentColumn(width, height int) []string {
 	return append(lines[:max(height-len(box), 0)], box...)
 }
 
-// draftBox counts the comments of the session's draft that wait to be sent.
 func (m Model) draftBox(width int) []string {
 	t := m.opts.Theme
 	p := m.paint
@@ -103,7 +95,6 @@ func agentStateText(st domain.AgentState) string {
 	return "idle"
 }
 
-// wrap breaks s into lines of at most width cells at spaces.
 func wrap(s string, width int) []string {
 	var out []string
 	for _, para := range strings.Split(s, "\n") {

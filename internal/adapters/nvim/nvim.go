@@ -1,4 +1,3 @@
-// Package nvim tells a running nvim what to do through its --listen socket.
 package nvim
 
 import (

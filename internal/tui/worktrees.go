@@ -14,8 +14,6 @@ import (
 	"github.com/giovaniif/agent-workspace/internal/rpc"
 )
 
-// Disker feeds the worktrees and disk view and acts on its rows;
-// *rpc.Client is one.
 type Disker interface {
 	DiskView(ctx context.Context) (rpc.DiskView, error)
 	CleanupWorktree(ctx context.Context, path string, backup bool) (rpc.CleanupItem, error)
@@ -24,10 +22,9 @@ type Disker interface {
 }
 
 const (
-	diskCallTimeout = 15 * time.Second
-	// cleanupCallTimeout covers a backup of a large worktree.
+	diskCallTimeout    = 15 * time.Second
 	cleanupCallTimeout = 5 * time.Minute
-	// A tick is 200 ms: refetch every 2 s while a size is pending, 10 s otherwise.
+	// why: a tick is 200 ms: refetch every 2 s while a size is pending, 10 s otherwise.
 	pendingRefetchTicks = 10
 	idleRefetchTicks    = 50
 	recentShown         = 5
@@ -154,7 +151,6 @@ func (m *Model) tickDisk() tea.Cmd {
 
 func depsPending(s *rpc.DepsStore) bool { return s != nil && s.Size == domain.SizePending }
 
-// diskRows is the daemon's rows for the worktrees this client still knows.
 func (m Model) diskRows() []domain.DiskRow {
 	rows := make([]domain.DiskRow, 0, len(m.dk.view.Rows))
 	for _, r := range m.dk.view.Rows {
@@ -336,7 +332,6 @@ func formatBytes(n int64) string {
 	return ""
 }
 
-// sizeText is a size, or … while it is still being measured.
 func sizeText(n int64) string {
 	if n == domain.SizePending {
 		return "…"
@@ -354,7 +349,6 @@ func everyText(d time.Duration) string {
 	return d.String()
 }
 
-// totalText marks a total that is missing sizes still being measured.
 func totalText(n int64, pending int) string {
 	if pending > 0 {
 		return formatBytes(n) + "+"
@@ -408,7 +402,6 @@ func rightCell(s string, width int) string {
 	return strings.Repeat(" ", max(width-ansi.StringWidth(s), 0)) + s
 }
 
-// sessionNumber is the owner's sidebar number and harness, "1 claude".
 func (m Model) sessionNumber(id string) string {
 	if i := m.index(id); i >= 0 {
 		return fmt.Sprintf("%d %s", m.entries[i].num, m.entries[i].session.Harness)

@@ -1,6 +1,3 @@
-// Package claude is the Claude Code harness adapter: how a session is
-// launched, how its hooks and status line map to domain events, and the
-// merge of agentws entries into Claude's settings.json.
 package claude
 
 import (
@@ -8,7 +5,6 @@ import (
 	"github.com/giovaniif/agent-workspace/internal/domain"
 )
 
-// Adapter launches Binary, or `claude` from PATH when it is empty.
 type Adapter struct {
 	Binary string
 }

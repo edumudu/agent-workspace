@@ -1,5 +1,5 @@
-# Review comments on 2 files are sent, and the agent receives exactly the
-# documented prompt (internal/domain/testdata/review_prompt.golden).
+# why: the agent must receive exactly the documented prompt
+# (internal/domain/testdata/review_prompt.golden).
 repo api
 exec agentws workspace add api
 exec agentws new --workspace api 'write two files'

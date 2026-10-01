@@ -8,7 +8,6 @@ import (
 	"github.com/giovaniif/agent-workspace/internal/app"
 )
 
-// gatedSizer answers from sizes, but only once open is closed.
 type gatedSizer struct {
 	open  chan struct{}
 	sizes map[string]int64

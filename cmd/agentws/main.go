@@ -10,7 +10,7 @@ import (
 	"github.com/giovaniif/agent-workspace/internal/rpc"
 )
 
-// Set at build time with -ldflags "-X main.version=... -X main.commit=...".
+// why: set at build time with -ldflags "-X main.version=... -X main.commit=...".
 var (
 	version = "dev"
 	commit  = ""

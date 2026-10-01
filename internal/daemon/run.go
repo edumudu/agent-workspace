@@ -25,8 +25,6 @@ import (
 	"github.com/giovaniif/agent-workspace/internal/rpc"
 )
 
-// Run is the whole daemon: it takes the lock in home, restores state from
-// home/state.db, and serves rpc.SocketPath(home) until ctx is done.
 func Run(ctx context.Context, home string) (err error) {
 	lock, err := Acquire(home)
 	if err != nil {
@@ -120,8 +118,8 @@ func Run(ctx context.Context, home string) (err error) {
 	return d.Serve(ctx, ln)
 }
 
-// realDir creates dir and resolves its symlinks, so planned worktree paths
-// compare equal to the ones git reports.
+// why: resolved symlinks make planned worktree paths compare equal to the
+// ones git reports.
 func realDir(dir string) (string, error) {
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return "", err
@@ -129,16 +127,10 @@ func realDir(dir string) (string, error) {
 	return filepath.EvalSymlinks(dir)
 }
 
-// testHooks are what the e2e suite sets through the environment so it can
-// run the real daemon without waiting on wall-clock time. Unset, they change
-// nothing.
 type testHooks struct {
-	// clockSkew moves the cleanup clock, from AGENTWS_TEST_CLOCK (e.g. "+2h"),
-	// so fresh worktrees are past domain.CleanupGrace.
 	clockSkew time.Duration
-	// prPoll replaces DefaultPRPoll, from AGENTWS_TEST_PR_POLL. The worktree
-	// poll stays: a scan between `git worktree add` and its PostToolUse hook
-	// would see the worktree before the claim that attributes it.
+	// why: the worktree poll stays: a scan between `git worktree add` and its
+	// PostToolUse hook would see the worktree before the claim that attributes it.
 	prPoll time.Duration
 }
 

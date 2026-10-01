@@ -45,8 +45,6 @@ func runDebugSession(args []string, stdout, stderr io.Writer) int {
 	return 0
 }
 
-// streamSession prints the session's current state, then with follow every
-// change to it, until ctx ends or the connection closes.
 func streamSession(ctx context.Context, sub rpc.Subscription, id string, follow bool, w io.Writer) error {
 	var current *domain.Session
 	for i := range sub.State.Sessions {

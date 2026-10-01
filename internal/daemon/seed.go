@@ -28,9 +28,7 @@ func seedLimits(h domain.Harness, now time.Time) []domain.RateLimit {
 	}
 }
 
-// seed makes n fake sessions, two per task, each with one to three
-// worktrees. IDs are prefixed "seed-" so a second seed replaces the first.
-// Every third session is Codex only when codex is set.
+// why: IDs are prefixed "seed-" so a second seed replaces the first.
 func seed(n int, codex bool) []Event {
 	var events []Event
 	now := time.Now()

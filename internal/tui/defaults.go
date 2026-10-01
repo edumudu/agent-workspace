@@ -10,17 +10,14 @@ import (
 	"github.com/giovaniif/agent-workspace/internal/domain"
 )
 
-// Defaults is what the new-session dialog starts a harness with. An empty
-// field leaves the harness's own default.
 type Defaults struct {
 	Model  string `toml:"model"`
 	Effort string `toml:"effort"`
-	// EffortByModel is a harness's effort per model, by short model name
-	// ("opus-5.5"), for when its effort is set per model rather than once.
+	// why: keyed by short model name ("opus-5.5"), for when a harness sets effort
+	// per model rather than once.
 	EffortByModel map[string]string `toml:"-"`
 }
 
-// LoadDefaults gives no defaults when the file is missing.
 func LoadDefaults(path string) (map[domain.Harness]Defaults, error) {
 	var cfg struct {
 		Defaults map[string]Defaults `toml:"defaults"`
@@ -41,8 +38,6 @@ func LoadDefaults(path string) (map[domain.Harness]Defaults, error) {
 	return out, nil
 }
 
-// LoadFallback reads the [fallback] table: the low-quota threshold and the
-// Claude-to-Codex model and effort maps. A missing file gives the zero config.
 func LoadFallback(path string) (domain.FallbackConfig, error) {
 	var cfg struct {
 		Fallback struct {

@@ -11,16 +11,14 @@ import (
 	"github.com/giovaniif/agent-workspace/internal/domain"
 )
 
-// seg is a run of text in one foreground; empty fields fall back to the
-// row's defaults.
 type seg struct {
 	text string
 	fg   string
 	bold bool
 }
 
-// painter caches one lipgloss style per color pair, so a frame of
-// highlighted code builds no styles.
+// why: caches one style per color pair, so a frame of highlighted code builds
+// no styles.
 type painter struct {
 	theme  Theme
 	styles map[[2]string]lipgloss.Style
@@ -51,8 +49,6 @@ func (p *painter) style(fg, bg string, bold bool) lipgloss.Style {
 	return st
 }
 
-// cell renders segs in exactly width columns on bg, cutting what does not
-// fit.
 func (p *painter) cell(width int, bg string, segs ...seg) string {
 	var b strings.Builder
 	used := 0
@@ -73,7 +69,6 @@ func (p *painter) cell(width int, bg string, segs ...seg) string {
 	return b.String()
 }
 
-// cellRight puts right against the cell's right edge, cutting left first.
 func (p *painter) cellRight(width int, bg string, left, right []seg) string {
 	rw := 0
 	for _, s := range right {
@@ -86,10 +81,8 @@ func (p *painter) cellRight(width int, bg string, left, right []seg) string {
 }
 
 const (
-	railWidth = 5
-	treeMax   = 34
-	// reviewChrome is every row that is not the file tree or diff: top bar,
-	// scope bar, worktree bar, rule and footer.
+	railWidth    = 5
+	treeMax      = 34
 	reviewChrome = 5
 )
 
@@ -102,7 +95,6 @@ func (m Model) reviewWidths() (area, tree, diff int) {
 	return area, tree, area - tree - 1
 }
 
-// diffHeight is how many diff rows fit under the file header.
 func (m Model) diffHeight() int { return max(m.height-reviewChrome-1, 1) }
 
 func (m Model) reviewView() string {
@@ -183,7 +175,6 @@ func (m Model) chip(label string, on bool) seg {
 	return seg{text: " " + label + " ", fg: m.opts.Theme.Text}
 }
 
-// chips renders a row of chips, the active one on bg, the rest on surface.
 func (m Model) chips(lead seg, labels []string, active int, onBg string, rightSegs []seg, width int) string {
 	t := m.opts.Theme
 	p := m.paint
@@ -255,8 +246,6 @@ func (m Model) scopeBar(width int) string {
 	return m.chips(seg{text: " REVIEW  ", fg: t.Subtext, bold: true}, labels, active, t.Blue, right, width)
 }
 
-// sharedDefaultBranch is the default branch of every repo the reviewed
-// session works in, or "" when they differ or one is unknown.
 func (m Model) sharedDefaultBranch() string {
 	defaults := map[string]string{}
 	for _, ws := range m.workspaces {
@@ -416,8 +405,6 @@ func (m Model) diffLines(width, height int) []string {
 	return out
 }
 
-// diffRow draws a row; at marks the cursor or a V selection with a bar in
-// its first column.
 func (m Model) diffRow(r diffRow, width int, at bool) string {
 	t := m.opts.Theme
 	p := m.paint
@@ -443,8 +430,6 @@ const (
 	sideNew
 )
 
-// codeCell draws a line with its numbers: old and new in the unified view,
-// the side's own in the split view. A nil line is a blank side.
 func (m Model) codeCell(sl *styledLine, width int, sd side) string {
 	t := m.opts.Theme
 	p := m.paint

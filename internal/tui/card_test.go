@@ -16,8 +16,6 @@ func toolEvent(session, tool, detail string) domain.SessionEvent {
 	return domain.SessionEvent{SessionID: session, Kind: domain.EventPreToolUse, Tool: tool, Detail: detail}
 }
 
-// cardFixture is five sessions; s05 is asking for permission after four tool
-// calls, with a five-line prompt.
 func cardFixture() rpc.State {
 	st := fixture(5, 1)
 	for _, cmd := range []string{"go build", "go vet", "go test ./...", "git status"} {
