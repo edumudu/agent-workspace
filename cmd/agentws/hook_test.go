@@ -130,6 +130,7 @@ func fakeDaemon(t *testing.T, home string, reply func(rpc.Request) *rpc.Response
 				var req rpc.Request
 				_ = json.Unmarshal(sc.Bytes(), &req)
 				if resp := reply(req); resp != nil {
+					resp.Build = req.Build
 					_ = json.NewEncoder(nc).Encode(resp)
 				}
 				time.Sleep(time.Second)

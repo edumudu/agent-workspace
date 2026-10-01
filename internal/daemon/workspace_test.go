@@ -3,6 +3,7 @@ package daemon_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"reflect"
 	"testing"
 	"time"
@@ -11,6 +12,7 @@ import (
 	"github.com/giovaniif/agent-workspace/internal/daemon"
 	"github.com/giovaniif/agent-workspace/internal/domain"
 	"github.com/giovaniif/agent-workspace/internal/rpc"
+	"github.com/giovaniif/agent-workspace/internal/version"
 )
 
 var shop = fakeFS{
@@ -198,7 +200,7 @@ func TestWorkspaceAddRejectsBadInput(t *testing.T) {
 			t.Errorf("add %q: %v", p, err)
 		}
 	}
-	resp := rawCall(t, path, `{"v":1,"id":1,"method":"workspace.add","params":"nope"}`)
+	resp := rawCall(t, path, fmt.Sprintf(`{"v":1,"id":1,"method":"workspace.add","params":"nope","build":%q}`, version.String()))
 	if resp.Error == nil || resp.Error.Code != rpc.CodeBadRequest {
 		t.Errorf("bad params: %+v", resp)
 	}

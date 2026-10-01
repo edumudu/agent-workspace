@@ -24,7 +24,7 @@ func TestMain(m *testing.M) {
 		panic(err)
 	}
 	build := exec.Command("go", "build",
-		"-ldflags", "-X main.version=v0.0.0-e2e -X main.commit=e2ecommit",
+		"-ldflags", "-X github.com/giovaniif/agent-workspace/internal/version.Version=v0.0.0-e2e -X github.com/giovaniif/agent-workspace/internal/version.Commit=e2ecommit",
 		"-o", filepath.Join(dir, "agentws"), "../../cmd/agentws")
 	build.Stdout, build.Stderr = os.Stdout, os.Stderr
 	if err := build.Run(); err != nil {
@@ -73,18 +73,19 @@ func setup(env *testscript.Env, fakes string) error {
 	}
 	socket := fmt.Sprintf("agentws-e2e-%d-%d", os.Getpid(), time.Now().UnixNano())
 	for k, v := range map[string]string{
-		"AGENTWS_HOME":         home,
-		"AGENTWS_E2E":          work,
-		"AGENTWS_TMUX_SOCKET":  socket,
-		"AGENTWS_TEST_CLOCK":   "+5h",
-		"AGENTWS_TEST_PR_POLL": "100ms",
-		"GIT_CONFIG_GLOBAL":    "/dev/null",
-		"GIT_CONFIG_SYSTEM":    "/dev/null",
-		"GIT_AUTHOR_NAME":      "t",
-		"GIT_AUTHOR_EMAIL":     "t@example.com",
-		"GIT_COMMITTER_NAME":   "t",
-		"GIT_COMMITTER_EMAIL":  "t@example.com",
-		"GIT_TERMINAL_PROMPT":  "0",
+		"AGENTWS_HOME":            home,
+		"AGENTWS_NO_UPDATE_CHECK": "1",
+		"AGENTWS_E2E":             work,
+		"AGENTWS_TMUX_SOCKET":     socket,
+		"AGENTWS_TEST_CLOCK":      "+5h",
+		"AGENTWS_TEST_PR_POLL":    "100ms",
+		"GIT_CONFIG_GLOBAL":       "/dev/null",
+		"GIT_CONFIG_SYSTEM":       "/dev/null",
+		"GIT_AUTHOR_NAME":         "t",
+		"GIT_AUTHOR_EMAIL":        "t@example.com",
+		"GIT_COMMITTER_NAME":      "t",
+		"GIT_COMMITTER_EMAIL":     "t@example.com",
+		"GIT_TERMINAL_PROMPT":     "0",
 	} {
 		env.Setenv(k, v)
 	}

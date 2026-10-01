@@ -4,6 +4,7 @@ package rpc
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"time"
@@ -286,7 +287,30 @@ const (
 	CodeUnavailable        = "unavailable"
 	CodeFailed             = "failed"
 	CodeLaunchFailed       = "launch_failed"
+	// CodeVersionMismatch: the client and the daemon are different builds.
+	// The message says which side to restart.
+	CodeVersionMismatch = "version_mismatch"
 )
+
+// AnyBuild reports whether method is answered across builds: status and
+// stop must reach a stale daemon, and hooks may come from another install's
+// binary that shares this AGENTWS_HOME.
+func AnyBuild(method string) bool {
+	return method == MethodStatus || method == MethodHook || method == MethodStatusLine
+}
+
+// Mismatch explains a build mismatch, naming the older side as the one to
+// restart. Built times are Unix seconds; zero means unknown.
+func Mismatch(daemonBuild, clientBuild string, daemonBuilt, clientBuilt int64) *Error {
+	fix := "restart the daemon: run `agentws daemon stop`; the next command starts the new one"
+	if clientBuilt != 0 && daemonBuilt > clientBuilt {
+		fix = "restart this client: it is older than the daemon"
+	}
+	if daemonBuild == "" {
+		daemonBuild = "an unknown build"
+	}
+	return &Error{Code: CodeVersionMismatch, Message: fmt.Sprintf("daemon runs agentws %s but this client is %s; %s", daemonBuild, clientBuild, fix)}
+}
 
 // WorkspaceAddParams.Path must be absolute. Adding a known root again
 // refreshes it and marks it last used.
@@ -339,6 +363,10 @@ type Request struct {
 	ID     uint64          `json:"id"`
 	Method string          `json:"method"`
 	Params json.RawMessage `json:"params,omitempty"`
+	// Build is the client's version.String and BuiltAt its executable's
+	// Unix mtime. Raw hook lines leave both out.
+	Build   string `json:"build,omitempty"`
+	BuiltAt int64  `json:"built_at,omitempty"`
 }
 
 // Response answers the request with the same ID. A subscribe request gets one
@@ -349,6 +377,7 @@ type Response struct {
 	Result json.RawMessage `json:"result,omitempty"`
 	Diff   *Diff           `json:"diff,omitempty"`
 	Error  *Error          `json:"error,omitempty"`
+	Build  string          `json:"build,omitempty"`
 }
 
 type Error struct {
