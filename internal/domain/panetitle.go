@@ -54,6 +54,10 @@ func worktreeName(w Worktree) string {
 	if part == "" {
 		part = w.Branch
 	}
+	if part == "" && w.Repo != "" && w.Path != "" {
+		// why: a detached worktree has no branch; its folder still tells it apart.
+		part = path.Base(w.Path)
+	}
 	switch {
 	case w.Repo == "" && part == "":
 		return w.ID
