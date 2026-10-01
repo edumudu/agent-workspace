@@ -49,7 +49,7 @@ func seed(n int, codex bool) []Event {
 			Model:   "opus-5.5",
 			Effort:  "high",
 			State:   seedStates[i%len(seedStates)],
-			Usage:   domain.Usage{ContextLeftPercent: 90 - (i*13)%70},
+			Usage:   domain.Usage{ContextLeftPercent: 90 - (i*13)%70, HasContext: true},
 		}
 		if codex && i%3 == 1 {
 			s.Harness, s.Model, s.Effort = domain.HarnessCodex, "gpt-6", "med"
