@@ -381,11 +381,15 @@ func (m Model) fallbackOffer() (domain.FallbackOffer, bool) {
 // startIn selects the registered workspace that holds dir, or adds dir as a
 // new one the daemon registers when the session is created.
 func (d *dialog) startIn(dir string) {
+	best := -1
 	for i, w := range d.spaces {
-		if dir == w.Root || strings.HasPrefix(dir, w.Root+"/") {
-			d.ws = i
-			return
+		if (dir == w.Root || strings.HasPrefix(dir, w.Root+"/")) && (best < 0 || len(w.Root) > len(d.spaces[best].Root)) {
+			best = i
 		}
+	}
+	if best >= 0 {
+		d.ws = best
+		return
 	}
 	d.spaces = append([]domain.Workspace{{Root: dir}}, d.spaces...)
 	d.ws = 0
