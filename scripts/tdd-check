@@ -36,8 +36,12 @@ esac
 
 files=$(git diff --name-only --diff-filter=AM "$base...$head" -- '*_test.go' '*/testdata/*' |
   grep -Ev '(^|/)(fakes|[^/]*_fake)_test\.go$' || true)
+# why: in testdata a comment-shaped line is fixture input or expected output, so only whitespace is ignored there.
 files=$(for f in $files; do
-  git diff --quiet --ignore-all-space --ignore-blank-lines -I '^[[:space:]]*(//|#)' "$base...$head" -- "$f" || echo "$f"
+  case $f in
+  (*/testdata/*) git diff --quiet --ignore-all-space --ignore-blank-lines "$base...$head" -- "$f" || echo "$f" ;;
+  (*) git diff --quiet --ignore-all-space --ignore-blank-lines -I '^[[:space:]]*(//|#)' "$base...$head" -- "$f" || echo "$f" ;;
+  esac
 done)
 if [ -z "$files" ]; then
   echo "tdd: no added or changed test files or testdata (port fakes, whitespace-only and comment-only changes are exempt)"
