@@ -198,7 +198,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.onboardChecked = true
 			return m, m.fetchOnboarding(false)
 		}
-	case onboardStatusMsg, onboardInstalledMsg, onboardFinishedMsg, setupPopupFailedMsg, setupPopupRetryMsg:
+	case onboardStatusMsg, onboardInstalledMsg, onboardFinishedMsg, onboardNvimMsg, setupPopupFailedMsg, setupPopupRetryMsg:
 		return m.onboardMsg(msg)
 	case popupFailedMsg:
 		return m.openDialog(), nil

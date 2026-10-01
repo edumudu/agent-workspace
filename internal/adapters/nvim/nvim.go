@@ -11,6 +11,11 @@ import (
 
 type Editor struct{}
 
+func (Editor) Installed() bool {
+	_, err := exec.LookPath("nvim")
+	return err == nil
+}
+
 func (Editor) Eval(ctx context.Context, socket, expr string) error {
 	cmd := exec.CommandContext(ctx, "nvim", "--server", socket, "--remote-expr", expr)
 	var stderr bytes.Buffer

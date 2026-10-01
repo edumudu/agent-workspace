@@ -10,6 +10,7 @@ const (
 	MethodOnboarding        = "onboarding.status"
 	MethodOnboardingInstall = "onboarding.install"
 	MethodOnboardingFinish  = "onboarding.finish"
+	MethodOnboardingNvim    = "onboarding.nvim"
 )
 
 type OnboardInstallParams struct {
@@ -30,4 +31,10 @@ func (c *Client) OnboardInstall(ctx context.Context, h domain.Harness) (domain.H
 
 func (c *Client) OnboardFinish(ctx context.Context) error {
 	return c.Call(ctx, MethodOnboardingFinish, nil, nil)
+}
+
+func (c *Client) OnboardNvim(ctx context.Context) (domain.NvimSetup, error) {
+	var out domain.NvimSetup
+	err := c.Call(ctx, MethodOnboardingNvim, nil, &out)
+	return out, err
 }

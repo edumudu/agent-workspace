@@ -72,7 +72,10 @@ func (m Model) setupActions() (hint, action string) {
 		}
 		return "", "next"
 	case domain.OnboardNvim:
-		return " s skip", "next"
+		if domain.NvimOfferFor(ob.status.Nvim) == domain.NvimShowSnippet && ob.results[ob.step] != resultInstalled {
+			return " s skip", "write it"
+		}
+		return "", "next"
 	}
 	return "", "done"
 }
@@ -163,28 +166,42 @@ func (m Model) harnessLines() []string {
 
 func (m Model) nvimLines() []string {
 	s := m.styles
-	n := m.ob.status.Nvim
+	ob := m.ob
+	n := ob.status.Nvim
 	bar := piece{s.dim, " ▌ "}
-	out := []string{m.line(false, []piece{{s.bold, " Neovim"}}, nil), ""}
+	out := []string{m.line(false, []piece{{s.bold, " Neovim"}, {s.sub, "  optional"}}, nil), ""}
+	if ob.results[domain.OnboardNvim] == resultInstalled {
+		out = append(out, m.line(false, []piece{bar, {s.green, "✓ wrote " + n.ConfigFile}}, nil))
+		return append(out, m.line(false, []piece{bar, {s.sub, "Undo    "}, {s.text, "agentws setup nvim --remove"}}, nil))
+	}
 	switch domain.NvimOfferFor(n) {
 	case domain.NvimMissing:
-		return append(out, m.para(bar, s.text, "nvim is not on PATH. Install Neovim 0.10+ to open files and diffs and write review comments from nvim; open this again with S afterwards.")...)
+		out = append(out, m.para(bar, s.text, "nvim is not on PATH, and that's fine: everything else in agentws works without it. With Neovim 0.10+, e opens a session's files in nvim, diffs open in diffview, and you can write review comments from nvim.")...)
+		out = append(out, "", m.line(false, []piece{bar, {s.sub, "macOS   "}, {s.text, "brew install neovim"}}, nil))
+		out = append(out, m.line(false, []piece{bar, {s.sub, "Linux   "}, {s.text, "your package manager, e.g. apt install neovim"}}, nil))
+		return append(append(out, ""), m.para(bar, s.sub, "Then press S in the sidebar to add the plugin.")...)
 	case domain.NvimReady:
 		out = append(out, m.line(false, []piece{bar, {s.green, "✓ the agentws plugin is configured"}}, nil))
 		return append(out, m.para(bar, s.sub, "found in "+n.ConfigFile)...)
 	case domain.NvimNoPlugin:
 		out = append(out, m.line(false, []piece{{s.peach, " ▌ "}, {s.text, "The plugin files are not at " + n.PluginDir + "."}}, nil))
-		out = append(out, m.para(piece{s.peach, " ▌ "}, s.sub, "The install script puts them there; from a source checkout, point the snippet at its nvim/ directory.")...)
+		out = append(out, m.para(piece{s.peach, " ▌ "}, s.sub, "The install script puts them there; from a source checkout, add these lines yourself with the path to its nvim/ directory.")...)
 		out = append(out, "")
+		for _, l := range domain.NvimSnippet(n.PluginDir, n.ConfigFile) {
+			// why: no frame and no truncation, so selecting the lines copies exactly the code.
+			out = append(out, "   "+s.teal.Render(l))
+		}
+		return out
 	}
-	out = append(out, m.line(false, []piece{{s.text, " Add this to "}, {s.bold, n.ConfigFile}}, nil))
+	out = append(out, m.line(false, []piece{{s.text, " ⏎ writes "}, {s.bold, n.ConfigFile}}, nil))
+	out = append(out, m.para(piece{s.text, " "}, s.sub, "nvim loads every file in plugin/ at startup, whatever else your config uses (init.lua, init.vim, lazy.nvim), so nothing of yours is edited.")...)
 	out = append(out, "")
-	for _, l := range domain.NvimSnippet(n.PluginDir, n.ConfigFile) {
+	for _, l := range strings.Split(strings.TrimSuffix(domain.NvimSetupFile(n.PluginDir), "\n"), "\n") {
 		// why: no frame and no truncation, so selecting the lines copies exactly the code.
 		out = append(out, "   "+s.teal.Render(l))
 	}
 	out = append(out, "")
-	return append(out, m.para(piece{s.text, " "}, s.sub, "agentws never edits your nvim config: copy the lines in, then restart nvim.")...)
+	return append(out, m.line(false, []piece{bar, {s.sub, "Undo    "}, {s.text, "agentws setup nvim --remove"}}, nil))
 }
 
 func (m Model) finishLines() []string {
@@ -209,12 +226,14 @@ func (m Model) finishLines() []string {
 	switch {
 	case ob.results[domain.OnboardNvim] == resultSkipped:
 		detail = "skipped"
+	case ob.results[domain.OnboardNvim] == resultInstalled:
+		mark, detail = piece{s.green, "  ✓ "}, "plugin configured"
 	case domain.NvimOfferFor(ob.status.Nvim) == domain.NvimReady:
 		mark, detail = piece{s.green, "  ✓ "}, "plugin configured"
 	case domain.NvimOfferFor(ob.status.Nvim) == domain.NvimMissing:
-		detail = "not on PATH"
+		detail = "optional, not installed"
 	default:
-		detail = "add the snippet to " + ob.status.Nvim.ConfigFile
+		detail = "not set up"
 	}
 	out = append(out, m.line(false, []piece{mark, {s.text, padRight("Neovim", 14)}, {s.sub, detail}}, nil), "")
 	return append(out, m.para(piece{s.text, " "}, s.sub, "Open this again with S in the sidebar or agentws setup. n starts your first session.")...)

@@ -18,6 +18,34 @@ type NvimSetup struct {
 	PluginFound bool   `json:"plugin_found"`
 }
 
+// why: an existing user who set up a harness, and has no nvim left to configure, must not get the walkthrough after upgrading.
+func OnboardingNeeded(o Onboarding) bool {
+	if o.Done {
+		return false
+	}
+	harness := o.Claude.Installed || o.Codex.Installed
+	nvimDone := !o.Nvim.OnPath || o.Nvim.Configured
+	return !harness || !nvimDone
+}
+
+const nvimSetupMarker = "-- agentws: written by agentws setup nvim; agentws setup nvim --remove deletes this file."
+
+// why: nvim sources every config's plugin/ dir whatever the setup (init.vim, lazy.nvim, kickstart), so a file of its own needs no edit to the user's files.
+func NvimSetupFile(pluginDir string) string {
+	return strings.Join([]string{
+		nvimSetupMarker,
+		"local dir = '" + luaQuote(pluginDir) + "'",
+		"vim.opt.runtimepath:prepend(dir)",
+		"dofile(dir .. '/plugin/agentws.lua')",
+		"require('agentws').setup({})",
+	}, "\n") + "\n"
+}
+
+// why: remove deletes only a file agentws wrote, never one the user put at the same path.
+func IsNvimSetupFile(content string) bool { return strings.HasPrefix(content, nvimSetupMarker) }
+
+func luaQuote(s string) string { return strings.NewReplacer(`\`, `\\`, `'`, `\'`).Replace(s) }
+
 type Onboarding struct {
 	Done   bool         `json:"done"`
 	Claude HarnessSetup `json:"claude"`
@@ -110,7 +138,7 @@ func NvimOfferFor(n NvimSetup) NvimOffer {
 
 // why: an init.vim cannot hold lua directly, so it gets a heredoc.
 func NvimSnippet(pluginDir, configFile string) []string {
-	quoted := strings.NewReplacer(`\`, `\\`, `'`, `\'`).Replace(pluginDir)
+	quoted := luaQuote(pluginDir)
 	lua := []string{
 		"vim.opt.runtimepath:prepend('" + quoted + "')",
 		"require('agentws').setup({})",

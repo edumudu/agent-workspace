@@ -13,6 +13,7 @@ import (
 type Onboarder interface {
 	Onboarding(ctx context.Context) (domain.Onboarding, error)
 	OnboardInstall(ctx context.Context, h domain.Harness) (domain.HarnessSetup, error)
+	OnboardNvim(ctx context.Context) (domain.NvimSetup, error)
 	OnboardFinish(ctx context.Context) error
 }
 
@@ -76,6 +77,11 @@ type onboardInstalledMsg struct {
 
 type onboardFinishedMsg struct{ err error }
 
+type onboardNvimMsg struct {
+	n   domain.NvimSetup
+	err error
+}
+
 type setupPopupFailedMsg struct{ tries int }
 
 type setupPopupRetryMsg struct{ tries int }
@@ -117,8 +123,11 @@ func (m Model) onboardMsg(msg tea.Msg) (Model, tea.Cmd) {
 			}
 		case msg.open || m.opts.SetupOnly:
 			m.ob = newOnboarding(msg.o)
-		case !msg.o.Done:
+		case domain.OnboardingNeeded(msg.o):
 			return m, m.openSetup(0)
+		case !msg.o.Done:
+			// why: nothing is left to set up, so the marker is written without showing anything.
+			return m, m.finishOnboarding()
 		}
 	case setupPopupFailedMsg:
 		if msg.tries < setupPopupRetries {
@@ -128,6 +137,21 @@ func (m Model) onboardMsg(msg tea.Msg) (Model, tea.Cmd) {
 		return m, m.fetchOnboarding(true)
 	case setupPopupRetryMsg:
 		return m, m.openSetup(msg.tries)
+	case onboardNvimMsg:
+		if m.ob == nil {
+			return m, nil
+		}
+		ob := *m.ob
+		ob.busy = false
+		if msg.err != nil {
+			ob.err = msg.err.Error()
+		} else {
+			ob.err = ""
+			ob.status.Nvim = msg.n
+			ob.results = copyResults(ob.results)
+			ob.results[domain.OnboardNvim] = resultInstalled
+		}
+		m.ob = &ob
 	case onboardInstalledMsg:
 		if m.ob == nil {
 			return m, nil
@@ -224,8 +248,16 @@ func (m Model) onboardKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	case domain.OnboardNvim:
 		switch k {
 		case "s":
-			ob.advance(resultSkipped)
+			if ob.results[ob.step] == resultInstalled {
+				ob.advance(resultNone)
+			} else {
+				ob.advance(resultSkipped)
+			}
 		case "enter":
+			if domain.NvimOfferFor(ob.status.Nvim) == domain.NvimShowSnippet && ob.results[ob.step] != resultInstalled {
+				ob.busy = true
+				return m, m.installNvim()
+			}
 			ob.advance(resultNone)
 		}
 	case domain.OnboardFinish:
@@ -253,5 +285,15 @@ func (m Model) finishOnboarding() tea.Cmd {
 		ctx, cancel := context.WithTimeout(context.Background(), callTimeout)
 		defer cancel()
 		return onboardFinishedMsg{err: o.OnboardFinish(ctx)}
+	}
+}
+
+func (m Model) installNvim() tea.Cmd {
+	o := m.opts.Onboard
+	return func() tea.Msg {
+		ctx, cancel := context.WithTimeout(context.Background(), callTimeout)
+		defer cancel()
+		n, err := o.OnboardNvim(ctx)
+		return onboardNvimMsg{n: n, err: err}
 	}
 }

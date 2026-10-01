@@ -141,10 +141,7 @@ func (p Probe) nvimSetup() domain.NvimSetup {
 		_, err := p.LookPath("nvim")
 		n.OnPath = err == nil
 	}
-	n.ConfigFile = filepath.Join(p.NvimConfigDir, "init.lua")
-	if !exists(n.ConfigFile) && exists(filepath.Join(p.NvimConfigDir, "init.vim")) {
-		n.ConfigFile = filepath.Join(p.NvimConfigDir, "init.vim")
-	}
+	n.ConfigFile = p.nvimSetupFile()
 	n.Configured = p.configMentionsPlugin()
 	for _, dir := range p.PluginDirs {
 		if isDir(dir) {

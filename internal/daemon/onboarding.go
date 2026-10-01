@@ -29,6 +29,12 @@ func (d *Daemon) onboarding(req rpc.Request) *rpc.Response {
 			return errorResponse(req.ID, rpc.CodeFailed, err.Error())
 		}
 		return result(req.ID, s)
+	case rpc.MethodOnboardingNvim:
+		n, err := d.onboard.InstallNvim(ctx)
+		if err != nil {
+			return errorResponse(req.ID, rpc.CodeFailed, err.Error())
+		}
+		return result(req.ID, n)
 	case rpc.MethodOnboardingFinish:
 		if err := d.onboard.Finish(ctx); err != nil {
 			return errorResponse(req.ID, rpc.CodeFailed, err.Error())

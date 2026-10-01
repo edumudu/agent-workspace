@@ -37,4 +37,5 @@ type TerminalHost interface {
 // was started with `--listen`.
 type Editor interface {
 	Eval(ctx context.Context, socket, expr string) error
+	Installed() bool
 }

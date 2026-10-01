@@ -509,7 +509,7 @@ func (d *Daemon) dispatch(c *conn, line []byte) (*rpc.Response, bool) {
 		return d.portsKill(req)
 	case rpc.MethodCleanupPlan, rpc.MethodCleanupRun:
 		return d.cleanupMethod(req)
-	case rpc.MethodOnboarding, rpc.MethodOnboardingInstall, rpc.MethodOnboardingFinish:
+	case rpc.MethodOnboarding, rpc.MethodOnboardingInstall, rpc.MethodOnboardingFinish, rpc.MethodOnboardingNvim:
 		return d.onboarding(req), true
 	case rpc.MethodDiskView:
 		return d.diskView(req)
