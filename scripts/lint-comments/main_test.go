@@ -15,11 +15,11 @@ func TestCheckFile(t *testing.T) {
 		{"bad_body.go.txt", []int{5}},
 		{"why.go.txt", nil},
 		{"directive.go.txt", []int{6}},
-		{"todo.go.txt", []int{3}},
-		{"nolint_no_reason.go.txt", []int{4}},
-		{"restating_doc.go.txt", []int{5, 8, 13, 16, 19, 22}},
-		{"useful_doc.go.txt", nil},
-		{"banner.go.txt", []int{3, 7, 11, 16, 26}},
+		{"todo.go.txt", []int{3, 10}},
+		{"nolint_no_reason.go.txt", []int{4, 9, 13}},
+		{"unmarked.go.txt", []int{1, 6, 9, 12, 15, 18, 21, 24}},
+		{"marked.go.txt", nil},
+		{"trailing.go.txt", []int{3, 5, 8, 11}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.fixture, func(t *testing.T) {
@@ -49,8 +49,8 @@ func TestRunExitCode(t *testing.T) {
 	}{
 		{"bad_body.go.txt", 1},
 		{"why.go.txt", 0},
-		{"restating_doc.go.txt", 1},
-		{"useful_doc.go.txt", 0},
+		{"unmarked.go.txt", 1},
+		{"marked.go.txt", 0},
 	}
 	for _, tt := range tests {
 		t.Run(tt.fixture, func(t *testing.T) {
