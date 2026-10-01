@@ -3,31 +3,21 @@ package domain
 import "strings"
 
 const (
-	// CardActions is how many recent tool calls the card lists.
-	CardActions = 3
-	// CardWaitingLines is how many lines of a permission prompt the card shows.
+	CardActions      = 3
 	CardWaitingLines = 3
-	// CardSaidLines is how many lines of the agent's last message the review shows.
-	CardSaidLines = 4
+	CardSaidLines    = 4
 )
 
-// SessionCard is what you need to get your bearings on a session: the task,
-// its PRs, the last few tool calls (newest first) and what the agent waits
-// on. Waiting is empty when it waits on nothing.
 type SessionCard struct {
-	Title string
-	// Name is the session's name in full, as the sidebar shows it cut to fit.
+	Title   string
 	Name    string
 	Ref     string
 	PRs     []PullRequest
 	Actions []string
 	Waiting string
-	// Said is the agent's last message, from its latest Stop.
-	Said string
+	Said    string
 }
 
-// BuildSessionCard derives the card from the task, the session's worktrees
-// and its stored events, oldest first. Events of other sessions are ignored.
 func BuildSessionCard(task Task, session Session, worktrees []Worktree, events []SessionEvent) SessionCard {
 	prs := pullRequests(worktrees)
 	card := SessionCard{Title: NameFor(task, nil), Name: NameFor(task, prs), Ref: task.Ref, PRs: prs}
@@ -110,8 +100,6 @@ func latest(events []SessionEvent, kind HarnessEventKind) (SessionEvent, bool) {
 	return SessionEvent{}, false
 }
 
-// lastQuestion is the final paragraph of the last assistant message when it
-// ends in a question mark.
 func lastQuestion(events []SessionEvent) string {
 	ev, ok := latest(events, EventStop)
 	if !ok {

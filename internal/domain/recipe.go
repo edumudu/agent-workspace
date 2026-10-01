@@ -15,8 +15,6 @@ const (
 	DepsInstall DepsMode = "install"
 )
 
-// Recipe is what a repo wants done to a new worktree. Copy and Link paths are
-// relative to the repo root and land at the same path in the worktree.
 type Recipe struct {
 	Copy []string
 	Link []string
@@ -24,8 +22,7 @@ type Recipe struct {
 	Deps DepsMode
 }
 
-// Validate rejects paths that could reach outside the checkout and unknown
-// deps modes, so a recipe cannot write or read anywhere else.
+// why: so a recipe cannot write or read outside the checkout.
 func (r Recipe) Validate() error {
 	for _, p := range r.Copy {
 		if err := checkRecipePath(p); err != nil {
@@ -62,14 +59,11 @@ func checkRecipePath(p string) error {
 	return nil
 }
 
-// Lockfile identifies a dependency lockfile by name and content hash. The zero
-// value means the directory has none.
 type Lockfile struct {
 	Name string
 	Hash string
 }
 
-// LockfileNames is the order lockfiles are looked for.
 var LockfileNames = []string{"bun.lock", "bun.lockb", "pnpm-lock.yaml", "yarn.lock", "package-lock.json"}
 
 var installCommands = map[string][]string{
@@ -80,8 +74,6 @@ var installCommands = map[string][]string{
 	"package-lock.json": {"npm", "ci"},
 }
 
-// InstallCommand is the install for a lockfile's package manager, or nil when
-// the lockfile is not one we know.
 func InstallCommand(lockfile string) []string {
 	return installCommands[lockfile]
 }
@@ -112,9 +104,8 @@ const (
 	reasonNoLockfile = "no known lockfile in the worktree, nothing to install from"
 )
 
-// PlanDeps decides how a worktree gets its dependencies. A clone is only safe
-// when the worktree's lockfile is the one main was installed from, so any
-// difference falls back to a real install and says why.
+// why: a clone is only safe when the worktree's lockfile is the one main was
+// installed from, so any difference falls back to a real install.
 func PlanDeps(mode DepsMode, in DepsInput) DepsPlan {
 	switch mode {
 	case DepsInstall:

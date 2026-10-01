@@ -63,8 +63,8 @@ func (r *attentionRig) banner(t *testing.T) domain.Banner {
 	return domain.Banner{}
 }
 
-// sentinel proves every banner queued before it was either delivered or
-// dropped: the worker is FIFO, so the sentinel's banner comes last.
+// why: the worker is FIFO, so once the sentinel's banner lands every banner
+// queued before it was delivered or dropped.
 func (r *attentionRig) sentinel(t *testing.T) {
 	t.Helper()
 	r.addRunning(t, "sentinel", domain.HarnessClaude, "%sentinel")

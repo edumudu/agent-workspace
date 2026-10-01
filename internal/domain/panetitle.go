@@ -7,9 +7,6 @@ import (
 	"strings"
 )
 
-// AgentTitle is the strip above a session's agent pane, as in the mockup: its
-// state, harness, model, effort and working directory, then one tab per
-// worktree it owns with that worktree's PR.
 func AgentTitle(s Session, worktrees []Worktree, cwd string) string {
 	head := []string{stateMark(s.State) + " " + string(s.Harness)}
 	for _, f := range []string{s.Model, s.Effort} {
@@ -41,14 +38,10 @@ func stateMark(st AgentState) string {
 	return "○"
 }
 
-// ShellTitle is the title row of the shell split: which worktree it runs in,
-// its path, and the keys for it.
 func ShellTitle(t ShellTarget) string {
 	return "shell · " + t.Label + " · " + t.Dir + " · t hide · s type · T popup"
 }
 
-// worktreeName is repo:part, as the sidebar shows it; a worktree with no repo
-// or part yet goes by its ID.
 func worktreeName(w Worktree) string {
 	part := w.SubtaskSlug
 	if part == "" {

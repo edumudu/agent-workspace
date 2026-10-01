@@ -17,12 +17,10 @@ import (
 
 const belowPaneIndex = "2"
 
-// ShellHeight is the share of the main slot a shell split takes.
 const ShellHeight = "35%"
 
 const popupSessionPrefix = "agentws-popup-"
 
-// BelowPane is the pane split below the agent pane, or "" if there is none.
 func (h *Host) BelowPane(ctx context.Context, slot app.Slot) app.PaneID {
 	// why: display-message falls back to another pane when the index does not exist, so list the panes instead.
 	out, err := h.run(ctx, "", "list-panes", "-t", string(slot), "-F", "#{pane_index} #{pane_id}")
@@ -37,8 +35,6 @@ func (h *Host) BelowPane(ctx context.Context, slot app.Slot) app.PaneID {
 	return ""
 }
 
-// ShowBelow splits pane below the agent pane, leaving focus where it was.
-// A pane already there is parked first, alive.
 func (h *Host) ShowBelow(ctx context.Context, pane app.PaneID, slot app.Slot) error {
 	switch h.BelowPane(ctx, slot) {
 	case pane:
@@ -54,7 +50,6 @@ func (h *Host) ShowBelow(ctx context.Context, pane app.PaneID, slot app.Slot) er
 	return err
 }
 
-// FocusBelow puts keyboard focus in the pane below the agent pane.
 func (h *Host) FocusBelow(ctx context.Context, slot app.Slot) error {
 	below := h.BelowPane(ctx, slot)
 	if below == "" {
@@ -64,8 +59,6 @@ func (h *Host) FocusBelow(ctx context.Context, slot app.Slot) error {
 	return err
 }
 
-// HideBelow moves the pane below the agent pane back to a window of its own,
-// still running.
 func (h *Host) HideBelow(ctx context.Context, slot app.Slot) error {
 	below := h.BelowPane(ctx, slot)
 	if below == "" {
@@ -75,9 +68,7 @@ func (h *Host) HideBelow(ctx context.Context, slot app.Slot) error {
 	return err
 }
 
-// Popup opens the pane in a popup over an attached client. The popup is a
-// second client on a grouped session showing the pane's window, so the pane
-// keeps running after the popup closes with M-t or the pane's exit.
+// why: the popup is a second client on a grouped session showing the pane's window, so the pane keeps running after the popup closes.
 func (h *Host) Popup(ctx context.Context, pane app.PaneID) error {
 	window, err := h.parkedWindow(ctx, pane)
 	if err != nil {
@@ -104,15 +95,12 @@ func (h *Host) Popup(ctx context.Context, pane app.PaneID) error {
 	return nil
 }
 
-// Command popups are at most this many cells, and never larger than the
-// client: tmux refuses a popup that does not fit.
+// why: tmux refuses a popup larger than the client.
 const (
 	popupMaxWidth  = 100
 	popupMaxHeight = 32
 )
 
-// PopupCommand runs spec's command in a centred popup over the attached
-// client. The popup closes when the command exits.
 func (h *Host) PopupCommand(ctx context.Context, spec app.PaneSpec) error {
 	client, err := h.popupClient(ctx)
 	if err != nil {
@@ -164,7 +152,6 @@ func (h *Host) PopupCommand(ctx context.Context, spec app.PaneSpec) error {
 	return nil
 }
 
-// popupLaunchGrace is how long PopupCommand waits for tmux to refuse a popup.
 const popupLaunchGrace = 300 * time.Millisecond
 
 func (h *Host) parkedWindow(ctx context.Context, pane app.PaneID) (string, error) {

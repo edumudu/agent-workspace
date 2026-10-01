@@ -14,12 +14,9 @@ import (
 
 var _ app.ReviewGit = Review{}
 
-// Review implements app.ReviewGit with the git CLI.
 type Review struct{}
 
-// WorkingTree stages everything into a throwaway copy of the index and
-// writes it as a tree. Starting from the real index keeps git's stat cache,
-// so only changed files are hashed.
+// why: starting from the real index keeps git's stat cache, so only changed files are hashed.
 func (Review) WorkingTree(ctx context.Context, dir string) (string, error) {
 	gitDir, err := output(ctx, dir, "rev-parse", "--absolute-git-dir")
 	if err != nil {
@@ -41,9 +38,7 @@ func (Review) WorkingTree(ctx context.Context, dir string) (string, error) {
 	return strings.TrimSpace(string(tree)), err
 }
 
-// copyInto fills dst with src, closes it and gives it src's mtime; a missing
-// src (a repo with nothing staged yet) leaves dst empty, which git reads as
-// an empty index.
+// why: a missing src (a repo with nothing staged yet) leaves dst empty, which git reads as an empty index.
 func copyInto(dst *os.File, src string) error {
 	in, err := os.Open(src)
 	if errors.Is(err, os.ErrNotExist) {
@@ -113,8 +108,7 @@ func (Review) MergeBase(ctx context.Context, dir, rev string) (string, error) {
 	return strings.TrimSpace(string(out)), err
 }
 
-// Diff pins every option a user's config could change about the output
-// ParseDiff reads.
+// why: pins every option a user's config could change about the output ParseDiff reads.
 func (Review) Diff(ctx context.Context, dir, from, tree string) (string, error) {
 	out, err := output(ctx, dir, "diff", "--no-color", "--no-ext-diff", "--no-textconv",
 		"--find-renames", "--full-index", "--src-prefix=a/", "--dst-prefix=b/", "--no-relative", from, tree, "--")

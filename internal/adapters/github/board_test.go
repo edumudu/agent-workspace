@@ -114,8 +114,6 @@ func TestPRBoardQueryIsReadOnlyAndNamesEveryRepo(t *testing.T) {
 	}
 }
 
-// fakeGH writes a gh script that logs each invocation's arguments to a file
-// and prints canned. It never reaches GitHub.
 func fakeGH(t *testing.T, canned string, exit int) (bin, log string) {
 	t.Helper()
 	dir := t.TempDir()

@@ -19,8 +19,6 @@ import (
 
 var _ app.CleanupGit = Worktrees{}
 
-// CleanupFacts runs one `git status`, finds origin's default branch, and
-// asks whether HEAD is in it. With no origin nothing counts as merged.
 func (Worktrees) CleanupFacts(ctx context.Context, w domain.Worktree) (app.WorktreeGitFacts, error) {
 	status, err := output(ctx, w.Path, "status", "--porcelain=v2", "--branch", "-z")
 	if err != nil {
@@ -61,8 +59,7 @@ func defaultBranch(ctx context.Context, dir string) (string, bool) {
 	return "", false
 }
 
-// modifiedAt is the newest of the worktree's index and HEAD files, which
-// move on every checkout, commit and add.
+// why: the index and HEAD files move on every checkout, commit and add.
 func modifiedAt(ctx context.Context, dir string) time.Time {
 	out, err := output(ctx, dir, "rev-parse", "--absolute-git-dir")
 	if err != nil {
@@ -78,9 +75,6 @@ func modifiedAt(ctx context.Context, dir string) time.Time {
 	return newest
 }
 
-// Backup writes dir/patch.diff (`git diff HEAD --binary`), dir/untracked.tar
-// (untracked files git does not ignore, only when there are any) and
-// dir/status.txt.
 func (Worktrees) Backup(ctx context.Context, w domain.Worktree, dir string) error {
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return err
@@ -114,8 +108,7 @@ func (Worktrees) Backup(ctx context.Context, w domain.Worktree, dir string) erro
 	return os.WriteFile(filepath.Join(dir, "status.txt"), append([]byte(head), status...), 0o600)
 }
 
-// CreateBranch tries name, then name-2, name-3 and so on; `git branch`
-// without -f refuses to move a branch that exists.
+// why: `git branch` without -f refuses to move a branch that exists.
 func (Worktrees) CreateBranch(ctx context.Context, w domain.Worktree, name string) (string, error) {
 	for i := 1; i <= 100; i++ {
 		try := name

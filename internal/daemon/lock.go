@@ -15,15 +15,13 @@ var ErrAlreadyRunning = errors.New("already running")
 func LockPath(home string) string { return filepath.Join(home, "agentws.lock") }
 func PIDPath(home string) string  { return filepath.Join(home, "agentws.pid") }
 
-// Lock is held for the daemon's lifetime. The kernel drops the flock when the
-// process dies, so a killed daemon never leaves a stale lock.
+// why: the kernel drops the flock when the process dies, so a killed daemon
+// never leaves a stale lock.
 type Lock struct {
 	file *os.File
 	home string
 }
 
-// Acquire takes the daemon lock in home and writes the pid file. If another
-// daemon holds it, the error wraps ErrAlreadyRunning and names its pid.
 func Acquire(home string) (*Lock, error) {
 	if err := os.MkdirAll(home, 0o700); err != nil {
 		return nil, err

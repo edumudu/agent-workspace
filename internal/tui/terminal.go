@@ -13,8 +13,6 @@ import (
 
 const terminalCallTimeout = 5 * time.Second
 
-// reviewWorktree is the worktree the review last narrowed to for the
-// selected session; empty lets the daemon pick.
 func (m Model) reviewWorktree() string {
 	if m.rv.session == m.selected {
 		return m.rv.worktree
@@ -48,8 +46,7 @@ func (m Model) toggleNvim() tea.Cmd {
 	return m.callDaemon(rpc.MethodNvimToggle, rpc.NvimParams{Session: m.selected, Worktree: m.reviewWorktree()})
 }
 
-// openInNvim closes the review, so nvim gets the room the review took, and
-// then opens the diff's top line in the session's nvim.
+// why: closes the review first so nvim gets the room the review took.
 func (m Model) openInNvim() (tea.Model, tea.Cmd) {
 	f, ok := m.rv.current()
 	if !ok || m.opts.Calls == nil {
@@ -68,8 +65,8 @@ func (m Model) openInNvim() (tea.Model, tea.Cmd) {
 	}
 }
 
-// topLine is the new-side line number of the first row at or below the
-// cursor that has one, so a deleted line opens the line after it.
+// why: the first row at or below the cursor that has a new-side number, so a
+// deleted line opens the line after it.
 func (m Model) topLine(f reviewFile) int {
 	rows := m.rv.rows(f)
 	for i := max(m.rv.line, 0); i < len(rows); i++ {
@@ -97,8 +94,6 @@ func newLine(r diffRow) int {
 
 func (m Model) draftCount(session string) int { return len(m.drafts[session].Comments) }
 
-// putDraft keeps a session's draft while it is open or queued; a sent or
-// merged one is gone from the count.
 func (m *Model) putDraft(d domain.ReviewDraft) {
 	if d.Status == domain.DraftOpen || d.Status == domain.DraftQueued {
 		m.drafts[d.Session] = d
@@ -109,8 +104,6 @@ func (m *Model) putDraft(d domain.ReviewDraft) {
 	}
 }
 
-// focusShell shows the selected session's shell if needed and moves keyboard
-// focus into it; t leaves focus in the sidebar.
 func (m Model) focusShell() tea.Cmd {
 	if m.opts.Calls == nil || m.selected == "" {
 		return nil
@@ -118,8 +111,8 @@ func (m Model) focusShell() tea.Cmd {
 	return m.callDaemon(rpc.MethodShellFocus, rpc.ShellParams{Session: m.selected, Worktree: m.reviewWorktree()})
 }
 
-// leave detaches the terminal from the agentws layout, which keeps running
-// for the next agentws; with no layout to leave, it quits.
+// why: the layout keeps running for the next agentws; with no layout to leave,
+// it quits.
 func (m Model) leave() tea.Cmd {
 	c := m.opts.Calls
 	if c == nil {

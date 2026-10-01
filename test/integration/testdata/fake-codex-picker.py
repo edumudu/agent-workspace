@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Plays Codex 0.159's `/model` flow in a real terminal: a model popup, then a
+# why: usage: plays Codex 0.159's `/model` flow in a real terminal: a model popup, then a
 # reasoning level popup, each moved with the arrow keys. Each finished choice
 # is appended to the file named by $FAKE_CODEX_OUT as "<model> <effort>".
 import os

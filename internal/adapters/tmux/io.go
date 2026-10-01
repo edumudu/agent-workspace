@@ -9,10 +9,7 @@ import (
 	"github.com/giovaniif/agent-workspace/internal/app"
 )
 
-// SendText pastes text through a tmux buffer so it arrives as one paste, not
-// as keystrokes. With bracketedPaste the pane's app gets the paste markers
-// (if it asked for them) and newlines stay newlines; without it, newlines
-// become carriage returns, as Enter would send.
+// why: a tmux buffer makes the text one paste, not keystrokes; without bracketedPaste, newlines become carriage returns, as Enter would send.
 func (h *Host) SendText(ctx context.Context, pane app.PaneID, text string, bracketedPaste bool) error {
 	buffer := fmt.Sprintf("agentws-%d-%d", os.Getpid(), h.bufferSeq.Add(1))
 	if _, err := h.run(ctx, text, "load-buffer", "-b", buffer, "-"); err != nil {
@@ -31,8 +28,6 @@ func (h *Host) SendKeys(ctx context.Context, pane app.PaneID, keys ...string) er
 	return err
 }
 
-// Capture returns the last lines lines of the pane, scrollback included,
-// with wrapped lines joined and trailing blank lines dropped.
 func (h *Host) Capture(ctx context.Context, pane app.PaneID, lines int) (string, error) {
 	out, err := h.run(ctx, "", "capture-pane", "-p", "-J", "-t", string(pane), "-S", fmt.Sprintf("-%d", lines))
 	if err != nil {

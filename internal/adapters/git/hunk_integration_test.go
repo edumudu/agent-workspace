@@ -19,8 +19,6 @@ var _ app.HunkGit = git.Review{}
 
 const twentyLines = "l1\nl2\nl3\nl4\nl5\nl6\nl7\nl8\nl9\nl10\nl11\nl12\nl13\nl14\nl15\nl16\nl17\nl18\nl19\nl20\n"
 
-// twoHunkRepos are two identical repos whose f.txt has two uncommitted
-// hunks, one near the top and one near the bottom.
 func twoHunkRepos(t *testing.T) (string, string) {
 	t.Helper()
 	a, b := reviewRepo(t), reviewRepo(t)
@@ -34,7 +32,6 @@ func twoHunkRepos(t *testing.T) (string, string) {
 	return a, b
 }
 
-// interactive runs `git <args>` answering its prompts with answers.
 func interactive(t *testing.T, dir, answers string, args ...string) {
 	t.Helper()
 	cmd := exec.Command("git", args...)

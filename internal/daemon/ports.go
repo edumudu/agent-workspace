@@ -13,7 +13,6 @@ import (
 	"github.com/giovaniif/agent-workspace/internal/rpc"
 )
 
-// DefaultPortsPoll is the most often the process table is read.
 const DefaultPortsPoll = 5 * time.Second
 
 type portScanner struct {
@@ -21,9 +20,6 @@ type portScanner struct {
 	every time.Duration
 }
 
-// WithProcessTable enables ports on worktrees and ports.kill. Reading the
-// table runs commands, so it happens only on the ports goroutine, and kills
-// only on the connection that asked.
 func WithProcessTable(table app.ProcessTable) Option {
 	return func(d *Daemon) { d.ports.table = table }
 }
@@ -48,10 +44,8 @@ func (d *Daemon) watchPorts(ctx context.Context) {
 	}
 }
 
-// refreshPorts reads the process table and maps the listeners on the loop. It
-// does nothing while there is no worktree to map to, which keeps an idle
-// daemon from running lsof every few seconds. A failed read keeps the ports
-// already shown.
+// why: skips the read while no worktree exists, so an idle daemon does not
+// run lsof every few seconds. A failed read keeps the ports already shown.
 func (d *Daemon) refreshPorts(ctx context.Context) {
 	hasWorktrees := false
 	if !d.query(func(s *state) { hasWorktrees = len(s.worktrees) > 0 }) || !hasWorktrees {
@@ -67,7 +61,6 @@ func (d *Daemon) refreshPorts(ctx context.Context) {
 	})
 }
 
-// portsOf is w's ports given the last listeners read.
 func (s *state) portsOf(w domain.Worktree) []domain.Port {
 	all := sorted(s.worktrees)
 	if _, known := s.worktrees[w.ID]; !known {
@@ -110,8 +103,6 @@ func (d *Daemon) portsKill(req rpc.Request) (*rpc.Response, bool) {
 	return result(req.ID, rpc.PortsKilled{Killed: killed}), true
 }
 
-// terminate ends the groups in parallel and returns those that went, in
-// order, with the first failure.
 func (d *Daemon) terminate(groups []int) ([]int, error) {
 	errs := make([]error, len(groups))
 	var wg sync.WaitGroup

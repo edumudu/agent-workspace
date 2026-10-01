@@ -11,14 +11,10 @@ import (
 	"github.com/giovaniif/agent-workspace/internal/domain"
 )
 
-// diskPanelsSideBySideFrom is the narrowest screen that puts the disk,
-// cleanup and deps panels in one row, as in the mockup; below it they stack.
 const diskPanelsSideBySideFrom = 140
 
 const diskBarWidth = 40
 
-// diskHeader is the three panels above the table: the disk bar with its
-// legend, the auto-cleanup rules, and the shared deps store.
 func (m Model) diskHeader() []string {
 	panels := [][][]piece{m.diskPanel(), m.cleanupPanel()}
 	if p := m.depsPanel(); p != nil {
@@ -83,8 +79,6 @@ func (m Model) diskPanel() [][]piece {
 	return [][]piece{title, m.diskBar(total, reclaim), legend}
 }
 
-// diskBar splits the volume into kept worktrees, reclaimable ones, other
-// used space and free space, each a share of diskBarWidth cells.
 func (m Model) diskBar(worktrees, reclaim int64) []piece {
 	s := m.styles
 	v := m.dk.view

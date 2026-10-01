@@ -11,8 +11,6 @@ import (
 	"github.com/giovaniif/agent-workspace/internal/rpc"
 )
 
-// maxQueueRows is how many queued issues the sidebar lists before it folds
-// the rest into a count.
 const maxQueueRows = 8
 
 type launchInput struct {

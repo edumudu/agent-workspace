@@ -40,8 +40,6 @@ func realTemp(t *testing.T) string {
 	return dir
 }
 
-// project builds a main checkout with a committed lockfile, an untracked env
-// template, a cache dir and an installed node_modules, plus a linked worktree.
 func project(t *testing.T, recipe string) (main, worktree string) {
 	t.Helper()
 	if _, err := exec.LookPath("git"); err != nil {

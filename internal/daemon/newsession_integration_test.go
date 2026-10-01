@@ -35,8 +35,6 @@ func gitIn(t *testing.T, dir string, args ...string) string {
 	return strings.TrimSpace(string(out))
 }
 
-// cloneRepo makes an origin with one commit on main and clones it to dst,
-// then commits locally so HEAD is ahead of origin/main.
 func cloneRepo(t *testing.T, scratch, dst string) {
 	t.Helper()
 	origin := filepath.Join(scratch, filepath.Base(dst)+"-origin")

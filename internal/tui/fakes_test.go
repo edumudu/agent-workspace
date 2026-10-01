@@ -10,7 +10,6 @@ import (
 	"github.com/giovaniif/agent-workspace/internal/rpc"
 )
 
-// fakeReviewer answers every review with reply, recording what it was asked.
 type fakeReviewer struct {
 	reply   rpc.Review
 	err     error
@@ -73,13 +72,10 @@ type call struct {
 	params any
 }
 
-// fakeCaller answers session.new with a session on pane %5 and every other
-// method with nothing.
 type fakeCaller struct {
-	mu    sync.Mutex
-	calls []call
-	err   error
-	// failOn makes only calls of that method fail, with err.
+	mu     sync.Mutex
+	calls  []call
+	err    error
 	failOn string
 }
 
@@ -156,8 +152,6 @@ func (f *fakeSwitcher) SwitchSession(_ context.Context, id string, kind domain.S
 	return domain.Session{ID: id}, f.err
 }
 
-// fakeDisker answers the nth DiskView call with views[n], repeating the
-// last one, and every action with item.
 type fakeDisker struct {
 	mu      sync.Mutex
 	views   []rpc.DiskView

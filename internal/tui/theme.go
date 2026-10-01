@@ -8,27 +8,24 @@ import (
 	"github.com/BurntSushi/toml"
 )
 
-// Theme is the palette as hex colors. Field names follow Catppuccin's.
 type Theme struct {
-	Text     string `toml:"text"`
-	Subtext  string `toml:"subtext"`
-	Overlay  string `toml:"overlay"`
-	Surface  string `toml:"surface"`
-	Mantle   string `toml:"mantle"`
-	Base     string `toml:"base"`
-	Blue     string `toml:"blue"`
-	Peach    string `toml:"peach"`
-	Green    string `toml:"green"`
-	Red      string `toml:"red"`
-	Teal     string `toml:"teal"`
-	Mauve    string `toml:"mauve"`
-	Selected string `toml:"selected"`
-	// AddedBg and DeletedBg tint the review's added and deleted lines.
+	Text      string `toml:"text"`
+	Subtext   string `toml:"subtext"`
+	Overlay   string `toml:"overlay"`
+	Surface   string `toml:"surface"`
+	Mantle    string `toml:"mantle"`
+	Base      string `toml:"base"`
+	Blue      string `toml:"blue"`
+	Peach     string `toml:"peach"`
+	Green     string `toml:"green"`
+	Red       string `toml:"red"`
+	Teal      string `toml:"teal"`
+	Mauve     string `toml:"mauve"`
+	Selected  string `toml:"selected"`
 	AddedBg   string `toml:"added_bg"`
 	DeletedBg string `toml:"deleted_bg"`
 }
 
-// Latte is Catppuccin Latte, the default.
 func Latte() Theme {
 	return Theme{
 		Text:      "#4c4f69",
@@ -49,8 +46,6 @@ func Latte() Theme {
 	}
 }
 
-// LoadTheme reads the [theme] table of a config.toml over Latte. A missing
-// file gives Latte.
 func LoadTheme(path string) (Theme, error) {
 	cfg := struct {
 		Theme Theme `toml:"theme"`

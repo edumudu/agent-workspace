@@ -12,8 +12,6 @@ const (
 	StateDone       AgentState = "done"
 )
 
-// HarnessEventKind is the harness-neutral event the Claude and Codex adapters
-// translate their hook payloads into.
 type HarnessEventKind string
 
 const (
@@ -40,39 +38,32 @@ const (
 	EffectMarkUnread EffectKind = "mark_unread"
 )
 
-// Effect is work the caller performs after a transition. State is set for
-// EffectNotify and names the state being announced.
 type Effect struct {
 	Kind  EffectKind
 	State AgentState
 }
 
 type Session struct {
-	ID      string
-	TaskID  string
-	Harness Harness
-	Pane    string
-	Model   string
-	Effort  string
-	State   AgentState
-	// Ended sessions are off the sidebar and kept only until their
-	// worktrees are gone.
-	Ended       bool
-	Unread      bool
-	Focused     bool
-	Muted       bool
-	WorktreeIDs []string
-	Usage       Usage
-	Limits      []RateLimit
-	// LimitsAt is when Limits were reported; zero when they never were.
-	LimitsAt time.Time
-	// Switches are model or effort changes not yet confirmed by a status
-	// report. SwitchWarning is set when one was not confirmed.
+	ID            string
+	TaskID        string
+	Harness       Harness
+	Pane          string
+	Model         string
+	Effort        string
+	State         AgentState
+	Ended         bool
+	Unread        bool
+	Focused       bool
+	Muted         bool
+	WorktreeIDs   []string
+	Usage         Usage
+	Limits        []RateLimit
+	LimitsAt      time.Time
 	Switches      []Switch
 	SwitchWarning bool
 }
 
-// Apply is the agent state machine. Events that no longer fit the current
+// why: hooks arrive out of order, so events that no longer fit the current
 // state, such as a PreToolUse delivered after Stop, are ignored.
 func (s Session) Apply(ev HarnessEvent) (Session, []Effect) {
 	switch ev.Kind {

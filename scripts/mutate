@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-# Runs gremlins on the packages AGENTS.md holds to a mutation score of 80%.
-# A package with no tests yet is skipped.
+# why: a package with no tests yet is skipped.
 set -euo pipefail
 gremlins="${1:-gremlins}"
 for pkg in internal/domain internal/app; do

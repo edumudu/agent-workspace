@@ -6,8 +6,6 @@ import (
 	"strings"
 )
 
-// Picker is a Codex selection popup as read off the pane: its title and its
-// numbered rows, one of them highlighted with `›`.
 type Picker struct {
 	Title string
 	Rows  []PickerRow
@@ -25,10 +23,10 @@ var (
 	pickerAllModel = "all models"
 )
 
-// ParsePicker reads the last popup on the screen. Only numbered rows under a
-// title starting with "Select " count, so a numbered list in the transcript
-// is not taken for a picker. The capture includes scrollback, so a picker
-// with Codex's `›` input prompt below it is one that has already closed.
+// why: only numbered rows under a title starting with "Select " count, so a
+// numbered list in the transcript is not taken for a picker. The capture
+// includes scrollback, so a picker with Codex's `›` input prompt below it has
+// already closed.
 func ParsePicker(screen string) (Picker, bool) {
 	lines := strings.Split(screen, "\n")
 	title := -1
@@ -58,11 +56,9 @@ func ParsePicker(screen string) (Picker, bool) {
 	return p, true
 }
 
-// CodexPickerKeys returns the keys that move the highlight to the row a
-// switch needs and choose it. Codex asks for a model first and then its
-// reasoning level, so an effort switch re-picks the current model and a
-// model switch keeps the current effort, or the highlighted one when the new
-// model does not offer it.
+// why: Codex asks for a model first and then its reasoning level, so an
+// effort switch re-picks the current model and a model switch keeps the
+// current effort, or the highlighted one when the new model does not offer it.
 func CodexPickerKeys(p Picker, sw Switch, model, effort string) ([]string, error) {
 	if strings.HasPrefix(p.Title, "Select Reasoning Level") {
 		if sw.Kind == SwitchEffort {
@@ -106,8 +102,8 @@ func keysTo(p Picker, want string) ([]string, error) {
 	return append(keys, "Enter"), nil
 }
 
-// pickerLabel drops tags such as "(current)" and folds Codex's display names
-// onto the values agentws uses: "GPT-6-Luna" is gpt-6-luna, "Extra high" is xhigh.
+// bug: Codex shows display names and tags such as "(current)": "GPT-6-Luna"
+// is gpt-6-luna, "Extra high" is xhigh.
 func pickerLabel(s string) string {
 	s = strings.ToLower(pickerTag.ReplaceAllString(strings.TrimSpace(s), ""))
 	if s == "extra high" {

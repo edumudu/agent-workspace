@@ -22,10 +22,6 @@ func wordSet(words ...string) map[string]bool {
 	return set
 }
 
-// NameFor picks a session name: the pinned name, then the first PR title (a
-// PR a worktree owns before the one the task came from), then the Linear
-// issue title, then a short summary of the task text. Blank candidates are
-// skipped.
 func NameFor(task Task, prs []PullRequest) string {
 	candidates := []string{task.PinnedName}
 	for _, pr := range prs {
@@ -40,9 +36,6 @@ func NameFor(task Task, prs []PullRequest) string {
 	return ""
 }
 
-// SummarizeText is the first words of the first line of a prompt, without
-// its opening filler and without a trailing connective. It stops at the end
-// of the first sentence.
 func SummarizeText(text string) string {
 	var line string
 	for _, l := range strings.Split(text, "\n") {
@@ -78,15 +71,11 @@ func endsSentence(w string) bool {
 	return strings.HasSuffix(w, ".") || strings.HasSuffix(w, "!") || strings.HasSuffix(w, "?")
 }
 
-// PinName pins name on the task, or unpins it when name is blank.
 func PinName(task Task, name string) Task {
 	task.PinnedName = strings.TrimSpace(name)
 	return task
 }
 
-// WithTitle records a title resolved from the work item's source: the Linear
-// issue's for a Linear task, the PR's for a PR task. It reports whether the
-// task changed. A pin is untouched.
 func WithTitle(task Task, title string) (Task, bool) {
 	title = strings.TrimSpace(title)
 	if title == "" {

@@ -2,8 +2,6 @@ package domain
 
 import "sort"
 
-// Listener is one TCP listen socket as the process table reports it. Cwd is
-// empty when the process's working directory could not be read.
 type Listener struct {
 	Port    int
 	PID     int
@@ -12,7 +10,6 @@ type Listener struct {
 	Cwd     string
 }
 
-// Port is a listener that belongs to a worktree.
 type Port struct {
 	Port    int
 	PID     int
@@ -20,9 +17,7 @@ type Port struct {
 	Command string
 }
 
-// PortsByWorktree maps each listener to the deepest worktree containing its
-// cwd, keyed by worktree ID. Ports are sorted by port then pid, and a
-// listener seen twice (IPv4 and IPv6) counts once.
+// why: a listener seen twice (IPv4 and IPv6) counts once.
 func PortsByWorktree(worktrees []Worktree, listeners []Listener) map[string][]Port {
 	out := map[string][]Port{}
 	for _, l := range listeners {
@@ -64,10 +59,8 @@ func containsPort(ports []Port, p Port) bool {
 	return false
 }
 
-// KillGroups keeps the requested process groups that serve a port in some
-// worktree, once each and in request order. It refuses groups 1 and below and
-// self, the caller's own group, so a stale or forged request cannot take
-// down init or the daemon.
+// why: groups 1 and below and the caller's own are refused, so a stale or
+// forged request cannot take down init or the daemon.
 func KillGroups(worktrees []Worktree, requested []int, self int) []int {
 	served := map[int]bool{}
 	for _, w := range worktrees {

@@ -4,7 +4,6 @@ import "context"
 
 type PaneID string
 
-// Slot names a client's main area, the one place a pane is shown.
 type Slot string
 
 type PaneSpec struct {
@@ -29,12 +28,9 @@ type TerminalHost interface {
 	SendKeys(ctx context.Context, pane PaneID, keys ...string) error
 	Capture(ctx context.Context, pane PaneID, lines int) (string, error)
 	Alive(ctx context.Context, pane PaneID) (bool, error)
-	// SetTitle sets the text on the pane's top border; empty clears it.
 	SetTitle(ctx context.Context, pane PaneID, title string) error
 }
 
-// Editor evaluates an expression in a running nvim, found by the socket it
-// was started with `--listen`.
 type Editor interface {
 	Eval(ctx context.Context, socket, expr string) error
 	Installed() bool

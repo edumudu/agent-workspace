@@ -20,8 +20,8 @@ type harnesses struct {
 	sendMu   sync.Mutex
 }
 
-// WithHarnesses enables session.launch. host.Create runs tmux, so launches
-// run on the connection goroutine, never the loop.
+// why: host.Create runs tmux, so launches run on the connection goroutine,
+// never the loop.
 func WithHarnesses(host app.TerminalHost, adapters ...app.HarnessAdapter) Option {
 	return func(d *Daemon) {
 		d.hs.host = host
@@ -32,8 +32,6 @@ func WithHarnesses(host app.TerminalHost, adapters ...app.HarnessAdapter) Option
 	}
 }
 
-// hookEvent maps a hook to its harness event. Claude refines Notification
-// by its payload; other harnesses map by name.
 func hookEvent(h rpc.Hook) (domain.HarnessEventKind, bool) {
 	if domain.Harness(h.Harness) == domain.HarnessClaude {
 		return claude.Event(h.Event, h.Payload)

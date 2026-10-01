@@ -23,8 +23,8 @@ func connect(ctx context.Context, home string) (*rpc.Client, error) {
 	return rpc.Connect(ctx, rpc.SocketPath(home), func() error { return spawn(home) })
 }
 
-// attach opens the client layout, creating it on the first run, and replaces
-// this process with the tmux client attached to it.
+// why: replaces this process with the tmux client (exec), creating the layout
+// on the first run.
 func attach(stderr io.Writer) int {
 	home, err := rpc.Home()
 	if err == nil {
@@ -161,9 +161,8 @@ func runDebugSeed(args []string, stdout, stderr io.Writer) int {
 	return 0
 }
 
-// harnessDefaults reads what Claude Code and Codex start with when a session
-// is given no model or effort, so the dialog can name it. A file that cannot
-// be read leaves that harness unnamed.
+// why: lets the dialog name what each harness starts with when given no model
+// or effort. A file that cannot be read leaves that harness unnamed.
 func harnessDefaults() map[domain.Harness]tui.Defaults {
 	out := map[domain.Harness]tui.Defaults{}
 	if path, err := claudeSettingsPath(os.Getenv); err == nil {
@@ -180,7 +179,6 @@ func harnessDefaults() map[domain.Harness]tui.Defaults {
 	return out
 }
 
-// launchDir is the working directory, or "" when it cannot be read.
 func launchDir() string {
 	dir, err := os.Getwd()
 	if err != nil {

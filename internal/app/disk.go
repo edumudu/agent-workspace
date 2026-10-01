@@ -6,20 +6,17 @@ import (
 	"time"
 )
 
-// Sizer measures the disk a directory uses. Size runs external commands, so
-// callers keep it off the event loop and off render paths.
+// why: Size runs external commands, so callers keep it off the event loop and
+// off render paths.
 type Sizer interface {
 	Size(ctx context.Context, path string) (int64, error)
 }
 
-// VolumeStat reports the free and total bytes of the volume holding path.
 type VolumeStat interface {
 	Stat(path string) (free, total uint64, err error)
 }
 
-// CleanupHistory reads back what the audit log recorded.
 type CleanupHistory interface {
-	// Recent returns at most n records, newest first.
 	Recent(n int) []CleanupRecord
 }
 
@@ -28,13 +25,13 @@ type sizeEntry struct {
 	known      bool
 	measuredAt time.Time
 	inflight   bool
-	// forgotten: Forget came while this was being measured, so the result may predate the change.
+	// why: Forget came while this was being measured, so the result may predate
+	// the change.
 	forgotten bool
 }
 
-// DiskSizes caches directory sizes. Get never waits for a measurement: it
-// returns what is cached and starts a background one for a path that is new
-// or older than ttl, at most workers at a time.
+// why: Get never waits for a measurement; it starts a background one, at
+// most workers at a time.
 type DiskSizes struct {
 	sizer Sizer
 	ttl   time.Duration
@@ -50,8 +47,6 @@ func NewDiskSizes(sizer Sizer, workers int, ttl time.Duration, now func() time.T
 	return &DiskSizes{sizer: sizer, ttl: ttl, now: now, sem: make(chan struct{}, workers), entries: map[string]*sizeEntry{}}
 }
 
-// Get returns the cached size, and whether there is one. A stale size is
-// returned while it is measured again.
 func (d *DiskSizes) Get(path string) (int64, bool) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
@@ -68,7 +63,6 @@ func (d *DiskSizes) Get(path string) (int64, bool) {
 	return e.size, e.known
 }
 
-// Forget drops the cached size, for a directory that just changed.
 func (d *DiskSizes) Forget(path string) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
@@ -82,7 +76,6 @@ func (d *DiskSizes) Forget(path string) {
 	}
 }
 
-// Wait blocks until every measurement started so far has finished.
 func (d *DiskSizes) Wait() { d.wg.Wait() }
 
 func (d *DiskSizes) measure(path string) {

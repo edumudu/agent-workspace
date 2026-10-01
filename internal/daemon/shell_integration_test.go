@@ -31,8 +31,6 @@ type liveTerm struct {
 	wtB   string
 }
 
-// startLiveTerm runs the daemon against a real tmux server on its own socket
-// and an nvim that reads none of the user's config.
 func startLiveTerm(t *testing.T) liveTerm {
 	t.Helper()
 	if _, err := exec.LookPath("tmux"); err != nil {

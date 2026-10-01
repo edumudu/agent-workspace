@@ -1,4 +1,3 @@
-// Package git implements app.RepoInspector with the git CLI.
 package git
 
 import (
@@ -14,8 +13,6 @@ var _ app.RepoInspector = Inspector{}
 
 type Inspector struct{}
 
-// Inspect runs one `git status` and one `git symbolic-ref`. A repo with no
-// origin/HEAD has an empty DefaultBranch; a detached HEAD has an empty Branch.
 func (Inspector) Inspect(ctx context.Context, path string) (app.RepoFacts, error) {
 	status, err := output(ctx, path, "status", "--porcelain=v2", "--branch", "-z")
 	if err != nil {
@@ -36,8 +33,6 @@ func output(ctx context.Context, dir string, args ...string) ([]byte, error) {
 	return cmd.Output()
 }
 
-// parseStatus reads `git status --porcelain=v2 --branch -z`: the current
-// branch ("" when detached) and how many paths changed.
 func parseStatus(out []byte) (branch string, changed int) {
 	records := bytes.Split(out, []byte{0})
 	for i := 0; i < len(records); i++ {
@@ -58,7 +53,6 @@ func parseStatus(out []byte) (branch string, changed int) {
 	return branch, changed
 }
 
-// parseDefaultBranch turns "origin/main" into "main".
 func parseDefaultBranch(symbolicRef string) string {
 	ref := strings.TrimSpace(symbolicRef)
 	_, branch, ok := strings.Cut(ref, "/")

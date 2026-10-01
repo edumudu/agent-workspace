@@ -10,7 +10,6 @@ import (
 	"github.com/giovaniif/agent-workspace/internal/rpc"
 )
 
-// renamePrompt is the open rename line for one session.
 type renamePrompt struct {
 	id   string
 	text string
@@ -74,8 +73,6 @@ func (m Model) unpin() tea.Cmd {
 	return m.call(rpc.MethodSessionUnpin, rpc.SessionRef{ID: m.selected})
 }
 
-// renameLeft is the status line while renaming. It shows the end of a text
-// too long for the row, where the cursor is, cut by display cells.
 func (m Model) renameLeft() []piece {
 	s := m.styles
 	const badge = " RENAME "

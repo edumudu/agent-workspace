@@ -8,8 +8,6 @@ import (
 	"github.com/giovaniif/agent-workspace/internal/app"
 )
 
-// termFake is one terminal host that also serves as the client layout, as
-// *tmux.Host does, so a pane shown in the slot is what ShownIn reports.
 type termFake struct {
 	app.TerminalHost
 	client *fakeClientHost

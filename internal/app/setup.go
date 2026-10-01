@@ -14,7 +14,6 @@ const recipeFile = ".agentws.toml"
 
 const modulesDir = "node_modules"
 
-// RecipeSource loads a repo's setup recipe; the bool is false when the repo has none.
 type RecipeSource interface {
 	Load(repoDir string) (domain.Recipe, bool, error)
 }
@@ -23,8 +22,6 @@ type MainCheckouts interface {
 	MainCheckout(ctx context.Context, worktree string) (string, error)
 }
 
-// SetupFS is the disk the recipe works on. CloneTree is a copy that costs no
-// extra space until files change, where the volume supports it.
 type SetupFS interface {
 	Exists(path string) bool
 	Copy(src, dst string) error
@@ -46,17 +43,13 @@ type WorktreeSetup struct {
 	Now     func() time.Time
 }
 
-// SetupReport says what a run did. Lines are the log, one per step. It comes
-// back even when Run fails, holding the steps that finished.
 type SetupReport struct {
 	Lines    []string
 	Duration time.Duration
 	DiskUsed int64
 }
 
-// Run applies the main checkout's recipe to worktree: copy, link, deps, then
-// run, stopping at the first failure. It never overwrites a path that already
-// exists in the worktree.
+// why: it never overwrites a path that already exists in the worktree.
 func (s WorktreeSetup) Run(ctx context.Context, worktree string) (SetupReport, error) {
 	main, err := s.Git.MainCheckout(ctx, worktree)
 	if err != nil {

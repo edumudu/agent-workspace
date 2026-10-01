@@ -24,7 +24,6 @@ func withWorkspaces(st rpc.State) rpc.State {
 	return st
 }
 
-// run drains cmd, feeding every message it yields back into m.
 func run(m tui.Model, cmd tea.Cmd) tui.Model {
 	for cmd != nil {
 		msg := cmd()
@@ -218,7 +217,6 @@ func TestNewSessionDialogWarnsWithoutASwitchWhenTheOtherHarnessIsUnknown(t *test
 	}
 }
 
-// slowCaller never answers session.new until release is closed.
 type slowCaller struct {
 	fakeCaller
 	release chan struct{}

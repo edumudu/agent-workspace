@@ -15,7 +15,7 @@ import (
 
 var binDir string
 
-// waitWithin bounds every poll in the scripts; waits never sleep a fixed time.
+// why: bounds every poll in the scripts; waits never sleep a fixed time.
 const waitWithin = 15 * time.Second
 
 func TestMain(m *testing.M) {
@@ -108,9 +108,10 @@ func setup(env *testscript.Env, fakes string) error {
 	return nil
 }
 
-// eventually <regexp> <command> [args...] runs the command until its stdout
-// matches, failing after waitWithin; `! eventually` runs it until its stdout
-// no longer matches. The last run's stdout stays for the commands that follow.
+// why: usage: eventually <regexp> <command> [args...] runs the command until
+// its stdout matches, failing after waitWithin; `! eventually` runs it until its
+// stdout no longer matches. The last run's stdout stays for the commands that
+// follow.
 func eventually(ts *testscript.TestScript, neg bool, args []string) {
 	if len(args) < 2 {
 		ts.Fatalf("usage: [!] eventually <regexp> <command> [args...]")
@@ -135,8 +136,8 @@ func eventually(ts *testscript.TestScript, neg bool, args []string) {
 	}
 }
 
-// capture <var> <regexp> sets var to the regexp's first group in the last
-// stdout.
+// why: usage: capture <var> <regexp> sets var to the regexp's first group in
+// the last stdout.
 func capture(ts *testscript.TestScript, neg bool, args []string) {
 	if neg || len(args) != 2 {
 		ts.Fatalf("usage: capture <var> <regexp>")
@@ -150,9 +151,9 @@ func capture(ts *testscript.TestScript, neg bool, args []string) {
 	ts.Setenv(args[0], m[1])
 }
 
-// repo <name> makes $WORK/<name>, a clone of a local bare origin whose origin
-// URL then points at github.com/o/<name>, so the gh adapter can name it while
-// origin/main stays a local ref.
+// why: usage: repo <name> makes $WORK/<name>, a clone of a local bare origin
+// whose origin URL then points at github.com/o/<name>, so the gh adapter can
+// name it while origin/main stays a local ref.
 func repo(ts *testscript.TestScript, neg bool, args []string) {
 	if neg || len(args) != 1 {
 		ts.Fatalf("usage: repo <name>")

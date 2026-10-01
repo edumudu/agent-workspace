@@ -9,8 +9,7 @@ import (
 	"github.com/giovaniif/agent-workspace/internal/domain"
 )
 
-// killTimeout covers the daemon's SIGTERM grace period and the SIGKILL that
-// follows it.
+// why: covers the daemon's SIGTERM grace period and the SIGKILL that follows it.
 const killTimeout = 10 * time.Second
 
 type killPrompt struct {
@@ -18,7 +17,6 @@ type killPrompt struct {
 	label string
 }
 
-// ports is every port of the session's worktrees.
 func (e entry) ports() []domain.Port {
 	var out []domain.Port
 	for _, w := range e.worktrees {
@@ -27,7 +25,6 @@ func (e entry) ports() []domain.Port {
 	return out
 }
 
-// portLabel lists each port number once, sorted, as ":3000 :8081".
 func portLabel(ports []domain.Port) string {
 	seen := map[int]bool{}
 	var numbers []int

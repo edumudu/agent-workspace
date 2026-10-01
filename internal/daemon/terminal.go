@@ -25,10 +25,8 @@ type terminals struct {
 	nvims  map[string]app.PaneID
 }
 
-// WithTerminals enables shell.toggle, nvim.toggle and nvim.open. Shell and
-// nvim panes get home as AGENTWS_HOME, so the `agentws` they run reaches this
-// daemon, and nvims listen on home/nvim/<session>.sock. It needs
-// WithHarnesses and a client host.
+// why: shell and nvim panes get home as AGENTWS_HOME so the `agentws` they
+// run reaches this daemon.
 func WithTerminals(home string, editor app.Editor) Option {
 	return func(d *Daemon) {
 		d.term.home, d.term.editor = home, editor
@@ -43,8 +41,6 @@ type terminalInput struct {
 	found     bool
 }
 
-// terminalInput gathers what placing a terminal needs. Without a session id,
-// worktreeID names the worktree and its owner, if any, is the session.
 func (d *Daemon) terminalInput(sessionID, worktreeID string) (terminalInput, bool) {
 	var in terminalInput
 	ok := d.query(func(s *state) {
@@ -134,8 +130,6 @@ type badRequest struct{ msg string }
 
 func (e badRequest) Error() string { return e.msg }
 
-// livePane returns the pane in panes[key] if it is still running, else
-// starts one from spec.
 func (d *Daemon) livePane(ctx context.Context, panes map[string]app.PaneID, key string, spec app.PaneSpec) (app.PaneID, bool, error) {
 	if pane, ok := panes[key]; ok {
 		if alive, err := d.hs.host.Alive(ctx, pane); err == nil && alive {
@@ -166,8 +160,6 @@ func (d *Daemon) withClient(f func(ctx context.Context, h ClientHost, slot app.S
 	return f(ctx, d.clients.host, d.clients.slot)
 }
 
-// toggleShell shows the shell below the agent pane or hides it; with focus it
-// only shows it, then puts keyboard focus in it.
 func (d *Daemon) toggleShell(ctx context.Context, session domain.Session, target domain.ShellTarget, popup, focus bool) (rpc.ShellResult, error) {
 	name := "shell-" + strings.ReplaceAll(target.Key, "/", "-")
 	pane, _, err := d.livePane(ctx, d.term.shells, target.Key, app.PaneSpec{Name: name, Dir: target.Dir, Env: d.paneEnv(session.ID)})
@@ -207,8 +199,6 @@ func (d *Daemon) nvimSocket(session string) string {
 	return filepath.Join(d.term.home, "nvim", session+".sock")
 }
 
-// nvimPane finds the session's running nvim or starts one in dir, on file at
-// line when given. started says the file is already open, so no Eval is due.
 func (d *Daemon) nvimPane(ctx context.Context, session domain.Session, dir, file string, line int) (pane app.PaneID, started bool, err error) {
 	sock := d.nvimSocket(session.ID)
 	command := []string{"nvim", "--listen", sock}
@@ -337,8 +327,6 @@ func (d *Daemon) addComment(req rpc.Request) (*rpc.Response, bool) {
 	return resp, ok
 }
 
-// commentTarget places the file in one of the worktrees the session reviews,
-// which includes its hook directory when it owns none.
 func (s *state) commentTarget(p rpc.CommentParams) (domain.Worktree, string, bool) {
 	var owned []domain.Worktree
 	for _, t := range s.reviewTargets(p.Session) {
@@ -356,8 +344,6 @@ func (s *state) commentTarget(p rpc.CommentParams) (domain.Worktree, string, boo
 	return domain.Worktree{}, "", false
 }
 
-// DraftChanged publishes a draft that was already stored; Comment is the one
-// just added, if any.
 type DraftChanged struct {
 	Draft   domain.ReviewDraft
 	Comment *domain.ReviewComment

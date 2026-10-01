@@ -33,7 +33,6 @@ func cleanupGitOut(t *testing.T, dir string, args ...string) string {
 	return strings.TrimSpace(string(out))
 }
 
-// clonedRepo is a clone of a bare origin whose main has one commit.
 func clonedRepo(t *testing.T) (tmp, repo string) {
 	t.Helper()
 	if _, err := exec.LookPath("git"); err != nil {

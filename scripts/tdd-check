@@ -1,15 +1,8 @@
 #!/usr/bin/env bash
-# Runs the PR's added and changed *_test.go and testdata/ files against the
-# base branch; a testdata file counts for the package that holds testdata/.
-# They must fail there (a compile error counts); if any affected package
-# passes, the PR added tests for behavior that already exists.
-# Files named fakes_test.go or *_fake_test.go are skipped: they only hold
-# in-memory fakes of ports, which change when a port gains a method.
-# Changes that are whitespace only (gofmt) are skipped too.
-# A PR titled "test:" is exempt when every changed file is a *_test.go file,
-# sits under a testdata/ dir, or sits under test/. Pass the title in
-# TDD_PR_TITLE (an env var, never interpolated into the command line).
-# Usage: scripts/tdd-check <base-ref> <head-ref>
+# why: Usage: scripts/tdd-check <base-ref> <head-ref>. Port fakes
+# (fakes_test.go, *_fake_test.go), whitespace-only and comment-only changes
+# are skipped: they carry no behavior to fail on base. The "test:" title comes
+# in TDD_PR_TITLE, an env var, so it is never interpolated into a command line.
 set -euo pipefail
 base="$1"
 head="$2"
@@ -43,11 +36,15 @@ esac
 
 files=$(git diff --name-only --diff-filter=AM "$base...$head" -- '*_test.go' '*/testdata/*' |
   grep -Ev '(^|/)(fakes|[^/]*_fake)_test\.go$' || true)
+# why: in goldens and lint-comments fixtures a comment-shaped line is expected output or linter input, so only whitespace is ignored there.
 files=$(for f in $files; do
-  git diff --quiet --ignore-all-space --ignore-blank-lines "$base...$head" -- "$f" || echo "$f"
+  case $f in
+  (*.golden | *.go.txt) git diff --quiet --ignore-all-space --ignore-blank-lines "$base...$head" -- "$f" || echo "$f" ;;
+  (*) git diff --quiet --ignore-all-space --ignore-blank-lines -I '^[[:space:]]*(//|#)' "$base...$head" -- "$f" || echo "$f" ;;
+  esac
 done)
 if [ -z "$files" ]; then
-  echo "tdd: no added or changed test files or testdata (port fakes and whitespace-only changes are exempt)"
+  echo "tdd: no added or changed test files or testdata (port fakes, whitespace-only and comment-only changes are exempt)"
   exit 0
 fi
 

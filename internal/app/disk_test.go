@@ -11,8 +11,6 @@ import (
 	"github.com/giovaniif/agent-workspace/internal/app"
 )
 
-// gatedSizer blocks every Size call until release is closed and records how
-// many ran at once.
 type gatedSizer struct {
 	release chan struct{}
 	sizes   map[string]int64

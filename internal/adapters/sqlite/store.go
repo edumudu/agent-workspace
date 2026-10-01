@@ -1,5 +1,3 @@
-// Package sqlite implements app.Store on SQLite with write-behind: Put
-// enqueues, and one writer goroutine commits pending rows every FlushInterval.
 package sqlite
 
 import (
@@ -22,7 +20,7 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-// FlushInterval bounds how much a killed process can lose.
+// why: bounds how much a killed process can lose.
 const FlushInterval = 50 * time.Millisecond
 
 //go:embed migrations/*.sql
@@ -64,7 +62,6 @@ type Store struct {
 	closed  sync.Once
 }
 
-// DefaultPath is $AGENTWS_HOME/state.db, or ~/.agentws/state.db.
 func DefaultPath() (string, error) {
 	if home := os.Getenv("AGENTWS_HOME"); home != "" {
 		return filepath.Join(home, "state.db"), nil
@@ -190,14 +187,11 @@ func (s *Store) PutEvent(ev domain.SessionEvent) {
 	s.wakeWriter()
 }
 
-// DeleteWorkspace enqueues a delete; like a put it supersedes any earlier
-// unflushed write for the same root.
 func (s *Store) DeleteWorkspace(root string) { s.enqueue(tableWorkspaces, root, nil) }
 
 func (s *Store) DeleteWorktree(id string) { s.enqueue(tableWorktrees, id, nil) }
 
-// DeleteSession enqueues the row's delete and drops the session's unflushed
-// events; write deletes its stored ones in the same transaction.
+// why: write deletes the session's stored events in the same transaction as the row.
 func (s *Store) DeleteSession(id string) {
 	s.mu.Lock()
 	kept := s.events[:0]
@@ -226,7 +220,6 @@ func (s *Store) put(t table, key string, v any) {
 	s.enqueue(t, key, data)
 }
 
-// enqueue records data for key; nil data means delete the row.
 func (s *Store) enqueue(t table, key string, data []byte) {
 	s.mu.Lock()
 	if s.pending[t] == nil {

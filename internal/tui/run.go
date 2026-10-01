@@ -9,15 +9,13 @@ import (
 	"github.com/giovaniif/agent-workspace/internal/rpc"
 )
 
-// TickInterval drives the running spinner and the clock.
 const TickInterval = 200 * time.Millisecond
 
-// FPS is the renderer's frame cap. At 60 a keypress can wait up to 16 ms for
-// the next frame on its own, so the renderer runs at its 120 maximum.
+// why: at 60 a keypress can wait up to 16 ms for the next frame on its own, so
+// the renderer runs at its 120 maximum.
 const FPS = 120
 
-// Run subscribes to the daemon and runs the TUI until the user quits or ctx
-// ends. Diffs are read on a second connection so a slow frame never delays
+// why: diffs are read on a second connection so a slow frame never delays
 // FocusMain.
 func Run(ctx context.Context, subscriber, caller *rpc.Client, opts Options) error {
 	sub, err := subscriber.Subscribe(ctx)

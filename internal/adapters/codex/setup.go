@@ -12,8 +12,7 @@ import (
 	"github.com/giovaniif/agent-workspace/internal/domain"
 )
 
-// hooksFragment is what marks a hook command as ours, wherever the binary
-// lives, so a moved binary is updated instead of duplicated.
+// why: marks a hook command as ours wherever the binary lives, so a moved binary is updated instead of duplicated.
 const hooksFragment = " hook --harness codex --event "
 
 var managedEvents = []string{
@@ -29,27 +28,20 @@ var managedEvents = []string{
 
 var toolEvents = map[string]bool{"PreToolUse": true, "PostToolUse": true, "PermissionRequest": true}
 
-// TrustStep is the manual step Codex requires after hooks.json changes: it
-// keeps a hash of every hook it has been told to trust in config.toml.
+// why: Codex keeps a hash of every hook it has been told to trust in config.toml, so a hooks.json change needs a manual trust step.
 const TrustStep = domain.CodexTrustStep
 
 type SetupConfig struct {
-	// Dir is the Codex home, `~/.codex` unless CODEX_HOME says otherwise.
-	Dir string
-	// Command is the agentws binary the hooks run.
+	Dir     string
 	Command string
 	Now     func() time.Time
 }
 
 type SetupResult struct {
 	Changed bool
-	// Backup is the copy of the previous hooks.json, empty when there was
-	// nothing to back up.
-	Backup string
+	Backup  string
 }
 
-// Setup merges the agentws hooks into hooks.json, leaving every other hook
-// where it is. Running it again changes nothing.
 func Setup(cfg SetupConfig) (SetupResult, error) {
 	file, changed, err := merged(cfg)
 	if err != nil || !changed {
@@ -82,8 +74,6 @@ func merged(cfg SetupConfig) (*hooksFile, bool, error) {
 	return file, changed, nil
 }
 
-// Remove takes the agentws hooks out of hooks.json and deletes the file when
-// nothing else was left in it.
 func Remove(cfg SetupConfig) (SetupResult, error) {
 	file, err := loadHooksFile(cfg)
 	if err != nil {
@@ -193,8 +183,6 @@ func (f *hooksFile) save(cfg SetupConfig) (SetupResult, error) {
 	return res, os.Rename(tmp, f.path)
 }
 
-// mergeEvent makes the event's groups hold exactly one agentws group, the
-// current one, and reports whether that took a change.
 func mergeEvent(hooks *object, event, command string) bool {
 	want := desiredGroup(event, command)
 	var groups []any

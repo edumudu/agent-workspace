@@ -1,5 +1,3 @@
-// Package github implements app.PRFinder with the gh CLI, so it reuses the
-// user's gh auth. Every poll is one read-only GraphQL request for all repos.
 package github
 
 import (
@@ -19,8 +17,6 @@ import (
 
 var _ app.PRFinder = (*Finder)(nil)
 
-// Finder runs Bin ("gh" when empty). Remote returns a repo's origin URL and
-// defaults to `git remote get-url origin`.
 type Finder struct {
 	Bin    string
 	Remote func(ctx context.Context, dir string) (string, error)
@@ -31,11 +27,9 @@ type Finder struct {
 
 type repoRef struct{ owner, name string }
 
-// prsPerRepo bounds the query's cost: GitHub rejects queries past 500k nodes.
+// why: GitHub rejects queries past 500k nodes.
 const prsPerRepo = 50
 
-// PRs asks GitHub once for the recent PRs of every repo whose origin it can
-// resolve. A repo GitHub cannot find is left out of the result.
 func (f *Finder) PRs(ctx context.Context, dirs []string) (map[string][]domain.PullRequest, error) {
 	var refs []repoRef
 	var resolved []string
@@ -121,7 +115,6 @@ func originURL(ctx context.Context, dir string) (string, error) {
 	return string(out), err
 }
 
-// parseRemote reads owner and name from an https, ssh or scp-style remote.
 func parseRemote(url string) (owner, name string, ok bool) {
 	url = strings.TrimSpace(url)
 	url = strings.TrimSuffix(strings.TrimSuffix(url, "/"), ".git")
@@ -159,8 +152,7 @@ const boardFragment = `
       }
     }`
 
-// boardQuery is one read-only query with an alias per repo. Owner and name
-// travel as variables, never spliced into the query text.
+// why: owner and name travel as variables, never spliced into the query text.
 func boardQuery(refs []repoRef) (query string, vars []string) {
 	var decls, body strings.Builder
 	for i, r := range refs {
@@ -220,7 +212,6 @@ type ghPR struct {
 	}] `json:"commits"`
 }
 
-// ghCheck is a CheckRun (Status, Conclusion) or a StatusContext (State).
 type ghCheck struct {
 	Typename   string `json:"__typename"`
 	Name       string `json:"name"`
@@ -232,8 +223,6 @@ type ghCheck struct {
 	TargetURL  string `json:"targetUrl"`
 }
 
-// parseBoard reads the answer for the given aliases. An alias GitHub
-// answered with null is left out. It errors when there is no data at all.
 func parseBoard(out []byte, aliases []string) (map[string][]domain.PullRequest, error) {
 	var resp struct {
 		Data   map[string]*struct{ PullRequests ghNodes[ghPR] } `json:"data"`

@@ -21,9 +21,6 @@ type launcherCfg struct {
 	kick        chan struct{}
 }
 
-// WithLauncher enables the launcher methods: issues queue up and start as
-// sessions through session.new, at most maxParallel of them working at once
-// (domain.DefaultMaxParallel when zero). It needs WithHarnesses and WithSessions.
 func WithLauncher(maxParallel int) Option {
 	return func(d *Daemon) {
 		d.lc.enabled = true
@@ -31,8 +28,6 @@ func WithLauncher(maxParallel int) Option {
 	}
 }
 
-// LoadMaxParallel reads max_parallel from the [launcher] table of a
-// config.toml. A missing file or key gives 0, which means the default.
 func LoadMaxParallel(path string) (int, error) {
 	var cfg struct {
 		Launcher struct {
@@ -49,7 +44,6 @@ func LoadMaxParallel(path string) (int, error) {
 	return cfg.Launcher.MaxParallel, nil
 }
 
-// QueueChanged replaces the launcher queue.
 type QueueChanged struct{ Queue []domain.LaunchItem }
 
 func (e QueueChanged) apply(s *state) rpc.Diff {
@@ -58,7 +52,6 @@ func (e QueueChanged) apply(s *state) rpc.Diff {
 	return rpc.Diff{Queue: &queue}
 }
 
-// kickLauncher wakes the worker without blocking the loop.
 func (d *Daemon) kickLauncher() {
 	select {
 	case d.lc.kick <- struct{}{}:
@@ -124,9 +117,7 @@ func (d *Daemon) startQueued(item domain.LaunchItem) {
 	d.kickLauncher()
 }
 
-// launcherHas is true for an issue already waiting or with a launched
-// session still working on it. A failed item does not count, so enqueuing
-// its issue again retries it.
+// why: a failed item does not count, so enqueuing its issue again retries it.
 func (s *state) launcherHas(ref string) bool {
 	for _, i := range s.queue {
 		if i.Ref == ref && i.Err == "" {
@@ -208,8 +199,6 @@ func (d *Daemon) launcherEnqueue(req rpc.Request) (*rpc.Response, bool) {
 	return result(req.ID, out), ok
 }
 
-// launcherEdit applies a pure queue edit on the loop. The edit reports false
-// when the item is gone or cannot change, and an error for bad params.
 func (d *Daemon) launcherEdit(req rpc.Request, edit func([]domain.LaunchItem, json.RawMessage) ([]domain.LaunchItem, bool, error)) (*rpc.Response, bool) {
 	var editErr error
 	applied := false

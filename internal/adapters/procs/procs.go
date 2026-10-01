@@ -1,6 +1,3 @@
-// Package procs implements app.ProcessTable and app.WorktreeHolders with
-// netstat, lsof and process signals. It only reads processes, and signals a
-// group only when asked to.
 package procs
 
 import (
@@ -18,23 +15,16 @@ import (
 var _ app.ProcessTable = Table{}
 
 const (
-	// DefaultGrace is how long Terminate waits after SIGTERM before SIGKILL.
 	DefaultGrace = 3 * time.Second
 	pollEvery    = 25 * time.Millisecond
-	// killWait bounds the wait for the group to vanish after SIGKILL.
-	killWait = time.Second
+	killWait     = time.Second
 )
 
-// Table reads listeners with netstat and lsof. Grace is DefaultGrace when zero.
 type Table struct {
 	Grace time.Duration
 }
 
-// Listeners reads every listening TCP socket from `netstat -anv -p tcp`, then
-// asks lsof for the group, full command and cwd of just those processes.
-// lsof alone would also list the sockets, but it walks every process's file
-// descriptors and costs about 40 ms; netstat costs about 4 ms. A process
-// lsof cannot read (another user's) gets no cwd, so it maps to no worktree.
+// why: lsof alone would also list the sockets, but it walks every process's file descriptors and costs about 40 ms; netstat costs about 4 ms.
 func (Table) Listeners(ctx context.Context) ([]domain.Listener, error) {
 	sockets, err := run(ctx, "netstat", "-anv", "-p", "tcp")
 	if err != nil {
@@ -51,8 +41,7 @@ func (Table) Listeners(ctx context.Context) ([]domain.Listener, error) {
 	return merge(listeners, parseDetails(found)), nil
 }
 
-// run treats exit status 1 as success: lsof exits 1 when a listed pid
-// vanished, and what it did print is still good.
+// bug: lsof exits 1 when a listed pid vanished, and what it did print is still good.
 func run(ctx context.Context, name string, args ...string) (string, error) {
 	out, err := exec.CommandContext(ctx, name, args...).Output()
 	var exit *exec.ExitError
@@ -62,8 +51,7 @@ func run(ctx context.Context, name string, args ...string) (string, error) {
 	return string(out), nil
 }
 
-// Terminate signals the whole group, so a server's children go with it. It
-// refuses group 1 and below and the caller's own group.
+// why: signals the whole group so a server's children go with it; refuses group 1 and below and the caller's own group.
 func (t Table) Terminate(ctx context.Context, pgid int) error {
 	if pgid <= 1 || pgid == syscall.Getpgrp() {
 		return fmt.Errorf("refusing to signal process group %d", pgid)

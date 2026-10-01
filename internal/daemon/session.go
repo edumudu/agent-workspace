@@ -19,9 +19,6 @@ type sessionDeps struct {
 	addMu        sync.Mutex
 }
 
-// WithSessions enables session.new: worktrees are added under worktreeHome
-// and setup, when set, runs in each before the agent starts. It needs
-// WithHarnesses too.
 func WithSessions(worktrees app.WorktreeAdder, setup app.SetupFunc, worktreeHome string) Option {
 	return func(d *Daemon) {
 		d.sess = sessionDeps{worktrees: worktrees, setup: setup, worktreeHome: worktreeHome}
@@ -32,9 +29,9 @@ func (d *Daemon) sessions() app.Sessions {
 	return app.Sessions{Host: d.hs.host, Worktrees: serialAdder{mu: &d.sess.addMu, inner: d.sess.worktrees}, Setup: d.sess.setup}
 }
 
-// serialAdder keeps two `git worktree add` runs from overlapping: they race
-// on the repo's config file and one fails with "unable to write upstream
-// branch configuration". The launcher starts several sessions at once.
+// bug: concurrent `git worktree add` runs race on the repo's config file and
+// one fails with "unable to write upstream branch configuration". The
+// launcher starts several sessions at once.
 type serialAdder struct {
 	mu    *sync.Mutex
 	inner app.WorktreeAdder
@@ -201,8 +198,6 @@ func (d *Daemon) endSession(req rpc.Request) (*rpc.Response, bool) {
 	return result(req.ID, ended), ok
 }
 
-// endAndRefill ends the session and, if it was the one in view, fills the main
-// slot again so it never goes blank.
 func (d *Daemon) endAndRefill(session domain.Session) (domain.Session, bool, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), clientTimeout)
 	defer cancel()
@@ -229,8 +224,7 @@ func (d *Daemon) endAndRefill(session domain.Session) (domain.Session, bool, err
 	return ended, ok, nil
 }
 
-// refillMain keeps the main slot from going blank after the session in it
-// ended. Keyboard focus stays where it was: the user pressed the keys in the sidebar.
+// why: keyboard focus stays where it was: the user pressed the keys in the sidebar.
 func (d *Daemon) refillMain(next domain.Session, hasNext bool) {
 	d.clients.mu.Lock()
 	defer d.clients.mu.Unlock()
@@ -252,9 +246,6 @@ func (d *Daemon) refillMain(next domain.Session, hasNext bool) {
 
 var errNoLayout = errors.New("no client layout is open")
 
-// focusSession makes the session the one in view. With a terminal host and a
-// client layout it first swaps the session's pane into the main slot and
-// focuses it; without them it only marks the session.
 func (d *Daemon) focusSession(req rpc.Request) (*rpc.Response, bool) {
 	var p rpc.SessionFocusParams
 	if err := json.Unmarshal(req.Params, &p); err != nil {
@@ -295,9 +286,7 @@ func (d *Daemon) showInMain(pane app.PaneID) error {
 	return d.clients.host.FocusSlot(ctx, d.clients.slot)
 }
 
-// reconcilePanes ends restored sessions whose pane did not survive, such as
-// after a reboot killed the tmux server. A session that changed pane while
-// tmux was listed is left alone.
+// why: a session that changed pane while tmux was listed is left alone.
 func (d *Daemon) reconcilePanes(ctx context.Context) {
 	var onPanes []domain.Session
 	for _, s := range d.restored {

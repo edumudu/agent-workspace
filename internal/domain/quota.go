@@ -8,15 +8,11 @@ import (
 )
 
 const (
-	// LowQuotaLeft is the percent left below which the top bar turns red.
-	LowQuotaLeft = 20
-	// WarnQuotaLeft is the percent left below which the new-session dialog warns.
-	WarnQuotaLeft = 25
-	// StaleQuotaAfter is how old a report may get before it is shown dimmed.
+	LowQuotaLeft    = 20
+	WarnQuotaLeft   = 25
 	StaleQuotaAfter = 15 * time.Minute
 )
 
-// Quota is what one harness last reported for one usage window.
 type Quota struct {
 	Harness     Harness
 	Window      string
@@ -31,10 +27,8 @@ func (q Quota) Age(now time.Time) time.Duration { return max(now.Sub(q.ReportedA
 
 func (q Quota) Stale(now time.Time) bool { return q.Age(now) > StaleQuotaAfter }
 
-// Quotas folds the sessions' limits into one figure per harness and window,
-// taking each from the newest report. Accounts are shared by every session of
-// a harness, so the newest report is the best guess. Harnesses come in
-// declaration order, windows shortest first.
+// why: accounts are shared by every session of a harness, so the newest
+// report is the best guess.
 func Quotas(sessions []Session) []Quota {
 	type key struct {
 		harness Harness
@@ -73,9 +67,8 @@ func Quotas(sessions []Session) []Quota {
 	return out
 }
 
-// Current leaves out windows whose reset has passed: their figure belongs to
-// a window that is over, and Claude Code stops reporting it then too. A
-// window with no reset time is kept.
+// why: a window whose reset has passed is over, and Claude Code stops
+// reporting it then too.
 func Current(quotas []Quota, now time.Time) []Quota {
 	out := make([]Quota, 0, len(quotas))
 	for _, q := range quotas {
@@ -99,8 +92,6 @@ const (
 	sevenDays = 7 * 24 * time.Hour
 )
 
-// windowDuration orders windows. Claude's per-model windows are seven-day
-// windows; a window it does not know sorts last.
 func windowDuration(window string) time.Duration {
 	switch {
 	case window == "five_hour":
@@ -115,8 +106,6 @@ func windowDuration(window string) time.Duration {
 	return 1<<63 - 1
 }
 
-// WindowNameForMinutes names a window a harness reports by length, so Codex's
-// windows line up with Claude's.
 func WindowNameForMinutes(minutes int) string {
 	switch time.Duration(minutes) * time.Minute {
 	case fiveHours:
@@ -127,7 +116,6 @@ func WindowNameForMinutes(minutes int) string {
 	return fmt.Sprintf("%dm", minutes)
 }
 
-// WindowLabel is the short name the top bar shows: 5h, 7d, "7d opus".
 func WindowLabel(window string) string {
 	switch {
 	case window == "five_hour":
@@ -151,22 +139,16 @@ func WindowLabel(window string) string {
 	return fmt.Sprintf("%dm", minutes)
 }
 
-// SwitchAdvice is the new-session dialog's low-quota warning. OtherShortest
-// is nil when the other harness has reported nothing, which leaves the
-// dialog nothing to offer a switch on.
 type SwitchAdvice struct {
 	Low           Quota
 	Other         Harness
 	OtherShortest *Quota
 }
 
-// Advise returns a warning when the shortest window of the chosen harness has
-// less than WarnQuotaLeft percent left. A harness with no figures gets none.
 func Advise(quotas []Quota, chosen Harness) (SwitchAdvice, bool) {
 	return AdviseAt(quotas, chosen, WarnQuotaLeft)
 }
 
-// AdviseAt is Advise with a chosen threshold instead of WarnQuotaLeft.
 func AdviseAt(quotas []Quota, chosen Harness, threshold int) (SwitchAdvice, bool) {
 	low, ok := ShortestQuota(quotas, chosen)
 	if !ok || low.LeftPercent >= threshold {
@@ -183,8 +165,6 @@ func AdviseAt(quotas []Quota, chosen Harness, threshold int) (SwitchAdvice, bool
 	return advice, true
 }
 
-// ShortestQuota is the harness's shortest window; among equally long ones,
-// the one with the least left.
 func ShortestQuota(quotas []Quota, h Harness) (Quota, bool) {
 	var best Quota
 	found := false

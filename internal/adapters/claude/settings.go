@@ -10,7 +10,6 @@ import (
 	"strings"
 )
 
-// HookEvents are the Claude hooks setup installs, in the order it adds them.
 var HookEvents = []string{
 	"SessionStart", "UserPromptSubmit", "PreToolUse", "PostToolUse", "Notification",
 	"PermissionRequest", "Stop", "SubagentStart", "SubagentStop", "SessionEnd",
@@ -18,16 +17,11 @@ var HookEvents = []string{
 
 const hookMarker = " hook --harness claude --event "
 
-// BackupPath is where Setup keeps the settings file as it was before the
-// first Setup. Remove restores it and deletes it.
 func BackupPath(settings string) string { return settings + ".agentws-backup" }
 
 func HookCommand(bin, event string) string { return shellQuote(bin) + hookMarker + event }
 
-// Setup merges agentws hooks and the status-line wrapper into the settings
-// file at path, creating it if needed. The user's hooks are kept and run
-// first; agentws entries from an earlier Setup, with any binary path, are
-// replaced, so running it again gives the same bytes.
+// why: agentws entries from an earlier Setup, with any binary path, are replaced, so running it again gives the same bytes.
 func Setup(path, bin string) error {
 	p, err := plan(path, bin)
 	if err != nil {
@@ -88,8 +82,7 @@ func plan(path, bin string) (setupPlan, error) {
 	return p, err
 }
 
-// Remove takes out what Setup added. When nothing else changed since, the
-// file gets back its original bytes; otherwise the user's later edits stay.
+// why: when nothing else changed since Setup, the file gets back its original bytes; otherwise the user's later edits stay.
 func Remove(path string) error {
 	current, err := os.ReadFile(path)
 	if errors.Is(err, os.ErrNotExist) {
@@ -172,8 +165,6 @@ func install(doc *object, bin, chain string) error {
 	return doc.set("statusLine", line)
 }
 
-// strip removes every agentws entry from doc and returns the user's own
-// status-line command that the wrapper chained to.
 func strip(doc *object) (chain string, err error) {
 	if hooks, ok, err := doc.existingObject("hooks"); err != nil {
 		return "", err

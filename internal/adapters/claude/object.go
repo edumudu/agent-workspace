@@ -7,8 +7,7 @@ import (
 	"fmt"
 )
 
-// object is a JSON object that keeps its key order, so a merge into the
-// user's settings file moves nothing the user wrote.
+// why: keeps key order, so a merge into the user's settings file moves nothing the user wrote.
 type object struct {
 	members []member
 }
@@ -78,7 +77,6 @@ func (o *object) MarshalJSON() ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-// encode is the settings file format: two-space indent and a final newline.
 func (o *object) encode() ([]byte, error) {
 	raw, err := o.MarshalJSON()
 	if err != nil {
@@ -157,8 +155,7 @@ func (o *object) array(key string) ([]json.RawMessage, error) {
 	return out, nil
 }
 
-// marshal writes compact JSON without escaping <, > and &, which appear in
-// shell commands.
+// why: <, > and & stay unescaped because they appear in shell commands.
 func marshal(v any) (json.RawMessage, error) {
 	var buf bytes.Buffer
 	enc := json.NewEncoder(&buf)

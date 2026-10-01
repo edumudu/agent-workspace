@@ -7,9 +7,7 @@ import (
 	"time"
 )
 
-// ReviewComment is a note on lines Start..End of Path in the worktree at
-// Worktree (a path, so the agent edits the right checkout). The numbers are
-// the new side's, or the old side's when Removed: every line was deleted.
+// why: Worktree is a path so the agent edits the right checkout.
 type ReviewComment struct {
 	ID       string   `json:"id,omitempty"`
 	Worktree string   `json:"worktree"`
@@ -21,7 +19,6 @@ type ReviewComment struct {
 	Body     string   `json:"body"`
 }
 
-// CommentOn anchors body to lines, which run in diff order.
 func CommentOn(worktree, path string, lines []DiffLine, body string) ReviewComment {
 	c := ReviewComment{Worktree: worktree, Path: path, Body: strings.TrimSpace(body), Removed: true}
 	for _, l := range lines {
@@ -48,8 +45,7 @@ func CommentOn(worktree, path string, lines []DiffLine, body string) ReviewComme
 
 const promptLead = "Review comments on your changes. Each one names the worktree, file and lines it is about; make the edit in that worktree.\n"
 
-// ReviewPrompt is the one prompt a draft is sent as. Its exact text is
-// pinned by testdata/review_prompt.golden.
+// why: its exact text is pinned by testdata/review_prompt.golden.
 func ReviewPrompt(comments []ReviewComment) string {
 	var b strings.Builder
 	b.WriteString(promptLead)
@@ -112,13 +108,9 @@ const (
 	DraftOpen   DraftStatus = "open"
 	DraftQueued DraftStatus = "queued"
 	DraftSent   DraftStatus = "sent"
-	// DraftMerged is a draft whose comments moved into an older one whose
-	// paste failed, so they are sent together.
 	DraftMerged DraftStatus = "merged"
 )
 
-// ReviewDraft collects a session's comments until it is sent as one prompt.
-// A sent draft is kept as an archive, with the turn refs its prompt produced.
 type ReviewDraft struct {
 	ID       string          `json:"id"`
 	Session  string          `json:"session"`
@@ -136,7 +128,6 @@ func (d ReviewDraft) Add(c ReviewComment) ReviewDraft {
 	return d
 }
 
-// Queue asks for the draft to be sent as soon as the session is between tools.
 func (d ReviewDraft) Queue() ReviewDraft {
 	if len(d.Comments) > 0 && d.Status != DraftSent {
 		d.Status = DraftQueued
@@ -147,8 +138,7 @@ func (d ReviewDraft) Queue() ReviewDraft {
 	return d
 }
 
-// Dispatch sends a queued draft once s is between tools, the same rule as a
-// model switch: a paste into a running agent would land in its tool run.
+// why: a paste into a running agent would land in its tool run.
 func (d ReviewDraft) Dispatch(s Session, now time.Time) (ReviewDraft, string, bool) {
 	if d.Status != DraftQueued || !s.AcceptsSwitch() {
 		return d, "", false
@@ -157,13 +147,11 @@ func (d ReviewDraft) Dispatch(s Session, now time.Time) (ReviewDraft, string, bo
 	return d, ReviewPrompt(d.Comments), true
 }
 
-// Unsend puts a draft whose paste failed back in the queue.
 func (d ReviewDraft) Unsend() ReviewDraft {
 	d.Status, d.SentAt = DraftQueued, time.Time{}
 	return d
 }
 
-// AwaitsTurn is true for a sent draft whose prompt has not been seen yet.
 func (d ReviewDraft) AwaitsTurn() bool { return d.Status == DraftSent && d.Turns == nil }
 
 func (d ReviewDraft) LinkTurn(refs []string) ReviewDraft {
@@ -180,7 +168,6 @@ const (
 
 var ErrHunkUnsupported = errors.New("stage and revert work on plain text files only, not renames, binaries or quoted paths")
 
-// HunkPatch rebuilds one hunk of f as a patch for `git apply`.
 func HunkPatch(f FileDiff, h Hunk) (string, error) {
 	if f.Binary || f.Status == FileRenamed || strings.HasPrefix(f.Path, `"`) || h.Header == "" {
 		return "", ErrHunkUnsupported

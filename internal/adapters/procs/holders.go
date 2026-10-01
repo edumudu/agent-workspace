@@ -14,8 +14,6 @@ import (
 
 var _ app.WorktreeHolders = Table{}
 
-// Holders runs one lsof over every process's cwd. Shells in tmux panes,
-// editors and dev servers all show up this way.
 func (Table) Holders(ctx context.Context, paths []string) (map[string][]string, error) {
 	out, err := exec.CommandContext(ctx, "lsof", "-n", "-P", "-w", "-d", "cwd", "-F", "pcn").Output()
 	if err != nil {
@@ -34,7 +32,6 @@ func (Table) Holders(ctx context.Context, paths []string) (map[string][]string, 
 	return holders(out, paths, resolved), nil
 }
 
-// holders reads `lsof -F pcn`: p<pid>, c<command>, then n<cwd> per process.
 func holders(out []byte, paths []string, resolved map[string]string) map[string][]string {
 	found := map[string][]string{}
 	var pid, command string

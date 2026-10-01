@@ -6,29 +6,23 @@ import (
 	"time"
 )
 
-// ClaimWindow is how long after a `git worktree add` hook a new worktree is
-// still credited to the session that ran it.
 const ClaimWindow = 30 * time.Second
 
-// Branch is empty when the worktree is detached.
 type ListedWorktree struct {
 	Path   string
 	Branch string
 }
 
-// Main is the main checkout's path and is not among Worktrees.
 type RepoListing struct {
 	Main      string
 	Worktrees []ListedWorktree
 }
 
-// SessionHint.Cwd is the cwd from the session's latest hook.
 type SessionHint struct {
 	ID  string
 	Cwd string
 }
 
-// WorktreeClaim.Cwd is where the command ran; it ties the claim to a repo.
 type WorktreeClaim struct {
 	SessionID string
 	Cwd       string
@@ -36,8 +30,6 @@ type WorktreeClaim struct {
 	At        time.Time
 }
 
-// IsWorktreeAdd matches any pipeline or list segment, and skips git's global
-// options such as -C.
 func IsWorktreeAdd(command string) bool {
 	segments := strings.FieldsFunc(command, func(r rune) bool {
 		return r == ';' || r == '&' || r == '|' || r == '\n'
@@ -66,8 +58,6 @@ func segmentIsWorktreeAdd(words []string) bool {
 	return len(rest) >= 2 && rest[0] == "worktree" && rest[1] == "add"
 }
 
-// SubagentParent returns the checkout a Claude subagent worktree
-// (<parent>/.claude/worktrees/agent-*) belongs to.
 func SubagentParent(path string) (string, bool) {
 	clean := filepath.Clean(path)
 	if !strings.HasPrefix(filepath.Base(clean), "agent-") {
@@ -81,10 +71,6 @@ func SubagentParent(path string) (string, bool) {
 	return filepath.Dir(claude), true
 }
 
-// AttributeWorktree picks the session a newly seen worktree belongs to, or
-// "" for unassigned. In order: the parent session of a subagent worktree, a
-// session working inside it, then a recent `git worktree add` claim, which
-// must name the path or branch when several sessions made one.
 func AttributeWorktree(wt ListedWorktree, hints []SessionHint, claims []WorktreeClaim, now time.Time) string {
 	if parent, ok := SubagentParent(wt.Path); ok {
 		for _, h := range hints {
@@ -117,8 +103,6 @@ func AttributeWorktree(wt ListedWorktree, hints []SessionHint, claims []Worktree
 	return id
 }
 
-// namedBy is the one session whose claims name the worktree by a whole
-// word: its branch, or a path ending in its dir name.
 func namedBy(path, branch string, claims []WorktreeClaim) string {
 	base := filepath.Base(path)
 	var naming []WorktreeClaim
@@ -134,11 +118,8 @@ func namedBy(path, branch string, claims []WorktreeClaim) string {
 	return id
 }
 
-// ReclaimWorktrees attaches unassigned worktrees that a recent claim names:
-// a scan that runs while `git worktree add` does sees the worktree before
-// the PostToolUse hook that claims it. Pre-existing worktrees stay
-// unassigned unless a claim names them word for word. It returns only the
-// ones it changed.
+// why: a scan that runs while `git worktree add` does sees the worktree
+// before the PostToolUse hook that claims it.
 func ReclaimWorktrees(known []Worktree, claims []WorktreeClaim, now time.Time) []Worktree {
 	var recent []WorktreeClaim
 	for _, c := range claims {
@@ -196,9 +177,6 @@ func within(path, dir string) bool {
 	return err == nil && rel != ".." && !strings.HasPrefix(rel, "../")
 }
 
-// ReconcileWorktrees compares the known worktrees of listing's repo with what
-// git listed. changed holds new worktrees, owned by attribute, and known ones
-// whose branch moved; removed holds the IDs git no longer lists.
 func ReconcileWorktrees(known []Worktree, listing RepoListing, attribute func(ListedWorktree) string) (changed []Worktree, removed []string) {
 	byID := map[string]Worktree{}
 	for _, w := range known {
@@ -227,8 +205,6 @@ func ReconcileWorktrees(known []Worktree, listing RepoListing, attribute func(Li
 	return changed, removed
 }
 
-// RollupChecks folds a PR's checks: any failure fails, then any pending is
-// pending, then any pass passes.
 func RollupChecks(states []CheckState) CheckState {
 	out := CheckNone
 	for _, s := range states {
@@ -244,8 +220,6 @@ func RollupChecks(states []CheckState) CheckState {
 	return out
 }
 
-// PRForBranch is the PR whose head is branch: the open one if any, else the
-// most recent.
 func PRForBranch(prs []PullRequest, branch string) *PullRequest {
 	var best *PullRequest
 	for i := range prs {

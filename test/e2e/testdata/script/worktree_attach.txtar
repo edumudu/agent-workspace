@@ -1,4 +1,3 @@
-# The agent runs `git worktree add` twice; both worktrees attach to its session.
 repo api
 exec agentws workspace add api
 exec agentws new --workspace api 'split the work'

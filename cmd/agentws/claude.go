@@ -16,7 +16,7 @@ import (
 	"github.com/giovaniif/agent-workspace/internal/rpc"
 )
 
-// claudeSettingsPath follows Claude Code: $CLAUDE_CONFIG_DIR, else ~/.claude.
+// why: follows Claude Code: $CLAUDE_CONFIG_DIR, else ~/.claude.
 func claudeSettingsPath(env func(string) string) (string, error) {
 	dir := env("CLAUDE_CONFIG_DIR")
 	if dir == "" {
@@ -62,10 +62,9 @@ func setupClaude(path, self string, remove bool, stdout io.Writer) error {
 	return nil
 }
 
-// runStatusLine is Claude's status-line command after setup. The user's own
-// command, if any, gets the same input and its output is printed unchanged;
-// the report to the daemon runs alongside it and never delays it by more
-// than hookTimeout. It always exits 0 so the status line keeps rendering.
+// why: the user's own status-line command, if any, gets the same input and its
+// output is printed unchanged; the daemon report never delays it by more than
+// hookTimeout. It always exits 0 so the status line keeps rendering.
 func runStatusLine(args []string, stdin io.Reader, stdout io.Writer, home, pane string) int {
 	fs := flag.NewFlagSet("statusline", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
@@ -104,7 +103,6 @@ func reportStatus(home, pane string, input []byte) error {
 	return sendOnce(home, rpc.MethodStatusLine, rpc.StatusLine{Pane: pane, Report: report})
 }
 
-// sendOnce writes one request and does not wait for the reply.
 func sendOnce(home, method string, params any) error {
 	nc, err := net.DialTimeout("unix", rpc.SocketPath(home), hookTimeout)
 	if err != nil {

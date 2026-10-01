@@ -10,20 +10,14 @@ import (
 	"github.com/giovaniif/agent-workspace/internal/domain"
 )
 
-// titleEvery is how often agent pane titles are brought up to date.
 const titleEvery = 250 * time.Millisecond
 
-// titleInput is what one agent pane's title is made from, copied off the
-// loop's state so the worker never shares it.
+// why: copied off the loop's state so the worker never shares it.
 type titleInput struct {
 	session domain.Session
 	cwd     string
 }
 
-// paneTitles keeps each agent pane's top border in step with its session
-// (ADR 0038). On the loop it only copies the sessions on a pane and the
-// worktrees, and only when the state changed since the last tick; it
-// formats the titles and runs tmux here, and only for titles that changed.
 func (d *Daemon) paneTitles(ctx context.Context) {
 	if d.hs.host == nil {
 		return

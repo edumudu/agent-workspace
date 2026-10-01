@@ -31,16 +31,14 @@ func builtAtUnix() int64 {
 	return t.Unix()
 }
 
-// StartTimeout is how long Connect waits for a daemon it started.
 const StartTimeout = 2 * time.Second
 
 const retryInterval = 25 * time.Millisecond
 
 var ErrClosed = errors.New("rpc: connection closed")
 
-// Client is safe for concurrent use. Calls share one connection; a
-// subscription's diffs are read on it too, so give a slow consumer its own
-// Client.
+// why: calls share one connection and a subscription's diffs are read on it
+// too, so give a slow consumer its own Client.
 type Client struct {
 	conn net.Conn
 
@@ -67,8 +65,6 @@ func Dial(path string) (*Client, error) {
 	return c, nil
 }
 
-// Connect dials the daemon. If nothing is listening it calls start once, then
-// retries until StartTimeout has passed.
 func Connect(ctx context.Context, path string, start func() error) (*Client, error) {
 	if c, err := Dial(path); err == nil {
 		return c, nil
@@ -97,8 +93,7 @@ func (c *Client) Close() error {
 	return c.conn.Close()
 }
 
-// Call sends one request and decodes its result into out, which may be nil.
-// A daemon error comes back as *Error.
+// why: a daemon error comes back as *Error.
 func (c *Client) Call(ctx context.Context, method string, params, out any) error {
 	id, ch, err := c.send(method, params)
 	if err != nil {
@@ -137,8 +132,7 @@ func (c *Client) WorktreeAssign(ctx context.Context, id, session string) error {
 	return c.Call(ctx, MethodWorktreeAssign, WorktreeAssignParams{ID: id, Session: session}, nil)
 }
 
-// KillPorts terminates the given process groups and returns the ones that
-// went. It fails with not_found when none of them serves a listed port.
+// why: fails with not_found when none of the groups serves a listed port.
 func (c *Client) KillPorts(ctx context.Context, pgids []int) ([]int, error) {
 	var out PortsKilled
 	err := c.Call(ctx, MethodPortsKill, PortsKillParams{PGIDs: pgids}, &out)
@@ -231,7 +225,6 @@ func (c *Client) DebugSeed(ctx context.Context, p DebugSeedParams) error {
 
 type Subscription struct {
 	State State
-	// Diffs is closed when the connection ends.
 	Diffs <-chan Diff
 }
 
@@ -357,5 +350,4 @@ func decode(resp Response, out any) error {
 	return json.Unmarshal(resp.Result, out)
 }
 
-// MaxMessage bounds one line on the socket, in either direction.
 const MaxMessage = 16 << 20

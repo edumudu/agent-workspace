@@ -10,7 +10,6 @@ import (
 	"testing"
 )
 
-// pluginDir is the nvim/ Lua plugin, two levels up from this package.
 func pluginDir(t *testing.T) string {
 	t.Helper()
 	dir, err := filepath.Abs(filepath.Join("..", "..", "nvim"))
@@ -23,9 +22,8 @@ func pluginDir(t *testing.T) string {
 	return dir
 }
 
-// TestNvimPluginSpecs runs nvim/test/spec.lua in a headless nvim with a
-// throwaway config, data, state and cache dir: the user's nvim setup is never
-// read or written.
+// why: a throwaway config, data, state and cache dir, so the user's nvim setup
+// is never read or written.
 func TestNvimPluginSpecs(t *testing.T) {
 	plugin := pluginDir(t)
 	if _, err := exec.LookPath("nvim"); err != nil {
