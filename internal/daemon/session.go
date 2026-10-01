@@ -56,7 +56,7 @@ func (d *Daemon) newSession(req rpc.Request) (*rpc.Response, bool) {
 	if err := json.Unmarshal(req.Params, &p); err != nil {
 		return errorResponse(req.ID, rpc.CodeBadRequest, "session.new params: "+err.Error()), true
 	}
-	session, rerr, ok := d.startSession(p)
+	session, rerr, ok := d.startSession(p, "")
 	if !ok {
 		return nil, false
 	}
@@ -67,7 +67,9 @@ func (d *Daemon) newSession(req rpc.Request) (*rpc.Response, bool) {
 }
 
 // why: git, the setup recipe and tmux all run here on the caller's goroutine (a connection's or a launcher worker's); the loop only reads and commits.
-func (d *Daemon) startSession(p rpc.NewSessionParams) (domain.Session, *rpc.Error, bool) {
+// prompt is the agent's first message; a session someone starts gets none, only the
+// launcher, which starts sessions unattended, sends the issue.
+func (d *Daemon) startSession(p rpc.NewSessionParams, prompt string) (domain.Session, *rpc.Error, bool) {
 	adapter, ok := d.hs.adapters[domain.Harness(p.Harness)]
 	if !ok || d.hs.host == nil || d.sess.worktrees == nil {
 		return domain.Session{}, &rpc.Error{Code: rpc.CodeBadRequest, Message: "no harness " + p.Harness}, true
@@ -112,7 +114,7 @@ func (d *Daemon) startSession(p rpc.NewSessionParams) (domain.Session, *rpc.Erro
 	}
 	started, err := d.sessions().Start(d.ws.ctx, app.NewSession{
 		ID: newID(), Task: in.task, Plan: plan, Harness: adapter,
-		Name: name, Model: p.Model, Effort: p.Effort, Prompt: p.WorkItem,
+		Name: name, Model: p.Model, Effort: p.Effort, Prompt: prompt,
 	})
 	if err != nil {
 		if started.Worktree != nil && !d.query(func(s *state) { s.putWorktree(*started.Worktree) }) {

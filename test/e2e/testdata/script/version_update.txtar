@@ -1,0 +1,14 @@
+# A cached newer release (checked in the future, so always fresh) needs no network.
+env AGENTWS_NO_UPDATE_CHECK=
+mkdir $AGENTWS_HOME
+cp release.json $AGENTWS_HOME/release.json
+exec agentws version
+stdout 'v9\.0\.0-alpha\.1 is available'
+stdout 'agentws daemon stop'
+
+env AGENTWS_NO_UPDATE_CHECK=1
+exec agentws version
+! stdout 'is available'
+
+-- release.json --
+{"tag":"v9.0.0-alpha.1","checked":"2999-01-01T00:00:00Z"}

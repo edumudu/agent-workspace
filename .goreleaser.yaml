@@ -1,0 +1,31 @@
+version: 2
+
+project_name: agentws
+
+builds:
+  - main: ./cmd/agentws
+    binary: agentws
+    env:
+      - CGO_ENABLED=0
+    goos: [darwin, linux]
+    goarch: [arm64, amd64]
+    ignore:
+      - goos: linux
+        goarch: arm64
+    ldflags:
+      - -s -w -X github.com/giovaniif/agent-workspace/internal/version.Version={{ .Tag }} -X github.com/giovaniif/agent-workspace/internal/version.Commit={{ .ShortCommit }}
+
+archives:
+  - formats: [tar.gz]
+    name_template: "{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}"
+    files:
+      - README.md
+
+checksum:
+  name_template: checksums.txt
+
+changelog:
+  use: github-native
+
+release:
+  prerelease: auto
