@@ -175,3 +175,33 @@ func TestNOpensTheDialogAsAPopupWhenOneIsConfigured(t *testing.T) {
 		t.Fatalf("no inline dialog when the popup fails:\n%s", out)
 	}
 }
+
+func TestNewSessionPopupKeepsTheActionsInViewInAShortWindow(t *testing.T) {
+	c := &fakeCaller{}
+	m := tui.New(tui.Options{Theme: tui.Latte(), Now: clock, Calls: c, NewSessionOnly: true})
+	m = update(m, tea.WindowSizeMsg{Width: 60, Height: 16})
+	m = update(m, tui.StateMsg(withWorkspaces(lowClaudeState())))
+	m = pressCmd(pressCmd(pressCmd(typeText(m, "x"), keyTab), keyTab), keyTab)
+	out := screen(m)
+	if lines := strings.Split(out, "\n"); len(lines) > 16 {
+		t.Fatalf("%d rows in a 16-row popup:\n%s", len(lines), out)
+	}
+	if !strings.Contains(out, "Model") || !strings.Contains(out, "⏎ create") {
+		t.Fatalf("the active field or the actions are cut off:\n%s", out)
+	}
+}
+
+func TestNewSessionPopupSaysSoWhenTheNewSessionCannotBeShown(t *testing.T) {
+	m, c := popupModel(t, repoWorkspaces(rpc.State{}), 100)
+	c.err, c.failOn = errors.New("no client layout is open"), rpc.MethodSessionFocus
+	m = typeText(m, "add search")
+	next, cmd := m.Update(keyEnter)
+	next, cmd = next.Update(cmd())
+	if quits(cmd) {
+		t.Fatal("the popup closed without saying the session could not be shown")
+	}
+	out := screen(run(next.(tui.Model), cmd))
+	if !strings.Contains(out, "started, but showing it failed") || !strings.Contains(out, "no client layout is open") {
+		t.Fatalf("no error in the popup:\n%s", out)
+	}
+}
