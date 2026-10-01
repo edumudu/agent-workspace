@@ -1,12 +1,10 @@
-// why: usage: lint-comments enforces the comment rules in AGENTS.md: inside
-// function bodies only "// why:" comments and tool directives are allowed,
-// every to-do marker references an issue number, a declaration's doc comment
-// says more than its name, and there are no section banners.
+// why: usage: lint-comments [dir...] fails on any comment that does not open
+// with a "why:" or "bug:" marker, an issue-linked to-do, or a generated-code or license
+// header, and on tool directives without a reason (AGENTS.md, ADR 0020).
 package main
 
 import (
 	"fmt"
-	"go/ast"
 	"go/parser"
 	"go/token"
 	"io"
@@ -85,65 +83,50 @@ func skipDir(name string) bool {
 	return name == "testdata" || name == "vendor" || strings.HasPrefix(name, ".") || strings.HasPrefix(name, "_")
 }
 
+var (
+	markedPattern    = regexp.MustCompile(`^(//|/\*) (why|bug): \S`)
+	todoMarker       = regexp.MustCompile(`^// TODO\(#\d+\)`)
+	generatedPattern = regexp.MustCompile(`^// Code generated .* DO NOT EDIT\.$`)
+	licensePattern   = regexp.MustCompile(`^// (Copyright|SPDX-License-Identifier:)`)
+	directivePattern = regexp.MustCompile(`^//(go:|line |export |nolint:)`)
+)
+
+const unmarkedMsg = "comment must start with \"// why: \" or \"// bug: \" (a reason the code cannot show), or be a tool directive; otherwise delete it"
+
 func checkFile(name string, src []byte) ([]finding, error) {
 	fset := token.NewFileSet()
 	file, err := parser.ParseFile(fset, name, src, parser.ParseComments)
 	if err != nil {
 		return nil, err
 	}
-	bodies := functionBodies(file)
 	var findings []finding
 	for _, group := range file.Comments {
+		needsMarker := true
 		for _, c := range group.List {
 			line := fset.Position(c.Pos()).Line
-			if insideAny(c.Pos(), bodies) && !allowedInBody(c.Text) {
-				findings = append(findings, finding{name, line, "comment inside a function body must start with \"// why:\" or be a tool directive"})
+			if directivePattern.MatchString(c.Text) {
+				if strings.HasPrefix(c.Text, "//nolint:") && !nolintWithReason.MatchString(c.Text) {
+					findings = append(findings, finding{name, line, "//nolint: needs a reason: //nolint:x // why: ..."})
+				}
+				needsMarker = true
 				continue
 			}
+			if needsMarker && !marked(c.Text) {
+				findings = append(findings, finding{name, line, unmarkedMsg})
+				needsMarker = false
+				continue
+			}
+			needsMarker = false
 			if todoPattern.MatchString(c.Text) && !todoIssuePattern.MatchString(c.Text) {
 				findings = append(findings, finding{name, line, "TODO must reference an issue: TODO(#<n>)"})
 			}
 		}
 	}
-	findings = append(findings, restatingDocs(fset, name, file)...)
-	findings = append(findings, banners(fset, name, file)...)
 	slices.SortStableFunc(findings, func(a, b finding) int { return a.line - b.line })
 	return findings, nil
 }
 
-func functionBodies(file *ast.File) []*ast.BlockStmt {
-	var bodies []*ast.BlockStmt
-	ast.Inspect(file, func(n ast.Node) bool {
-		switch fn := n.(type) {
-		case *ast.FuncDecl:
-			if fn.Body != nil {
-				bodies = append(bodies, fn.Body)
-			}
-		case *ast.FuncLit:
-			bodies = append(bodies, fn.Body)
-		}
-		return true
-	})
-	return bodies
-}
-
-func insideAny(pos token.Pos, bodies []*ast.BlockStmt) bool {
-	for _, b := range bodies {
-		if pos > b.Lbrace && pos < b.Rbrace {
-			return true
-		}
-	}
-	return false
-}
-
-func allowedInBody(text string) bool {
-	switch {
-	case strings.HasPrefix(text, "// why:"):
-		return true
-	case strings.HasPrefix(text, "//go:"):
-		return true
-	case strings.HasPrefix(text, "//nolint:"):
-		return nolintWithReason.MatchString(text)
-	}
-	return false
+func marked(text string) bool {
+	return markedPattern.MatchString(text) || todoMarker.MatchString(text) ||
+		generatedPattern.MatchString(text) || licensePattern.MatchString(text)
 }
