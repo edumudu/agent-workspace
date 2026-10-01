@@ -15,6 +15,9 @@ import (
 type Defaults struct {
 	Model  string `toml:"model"`
 	Effort string `toml:"effort"`
+	// EffortByModel is a harness's effort per model, by short model name
+	// ("opus-5.5"), for when its effort is set per model rather than once.
+	EffortByModel map[string]string `toml:"-"`
 }
 
 // LoadDefaults gives no defaults when the file is missing.

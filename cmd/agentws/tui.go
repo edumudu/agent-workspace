@@ -167,7 +167,8 @@ func harnessDefaults() map[domain.Harness]tui.Defaults {
 	out := map[domain.Harness]tui.Defaults{}
 	if path, err := claudeSettingsPath(os.Getenv); err == nil {
 		if model, effort, err := claude.ReadDefaults(path); err == nil {
-			out[domain.HarnessClaude] = tui.Defaults{Model: model, Effort: effort}
+			byModel, _ := claude.ReadEffortByModel(path)
+			out[domain.HarnessClaude] = tui.Defaults{Model: model, Effort: effort, EffortByModel: byModel}
 		}
 	}
 	if dir, err := codexHome(os.Getenv); err == nil {
