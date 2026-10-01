@@ -49,7 +49,7 @@ One terminal tool for running Claude Code and Codex sessions in parallel, each i
 - Sessions survive TUI restarts, terminal crashes and SSH detach.
 
 **Attention**
-- Notifications for waiting, permission requests and done: macOS banner, optional sound, and per-session mute (`m`). No banner for the session you are looking at while the terminal is in front, and at most one per session every 10 s. The title names the session and where it runs (`fix login · api@42-retry`); the body says what it needs (`needs permission: Bash: npm test`, `asks: Should I keep the alias?`) or what it did (the first line of its last message and how long the turn took), and says so when it hit a usage limit or an API error.
+- Notifications for waiting, permission requests and done: macOS banner, optional sound, and per-session mute (`m`). No banner for the session you are looking at while the terminal is in front, and at most one per session every 10 s. The title names the session and where it runs (`fix login · api@42-retry`); the body says what it needs (`needs permission: Bash: npm test`, `asks: Should I keep the alias?`) or what it did (the first line of its last message and how long the turn took), and says so when it hit a usage limit or an API error. With `terminal-notifier` installed, a session keeps one banner (a newer one replaces it), clicking it brings the terminal to the front on that session (`agentws focus <id>`), and it is withdrawn once the session resumes or is focused.
 - An unread marker until you look at the session. Waiting sessions sort to the top.
 - Claude and Codex notify on the same events.
 

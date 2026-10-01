@@ -424,9 +424,19 @@ func (h *fakeHost) Create(_ context.Context, spec app.PaneSpec) (app.PaneID, err
 	return "%7", nil
 }
 
-type fakeNotifier struct{ banners chan domain.Banner }
+type fakeNotifier struct {
+	banners  chan domain.Banner
+	removals chan string
+}
 
-func newFakeNotifier() *fakeNotifier { return &fakeNotifier{banners: make(chan domain.Banner, 64)} }
+func newFakeNotifier() *fakeNotifier {
+	return &fakeNotifier{banners: make(chan domain.Banner, 64), removals: make(chan string, 64)}
+}
+
+func (n *fakeNotifier) Remove(_ context.Context, group string) error {
+	n.removals <- group
+	return nil
+}
 
 func (n *fakeNotifier) Notify(_ context.Context, b domain.Banner) error {
 	n.banners <- b

@@ -86,3 +86,6 @@ func LoadSounds(path string) (map[domain.AgentState]string, error) {
 	}
 	return out, nil
 }
+
+// why: display notification posts banners that cannot be withdrawn.
+func (Osascript) Remove(context.Context, string) error { return nil }

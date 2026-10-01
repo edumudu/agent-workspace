@@ -38,3 +38,20 @@ Limits of the amendment:
 - "N files changed" is not shown: the loop holds no per-turn file count (turn snapshots live in git). Done shows the message line and elapsed time instead.
 - `osascript`'s `display notification` cannot group banners or open the session on click. That needs another notifier (such as `terminal-notifier`), left for a later issue.
 - There is no error or limit agent state; those are recognised from the last message text only.
+
+## Amendment, 2026-10-01 (#134): terminal-notifier
+
+- At daemon start, `notify.Detect` picks `adapters/notify.TerminalNotifier` when `terminal-notifier` is on `PATH`, else `Osascript` as before. The choice is made once; banners never pay for a lookup. The frontmost check stays on `osascript` with either backend.
+- `Banner` carries `Group` (the session id) and `Terminal` (a bundle id). terminal-notifier gets `-title`, `-message`, `-group <session id>`, `-sound` when one is set in `notify.json`, `-activate <bundle id>` when known, and `-execute` running `AGENTWS_HOME=<home> <agentws> focus <session id>`, every part shell-quoted. One banner per group is kept, so a session's newer banner replaces its older one. A message starting with `[` or `-` gets a leading backslash so terminal-notifier does not read it as an option. Mute and coalescing are unchanged: they decide before any backend runs.
+- `agentws focus <id>` calls `session.focus` over rpc, the same call as `enter` in the TUI: the daemon shows the session's pane in the main slot and selects it (only the daemon drives tmux), focuses it and clears its unread marker.
+- `app.Notifier` gains `Remove(group)`. The loop remembers which sessions have a banner up and queues a removal (`-remove <session id>`) when such a session is focused or leaves permission, waiting or done for running or idle (`domain.BannerStale`). The osascript backend's `Remove` does nothing.
+- The terminal to activate comes from the client: `agentws` (attach) sends `domain.TerminalBundle(__CFBundleIdentifier, TERM_PROGRAM)` in `client.open`, and the daemon keeps the last one. `__CFBundleIdentifier` is set by macOS for processes started from an app; `TERM_PROGRAM` is mapped for Terminal, iTerm2, Ghostty, WezTerm, VS Code and Warp.
+- The e2e suite has a fake `terminal-notifier` next to the fake `osascript`, logging its argv to `$AGENTWS_E2E/terminal-notifier.log`; `session_states.txtar` checks the grouped banner, runs `agentws focus` and checks the removal.
+
+Limits of the amendment:
+
+- The terminal is the one `agentws` last attached from. A client attached from another terminal later, or no attach since the daemon started, means the wrong app or none is activated; the pane is still selected.
+- Inside another multiplexer or over ssh, `__CFBundleIdentifier` and `TERM_PROGRAM` may name the wrong app or nothing.
+- The click command runs with terminal-notifier's environment, so it names the `agentws` binary and `AGENTWS_HOME` the daemon had at start. Replacing the binary in place keeps working; moving it does not until the daemon restarts.
+- A banner removed while macOS has it on screen may stay until it times out; removal clears it from Notification Center.
+- A failed `-remove` is logged, not retried; the stale banner stays until dismissed or replaced by the session's next banner (same group).

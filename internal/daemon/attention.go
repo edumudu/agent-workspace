@@ -4,6 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"log"
+	"sort"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/giovaniif/agent-workspace/internal/app"
@@ -20,6 +23,7 @@ const (
 type queuedBanner struct {
 	banner  domain.Banner
 	focused bool
+	gen     uint64
 }
 
 // why: decides on the loop and delivers on a worker: the notifier and the
@@ -30,17 +34,33 @@ type attention struct {
 	sounds   map[domain.AgentState]string
 	co       *domain.Coalescer
 	queue    chan queuedBanner
+	// why: written by client.open on a connection goroutine, read by the worker.
+	terminal atomic.Pointer[string]
+	// why: owned by the loop; only sessions with a banner up are withdrawn, so a focus costs no process otherwise.
+	posted map[string]bool
+	// why: withdrawals wait here, not in the bounded queue, so a full queue never loses one.
+	removeMu sync.Mutex
+	removals map[string]bool
+	// why: a banner still queued when its session is withdrawn has a generation at or below withdrawn, and is skipped.
+	gens      map[string]uint64
+	withdrawn map[string]uint64
+	wake      chan struct{}
 }
 
 // why: fg may be nil, which counts as the terminal never being in front.
 func WithNotifier(n app.Notifier, fg app.Foreground, sounds map[domain.AgentState]string) Option {
 	return func(d *Daemon) {
 		d.st.attn = &attention{
-			notifier: n,
-			fg:       fg,
-			sounds:   sounds,
-			co:       domain.NewCoalescer(),
-			queue:    make(chan queuedBanner, bannerQueue),
+			notifier:  n,
+			fg:        fg,
+			sounds:    sounds,
+			co:        domain.NewCoalescer(),
+			queue:     make(chan queuedBanner, bannerQueue),
+			posted:    map[string]bool{},
+			removals:  map[string]bool{},
+			gens:      map[string]uint64{},
+			withdrawn: map[string]uint64{},
+			wake:      make(chan struct{}, 1),
 		}
 	}
 }
@@ -52,13 +72,21 @@ func (a *attention) run(ctx context.Context) {
 			return
 		case q := <-a.queue:
 			a.deliver(ctx, q)
+		case <-a.wake:
 		}
+		a.removePending(ctx)
 	}
 }
 
 func (a *attention) deliver(ctx context.Context, q queuedBanner) {
 	ctx, cancel := context.WithTimeout(ctx, bannerTimeout)
 	defer cancel()
+	if a.superseded(q) {
+		return
+	}
+	if t := a.terminal.Load(); t != nil {
+		q.banner.Terminal = *t
+	}
 	if q.focused && a.fg != nil && a.fg.TerminalFrontmost(ctx) {
 		return
 	}
@@ -87,10 +115,73 @@ func (s *state) announce(session domain.Session, effects []domain.Effect) {
 			continue
 		}
 		b.Sound = s.attn.sounds[b.State]
-		select {
-		case s.attn.queue <- queuedBanner{banner: b, focused: session.Focused}:
-		default:
+		b.Group = session.ID
+		if s.attn.enqueue(queuedBanner{banner: b, focused: session.Focused}) {
+			s.attn.posted[session.ID] = true
 		}
+	}
+}
+
+func (s *state) withdraw(id string) {
+	if s.attn == nil || !s.attn.posted[id] {
+		return
+	}
+	delete(s.attn.posted, id)
+	s.attn.removeMu.Lock()
+	s.attn.removals[id] = true
+	s.attn.withdrawn[id] = s.attn.gens[id]
+	s.attn.removeMu.Unlock()
+	select {
+	case s.attn.wake <- struct{}{}:
+	default:
+	}
+}
+
+// why: a banner queued after a withdrawal is newer than it, so the withdrawal must not remove it;
+// a dropped banner leaves a pending withdrawal in place, since nothing replaces the old banner.
+func (a *attention) enqueue(q queuedBanner) bool {
+	id := q.banner.Group
+	a.removeMu.Lock()
+	defer a.removeMu.Unlock()
+	q.gen = a.gens[id] + 1
+	select {
+	case a.queue <- q:
+	default:
+		return false
+	}
+	a.gens[id] = q.gen
+	delete(a.removals, id)
+	return true
+}
+
+func (a *attention) superseded(q queuedBanner) bool {
+	a.removeMu.Lock()
+	defer a.removeMu.Unlock()
+	return q.gen <= a.withdrawn[q.banner.Group]
+}
+
+func (a *attention) removePending(ctx context.Context) {
+	a.removeMu.Lock()
+	ids := make([]string, 0, len(a.removals))
+	for id := range a.removals {
+		ids = append(ids, id)
+	}
+	clear(a.removals)
+	a.removeMu.Unlock()
+	sort.Strings(ids)
+	for _, id := range ids {
+		rctx, cancel := context.WithTimeout(ctx, bannerTimeout)
+		if err := a.notifier.Remove(rctx, id); err != nil {
+			log.Printf("notify remove: %v", err)
+		}
+		cancel()
+	}
+}
+
+// why: an attach from an unknown terminal clears the last one, so a click never raises a terminal the client left.
+func (a *attention) setTerminal(bundle string) {
+	if a != nil {
+		a.terminal.Store(&bundle)
 	}
 }
 
@@ -139,6 +230,7 @@ func (d *Daemon) dispatchAttention(req rpc.Request) (*rpc.Response, bool) {
 }
 
 func (s *state) focus(session domain.Session) {
+	s.withdraw(session.ID)
 	for _, other := range sorted(s.sessions) {
 		if other.ID != session.ID && other.Focused {
 			s.emit(SessionChanged{Session: other.Blur()})

@@ -270,6 +270,8 @@ type OpenClientParams struct {
 	Command []string          `json:"command"`
 	Env     map[string]string `json:"env,omitempty"`
 	Dir     string            `json:"dir,omitempty"`
+	// why: the bundle id of the terminal the client attaches from, which a banner click brings to the front.
+	Terminal string `json:"terminal,omitempty"`
 }
 
 type OpenClient struct {

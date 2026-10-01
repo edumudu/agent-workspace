@@ -17,6 +17,9 @@ type Banner struct {
 	Body  string
 	State AgentState
 	Sound string
+	// why: one banner per group is kept, so a session's newer banner replaces its older one.
+	Group    string
+	Terminal string
 }
 
 const (

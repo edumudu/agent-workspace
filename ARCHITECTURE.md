@@ -13,7 +13,7 @@ This covers how `agentws` is built. What it does is in [FEATURES.md](FEATURES.md
 - **Config:** `github.com/BurntSushi/toml` reads the per-repo `.agentws.toml` setup recipe.
 - **Storage:** SQLite via `modernc.org/sqlite` (no cgo), with embedded migrations and write-behind. Stored at `~/.agentws/state.db` (`$AGENTWS_HOME/state.db` if set). See [docs/adr/0004-sqlite-store.md](docs/adr/0004-sqlite-store.md).
 - **IPC:** a Unix socket at `~/.agentws/agentws.sock` carrying newline-delimited JSON. Request/response calls, plus a subscribe stream for state updates. See [Daemon and RPC](#daemon-and-rpc) and [docs/adr/0005-daemon-rpc.md](docs/adr/0005-daemon-rpc.md).
-- **Notifications:** `osascript` in v1, behind the `app.Notifier` and `app.Foreground` ports. A native helper can replace it later. See [Attention](#attention) and [docs/adr/0016-notifications-and-attention.md](docs/adr/0016-notifications-and-attention.md).
+- **Notifications:** `terminal-notifier` when it is on `PATH` at daemon start (grouped per session, click to focus), else `osascript`, behind the `app.Notifier` and `app.Foreground` ports. See [Attention](#attention) and [docs/adr/0016-notifications-and-attention.md](docs/adr/0016-notifications-and-attention.md).
 - **nvim:** a small Lua plugin in `nvim/` that talks to the daemon through `agentws` CLI calls, and a long-lived nvim per session that the daemon drives over `nvim --listen`. See [Shell and nvim](#shell-and-nvim) and [docs/adr/0029-shell-and-nvim.md](docs/adr/0029-shell-and-nvim.md).
 - **Tooling:** `go test`, `golangci-lint`, `testscript` for the e2e suite, `gremlins` for mutation testing, a `tdd` CI job that runs new tests against the base branch, `scripts/lint-comments`, GitHub Actions on macOS, and goreleaser later. Rules: [AGENTS.md](AGENTS.md).
 
@@ -115,7 +115,7 @@ Colors are Catppuccin Latte, overridden per key in the `[theme]` table of `$AGEN
 
 ## Attention
 
-The daemon performs the effects `Session.Apply` returns. `EffectNotify` becomes a `domain.Banner` on the loop (`BannerFor`, then `Coalescer`), with no IO. A worker reads a bounded queue and calls `app.Notifier`; for a focused session it first asks `app.Foreground` whether a terminal app is in front, and drops the banner if so. `adapters/notify` implements both with `osascript`. Muted sessions get no banner and still go unread.
+The daemon performs the effects `Session.Apply` returns. `EffectNotify` becomes a `domain.Banner` on the loop (`BannerFor`, then `Coalescer`), with no IO. A worker reads a bounded queue and calls `app.Notifier`; for a focused session it first asks `app.Foreground` whether a terminal app is in front, and drops the banner if so. `adapters/notify` implements both with `osascript`, and `app.Notifier` with `terminal-notifier` when installed, which also withdraws a session's banner once it resumes or is focused. Muted sessions get no banner and still go unread.
 
 - Title is the session name (`NameFor`, else the harness), body is `needs permission`, `waiting` or `done`. At most one banner per session per 10 s.
 - `$AGENTWS_HOME/notify.json` sets an optional macOS sound per event: `{"sounds":{"permission":"Glass"}}`.

@@ -346,6 +346,9 @@ func (s *state) hook(h rpc.Hook, now time.Time) {
 	ev.SessionID = session.ID
 	s.emit(SessionHooked{Session: next, Event: ev})
 	s.trackSubagents(session.ID, kind, at, h.Payload)
+	if domain.BannerStale(session.State, next.State) {
+		s.withdraw(session.ID)
+	}
 	s.announce(next, effects)
 	s.sendSwitches(next, toSend)
 	s.dispatchDraft(next)

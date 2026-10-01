@@ -71,22 +71,22 @@ func Run(ctx context.Context, home string) (err error) {
 	if err != nil {
 		log.Printf("launcher max_parallel ignored: %v", err)
 	}
-	banners := notify.New()
+	self, err := os.Executable()
+	if err != nil {
+		return err
+	}
+	banners := notify.Detect(self, home)
 	trash := wsfs.NewTrash(filepath.Join(home, "trash"), 4)
 	audit := &wsfs.AuditLog{Path: filepath.Join(home, "cleanup.log")}
 	hooks := testHooksFromEnv(os.Getenv)
 	cleanup := app.NewCleanup(gitadapter.Worktrees{}, procs.Table{}, trash, audit, filepath.Join(home, "backups"), hooks.cleanupClock)
 	sizes := app.NewDiskSizes(wsfs.Du{}, diskWorkers, diskSizeTTL, time.Now)
-	self, err := os.Executable()
-	if err != nil {
-		return err
-	}
 	opts := []Option{
 		WithWorkspaces(wsfs.FS{}, gitadapter.Inspector{}),
 		WithHarnesses(host, claude.Adapter{}, codex.Adapter{}),
 		WithSessions(gitadapter.Adder{}, runRecipe, worktreeHome),
 		WithLauncher(maxParallel),
-		WithNotifier(banners, banners, sounds),
+		WithNotifier(banners, notify.New(), sounds),
 		WithWorktrees(gitadapter.Worktrees{}, &github.Finder{}),
 		WithTitles(app.TitleResolvers{linear.Client{Token: linearToken}, github.Titles{}}),
 		WithProcessTable(procs.Table{}),
