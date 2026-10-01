@@ -147,7 +147,11 @@ func (m Model) harnessLines() []string {
 	}
 	out = append(out, m.line(false, []piece{bar, {s.sub, "Changes "}, {s.bold, setup.File}}, nil))
 	out = append(out, m.para(bar, s.text, change)...)
-	out = append(out, m.line(false, []piece{bar, {s.sub, "Backup  "}, {s.text, setup.Backup}}, nil))
+	backup := setup.Backup
+	if backup == "" {
+		backup = "none needed: the file does not exist yet"
+	}
+	out = append(out, m.line(false, []piece{bar, {s.sub, "Backup  "}, {s.text, backup}}, nil))
 	out = append(out, m.line(false, []piece{bar, {s.sub, "Undo    "}, {s.text, undo}}, nil))
 	if h == domain.HarnessCodex {
 		trust := piece{s.peach, " ▌ "}
@@ -174,11 +178,12 @@ func (m Model) nvimLines() []string {
 		out = append(out, "")
 	}
 	out = append(out, m.line(false, []piece{{s.text, " Add this to "}, {s.bold, n.ConfigFile}}, nil))
-	var rows [][]piece
+	out = append(out, "")
 	for _, l := range domain.NvimSnippet(n.PluginDir, n.ConfigFile) {
-		rows = append(rows, []piece{{s.teal, l}})
+		// why: no frame and no truncation, so selecting the lines copies exactly the code.
+		out = append(out, "   "+s.teal.Render(l))
 	}
-	out = append(out, m.framed(rows, false)...)
+	out = append(out, "")
 	return append(out, m.para(piece{s.text, " "}, s.sub, "agentws never edits your nvim config: copy the lines in, then restart nvim.")...)
 }
 

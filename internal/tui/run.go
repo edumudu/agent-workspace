@@ -29,8 +29,15 @@ func Run(ctx context.Context, subscriber, caller *rpc.Client, opts Options) erro
 	opts.Switch, opts.Review, opts.Disk = caller, caller, caller
 	opts.Onboard = caller
 	m := New(opts)
-	next, _ := m.Update(StateMsg(sub.State))
+	next, first := m.Update(StateMsg(sub.State))
 	p := tea.NewProgram(next, tea.WithContext(ctx), tea.WithFPS(FPS))
+	if first != nil {
+		go func() {
+			if msg := first(); msg != nil {
+				p.Send(msg)
+			}
+		}()
+	}
 	go func() {
 		for d := range sub.Diffs {
 			p.Send(DiffMsg(d))

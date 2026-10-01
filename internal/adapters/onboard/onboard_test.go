@@ -61,6 +61,9 @@ func TestAFreshMachineHasNothingSetUp(t *testing.T) {
 	if got.Claude.File != w.probe.ClaudeSettings || got.Codex.File != filepath.Join(w.probe.CodexHome, "hooks.json") {
 		t.Errorf("files = %q, %q", got.Claude.File, got.Codex.File)
 	}
+	if got.Claude.Backup != "" || got.Codex.Backup != "" {
+		t.Errorf("backups named for files that do not exist: %q, %q", got.Claude.Backup, got.Codex.Backup)
+	}
 	if got.Nvim.ConfigFile != filepath.Join(w.probe.NvimConfigDir, "init.lua") {
 		t.Errorf("nvim config file = %q, want init.lua under the config dir", got.Nvim.ConfigFile)
 	}

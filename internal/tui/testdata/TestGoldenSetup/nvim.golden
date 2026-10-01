@@ -6,10 +6,10 @@
       Neovim                                                                         
      
       Add this to /Users/me/.config/nvim/init.lua                                    
-      ╭────────────────────────────────────────────────────────────────────────────╮
-      │ vim.opt.runtimepath:prepend('/Users/me/.local/share/agentws/nvim')         │
-      │ require('agentws').setup({})                                               │
-      ╰────────────────────────────────────────────────────────────────────────────╯
+     
+        vim.opt.runtimepath:prepend('/Users/me/.local/share/agentws/nvim')
+        require('agentws').setup({})
+     
       agentws never edits your nvim config: copy the lines in, then restart nvim.    
      
       s skip                                                      esc skip   ⏎ next  

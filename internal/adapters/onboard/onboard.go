@@ -76,19 +76,22 @@ func (p Probe) Onboarding(context.Context) (domain.Onboarding, error) {
 func (p Probe) Install(_ context.Context, h domain.Harness) (domain.HarnessSetup, error) {
 	switch h {
 	case domain.HarnessClaude:
+		existed := exists(p.ClaudeSettings)
 		if err := claude.Setup(p.ClaudeSettings, p.Bin); err != nil {
 			return domain.HarnessSetup{}, err
 		}
-		return p.claudeSetup(), nil
+		s := p.claudeSetup()
+		if !existed {
+			s.Backup = ""
+		}
+		return s, nil
 	case domain.HarnessCodex:
 		res, err := codex.Setup(p.codexConfig())
 		if err != nil {
 			return domain.HarnessSetup{}, err
 		}
 		s := p.codexSetup()
-		if res.Backup != "" {
-			s.Backup = res.Backup
-		}
+		s.Backup = res.Backup
 		return s, nil
 	}
 	return domain.HarnessSetup{}, errors.New("no setup for harness " + string(h))
@@ -102,7 +105,10 @@ func (p Probe) Finish(context.Context) error {
 }
 
 func (p Probe) claudeSetup() domain.HarnessSetup {
-	s := domain.HarnessSetup{File: p.ClaudeSettings, Backup: claude.BackupPath(p.ClaudeSettings)}
+	s := domain.HarnessSetup{File: p.ClaudeSettings}
+	if exists(p.ClaudeSettings) {
+		s.Backup = claude.BackupPath(p.ClaudeSettings)
+	}
 	ok, err := claude.Installed(p.ClaudeSettings, p.Bin)
 	s.Installed = ok
 	if err != nil {
@@ -117,7 +123,10 @@ func (p Probe) codexConfig() codex.SetupConfig {
 
 func (p Probe) codexSetup() domain.HarnessSetup {
 	file := filepath.Join(p.CodexHome, "hooks.json")
-	s := domain.HarnessSetup{File: file, Backup: file + ".agentws-<time>.bak"}
+	s := domain.HarnessSetup{File: file}
+	if exists(file) {
+		s.Backup = file + ".agentws-<time>.bak"
+	}
 	ok, err := codex.Installed(p.codexConfig())
 	s.Installed = ok
 	if err != nil {
