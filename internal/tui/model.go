@@ -55,6 +55,12 @@ type Options struct {
 	Review Reviewer
 	// Disk may be nil, which turns off w.
 	Disk Disker
+	// DialogPopup is the command n asks the daemon to run in a centred popup;
+	// with no command, or when the popup fails, n opens the dialog inline.
+	DialogPopup rpc.ClientPopupParams
+	// NewSessionOnly is the popup's own program: the dialog fills the screen
+	// from the start and the program ends when it closes.
+	NewSessionOnly bool
 }
 
 // Caller makes daemon calls such as session.new; *rpc.Client is one.
@@ -172,6 +178,17 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.width, m.height = msg.Width, msg.Height
 	case StateMsg:
 		m.load(rpc.State(msg))
+		if m.opts.NewSessionOnly && m.dialog == nil {
+			return m.openDialog(), nil
+		}
+	case popupFailedMsg:
+		return m.openDialog(), nil
+	case showFailedMsg:
+		if m.dialog != nil {
+			d := m.own()
+			d.busy, d.started = false, true
+			d.err = "session started, but showing it failed: " + msg.err.Error() + " · esc closes"
+		}
 	case DiffMsg:
 		m.apply(rpc.Diff(msg))
 	case TickMsg:
@@ -225,6 +242,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.renamePaste(msg.Content), nil
 		}
 	case sessionStartedMsg:
+		if m.opts.NewSessionOnly {
+			// why: the popup draws only the dialog, so it stays up until the program ends or shows why it cannot.
+			return m, m.showNewAndQuit(msg.session.ID)
+		}
 		if m.dialog != nil && m.dialog.seq == msg.seq {
 			m.dialog = nil
 		}
@@ -364,9 +385,9 @@ func (m *Model) rebuild() {
 					continue
 				}
 				e.worktrees = append(e.worktrees, w)
-				if !seen[w.Repo] {
+				if name := repoName(w); !seen[w.Repo] {
 					seen[w.Repo] = true
-					repos = append(repos, w.Repo)
+					repos = append(repos, name)
 				}
 			}
 			m.entries = append(m.entries, e)
@@ -440,7 +461,11 @@ func (m Model) key(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	}
 	switch k {
 	case "n":
-		if m.opts.Calls != nil {
+		switch {
+		case m.opts.Calls == nil:
+		case len(m.opts.DialogPopup.Command) > 0:
+			return m, m.openPopup()
+		default:
 			return m.openDialog(), nil
 		}
 	case "L":
@@ -494,6 +519,8 @@ func (m Model) key(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return m, m.toggleShell(false)
 	case "T":
 		return m, m.toggleShell(true)
+	case "s":
+		return m, m.focusShell()
 	case "e":
 		return m, m.toggleNvim()
 	default:

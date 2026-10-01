@@ -53,8 +53,15 @@ func TestShellSplitShowsBelowTheAgentPaneAndParksAgain(t *testing.T) {
 	if got := h.ShownIn(ctx, slot); got != agent {
 		t.Fatalf("the agent pane is %q after ShowBelow; want %q to stay in the slot", got, agent)
 	}
+	sidebar := tmuxIn(t, h, slot, "display-message", "-p", "-t", string(slot)+".0", "#{pane_id}")
+	if active := tmuxIn(t, h, slot, "display-message", "-p", "-t", string(slot), "#{pane_id}"); active != sidebar {
+		t.Fatalf("active pane = %s after ShowBelow; want focus left on the sidebar %s", active, sidebar)
+	}
+	if err := h.FocusBelow(ctx, slot); err != nil {
+		t.Fatal(err)
+	}
 	if active := tmuxIn(t, h, slot, "display-message", "-p", "-t", string(slot), "#{pane_id}"); active != string(shell) {
-		t.Fatalf("active pane = %s after ShowBelow; want the shell %s", active, shell)
+		t.Fatalf("active pane = %s after FocusBelow; want the shell %s", active, shell)
 	}
 
 	if err := h.HideBelow(ctx, slot); err != nil {
@@ -213,6 +220,35 @@ func TestNavigationKeysReachTheAppInAPaneThatIsNotNvim(t *testing.T) {
 	})
 	if active := tmuxIn(t, h, slot, "display-message", "-p", "-t", string(slot), "#{pane_id}"); active != string(agent) {
 		t.Fatalf("active pane = %s; the keys must not move focus away from the agent %s", active, agent)
+	}
+}
+
+func TestPopupCommandRunsWithEnv(t *testing.T) {
+	ctx := context.Background()
+	h := newHost(t)
+	slot, _ := h.OpenClient(ctx, "main", app.PaneSpec{Name: "tui", Command: []string{"sleep", "600"}})
+	outer := outerTerminal(t, h, slot)
+	spec := app.PaneSpec{Command: []string{"sh", "-c", `echo "dialog-$POPUP_WORD"; read line`}, Env: map[string]string{"POPUP_WORD": "ready"}}
+	if err := h.PopupCommand(ctx, spec); err != nil {
+		t.Fatal(err)
+	}
+	waitFor(t, "the command to draw in the popup", func() bool {
+		return strings.Contains(outer("capture-pane", "-p", "-t", "outer"), "dialog-ready")
+	})
+	outer("send-keys", "-t", "outer", "Enter")
+	waitFor(t, "the popup to close with the command", func() bool {
+		return !strings.Contains(outer("capture-pane", "-p", "-t", "outer"), "dialog-ready")
+	})
+}
+
+func TestPopupCommandWithoutAClientFails(t *testing.T) {
+	ctx := context.Background()
+	h := newHost(t)
+	if _, err := h.OpenClient(ctx, "main", app.PaneSpec{Name: "tui", Command: []string{"sleep", "600"}}); err != nil {
+		t.Fatal(err)
+	}
+	if err := h.PopupCommand(ctx, app.PaneSpec{Command: []string{"true"}}); err == nil {
+		t.Fatal("PopupCommand succeeded with no client attached")
 	}
 }
 

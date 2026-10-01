@@ -368,3 +368,20 @@ func TestReviewCommentRefusesWhatItCannotPlace(t *testing.T) {
 		t.Fatalf("refused comments were kept: %+v", late.State.Drafts)
 	}
 }
+
+func TestShellFocusShowsTheShellAndPutsFocusInIt(t *testing.T) {
+	r := startTerm(t, []domain.Session{termSession}, termWTs)
+	var out rpc.ShellResult
+	if err := r.c.Call(context.Background(), rpc.MethodShellFocus, rpc.ShellParams{Session: "s1"}, &out); err != nil {
+		t.Fatal(err)
+	}
+	if r.client.below != app.PaneID(out.Pane) || r.client.focusedBelow != 1 {
+		t.Fatalf("below %q, focused below %d times; want the shell shown and focused once", r.client.below, r.client.focusedBelow)
+	}
+	if err := r.c.Call(context.Background(), rpc.MethodShellFocus, rpc.ShellParams{Session: "s1"}, &out); err != nil {
+		t.Fatal(err)
+	}
+	if r.client.below != app.PaneID(out.Pane) || r.client.focusedBelow != 2 {
+		t.Fatalf("a second focus hid the shell: below %q, focused %d", r.client.below, r.client.focusedBelow)
+	}
+}

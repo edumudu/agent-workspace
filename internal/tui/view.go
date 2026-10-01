@@ -95,6 +95,14 @@ func (m Model) line(sel bool, left, right []piece) string {
 }
 
 func (m Model) View() tea.View {
+	if m.opts.NewSessionOnly {
+		if m.dialog == nil {
+			return tea.NewView("")
+		}
+		v := tea.NewView(m.dialogScreen())
+		v.AltScreen = true
+		return v
+	}
 	if m.rv.open {
 		v := tea.NewView(m.reviewView())
 		v.AltScreen = true
@@ -287,6 +295,7 @@ func (m Model) helpLines() []string {
 		{"K", "kill the session's dev servers"},
 		{"w", "worktrees and disk"},
 		{"t / T", "shell below / popup"},
+		{"s", "type in the shell (ctrl+\\ back)"},
 		{"e", "nvim (o in a review opens the line)"},
 		{"M / E", "switch model / effort"},
 		{"enter", "focus agent pane"},
@@ -364,12 +373,16 @@ func taskLabel(t domain.Task) string {
 	return t.ID
 }
 
-func worktreeLabel(w domain.Worktree) string {
-	repo := w.Repo
-	if repo != "" {
-		// why: Repo is the main checkout's path; its last element is the name people use.
-		repo = filepath.Base(repo)
+func repoName(w domain.Worktree) string {
+	if w.Repo == "" {
+		return ""
 	}
+	// why: Repo is the main checkout's path; its last element is the name people use.
+	return filepath.Base(w.Repo)
+}
+
+func worktreeLabel(w domain.Worktree) string {
+	repo := repoName(w)
 	part := w.SubtaskSlug
 	if part == "" {
 		part = w.Branch
