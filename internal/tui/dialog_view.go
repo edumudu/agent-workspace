@@ -336,11 +336,11 @@ func (m Model) defaultModel() string {
 	if name := m.opts.HarnessDefaults[h].Model; name != "" {
 		return name
 	}
-	var name string
+	var name, id string
 	var at time.Time
 	for _, s := range m.sessions {
-		if s.Harness == h && s.Model != "" && (name == "" || s.LimitsAt.After(at)) {
-			name, at = s.Model, s.LimitsAt
+		if s.Harness == h && s.Model != "" && (name == "" || s.LimitsAt.After(at) || s.LimitsAt.Equal(at) && s.ID > id) {
+			name, at, id = s.Model, s.LimitsAt, s.ID
 		}
 	}
 	return name
