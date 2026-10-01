@@ -8,6 +8,8 @@ import (
 	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/giovaniif/agent-workspace/internal/domain"
 )
 
 // ReleasesURL lists this project's releases, pre-releases included: the
@@ -81,10 +83,14 @@ func (c ReleaseChecker) fetch(ctx context.Context) (string, error) {
 	if err := json.NewDecoder(resp.Body).Decode(&releases); err != nil {
 		return "", err
 	}
+	var tags []string
 	for _, r := range releases {
 		if !r.Draft && r.Tag != "" {
-			return r.Tag, nil
+			tags = append(tags, r.Tag)
 		}
 	}
-	return "", fmt.Errorf("releases: none published")
+	if len(tags) == 0 {
+		return "", fmt.Errorf("releases: none published")
+	}
+	return domain.HighestRelease(tags), nil
 }

@@ -20,6 +20,24 @@ func NewerRelease(current, latest string) bool {
 	return compareSemver(lat, cur) > 0
 }
 
+// HighestRelease picks the highest semver tag, falling back to the first tag
+// when none parses.
+func HighestRelease(tags []string) string {
+	var best string
+	var bestVer semver
+	found := false
+	for _, tag := range tags {
+		v, ok := parseSemver(tag)
+		if ok && (!found || compareSemver(v, bestVer) > 0) {
+			best, bestVer, found = tag, v, true
+		}
+	}
+	if !found && len(tags) > 0 {
+		return tags[0]
+	}
+	return best
+}
+
 type semver struct {
 	core [3]int
 	pre  []string

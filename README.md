@@ -76,7 +76,7 @@ The details are in [ARCHITECTURE.md](ARCHITECTURE.md), and the full scope is in 
 
 ## Requirements
 
-macOS, tmux, git, the GitHub CLI (`gh`, signed in), and Claude Code and/or the Codex CLI. For the nvim integration: Neovim 0.10+ and, for `:AgentwsDiff`, [diffview.nvim](https://github.com/sindrets/diffview.nvim).
+macOS or Linux, tmux, git, the GitHub CLI (`gh`, signed in), and Claude Code and/or the Codex CLI. For the nvim integration: Neovim 0.10+ and, for `:AgentwsDiff`, [diffview.nvim](https://github.com/sindrets/diffview.nvim).
 
 ## Build and test
 
