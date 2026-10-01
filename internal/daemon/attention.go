@@ -23,6 +23,7 @@ const (
 type queuedBanner struct {
 	banner  domain.Banner
 	focused bool
+	gen     uint64
 }
 
 // why: decides on the loop and delivers on a worker: the notifier and the
@@ -40,21 +41,26 @@ type attention struct {
 	// why: withdrawals wait here, not in the bounded queue, so a full queue never loses one.
 	removeMu sync.Mutex
 	removals map[string]bool
-	wake     chan struct{}
+	// why: a banner still queued when its session is withdrawn has a generation at or below withdrawn, and is skipped.
+	gens      map[string]uint64
+	withdrawn map[string]uint64
+	wake      chan struct{}
 }
 
 // why: fg may be nil, which counts as the terminal never being in front.
 func WithNotifier(n app.Notifier, fg app.Foreground, sounds map[domain.AgentState]string) Option {
 	return func(d *Daemon) {
 		d.st.attn = &attention{
-			notifier: n,
-			fg:       fg,
-			sounds:   sounds,
-			co:       domain.NewCoalescer(),
-			queue:    make(chan queuedBanner, bannerQueue),
-			posted:   map[string]bool{},
-			removals: map[string]bool{},
-			wake:     make(chan struct{}, 1),
+			notifier:  n,
+			fg:        fg,
+			sounds:    sounds,
+			co:        domain.NewCoalescer(),
+			queue:     make(chan queuedBanner, bannerQueue),
+			posted:    map[string]bool{},
+			removals:  map[string]bool{},
+			gens:      map[string]uint64{},
+			withdrawn: map[string]uint64{},
+			wake:      make(chan struct{}, 1),
 		}
 	}
 }
@@ -75,6 +81,9 @@ func (a *attention) run(ctx context.Context) {
 func (a *attention) deliver(ctx context.Context, q queuedBanner) {
 	ctx, cancel := context.WithTimeout(ctx, bannerTimeout)
 	defer cancel()
+	if a.superseded(q) {
+		return
+	}
 	if t := a.terminal.Load(); t != nil {
 		q.banner.Terminal = *t
 	}
@@ -108,9 +117,8 @@ func (s *state) announce(session domain.Session, effects []domain.Effect) {
 		b.Sound = s.attn.sounds[b.State]
 		b.Group = session.ID
 		select {
-		case s.attn.queue <- queuedBanner{banner: b, focused: session.Focused}:
+		case s.attn.queue <- queuedBanner{banner: b, focused: session.Focused, gen: s.attn.nextGen(session.ID)}:
 			s.attn.posted[session.ID] = true
-			s.attn.cancelRemoval(session.ID)
 		default:
 		}
 	}
@@ -123,6 +131,7 @@ func (s *state) withdraw(id string) {
 	delete(s.attn.posted, id)
 	s.attn.removeMu.Lock()
 	s.attn.removals[id] = true
+	s.attn.withdrawn[id] = s.attn.gens[id]
 	s.attn.removeMu.Unlock()
 	select {
 	case s.attn.wake <- struct{}{}:
@@ -131,10 +140,18 @@ func (s *state) withdraw(id string) {
 }
 
 // why: a banner queued after a withdrawal is newer than it, so the withdrawal must not remove it.
-func (a *attention) cancelRemoval(id string) {
+func (a *attention) nextGen(id string) uint64 {
 	a.removeMu.Lock()
+	defer a.removeMu.Unlock()
 	delete(a.removals, id)
-	a.removeMu.Unlock()
+	a.gens[id]++
+	return a.gens[id]
+}
+
+func (a *attention) superseded(q queuedBanner) bool {
+	a.removeMu.Lock()
+	defer a.removeMu.Unlock()
+	return q.gen <= a.withdrawn[q.banner.Group]
 }
 
 func (a *attention) removePending(ctx context.Context) {
