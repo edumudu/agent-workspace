@@ -29,19 +29,3 @@ changelog:
 
 release:
   prerelease: auto
-
-brews:
-  - name: agentws
-    repository:
-      owner: giovaniif
-      name: homebrew-tap
-      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
-    skip_upload: "{{ if .Env.HOMEBREW_TAP_TOKEN }}false{{ else }}true{{ end }}"
-    homepage: https://github.com/giovaniif/agent-workspace
-    description: Terminal workspace for running Claude Code and Codex sessions in parallel
-    dependencies:
-      - name: tmux
-      - name: git
-      - name: gh
-    test: |
-      system "#{bin}/agentws", "version"

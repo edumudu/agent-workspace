@@ -9,17 +9,14 @@ A terminal workspace for running Claude Code and Codex sessions in parallel. It 
 Builds exist for macOS (arm64, amd64) and Linux (amd64). No Go toolchain is needed.
 
 ```sh
-# Homebrew
-brew install giovaniif/tap/agentws
-
-# or the install script (to ~/.local/bin; set AGENTWS_INSTALL_DIR to change it,
+# install script (to ~/.local/bin; set AGENTWS_INSTALL_DIR to change it,
 # AGENTWS_VERSION=v0.1.0-alpha.1 to pin a release)
 curl -fsSL https://raw.githubusercontent.com/giovaniif/agent-workspace/main/scripts/install.sh | sh
 ```
 
 ## Upgrade
 
-`agentws version` prints the installed version and, once a day at most, checks GitHub for a newer release. It never updates itself. To upgrade, run `brew upgrade agentws` or the install script again, then stop the old daemon so the new binary starts its own:
+`agentws version` prints the installed version and, once a day at most, checks GitHub for a newer release. It never updates itself. To upgrade, run the install script again, then stop the old daemon so the new binary starts its own:
 
 ```sh
 agentws daemon stop
