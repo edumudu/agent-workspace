@@ -488,7 +488,7 @@ func (d *Daemon) dispatch(c *conn, line []byte) (*rpc.Response, bool) {
 			return errorResponse(req.ID, rpc.CodeBadRequest, "debug.seed needs a count of at least 1"), true
 		}
 		ok := d.query(func(s *state) {
-			for _, e := range seed(p.Count) {
+			for _, e := range seed(p.Count, p.Codex) {
 				s.emit(e)
 			}
 		})

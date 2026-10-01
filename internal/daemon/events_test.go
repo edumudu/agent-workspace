@@ -86,7 +86,7 @@ func TestDebugSeedGivesEverySessionAnEventLogForTheCard(t *testing.T) {
 	_, path := start(t, &memStore{})
 	c := dial(t, path)
 	ctx := context.Background()
-	if err := c.DebugSeed(ctx, 5); err != nil {
+	if err := c.DebugSeed(ctx, rpc.DebugSeedParams{Count: 5}); err != nil {
 		t.Fatal(err)
 	}
 	sub, err := dial(t, path).Subscribe(ctx)

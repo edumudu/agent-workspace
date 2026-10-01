@@ -108,7 +108,8 @@ func tuiIn(home string) error {
 }
 
 func runDebugSeed(args []string, stdout, stderr io.Writer) int {
-	if len(args) != 2 || args[0] != "seed" {
+	codex := len(args) == 3 && args[2] == "--codex"
+	if (len(args) != 2 && !codex) || args[0] != "seed" {
 		fmt.Fprintln(stderr, debugUsage)
 		return 2
 	}
@@ -125,7 +126,7 @@ func runDebugSeed(args []string, stdout, stderr io.Writer) int {
 	ctx := context.Background()
 	c, err := connect(ctx, home)
 	if err == nil {
-		err = c.DebugSeed(ctx, n)
+		err = c.DebugSeed(ctx, rpc.DebugSeedParams{Count: n, Codex: codex})
 		_ = c.Close()
 	}
 	if err != nil {

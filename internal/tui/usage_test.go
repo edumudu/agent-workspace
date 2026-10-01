@@ -39,12 +39,11 @@ func limitLines(m tui.Model) []string {
 	return out
 }
 
-func TestUsageTopBarShowsEachWindowWithPercentLeftAndTimeToReset(t *testing.T) {
+func TestUsageTopBarShowsEachWindowWithPercentUsedAndResetClock(t *testing.T) {
 	st := limitedState(
 		domain.Session{Harness: domain.HarnessClaude, LimitsAt: clock(), Limits: []domain.RateLimit{
 			{Window: "five_hour", UsedPercent: 57, ResetsAt: resetIn(2*time.Hour + 10*time.Minute)},
 			{Window: "seven_day", UsedPercent: 71, ResetsAt: resetIn(3*24*time.Hour + 4*time.Hour)},
-			{Window: "seven_day_opus", UsedPercent: 12, ResetsAt: resetIn(45 * time.Minute)},
 		}},
 		domain.Session{Harness: domain.HarnessCodex, LimitsAt: clock(), Limits: []domain.RateLimit{
 			{Window: "five_hour", UsedPercent: 41, ResetsAt: resetIn(20 * time.Second)},
@@ -52,8 +51,8 @@ func TestUsageTopBarShowsEachWindowWithPercentLeftAndTimeToReset(t *testing.T) {
 	)
 	got := limitLines(newModel(&st, nil))
 	want := []string{
-		" CC 5h 43% 2h10m  7d 29% 3d  7d opus 88% 45m",
-		" CX 5h 59% <1m",
+		" CC 5h 57% ↻23:52  7d 71% ↻Sat",
+		" CX 5h 41% ↻21:42",
 	}
 	if strings.Join(got, "\n") != strings.Join(want, "\n") {
 		t.Fatalf("got\n%s\nwant\n%s", strings.Join(got, "\n"), strings.Join(want, "\n"))
@@ -67,28 +66,28 @@ func TestUsageTopBarHidesTheLimitsSlotWithoutData(t *testing.T) {
 	}
 }
 
-func TestUsageLowWindowsTurnRedBelowTwentyPercentLeft(t *testing.T) {
+func TestUsageLowWindowsTurnRedAboveEightyPercentUsed(t *testing.T) {
 	st := limitedState(domain.Session{Harness: domain.HarnessClaude, LimitsAt: clock(), Limits: []domain.RateLimit{
 		{Window: "five_hour", UsedPercent: 81},
 		{Window: "seven_day", UsedPercent: 80},
 	}})
 	var five, seven string
 	for _, line := range strings.Split(newModel(&st, nil).View().Content, "\n") {
-		if strings.Contains(ansi.Strip(line), "5h 19%") {
+		if strings.Contains(ansi.Strip(line), "5h 81%") {
 			five = line
 		}
 	}
 	if !strings.Contains(five, redEscape) {
-		t.Fatalf("19%% left is not red: %q", five)
+		t.Fatalf("81%% used is not red: %q", five)
 	}
 	st.Sessions[0].Limits[0].UsedPercent = 80
 	for _, line := range strings.Split(newModel(&st, nil).View().Content, "\n") {
-		if strings.Contains(ansi.Strip(line), "5h 20%") {
+		if strings.Contains(ansi.Strip(line), "5h 80%") {
 			seven = line
 		}
 	}
 	if seven == "" || strings.Contains(seven, redEscape) {
-		t.Fatalf("20%% left is red: %q", seven)
+		t.Fatalf("80%% used is red: %q", seven)
 	}
 }
 
@@ -100,7 +99,7 @@ func TestUsageValuesOlderThanFifteenMinutesAreDimmedWithTheirAge(t *testing.T) {
 	m := newModel(&st, nil)
 	var line string
 	for _, l := range strings.Split(m.View().Content, "\n") {
-		if strings.Contains(ansi.Strip(l), "5h 60%") {
+		if strings.Contains(ansi.Strip(l), "5h 40%") {
 			line = l
 		}
 	}
@@ -111,7 +110,7 @@ func TestUsageValuesOlderThanFifteenMinutesAreDimmedWithTheirAge(t *testing.T) {
 	st.Sessions[0].LimitsAt = clock().Add(-15 * time.Minute)
 	m = newModel(&st, nil)
 	for _, l := range strings.Split(m.View().Content, "\n") {
-		if strings.Contains(ansi.Strip(l), "5h 60%") && (strings.Contains(ansi.Strip(l), "ago") || strings.Contains(l, overlayEscape)) {
+		if strings.Contains(ansi.Strip(l), "5h 40%") && (strings.Contains(ansi.Strip(l), "ago") || strings.Contains(l, overlayEscape)) {
 			t.Fatalf("15m old value is dimmed: %q", l)
 		}
 	}
@@ -124,7 +123,27 @@ func TestUsageLimitsFollowTheNewestReportAcrossDiffs(t *testing.T) {
 	next.Limits = []domain.RateLimit{{Window: "five_hour", UsedPercent: 30}}
 	next.LimitsAt = clock().Add(time.Minute)
 	m = update(m, tui.DiffMsg(rpc.Diff{Session: &next}))
-	if got := limitLines(m); len(got) != 1 || !strings.Contains(got[0], "5h 70%") {
+	if got := limitLines(m); len(got) != 1 || !strings.Contains(got[0], "5h 30%") {
+		t.Fatalf("got %q", got)
+	}
+}
+
+func TestUsageWindowsPastTheirResetAreHidden(t *testing.T) {
+	st := limitedState(domain.Session{Harness: domain.HarnessClaude, LimitsAt: clock(), Limits: []domain.RateLimit{
+		{Window: "five_hour", UsedPercent: 90, ResetsAt: resetIn(-time.Minute)},
+		{Window: "seven_day", UsedPercent: 6, ResetsAt: resetIn(2 * 24 * time.Hour)},
+	}})
+	got := limitLines(newModel(&st, nil))
+	if len(got) != 1 || strings.Contains(got[0], "5h") || !strings.Contains(got[0], "7d 6%") {
+		t.Fatalf("got %q; want only the 7d window", got)
+	}
+}
+
+func TestUsageAWindowItDoesNotKnowStillShows(t *testing.T) {
+	st := limitedState(domain.Session{Harness: domain.HarnessClaude, LimitsAt: clock(), Limits: []domain.RateLimit{
+		{Window: "seven_day_opus", UsedPercent: 12, ResetsAt: resetIn(45 * time.Minute)},
+	}})
+	if got := limitLines(newModel(&st, nil)); len(got) != 1 || got[0] != " CC 7d opus 12% ↻22:27" {
 		t.Fatalf("got %q", got)
 	}
 }
