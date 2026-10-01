@@ -11,7 +11,9 @@ mkdir $AGENTWS_E2E/gates/ask
 eventually ' state=waiting ' agentws debug session --once $SID
 mkdir $AGENTWS_E2E/gates/finish
 eventually ' state=done ' agentws debug session --once $SID
-eventually 'end run\tadd a thing · api@\S+\twaiting: Shall I go on\?' cat $AGENTWS_E2E/osascript.log
+eventually '^-title\tadd a thing · api@\S+\t-message\twaiting: Shall I go on\?\t-group\t'$SID'\t-execute\tAGENTWS_HOME=.* focus '''$SID'''\t$' cat $AGENTWS_E2E/terminal-notifier.log
+exec agentws focus $SID
+eventually '^-remove\t'$SID'\t$' cat $AGENTWS_E2E/terminal-notifier.log
 
 exec agentws new --workspace api --harness codex 'fix the build'
 capture CID '^session (\S+) on pane'
@@ -19,7 +21,7 @@ mkdir $AGENTWS_E2E/gates/codex
 eventually '^seq=\d+ state=running harness=codex ' agentws debug session --once $CID
 mkdir $AGENTWS_E2E/gates/codex-stop
 eventually '^seq=\d+ state=done harness=codex ' agentws debug session --once $CID
-eventually 'end run\tfix the build · api@\S+\tFixed\.' cat $AGENTWS_E2E/osascript.log
+eventually '^-title\tfix the build · api@\S+\t-message\tFixed\..*\t-group\t'$CID'\t' cat $AGENTWS_E2E/terminal-notifier.log
 
 -- claude.steps --
 gate prompt
