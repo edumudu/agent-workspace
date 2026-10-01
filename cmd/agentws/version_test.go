@@ -22,6 +22,14 @@ func TestVersionTellsAboutNewerRelease(t *testing.T) {
 	}
 }
 
+func TestVersionCheckSkippedByEnv(t *testing.T) {
+	t.Setenv("AGENTWS_HOME", t.TempDir())
+	t.Setenv("AGENTWS_NO_UPDATE_CHECK", "1")
+	if _, err := latestRelease(context.Background()); !errors.Is(err, errUpdateCheckOff) {
+		t.Fatalf("err = %v, want errUpdateCheckOff", err)
+	}
+}
+
 func TestVersionQuietWhenCurrentOrCheckFails(t *testing.T) {
 	for _, latest := range []func(context.Context) (string, error){
 		func(context.Context) (string, error) { return "v0.1.0-alpha.2", nil },
