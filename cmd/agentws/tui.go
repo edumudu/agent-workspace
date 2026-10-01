@@ -44,11 +44,7 @@ func attachIn(home string) error {
 	if err != nil {
 		return err
 	}
-	opened, err := c.OpenClient(ctx, rpc.OpenClientParams{
-		Command: []string{self, "tui"},
-		Env:     map[string]string{"AGENTWS_HOME": home, "AGENTWS_LAUNCH_DIR": launchDir()},
-		Dir:     launchDir(),
-	})
+	opened, err := c.OpenClient(ctx, openClientParams(self, home, launchDir(), os.Getenv))
 	_ = c.Close()
 	if err != nil {
 		return err
