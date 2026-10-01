@@ -34,3 +34,15 @@ func TestReadEffortByModelKeysEachModelsEffortByItsShortName(t *testing.T) {
 		t.Fatalf("got %v, %v", got, err)
 	}
 }
+
+func TestReadDefaultsShortensAFullModelIDAsTheEffortKeysAre(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "settings.json")
+	if err := os.WriteFile(path, []byte(`{"model":"claude-opus-5-5","modelSettings":{"claude-opus-5-5":{"effortLevel":"low"}}}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	model, _, err := claude.ReadDefaults(path)
+	byModel, _ := claude.ReadEffortByModel(path)
+	if err != nil || model != "opus-5.5" || byModel[model] != "low" {
+		t.Fatalf("model %q, efforts %v, %v; want opus-5.5 to find low", model, byModel, err)
+	}
+}
