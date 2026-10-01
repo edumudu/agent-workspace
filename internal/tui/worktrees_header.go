@@ -94,11 +94,12 @@ func (m Model) diskBar(worktrees, reclaim int64) []piece {
 	cells := func(n int64) int {
 		return int(max(n, 0) * diskBarWidth / int64(v.Total))
 	}
-	used := int64(v.Total - v.Free)
-	kept := cells(worktrees - reclaim)
-	gone := cells(reclaim)
-	other := max(cells(used)-kept-gone, 0)
-	free := max(diskBarWidth-kept-gone-other, 0)
+	// why: hardlinks shared between worktrees can sum past the disk, so every segment fits inside the used space.
+	used := min(cells(int64(v.Total-v.Free)), diskBarWidth)
+	gone := min(cells(reclaim), used)
+	kept := min(cells(worktrees-reclaim), used-gone)
+	other := used - gone - kept
+	free := diskBarWidth - used
 	return []piece{
 		{s.text, " "},
 		{s.blue, strings.Repeat("█", kept)},
