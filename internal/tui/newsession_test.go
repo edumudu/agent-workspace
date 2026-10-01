@@ -68,11 +68,11 @@ func dialogModel(t *testing.T, st rpc.State) (tui.Model, *fakeCaller) {
 func TestNewSessionDialogStartsTheSessionAndShowsItsPane(t *testing.T) {
 	m, c := dialogModel(t, withWorkspaces(fixture(1, 0)))
 	out := screen(m)
-	if !strings.Contains(out, "NEW SESSION") || !strings.Contains(out, "shop") {
+	if !strings.Contains(out, "New session") || !strings.Contains(out, "shop") {
 		t.Fatalf("dialog does not default to the last used workspace:\n%s", out)
 	}
 	m = typeText(m, "https://linear.app/acme/issue/ENG-9/add-search")
-	if out := screen(m); !strings.Contains(out, "linear ENG-9") {
+	if out := screen(m); !strings.Contains(out, "ENG-9 · add search") {
 		t.Fatalf("dialog does not say what the work item is:\n%s", out)
 	}
 	m = pressCmd(m, keyTab)
@@ -80,8 +80,7 @@ func TestNewSessionDialogStartsTheSessionAndShowsItsPane(t *testing.T) {
 	m = pressCmd(m, keyTab)
 	m = pressCmd(m, keyRight)
 	m = pressCmd(m, keyTab)
-	m = typeText(m, "gpt-6x")
-	m = update(m, keyBack)
+	m = pressCmd(m, keyRight)
 	m = pressCmd(m, keyTab)
 	m = pressCmd(m, keyRight)
 	m = pressCmd(m, keyRight)
@@ -90,14 +89,14 @@ func TestNewSessionDialogStartsTheSessionAndShowsItsPane(t *testing.T) {
 	if got := c.methods(); !slices.Equal(got, []string{rpc.MethodNewSession, rpc.MethodSessionFocus}) {
 		t.Fatalf("calls %v", got)
 	}
-	want := rpc.NewSessionParams{Workspace: "/src/api", WorkItem: "https://linear.app/acme/issue/ENG-9/add-search", Harness: "codex", Model: "gpt-6", Effort: "medium"}
+	want := rpc.NewSessionParams{Workspace: "/src/api", WorkItem: "https://linear.app/acme/issue/ENG-9/add-search", Harness: "codex", Model: "gpt-6.1-sol", Effort: "medium"}
 	if !reflect.DeepEqual(c.calls[0].params, want) {
 		t.Fatalf("params %+v, want %+v", c.calls[0].params, want)
 	}
 	if !reflect.DeepEqual(c.calls[1].params, rpc.SessionFocusParams{ID: "new1"}) {
 		t.Fatalf("focus %+v", c.calls[1].params)
 	}
-	if out := screen(m); strings.Contains(out, "NEW SESSION") {
+	if out := screen(m); strings.Contains(out, "New session") {
 		t.Fatalf("dialog still open after start:\n%s", out)
 	}
 }
@@ -116,7 +115,7 @@ func TestNewSessionDialogCyclesWorkspacesBothWays(t *testing.T) {
 func TestNewSessionDialogEscapeCancelsWithoutCalling(t *testing.T) {
 	m, c := dialogModel(t, withWorkspaces(rpc.State{}))
 	m = pressCmd(typeText(m, "fix it"), keyEsc)
-	if len(c.methods()) != 0 || strings.Contains(screen(m), "NEW SESSION") {
+	if len(c.methods()) != 0 || strings.Contains(screen(m), "New session") {
 		t.Fatalf("calls %v after esc:\n%s", c.methods(), screen(m))
 	}
 	if m = press(m, "j"); strings.Contains(screen(m), "fix it") {
@@ -153,7 +152,7 @@ func TestNewSessionFailureKeepsTheDialogAndSaysWhy(t *testing.T) {
 	m, c := dialogModel(t, withWorkspaces(rpc.State{}))
 	c.err = errors.New("failed: branch exists")
 	m = pressCmd(typeText(m, "x"), keyEnter)
-	if out := screen(m); !strings.Contains(out, "NEW SESSION") || !strings.Contains(out, "branch exists") {
+	if out := screen(m); !strings.Contains(out, "New session") || !strings.Contains(out, "branch exists") {
 		t.Fatalf("failure not shown in the dialog:\n%s", out)
 	}
 }
@@ -193,11 +192,11 @@ var keyCtrlS = tea.KeyPressMsg{Code: 's', Mod: tea.ModCtrl}
 func TestNewSessionDialogWarnsOnLowQuotaAndSwitchesHarness(t *testing.T) {
 	m, c := dialogModel(t, lowClaudeState())
 	out := screen(m)
-	if !strings.Contains(out, "claude 5h 10% left") || !strings.Contains(out, "ctrl+s codex 64%") {
+	if !strings.Contains(out, "Claude 5h window 90% used") || !strings.Contains(out, "Codex 5h is 36% used") {
 		t.Fatalf("no low-quota warning with a switch:\n%s", out)
 	}
 	m = pressCmd(m, keyCtrlS)
-	if out := screen(m); !strings.Contains(out, "‹ codex ›") || strings.Contains(out, "10% left") {
+	if out := screen(m); !strings.Contains(out, "● codex") || strings.Contains(out, "90% used") {
 		t.Fatalf("ctrl+s did not switch to codex:\n%s", out)
 	}
 	pressCmd(typeText(m, "x"), keyEnter)
@@ -211,10 +210,10 @@ func TestNewSessionDialogWarnsWithoutASwitchWhenTheOtherHarnessIsUnknown(t *test
 	st.Sessions = st.Sessions[:1]
 	m, _ := dialogModel(t, st)
 	out := screen(m)
-	if !strings.Contains(out, "claude 5h 10% left") || strings.Contains(out, "ctrl+s") {
+	if !strings.Contains(out, "Claude 5h window 90% used") || strings.Contains(out, "ctrl+s") {
 		t.Fatalf("warning should have no switch:\n%s", out)
 	}
-	if out := screen(pressCmd(m, keyCtrlS)); !strings.Contains(out, "‹ claude ›") {
+	if out := screen(pressCmd(m, keyCtrlS)); !strings.Contains(out, "● claude") {
 		t.Fatalf("ctrl+s switched with nothing to switch to:\n%s", out)
 	}
 }
@@ -250,7 +249,7 @@ func TestNewSessionDialogStillQuitsAndClosesWhileStarting(t *testing.T) {
 	if _, ok := cmd().(tea.QuitMsg); !ok {
 		t.Fatal("ctrl+c while starting did not quit")
 	}
-	if out := screen(update(m, keyEsc)); strings.Contains(out, "NEW SESSION") {
+	if out := screen(update(m, keyEsc)); strings.Contains(out, "New session") {
 		t.Fatalf("esc while starting did not close the dialog:\n%s", out)
 	}
 }
@@ -298,7 +297,7 @@ func TestAStartReplyOnlyTouchesTheDialogThatSentIt(t *testing.T) {
 	m = update(next.(tui.Model), keyEsc)
 	m = typeText(press(m, "n"), "second")
 	m = run(m, startA)
-	if out := screen(m); !strings.Contains(out, "NEW SESSION") || !strings.Contains(out, "second") {
+	if out := screen(m); !strings.Contains(out, "New session") || !strings.Contains(out, "second") {
 		t.Fatalf("the first start's reply closed the second dialog:\n%s", out)
 	}
 	c.err = errors.New("failed: boom")

@@ -61,16 +61,13 @@ func TestModelSwitchDialogFollowsTheDefaultsWhenTheHarnessChanges(t *testing.T) 
 	}
 }
 
-func TestModelSwitchDialogKeepsAModelTheUserTyped(t *testing.T) {
+func TestModelSwitchDialogKeepsAModelTheUserPicked(t *testing.T) {
 	m, c := defaultsDialog(t)
 	m = pressCmd(pressCmd(pressCmd(m, keyTab), keyTab), keyTab)
-	for range len("sonnet") {
-		m = update(m, keyBack)
-	}
-	m = typeText(m, "custom")
+	m = pressCmd(m, keyRight)
 	m = pressCmd(pressCmd(m, keyShiftTab), keyRight)
 	got := startedParams(t, m, c)
-	want := rpc.NewSessionParams{Workspace: got.Workspace, WorkItem: "fix the login bug", Harness: "codex", Model: "custom", Effort: "medium"}
+	want := rpc.NewSessionParams{Workspace: got.Workspace, WorkItem: "fix the login bug", Harness: "codex", Model: "haiku", Effort: "medium"}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("params %+v, want %+v", got, want)
 	}

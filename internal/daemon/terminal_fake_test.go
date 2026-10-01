@@ -19,6 +19,7 @@ type termFake struct {
 	alive   map[app.PaneID]bool
 	created []app.PaneID
 	shown   []app.PaneID
+	titles  map[app.PaneID]string
 }
 
 func newTermFake(client *fakeClientHost, live ...app.PaneID) *termFake {
@@ -97,4 +98,20 @@ func (e *fakeEditor) evals() []string {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	return append([]string(nil), e.calls...)
+}
+
+func (t *termFake) SetTitle(_ context.Context, pane app.PaneID, title string) error {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if t.titles == nil {
+		t.titles = map[app.PaneID]string{}
+	}
+	t.titles[pane] = title
+	return nil
+}
+
+func (t *termFake) title(pane app.PaneID) string {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	return t.titles[pane]
 }

@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
+	"slices"
 	"sort"
 	"strings"
 	"testing"
@@ -41,7 +43,7 @@ func fixture(sessions, worktreesEach int) rpc.State {
 			ID: fmt.Sprintf("s%02d", i+1), TaskID: taskID,
 			Harness: domain.HarnessClaude, Model: "opus-5.5", Effort: "high",
 			State: fixtureStates[i%len(fixtureStates)],
-			Usage: domain.Usage{ContextLeftPercent: 64 - i},
+			Usage: domain.Usage{ContextLeftPercent: 64 - i, HasContext: true},
 		}
 		if i%2 == 1 {
 			s.Harness, s.Model, s.Effort = domain.HarnessCodex, "gpt-6", "med"
@@ -390,4 +392,63 @@ func TestTaskHeaderKeepsTwoReposThatShareAName(t *testing.T) {
 		}
 	}
 	t.Fatalf("the header should list both repos:\n%s", screen(newModel(&st, nil)))
+}
+
+func TestSFocusesTheSelectedSessionsShell(t *testing.T) {
+	st := fixture(1, 0)
+	c := &fakeCaller{}
+	m := tui.New(tui.Options{Theme: tui.Latte(), Now: clock, Calls: c})
+	m = update(m, tea.WindowSizeMsg{Width: 48, Height: 40})
+	m = update(m, tui.StateMsg(st))
+	_, cmd := m.Update(key("s"))
+	if cmd == nil {
+		t.Fatal("s did nothing")
+	}
+	cmd()
+	if !slices.Equal(c.methods(), []string{rpc.MethodShellFocus}) || !reflect.DeepEqual(c.calls[0].params, rpc.ShellParams{Session: "s01"}) {
+		t.Fatalf("calls %+v", c.calls)
+	}
+}
+
+func TestHelpListsTheReviewKey(t *testing.T) {
+	st := fixture(1, 0)
+	out := screen(press(newModel(&st, nil), "?"))
+	for _, line := range strings.Split(out, "\n") {
+		if f := strings.Fields(line); len(f) >= 2 && f[0] == "r" && strings.Contains(line, "review") {
+			return
+		}
+	}
+	t.Fatalf("help has no line for r:\n%s", out)
+}
+
+func TestASessionShowsNoContextFigureBeforeItsFirstReport(t *testing.T) {
+	st := rpc.State{Sessions: []domain.Session{{ID: "s1", Harness: domain.HarnessClaude, Model: "opus", Effort: "high"}}}
+	out := screen(newModel(&st, nil))
+	if strings.Contains(out, "ctx") || !strings.Contains(out, "opus high") {
+		t.Fatalf("want the started model and no ctx before a report:\n%s", out)
+	}
+	st.Sessions[0].Usage = domain.Usage{ContextLeftPercent: 0, HasContext: true}
+	if out := screen(newModel(&st, nil)); !strings.Contains(out, "ctx 0%") {
+		t.Fatalf("a reported 0%% is not shown:\n%s", out)
+	}
+}
+
+func TestFooterListsTheMockupKeys(t *testing.T) {
+	st := fixture(1, 0)
+	out := screen(newModel(&st, nil))
+	for _, want := range []string{"n new session", "r review", "t shell", "e nvim", "w worktrees", "␣ next waiting"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("footer has no %q:\n%s", want, out)
+		}
+	}
+}
+
+func TestStatusBarListsThePortsInUse(t *testing.T) {
+	st := fixture(2, 1)
+	st.Worktrees[1].Ports = []domain.Port{{Port: 8084}, {Port: 8081}}
+	lines := strings.Split(screen(newModel(&st, nil)), "\n")
+	last := lines[len(lines)-1]
+	if !strings.Contains(last, "2 sessions · 2 worktrees · ports 8081 8084") {
+		t.Fatalf("status bar %q; want the counts and the ports in use", last)
+	}
 }

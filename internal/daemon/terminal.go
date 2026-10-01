@@ -108,7 +108,9 @@ func (d *Daemon) dispatchTerminal(req rpc.Request) (*rpc.Response, bool) {
 	var err error
 	switch req.Method {
 	case rpc.MethodShellToggle:
-		out, err = d.toggleShell(ctx, in.session, target, p.Popup)
+		out, err = d.toggleShell(ctx, in.session, target, p.Popup, false)
+	case rpc.MethodShellFocus:
+		out, err = d.toggleShell(ctx, in.session, target, false, true)
 	case rpc.MethodNvimToggle:
 		out, err = d.toggleNvim(ctx, in.session, target)
 	default:
@@ -162,13 +164,18 @@ func (d *Daemon) withClient(f func(ctx context.Context, h ClientHost, slot app.S
 	return f(ctx, d.clients.host, d.clients.slot)
 }
 
-func (d *Daemon) toggleShell(ctx context.Context, session domain.Session, target domain.ShellTarget, popup bool) (rpc.ShellResult, error) {
+// toggleShell shows the shell below the agent pane or hides it; with focus it
+// only shows it, then puts keyboard focus in it.
+func (d *Daemon) toggleShell(ctx context.Context, session domain.Session, target domain.ShellTarget, popup, focus bool) (rpc.ShellResult, error) {
 	name := "shell-" + strings.ReplaceAll(target.Key, "/", "-")
 	pane, _, err := d.livePane(ctx, d.term.shells, target.Key, app.PaneSpec{Name: name, Dir: target.Dir, Env: d.paneEnv(session.ID)})
 	if err != nil {
 		return rpc.ShellResult{}, err
 	}
 	out := rpc.ShellResult{Pane: string(pane), Dir: target.Dir, Shown: true}
+	if err := d.hs.host.SetTitle(ctx, pane, domain.ShellTitle(target)); err != nil {
+		return out, err
+	}
 	if popup {
 		return out, d.withClient(func(ctx context.Context, h ClientHost, _ app.Slot) error { return h.Popup(ctx, pane) })
 	}
@@ -179,11 +186,14 @@ func (d *Daemon) toggleShell(ctx context.Context, session domain.Session, target
 				return err
 			}
 		}
-		if h.BelowPane(ctx, slot) == pane {
+		if h.BelowPane(ctx, slot) == pane && !focus {
 			out.Shown = false
 			return h.HideBelow(ctx, slot)
 		}
-		return h.ShowBelow(ctx, pane, slot)
+		if err := h.ShowBelow(ctx, pane, slot); err != nil || !focus {
+			return err
+		}
+		return h.FocusBelow(ctx, slot)
 	})
 	return out, err
 }
