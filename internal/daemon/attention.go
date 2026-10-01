@@ -72,8 +72,17 @@ func (s *state) announce(session domain.Session, effects []domain.Effect) {
 		return
 	}
 	name := s.sessionName(session)
+	var worktrees []domain.Worktree
+	for _, id := range session.WorktreeIDs {
+		if w, ok := s.worktrees[id]; ok {
+			worktrees = append(worktrees, w)
+		}
+	}
 	for _, e := range effects {
-		b, ok := domain.BannerFor(session, name, e)
+		b, ok := domain.BannerFor(domain.BannerInput{
+			Session: session, Name: name, Effect: e,
+			Worktrees: worktrees, Events: s.events[session.ID], Now: time.Now(),
+		})
 		if !ok || !s.attn.co.Allow(session.ID, time.Now()) {
 			continue
 		}

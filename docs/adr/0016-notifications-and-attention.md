@@ -23,3 +23,18 @@ Status: accepted, 2026-09-30.
 - A coalesced banner is lost, not delayed. A `done` right after a `permission` on the same session, within 10 s, shows no second banner. The sidebar still shows the state.
 - Codex has no waiting event: its hooks map to permission and done only.
 - The frontmost check needs macOS Automation access for System Events. Without it the check fails and banners show even when the terminal is in front.
+
+## Amendment, 2026-10-01 (#131): banner content
+
+- `domain.BannerFor(BannerInput)` builds the banner from what the loop already holds: the session, its name, its worktrees and its recent `SessionEvent`s (the last 20, already kept for the session card), plus the time. Nothing new is read from disk or exec'd.
+- Title: the name (or harness), then ` · repo@branch` from the first worktree (repo as its last path element, branch cut to 29 runes), `+N` for more worktrees; 80 runes at most.
+- Body, 120 runes at most, from the current turn (events since the last prompt): permission gives `needs permission: <tool>: <target>` or the hook's message; waiting gives `asks: <question>` (the last paragraph of the last message, when it ends in `?`) or `waiting: <message>`; done gives the first line of the last assistant message and the time since the prompt, `usage limit: …` or `error: …` when that line reports a limit or an API error, or `done in 4m12s` with no message. With nothing known it falls back to the bare state word.
+- Secrets are masked before the cut: `token=…`, `password: …`, `API_KEY=…` and well-known token prefixes (`sk-`, `ghp_`, `github_pat_`, `xoxb-`, `AKIA`). Only the first line of a message is shown, never a prompt.
+- `internal/domain/testdata/banners.golden` pins a set of realistic banners.
+- Tests never post a real banner: the e2e suite puts a fake `osascript` first on `PATH` that logs its argv to `$AGENTWS_E2E/osascript.log`, and `session_states.txtar` asserts banners reached it. Only the e2e suite runs `daemon.Run`; every other test injects a fake notifier.
+
+Limits of the amendment:
+
+- "N files changed" is not shown: the loop holds no per-turn file count (turn snapshots live in git). Done shows the message line and elapsed time instead.
+- `osascript`'s `display notification` cannot group banners or open the session on click. That needs another notifier (such as `terminal-notifier`), left for a later issue.
+- There is no error or limit agent state; those are recognised from the last message text only.

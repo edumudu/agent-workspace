@@ -11,7 +11,7 @@ mkdir $AGENTWS_E2E/gates/ask
 eventually ' state=waiting ' agentws debug session --once $SID
 mkdir $AGENTWS_E2E/gates/finish
 eventually ' state=done ' agentws debug session --once $SID
-eventually 'end run\tadd a thing\twaiting' cat $AGENTWS_E2E/osascript.log
+eventually 'end run\tadd a thing · api@\S+\twaiting: Shall I go on\?' cat $AGENTWS_E2E/osascript.log
 
 exec agentws new --workspace api --harness codex 'fix the build'
 capture CID '^session (\S+) on pane'
@@ -19,7 +19,7 @@ mkdir $AGENTWS_E2E/gates/codex
 eventually '^seq=\d+ state=running harness=codex ' agentws debug session --once $CID
 mkdir $AGENTWS_E2E/gates/codex-stop
 eventually '^seq=\d+ state=done harness=codex ' agentws debug session --once $CID
-eventually 'end run\tfix the build\tdone' cat $AGENTWS_E2E/osascript.log
+eventually 'end run\tfix the build · api@\S+\tFixed\.' cat $AGENTWS_E2E/osascript.log
 
 -- claude.steps --
 gate prompt
