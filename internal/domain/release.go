@@ -45,6 +45,10 @@ type semver struct {
 
 func parseSemver(s string) (semver, bool) {
 	s = strings.TrimPrefix(s, "v")
+	s, build, hasBuild := strings.Cut(s, "+")
+	if hasBuild && build == "" {
+		return semver{}, false
+	}
 	core, pre, hasPre := strings.Cut(s, "-")
 	parts := strings.Split(core, ".")
 	if len(parts) != 3 {
