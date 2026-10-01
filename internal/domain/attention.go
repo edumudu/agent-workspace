@@ -2,6 +2,7 @@ package domain
 
 import (
 	"fmt"
+	"path"
 	"regexp"
 	"strings"
 	"sync"
@@ -70,7 +71,7 @@ func bannerTitle(s Session, name string, worktrees []Worktree) string {
 	if len(worktrees) == 0 {
 		return title
 	}
-	where := worktrees[0].Repo
+	where := path.Base(worktrees[0].Repo)
 	if b := worktrees[0].Branch; b != "" {
 		where += "@" + cutRunes(b, maxBannerBranch)
 	}
