@@ -306,6 +306,8 @@ type WorkspaceList struct {
 type OpenClientParams struct {
 	Command []string          `json:"command"`
 	Env     map[string]string `json:"env,omitempty"`
+	// Dir is where agentws was launched; the new-session popup opens there.
+	Dir string `json:"dir,omitempty"`
 }
 
 // OpenClient names the layout's window (Slot) and the argv that attaches the

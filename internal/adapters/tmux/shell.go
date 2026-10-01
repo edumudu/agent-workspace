@@ -128,6 +128,9 @@ func (h *Host) PopupCommand(ctx context.Context, spec app.PaneSpec) error {
 	}
 	w, hgt := min(popupMaxWidth, cw-2), min(popupMaxHeight, ch-2)
 	args := []string{"-L", h.socket, "-f", h.configPath, "display-popup", "-c", client, "-E", "-w", strconv.Itoa(w), "-h", strconv.Itoa(hgt)}
+	if spec.Dir != "" {
+		args = append(args, "-d", spec.Dir)
+	}
 	keys := make([]string, 0, len(spec.Env))
 	for k := range spec.Env {
 		keys = append(keys, k)

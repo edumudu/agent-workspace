@@ -61,6 +61,8 @@ type Options struct {
 	// NewSessionOnly is the popup's own program: the dialog fills the screen
 	// from the start and the program ends when it closes.
 	NewSessionOnly bool
+	// LaunchDir is where agentws was run; the dialog starts there.
+	LaunchDir string
 }
 
 // Caller makes daemon calls such as session.new; *rpc.Client is one.

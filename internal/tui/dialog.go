@@ -88,6 +88,9 @@ func (m Model) openDialog() Model {
 			d.ws, d.last = i, w.Root
 		}
 	}
+	if dir := m.opts.LaunchDir; dir != "" {
+		d.startIn(dir)
+	}
 	m.dialog = d
 	return m
 }
@@ -373,4 +376,17 @@ func (m Model) fallbackOffer() (domain.FallbackOffer, bool) {
 		Model:   strings.TrimSpace(d.model),
 		Effort:  d.efforts[d.effort],
 	})
+}
+
+// startIn selects the registered workspace that holds dir, or adds dir as a
+// new one the daemon registers when the session is created.
+func (d *dialog) startIn(dir string) {
+	for i, w := range d.spaces {
+		if dir == w.Root || strings.HasPrefix(dir, w.Root+"/") {
+			d.ws = i
+			return
+		}
+	}
+	d.spaces = append([]domain.Workspace{{Root: dir}}, d.spaces...)
+	d.ws = 0
 }
