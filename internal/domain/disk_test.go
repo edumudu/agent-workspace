@@ -39,15 +39,31 @@ func TestTotalSizeSumsEveryMeasuredWorktreeAndCountsTheRest(t *testing.T) {
 	}
 }
 
-func TestDiskStateNamesWhatTheDecisionMeansForTheUser(t *testing.T) {
-	cases := map[CleanupAction]string{
-		CleanupRemove:        "merged",
-		CleanupBackupThenAsk: "needs you",
-		CleanupKeep:          "keep",
+func TestWorktreeStatusSaysWhatTheWorktreeIsDoing(t *testing.T) {
+	merged := &PullRequest{Number: 1, State: PRMerged}
+	cases := []struct {
+		name   string
+		w      Worktree
+		owner  *Session
+		action CleanupAction
+		want   string
+	}{
+		{"its session is running", Worktree{Branch: "a"}, &Session{State: StateRunning}, CleanupKeep, "◐ in use"},
+		{"its session waits on you", Worktree{Branch: "a"}, &Session{State: StateWaiting}, CleanupKeep, "✳ in use"},
+		{"its session is done", Worktree{Branch: "a"}, &Session{State: StateDone}, CleanupKeep, "● in use"},
+		{"its session is idle", Worktree{Branch: "a"}, &Session{State: StateIdle}, CleanupKeep, "○ idle"},
+		{"its session ended", Worktree{Branch: "a"}, &Session{State: StateIdle, Ended: true}, CleanupKeep, "○ idle"},
+		{"no session", Worktree{Branch: "a"}, nil, CleanupKeep, "○ idle"},
+		{"cleanup would remove it", Worktree{Branch: "a"}, nil, CleanupRemove, "✓ merged"},
+		{"merged but kept for now", Worktree{Branch: "a", PR: merged}, &Session{State: StateRunning}, CleanupKeep, "✓ merged"},
+		{"merged with changes", Worktree{Branch: "a", PR: merged}, nil, CleanupBackupThenAsk, "! merged, dirty"},
+		{"detached and not in the default branch", Worktree{}, nil, CleanupBackupThenAsk, "! detached"},
 	}
-	for action, want := range cases {
-		if got := DiskState(action); got != want {
-			t.Errorf("DiskState(%s) = %q, want %q", action, got, want)
-		}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			if got := WorktreeStatus(c.w, c.owner, c.action); got != c.want {
+				t.Fatalf("got %q, want %q", got, c.want)
+			}
+		})
 	}
 }

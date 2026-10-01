@@ -381,40 +381,13 @@ func (m Model) diskScreen() string {
 	return strings.Join(append(lines, footer...), "\n")
 }
 
-func (m Model) diskHeader() []string {
-	s := m.styles
-	v := m.dk.view
-	rows := m.diskRows()
-	total, totalPending := domain.TotalSize(rows)
-	reclaim, reclaimPending := domain.Reclaimable(rows)
-
-	volume := "volume unknown"
-	if v.Total > 0 {
-		volume = fmt.Sprintf("volume %s free of %s", formatBytes(int64(v.Free)), formatBytes(int64(v.Total)))
-	}
-	first := []piece{{s.text, " " + volume}}
-	if v.DepsStore != nil {
-		first = append(first, piece{s.sub, " · deps store " + sizeText(v.DepsStore.Size)})
-	}
-	policy := "auto-clean off"
-	if v.AutoCleanEvery > 0 {
-		policy = "auto-clean every " + everyText(v.AutoCleanEvery)
-	}
-	second := []piece{
-		{s.text, fmt.Sprintf(" worktrees %s (%d)", totalText(total, totalPending), len(rows))},
-		{s.sub, " · "}, {s.green, "reclaimable " + totalText(reclaim, reclaimPending)},
-		{s.sub, " · " + policy},
-	}
-	return []string{"", m.line(false, first, nil), m.line(false, second, nil), ""}
-}
-
 type diskColumns struct{ task, branch int }
 
 const (
-	colState   = 10
+	colState   = 16
 	colRepo    = 9
 	colPR      = 7
-	colSession = 8
+	colSession = 10
 	colPort    = 12
 	colSize    = 8
 )
@@ -435,9 +408,10 @@ func rightCell(s string, width int) string {
 	return strings.Repeat(" ", max(width-ansi.StringWidth(s), 0)) + s
 }
 
+// sessionNumber is the owner's sidebar number and harness, "1 claude".
 func (m Model) sessionNumber(id string) string {
 	if i := m.index(id); i >= 0 {
-		return fmt.Sprint(m.entries[i].num)
+		return fmt.Sprintf("%d %s", m.entries[i].num, m.entries[i].session.Harness)
 	}
 	return "–"
 }
@@ -507,12 +481,19 @@ func (m Model) diskRowLine(r domain.DiskRow, w domain.Worktree, cols diskColumns
 	if sel {
 		bar = piece{s.bar, "▌"}
 	}
-	state := piece{s.dim, cell(domain.DiskState(r.Action), colState)}
-	switch r.Action {
-	case domain.CleanupRemove:
-		state.st = s.green
-	case domain.CleanupBackupThenAsk:
+	var owner *domain.Session
+	if x, ok := m.sessions[w.SessionID]; ok && w.SessionID != "" {
+		owner = &x
+	}
+	status := domain.WorktreeStatus(w, owner, r.Action)
+	state := piece{s.dim, cell(status, colState)}
+	switch {
+	case r.Action == domain.CleanupBackupThenAsk:
 		state.st = s.need
+	case strings.HasPrefix(status, "✓"):
+		state.st = s.green
+	case strings.HasSuffix(status, "in use"):
+		state.st = s.blue
 	}
 	pr := "–"
 	if w.PR != nil {

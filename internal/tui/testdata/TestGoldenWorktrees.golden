@@ -1,26 +1,26 @@
  WORKTREES & DISK                                                                                              esc back 
 
- volume 240 GB free of 994 GB · deps store 4.1 GB                                                                       
- worktrees 4.0 GB+ (4) · reclaimable 2.5 GB · auto-clean every 10m                                                      
+ Disk              240 GB free of 994 GB                                                                                
+ ██████████████████████████████░░░░░░░░░░                                                                               
+ ■ worktrees 4.0 GB+  ■ reclaimable 2.5 GB  ■ other                                                                     
 
- STATE     TASK                     REPO     BRANCH                                PR     SESSION PORT            SIZE  
-▌merged    #40 · task number 1      api      feat-a                                #3600  1                     2.0 GB  
- needs you #40 · task number 1      web      feat-b                                –      1                     500 MB  
+ Auto-cleanup every 10m                                                                                                 
+ merged + clean + no session → removed                                                                                  
+ merged + dirty → backup, then asks                                                                                     
+
+ Shared deps store                                                                                                      
+ deps 4.1 GB once, cloned per worktree                                                                                  
+
+ STATE           TASK                  REPO     BRANCH                           PR     SESSION   PORT            SIZE  
+▌✓ merged        #40 · task number 1   api      feat-a                           #3600  1 claude                2.0 GB  
+ ! merged, dirty #40 · task number 1   web      feat-b                           –      1 claude                500 MB  
      ↳ 2 uncommitted changes · b backup + remove · o shell · g session                                                  
- keep      #40 · task number 1      api      feat-c                                #3601  2       :3000         1.5 GB  
- keep      #40 · task number 1      web      feat-d                                –      2                          …  
+ ○ idle          #40 · task number 1   api      feat-c                           #3601  2 codex   :3000         1.5 GB  
+ ○ idle          #40 · task number 1   web      feat-d                           –      2 codex                      …  
 
  RECENTLY CLEANED                                                                                                       
  12:03  old-merged  removed                                                                                             
  11:40  old-dirty  backed up to /h/backups/x                                                                            
-
-
-
-
-
-
-
-
 
 
 
