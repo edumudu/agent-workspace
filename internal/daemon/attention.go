@@ -116,10 +116,8 @@ func (s *state) announce(session domain.Session, effects []domain.Effect) {
 		}
 		b.Sound = s.attn.sounds[b.State]
 		b.Group = session.ID
-		select {
-		case s.attn.queue <- queuedBanner{banner: b, focused: session.Focused, gen: s.attn.nextGen(session.ID)}:
+		if s.attn.enqueue(queuedBanner{banner: b, focused: session.Focused}) {
 			s.attn.posted[session.ID] = true
-		default:
 		}
 	}
 }
@@ -139,13 +137,21 @@ func (s *state) withdraw(id string) {
 	}
 }
 
-// why: a banner queued after a withdrawal is newer than it, so the withdrawal must not remove it.
-func (a *attention) nextGen(id string) uint64 {
+// why: a banner queued after a withdrawal is newer than it, so the withdrawal must not remove it;
+// a dropped banner leaves a pending withdrawal in place, since nothing replaces the old banner.
+func (a *attention) enqueue(q queuedBanner) bool {
+	id := q.banner.Group
 	a.removeMu.Lock()
 	defer a.removeMu.Unlock()
+	q.gen = a.gens[id] + 1
+	select {
+	case a.queue <- q:
+	default:
+		return false
+	}
+	a.gens[id] = q.gen
 	delete(a.removals, id)
-	a.gens[id]++
-	return a.gens[id]
+	return true
 }
 
 func (a *attention) superseded(q queuedBanner) bool {
