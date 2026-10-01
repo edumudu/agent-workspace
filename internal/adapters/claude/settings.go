@@ -23,46 +23,63 @@ func HookCommand(bin, event string) string { return shellQuote(bin) + hookMarker
 
 // why: agentws entries from an earlier Setup, with any binary path, are replaced, so running it again gives the same bytes.
 func Setup(path, bin string) error {
-	original, err := os.ReadFile(path)
-	exists := err == nil
-	if err != nil && !errors.Is(err, os.ErrNotExist) {
-		return err
-	}
-	doc, err := parse(original)
-	if err != nil {
-		return fmt.Errorf("%s: %w", path, err)
-	}
-	before, err := doc.encode()
-	if err != nil {
-		return err
-	}
-	chain, err := strip(doc)
-	if err != nil {
-		return fmt.Errorf("%s: %w", path, err)
-	}
-	stripped, err := doc.encode()
-	if err != nil {
-		return err
-	}
-	if err := install(doc, bin, chain); err != nil {
-		return err
-	}
-	out, err := doc.encode()
+	p, err := plan(path, bin)
 	if err != nil {
 		return err
 	}
 	// why: a file that already holds agentws entries is not the user's original, so it is no backup.
-	if exists && bytes.Equal(before, stripped) {
+	if p.exists && bytes.Equal(p.before, p.stripped) {
 		if _, err := os.Stat(BackupPath(path)); errors.Is(err, os.ErrNotExist) {
-			if err := writeFile(BackupPath(path), original); err != nil {
+			if err := writeFile(BackupPath(path), p.original); err != nil {
 				return err
 			}
 		}
 	}
-	if bytes.Equal(out, original) {
+	if bytes.Equal(p.out, p.original) {
 		return nil
 	}
-	return writeFile(path, out)
+	return writeFile(path, p.out)
+}
+
+// why: it asks whether Setup would change nothing, so it can never disagree with what Setup does.
+func Installed(path, bin string) (bool, error) {
+	p, err := plan(path, bin)
+	if err != nil {
+		return false, err
+	}
+	return p.exists && bytes.Equal(p.out, p.original), nil
+}
+
+type setupPlan struct {
+	exists                          bool
+	original, before, stripped, out []byte
+}
+
+func plan(path, bin string) (setupPlan, error) {
+	original, err := os.ReadFile(path)
+	p := setupPlan{exists: err == nil, original: original}
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
+		return p, err
+	}
+	doc, err := parse(original)
+	if err != nil {
+		return p, fmt.Errorf("%s: %w", path, err)
+	}
+	if p.before, err = doc.encode(); err != nil {
+		return p, err
+	}
+	chain, err := strip(doc)
+	if err != nil {
+		return p, fmt.Errorf("%s: %w", path, err)
+	}
+	if p.stripped, err = doc.encode(); err != nil {
+		return p, err
+	}
+	if err := install(doc, bin, chain); err != nil {
+		return p, err
+	}
+	p.out, err = doc.encode()
+	return p, err
 }
 
 // why: when nothing else changed since Setup, the file gets back its original bytes; otherwise the user's later edits stay.

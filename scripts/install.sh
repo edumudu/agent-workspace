@@ -18,7 +18,12 @@ case "$os/$arch" in
   *) echo "agentws: no build for $os/$arch" >&2; exit 1 ;;
 esac
 
+# AGENTWS_DOWNLOAD_BASE serves the archives from elsewhere, such as a local
+# goreleaser --snapshot dist/, to try the script without a release.
 tag=${AGENTWS_VERSION:-}
+if [ -z "$tag" ] && [ -n "${AGENTWS_DOWNLOAD_BASE:-}" ]; then
+  tag=snapshot
+fi
 if [ -z "$tag" ]; then
   tag=$(curl -fsSL "https://api.github.com/repos/$repo/releases?per_page=1" |
     sed -n 's/.*"tag_name": *"\([^"]*\)".*/\1/p' | head -n 1)
@@ -28,7 +33,7 @@ fi
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 archive=agentws_${os}_${arch}.tar.gz
-base=https://github.com/$repo/releases/download/$tag
+base=${AGENTWS_DOWNLOAD_BASE:-https://github.com/$repo/releases/download/$tag}
 curl -fsSL -o "$tmp/$archive" "$base/$archive"
 curl -fsSL -o "$tmp/checksums.txt" "$base/checksums.txt"
 
@@ -40,11 +45,16 @@ else
 fi
 [ -n "$want" ] && [ "$want" = "$got" ] || { echo "agentws: checksum mismatch for $archive" >&2; exit 1; }
 
-tar -xzf "$tmp/$archive" -C "$tmp" agentws
+tar -xzf "$tmp/$archive" -C "$tmp" agentws nvim
 mkdir -p "$dir"
 mv "$tmp/agentws" "$dir/agentws"
 chmod 755 "$dir/agentws"
 echo "installed agentws $tag to $dir/agentws"
+share=${XDG_DATA_HOME:-$HOME/.local/share}/agentws
+mkdir -p "$share"
+rm -rf "$share/nvim"
+mv "$tmp/nvim" "$share/nvim"
+echo "installed the nvim plugin to $share/nvim; run agentws to set up Claude, Codex and nvim"
 case ":$PATH:" in *":$dir:"*) ;; *) echo "add $dir to your PATH" ;; esac
 if "$dir/agentws" daemon status >/dev/null 2>&1; then
   echo "a daemon from the previous version is running: run 'agentws daemon stop' so the next 'agentws' starts the new one"
