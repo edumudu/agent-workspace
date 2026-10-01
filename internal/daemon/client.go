@@ -87,7 +87,7 @@ func (d *Daemon) dispatchClient(req rpc.Request) *rpc.Response {
 		return result(req.ID, struct{}{})
 	case rpc.MethodClientDetach:
 		if d.clients.slot == "" {
-			return errorResponse(req.ID, rpc.CodeFailed, "no client layout is open")
+			return errorResponse(req.ID, rpc.CodeNotFound, "no client layout is open")
 		}
 		if err := h.Detach(ctx, d.clients.slot); err != nil {
 			return errorResponse(req.ID, rpc.CodeFailed, err.Error())

@@ -2,6 +2,7 @@ package tui
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	tea "charm.land/bubbletea/v2"
@@ -127,8 +128,14 @@ func (m Model) leave() tea.Cmd {
 	return func() tea.Msg {
 		ctx, cancel := context.WithTimeout(context.Background(), terminalCallTimeout)
 		defer cancel()
-		if err := c.Call(ctx, rpc.MethodClientDetach, struct{}{}, nil); err != nil {
+		err := c.Call(ctx, rpc.MethodClientDetach, struct{}{}, nil)
+		var rerr *rpc.Error
+		switch {
+		case errors.As(err, &rerr) && rerr.Code == rpc.CodeNotFound:
 			return tea.QuitMsg{}
+		case err != nil:
+			// why: the terminal may still be attached, or already detached; a sidebar that quits cannot come back.
+			return errMsg{err}
 		}
 		return nil
 	}
