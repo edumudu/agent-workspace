@@ -205,3 +205,19 @@ func TestNewSessionPopupSaysSoWhenTheNewSessionCannotBeShown(t *testing.T) {
 		t.Fatalf("no error in the popup:\n%s", out)
 	}
 }
+
+func TestNewSessionPopupNamesWhatDefaultMeans(t *testing.T) {
+	st := repoWorkspaces(rpc.State{Sessions: []domain.Session{{ID: "s", Harness: domain.HarnessClaude, Model: "opus-5.5"}}})
+	c := &fakeCaller{}
+	m := tui.New(tui.Options{Theme: tui.Latte(), Now: clock, Calls: c, NewSessionOnly: true,
+		HarnessDefaults: map[domain.Harness]tui.Defaults{domain.HarnessClaude: {Effort: "low"}}})
+	m = update(m, tea.WindowSizeMsg{Width: 100, Height: 30})
+	m = update(m, tui.StateMsg(st))
+	if out := screen(m); !strings.Contains(out, "‹ default · opus-5.5 ›") || !strings.Contains(out, "‹ default · low ›") {
+		t.Fatalf("defaults not named:\n%s", out)
+	}
+	m = pressCmd(pressCmd(pressCmd(m, keyTab), keyTab), keyRight)
+	if out := screen(m); !strings.Contains(out, "‹ default ›") {
+		t.Fatalf("codex, with nothing known, should say just default:\n%s", out)
+	}
+}
