@@ -136,6 +136,19 @@ func TestNotifySoundComesFromTheEventType(t *testing.T) {
 	}
 }
 
+func TestNotifyBannerCarriesRepoAndWhatTheHookAsked(t *testing.T) {
+	r := newRig(t, &memStore{}, nil)
+	r.d.Post(daemon.WorktreeChanged{Worktree: domain.Worktree{ID: "w1", Repo: "api", Branch: "42-retry", Path: "/w/api"}})
+	next(t, r.sub.Diffs)
+	r.d.Post(daemon.SessionChanged{Session: domain.Session{ID: "a", Harness: domain.HarnessClaude, Pane: "%1", State: domain.StateRunning, WorktreeIDs: []string{"w1"}}})
+	next(t, r.sub.Diffs)
+	r.hook(t, "claude", "PermissionRequest", "%1", `{"tool_name":"Bash","tool_input":{"command":"npm test"}}`)
+	got := r.banner(t)
+	if got.Title != "claude · api@42-retry" || got.Body != "needs permission: Bash: npm test" {
+		t.Fatalf("banner %q / %q", got.Title, got.Body)
+	}
+}
+
 func TestNotifyMutedSessionGetsNoBannerButGoesUnread(t *testing.T) {
 	r := newRig(t, &memStore{}, nil)
 	r.addRunning(t, "a", domain.HarnessClaude, "%1")
