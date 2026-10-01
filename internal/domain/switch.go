@@ -145,13 +145,23 @@ func (s Session) confirmSwitches(r StatusReport) Session {
 	return s
 }
 
-// switchShows matches the whole reported name, or its first word: Claude
-// reports "Opus 4.7" for the alias "opus", while "gpt-5" must not match "gpt-5-codex".
+// switchShows matches the whole reported name, its first word, or the name
+// without a trailing version: Claude reports "Opus 4.7" or "opus-5.5" for the
+// alias "opus", while "gpt-5" must not match "gpt-5-codex".
 func switchShows(sw Switch, reported string) bool {
 	want, got := strings.ToLower(sw.Value), strings.ToLower(reported)
 	if sw.Kind == SwitchEffort {
 		return want == got
 	}
 	first, _, _ := strings.Cut(got, " ")
-	return got == want || first == want
+	return got == want || first == want || withoutVersion(got) == want
+}
+
+// withoutVersion drops a trailing "-<digits and dots>": "opus-5.5" is "opus".
+func withoutVersion(name string) string {
+	i := strings.LastIndex(name, "-")
+	if i <= 0 || strings.Trim(name[i+1:], "0123456789.") != "" || name[i+1:] == "" {
+		return name
+	}
+	return name[:i]
 }

@@ -4,6 +4,9 @@ const (
 	// MethodShellToggle shows the session's shell below its agent pane, or
 	// hides it again; with Popup it opens a popup instead.
 	MethodShellToggle = "shell.toggle"
+	// MethodShellFocus shows the session's shell below its agent pane if it is
+	// not already, and puts keyboard focus in it.
+	MethodShellFocus = "shell.focus"
 	// MethodNvimToggle swaps the session's nvim into the main slot, or the
 	// agent pane back.
 	MethodNvimToggle = "nvim.toggle"

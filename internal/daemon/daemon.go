@@ -262,6 +262,7 @@ func (d *Daemon) Serve(ctx context.Context, ln net.Listener) error {
 	go d.watchPorts(ctx)
 	go d.reconcilePanes(ctx)
 	go d.watchMainSlot(ctx)
+	go d.paneTitles(ctx)
 	go d.snapshotTurns(ctx)
 	go d.cleanupEvery(ctx)
 	go d.runLauncher(ctx)
@@ -476,11 +477,11 @@ func (d *Daemon) dispatch(c *conn, line []byte) (*rpc.Response, bool) {
 		return errorResponse(req.ID, rpc.CodeUnknownMethod, "unknown method "+req.Method), true
 	case rpc.MethodReviewOpen, rpc.MethodReviewViewed, rpc.MethodReviewSend, rpc.MethodReviewHunk:
 		return d.dispatchReview(req)
-	case rpc.MethodShellToggle, rpc.MethodNvimToggle, rpc.MethodNvimOpen:
+	case rpc.MethodShellToggle, rpc.MethodShellFocus, rpc.MethodNvimToggle, rpc.MethodNvimOpen:
 		return d.dispatchTerminal(req)
 	case rpc.MethodReviewComment:
 		return d.addComment(req)
-	case rpc.MethodOpenClient, rpc.MethodFocusMain, rpc.MethodClientReview:
+	case rpc.MethodOpenClient, rpc.MethodFocusMain, rpc.MethodClientReview, rpc.MethodClientPopup:
 		return d.dispatchClient(req), true
 	case rpc.MethodDebugSeed:
 		var p rpc.DebugSeedParams

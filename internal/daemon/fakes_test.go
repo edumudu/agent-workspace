@@ -181,10 +181,12 @@ type fakeClientHost struct {
 	// duringCheck runs inside the SlotHasPane call that reports the pane missing.
 	duringCheck func()
 
-	slotPane map[app.Slot]app.PaneID
-	below    app.PaneID
-	belowLog []string
-	popups   []app.PaneID
+	slotPane      map[app.Slot]app.PaneID
+	below         app.PaneID
+	belowLog      []string
+	popups        []app.PaneID
+	commandPopups []app.PaneSpec
+	focusedBelow  int
 }
 
 // SlotHasPane reports the slot pane as missing once after loseSlotPane.
@@ -322,6 +324,7 @@ type shown struct {
 type fakeHost struct {
 	app.TerminalHost
 	mu       sync.Mutex
+	titles   map[app.PaneID][]string
 	specs    []app.PaneSpec
 	err      error
 	panes    []app.PaneInfo
@@ -740,6 +743,20 @@ func (g *fakeHunkGit) done() []string {
 	return append([]string(nil), g.calls...)
 }
 
+func (h *fakeClientHost) FocusBelow(context.Context, app.Slot) error {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.focusedBelow++
+	return nil
+}
+
+func (h *fakeClientHost) PopupCommand(_ context.Context, spec app.PaneSpec) error {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.commandPopups = append(h.commandPopups, spec)
+	return nil
+}
+
 func (s *memStore) DeleteSession(id string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -757,4 +774,29 @@ func (s *memStore) DeleteSession(id string) {
 		}
 	}
 	s.snap.Events = events
+}
+
+func (h *fakeHost) SetTitle(_ context.Context, pane app.PaneID, title string) error {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if h.titles == nil {
+		h.titles = map[app.PaneID][]string{}
+	}
+	h.titles[pane] = append(h.titles[pane], title)
+	return nil
+}
+
+func (h *fakeHost) title(pane app.PaneID) string {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if ts := h.titles[pane]; len(ts) > 0 {
+		return ts[len(ts)-1]
+	}
+	return ""
+}
+
+func (h *fakeHost) titleSets(pane app.PaneID) int {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	return len(h.titles[pane])
 }

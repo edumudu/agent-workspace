@@ -73,6 +73,20 @@ func Quotas(sessions []Session) []Quota {
 	return out
 }
 
+// Current leaves out windows whose reset has passed: their figure belongs to
+// a window that is over, and Claude Code stops reporting it then too. A
+// window with no reset time is kept.
+func Current(quotas []Quota, now time.Time) []Quota {
+	out := make([]Quota, 0, len(quotas))
+	for _, q := range quotas {
+		if q.ResetsAt != 0 && q.ResetsAt <= now.Unix() {
+			continue
+		}
+		out = append(out, q)
+	}
+	return out
+}
+
 func harnessRank(h Harness) int {
 	if h == HarnessClaude {
 		return 0

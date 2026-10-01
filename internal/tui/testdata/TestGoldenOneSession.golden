@@ -34,7 +34,7 @@
  #40 · task number 1                            
  name  session 1 change                         
  PRs #3600                                      
-
- ⏎ focus      ␣ next waiting                    
- ⇥ last       ? keys                            
+ n new session   r review                       
+ t shell         e nvim                         
+ w worktrees     ␣ next waiting                 
  SESSION  j/k move · ?… 1 session · 3 worktrees 
