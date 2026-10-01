@@ -13,7 +13,7 @@ builds:
       - goos: linux
         goarch: arm64
     ldflags:
-      - -s -w -X main.version={{ .Tag }} -X main.commit={{ .ShortCommit }}
+      - -s -w -X github.com/giovaniif/agent-workspace/internal/version.Version={{ .Tag }} -X github.com/giovaniif/agent-workspace/internal/version.Commit={{ .ShortCommit }}
 
 archives:
   - formats: [tar.gz]

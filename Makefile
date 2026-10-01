@@ -1,10 +1,11 @@
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 COMMIT  ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo none)
-LDFLAGS := -X main.version=$(VERSION) -X main.commit=$(COMMIT)
+VERSION_PKG := github.com/giovaniif/agent-workspace/internal/version
+LDFLAGS := -X $(VERSION_PKG).Version=$(VERSION) -X $(VERSION_PKG).Commit=$(COMMIT)
 GO_TEST_FLAGS ?= -p 2
 GREMLINS ?= $(shell go env GOPATH)/bin/gremlins
 
-.PHONY: build test lint bench mutate e2e
+.PHONY: build test lint bench mutate e2e dev
 
 build:
 	go build -ldflags "$(LDFLAGS)" -o bin/agentws ./cmd/agentws
@@ -24,3 +25,6 @@ mutate:
 
 e2e:
 	go test $(GO_TEST_FLAGS) ./test/e2e/...
+
+dev:
+	SEED=$(SEED) FAKES=$(FAKES) ./scripts/dev

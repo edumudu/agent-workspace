@@ -18,6 +18,7 @@ import (
 	"github.com/giovaniif/agent-workspace/internal/daemon"
 	"github.com/giovaniif/agent-workspace/internal/domain"
 	"github.com/giovaniif/agent-workspace/internal/rpc"
+	"github.com/giovaniif/agent-workspace/internal/version"
 )
 
 func shortDir(t *testing.T) string {
@@ -220,13 +221,45 @@ func TestBadRequestsGetStructuredErrors(t *testing.T) {
 	}{
 		{`{"v":2,"id":7,"method":"status"}`, 7, rpc.CodeUnsupportedVersion},
 		{`{"id":8,"method":"status"}`, 8, rpc.CodeUnsupportedVersion},
-		{`{"v":1,"id":9,"method":"nope"}`, 9, rpc.CodeUnknownMethod},
+		{fmt.Sprintf(`{"v":1,"id":9,"method":"nope","build":%q}`, version.String()), 9, rpc.CodeUnknownMethod},
 		{`not json`, 0, rpc.CodeBadRequest},
 	}
 	for _, tt := range tests {
 		resp := rawCall(t, path, tt.line)
 		if resp.V != rpc.Version || resp.ID != tt.id || resp.Error == nil || resp.Error.Code != tt.code || resp.Error.Message == "" {
 			t.Errorf("%s: got %+v %+v", tt.line, resp, resp.Error)
+		}
+	}
+}
+
+func TestRequestsFromAnotherBuildAreRefusedNamingTheStaleSide(t *testing.T) {
+	_, path := start(t, &memStore{})
+	far := time.Now().Add(24 * time.Hour).Unix()
+	tests := []struct {
+		line string
+		want string
+	}{
+		{fmt.Sprintf(`{"v":1,"id":3,"method":"workspace.list","build":"other","built_at":%d}`, far), "restart the daemon"},
+		{`{"v":1,"id":3,"method":"workspace.list","build":"other","built_at":1}`, "restart this client"},
+		{`{"v":1,"id":3,"method":"workspace.list"}`, "restart the daemon"},
+	}
+	for _, tt := range tests {
+		resp := rawCall(t, path, tt.line)
+		if resp.Error == nil || resp.Error.Code != rpc.CodeVersionMismatch || !strings.Contains(resp.Error.Message, tt.want) {
+			t.Errorf("%s: got %+v", tt.line, resp.Error)
+		}
+	}
+}
+
+func TestStatusAndHooksAnswerAnyBuild(t *testing.T) {
+	_, path := start(t, &memStore{})
+	for _, line := range []string{
+		`{"v":1,"id":4,"method":"status","build":"other","built_at":1}`,
+		`{"v":1,"id":5,"method":"hook","build":"other","built_at":1,"params":{}}`,
+	} {
+		resp := rawCall(t, path, line)
+		if resp.Error != nil || resp.Build != version.String() {
+			t.Errorf("%s: got %+v build %q", line, resp.Error, resp.Build)
 		}
 	}
 }
@@ -247,7 +280,7 @@ func TestASlowSubscriberDoesNotStallTheLoop(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer func() { _ = conn.Close() }()
-	if _, err := conn.Write([]byte(`{"v":1,"id":1,"method":"subscribe"}` + "\n")); err != nil {
+	if _, err := conn.Write([]byte(fmt.Sprintf(`{"v":1,"id":1,"method":"subscribe","build":%q}`, version.String()) + "\n")); err != nil {
 		t.Fatal(err)
 	}
 	blob := strings.Repeat("x", 4096)

@@ -100,7 +100,7 @@ func (d *Daemon) startQueued(item domain.LaunchItem) {
 	session, rerr, ok := d.startSession(rpc.NewSessionParams{
 		Workspace: item.Workspace, WorkItem: item.URL,
 		Harness: string(item.Request.Harness), Model: item.Request.Model, Effort: item.Request.Effort,
-	})
+	}, item.URL)
 	if !ok {
 		return
 	}

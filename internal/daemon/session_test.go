@@ -75,7 +75,7 @@ func TestNewSessionInASingleRepoStartsInAFreshWorktree(t *testing.T) {
 		t.Fatalf("setup ran in %v", setupIn)
 	}
 	wantSpec := app.PaneSpec{Name: "eng-1", Dir: "/h/worktrees/api/eng-1",
-		Command: []string{"claude", "--model", "opus", "--effort", "high", "--", "https://linear.app/acme/issue/ENG-1/fix-login"}}
+		Command: []string{"claude", "--model", "opus", "--effort", "high"}}
 	if len(r.host.specs) != 1 || !reflect.DeepEqual(r.host.specs[0], wantSpec) {
 		t.Fatalf("specs %+v", r.host.specs)
 	}
