@@ -69,13 +69,14 @@ func attachIn(home string) error {
 
 func runTUI(args []string, stderr io.Writer) int {
 	newSession := len(args) == 1 && args[0] == "--new-session"
-	if len(args) > 0 && !newSession {
-		fmt.Fprintln(stderr, "usage: agentws tui [--new-session]")
+	setup := len(args) == 1 && args[0] == "--setup"
+	if len(args) > 0 && !newSession && !setup {
+		fmt.Fprintln(stderr, "usage: agentws tui [--new-session|--setup]")
 		return 2
 	}
 	home, err := rpc.Home()
 	if err == nil {
-		err = tuiIn(home, newSession)
+		err = tuiIn(home, newSession, setup)
 	}
 	if err != nil {
 		fmt.Fprintf(stderr, "agentws tui: %v\n", err)
@@ -84,9 +85,8 @@ func runTUI(args []string, stderr io.Writer) int {
 	return 0
 }
 
-// tuiIn runs the sidebar, or with newSession the dialog alone, as the popup n
-// opens.
-func tuiIn(home string, newSession bool) error {
+// why: newSession and setup run the new-session dialog or the walkthrough alone, as the popups n and S open.
+func tuiIn(home string, newSession, setup bool) error {
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGTERM)
 	defer cancel()
 	theme, err := tui.LoadTheme(filepath.Join(home, "config.toml"))
@@ -111,7 +111,7 @@ func tuiIn(home string, newSession bool) error {
 		return err
 	}
 	defer func() { _ = caller.Close() }()
-	opts := tui.Options{Theme: theme, Defaults: defaults, Fallback: fallback, NewSessionOnly: newSession}
+	opts := tui.Options{Theme: theme, Defaults: defaults, Fallback: fallback, NewSessionOnly: newSession, SetupOnly: setup}
 	opts.HarnessDefaults = harnessDefaults()
 	if newSession {
 		// why: the daemon opens the popup where agentws was launched, so this is the folder to start in.
@@ -120,7 +120,8 @@ func tuiIn(home string, newSession bool) error {
 		// why: the inline dialog, used when the popup cannot open, starts in the same folder.
 		opts.LaunchDir = os.Getenv("AGENTWS_LAUNCH_DIR")
 	}
-	if self, err := os.Executable(); err == nil && !newSession {
+	if self, err := os.Executable(); err == nil && !newSession && !setup {
+		opts.SetupPopup = rpc.ClientPopupParams{Command: []string{self, "tui", "--setup"}, Env: map[string]string{"AGENTWS_HOME": home}}
 		opts.DialogPopup = rpc.ClientPopupParams{Command: []string{self, "tui", "--new-session"}, Env: map[string]string{"AGENTWS_HOME": home}}
 	}
 	err = tui.Run(ctx, subscriber, caller, opts)

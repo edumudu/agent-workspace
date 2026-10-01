@@ -27,6 +27,7 @@ func Run(ctx context.Context, subscriber, caller *rpc.Client, opts Options) erro
 	opts.Tick = TickInterval
 	opts.Focus, opts.Attend, opts.Kill, opts.Calls = caller, caller, caller, caller
 	opts.Switch, opts.Review, opts.Disk = caller, caller, caller
+	opts.Onboard = caller
 	m := New(opts)
 	next, _ := m.Update(StateMsg(sub.State))
 	p := tea.NewProgram(next, tea.WithContext(ctx), tea.WithFPS(FPS))

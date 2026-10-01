@@ -59,7 +59,7 @@ func TestGoldenSetup(t *testing.T) {
 	}{
 		{"pick", nil},
 		{"claude", []tea.KeyPressMsg{keyDown, keySpace, keyEnter}},
-		{"codex", []tea.KeyPressMsg{keyEnter}},
+		{"codex", []tea.KeyPressMsg{keyEnter, keyEnter}},
 		{"nvim", []tea.KeyPressMsg{key("s")}},
 		{"finish", []tea.KeyPressMsg{keyEnter}},
 	}
@@ -219,6 +219,9 @@ func TestSetupDoneOpensNothingUntilS(t *testing.T) {
 	m, _ := sidebarWithSetup(t, o, c)
 	if len(c.methods()) != 0 {
 		t.Fatalf("calls %v after onboarding was done", c.methods())
+	}
+	if out := screen(press(m, "?")); !strings.Contains(out, "set up Claude, Codex and nvim") {
+		t.Errorf("help does not list S:\n%s", out)
 	}
 	pressCmd(m, key("S"))
 	if !slices.Equal(c.methods(), []string{rpc.MethodClientPopup}) {

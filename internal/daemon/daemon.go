@@ -151,6 +151,7 @@ type Daemon struct {
 	rv       review
 	cl       cleanupWorker
 	disk     DiskDeps
+	onboard  app.Onboarder
 	lc       launcherCfg
 	term     terminals
 }
@@ -500,6 +501,8 @@ func (d *Daemon) dispatch(c *conn, line []byte) (*rpc.Response, bool) {
 		return d.portsKill(req)
 	case rpc.MethodCleanupPlan, rpc.MethodCleanupRun:
 		return d.cleanupMethod(req)
+	case rpc.MethodOnboarding, rpc.MethodOnboardingInstall, rpc.MethodOnboardingFinish:
+		return d.onboarding(req), true
 	case rpc.MethodDiskView:
 		return d.diskView(req)
 	case rpc.MethodCleanupWorktree:

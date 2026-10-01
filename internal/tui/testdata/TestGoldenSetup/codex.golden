@@ -1,0 +1,17 @@
+
+      Set up agentws                                                        esc skip 
+     
+      Agents › Claude Code › Codex › Neovim › Done                                   
+     
+      Codex                                                               not set up 
+     
+      ▌ Changes /Users/me/.codex/hooks.json                                          
+      ▌ Adds the agentws hooks. Your other hooks stay as they are.                   
+      ▌ Backup  /Users/me/.codex/hooks.json.agentws-<time>.bak                       
+      ▌ Undo    agentws setup codex --remove                                         
+     
+      ▌ ! One more step in Codex                                                     
+      ▌ Codex runs a hook only after you trust it. Start codex and accept the review 
+      ▌ prompt for the new agentws hooks, or open /hooks and trust them there.       
+     
+      s skip                                                   esc skip   ⏎ install  

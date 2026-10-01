@@ -96,6 +96,14 @@ func (m Model) line(sel bool, left, right []piece) string {
 }
 
 func (m Model) View() tea.View {
+	if m.ob != nil {
+		v := tea.NewView(m.setupScreen())
+		v.AltScreen = true
+		return v
+	}
+	if m.opts.SetupOnly {
+		return tea.NewView("")
+	}
 	if m.opts.NewSessionOnly {
 		if m.dialog == nil {
 			return tea.NewView("")
@@ -312,6 +320,7 @@ func (m Model) helpLines() []string {
 		{"L", "launch Linear issues"},
 		{"c", "queued issues to codex"},
 		{"X", "clear the queue"},
+		{"S", "set up Claude, Codex and nvim"},
 		{"x", "end session"},
 		{"?", "close help"},
 		{"q", "leave (sessions keep running)"},

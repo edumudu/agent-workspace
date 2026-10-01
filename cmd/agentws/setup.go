@@ -10,7 +10,7 @@ import (
 	"github.com/giovaniif/agent-workspace/internal/adapters/codex"
 )
 
-const setupUsage = "usage: agentws setup codex|claude [--remove]"
+const setupUsage = "usage: agentws setup [codex|claude [--remove]]"
 
 func runSetup(args []string, stdout, stderr io.Writer, env func(string) string, self string) int {
 	if len(args) > 0 && args[0] == "claude" {

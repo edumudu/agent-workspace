@@ -66,6 +66,11 @@ type Options struct {
 	NewSessionOnly bool
 	// LaunchDir is where agentws was run; the dialog starts there.
 	LaunchDir string
+	// why: nil turns the first-run walkthrough and S off, as in tests that are not about it.
+	Onboard Onboarder
+	// why: the setup popup's own program, like NewSessionOnly; it ends when the walkthrough does.
+	SetupOnly  bool
+	SetupPopup rpc.ClientPopupParams
 }
 
 // Caller makes daemon calls such as session.new; *rpc.Client is one.
@@ -142,6 +147,9 @@ type Model struct {
 	ending string
 	// pending is a session just started, selected once its diff arrives.
 	pending string
+
+	ob             *onboarding
+	onboardChecked bool
 }
 
 func New(opts Options) Model {
@@ -186,6 +194,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.opts.NewSessionOnly && m.dialog == nil {
 			return m.openDialog(), nil
 		}
+		if m.opts.Onboard != nil && !m.onboardChecked && !m.opts.NewSessionOnly {
+			m.onboardChecked = true
+			return m, m.fetchOnboarding(false)
+		}
+	case onboardStatusMsg, onboardInstalledMsg, onboardFinishedMsg, setupPopupFailedMsg, setupPopupRetryMsg:
+		return m.onboardMsg(msg)
 	case popupFailedMsg:
 		return m.openDialog(), nil
 	case showFailedMsg:
@@ -220,6 +234,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case draftMsg:
 		return m.gotDraft(msg)
 	case tea.KeyPressMsg:
+		if m.ob != nil {
+			return m.onboardKey(msg)
+		}
 		if m.dialog != nil {
 			return m.dialogKey(msg)
 		}
@@ -472,6 +489,10 @@ func (m Model) key(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 			return m, m.openPopup()
 		default:
 			return m.openDialog(), nil
+		}
+	case "S":
+		if m.opts.Onboard != nil {
+			return m, m.openSetup(setupPopupRetries)
 		}
 	case "L":
 		if m.opts.Calls != nil {
