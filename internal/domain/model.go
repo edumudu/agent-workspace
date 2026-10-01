@@ -109,7 +109,10 @@ type Worktree struct {
 // of the session's Limits, the one that blocks it first.
 type Usage struct {
 	ContextLeftPercent int
-	LimitUsedPercent   int
+	// HasContext is false until a report carried the context figure, so a new
+	// session does not read as 0% left.
+	HasContext       bool
+	LimitUsedPercent int
 }
 
 // RateLimit is one usage window, such as five_hour, seven_day, or a
@@ -141,7 +144,7 @@ func (s Session) Report(r StatusReport) Session {
 		s.Effort = r.Effort
 	}
 	if r.HasContext {
-		s.Usage.ContextLeftPercent = r.ContextLeft
+		s.Usage.ContextLeftPercent, s.Usage.HasContext = r.ContextLeft, true
 	}
 	if len(r.Limits) > 0 {
 		s.Limits = r.Limits
