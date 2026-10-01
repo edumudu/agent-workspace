@@ -96,6 +96,14 @@ func (m Model) line(sel bool, left, right []piece) string {
 }
 
 func (m Model) View() tea.View {
+	if m.opts.NewSessionOnly {
+		if m.dialog == nil {
+			return tea.NewView("")
+		}
+		v := tea.NewView(m.dialogScreen())
+		v.AltScreen = true
+		return v
+	}
 	if m.rv.open {
 		v := tea.NewView(m.reviewView())
 		v.AltScreen = true
@@ -294,6 +302,7 @@ func (m Model) helpLines() []string {
 		{"K", "kill the session's dev servers"},
 		{"w", "worktrees and disk"},
 		{"t / T", "shell below / popup"},
+		{"s", "type in the shell (ctrl+\\ back)"},
 		{"e", "nvim (o in a review opens the line)"},
 		{"M / E", "switch model / effort"},
 		{"enter", "focus agent pane"},
