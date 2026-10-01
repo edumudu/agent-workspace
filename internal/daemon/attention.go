@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"log"
+	"sync/atomic"
 	"time"
 
 	"github.com/giovaniif/agent-workspace/internal/app"
@@ -20,6 +21,8 @@ const (
 type queuedBanner struct {
 	banner  domain.Banner
 	focused bool
+	// why: set instead of banner to withdraw that group's banner.
+	remove string
 }
 
 // why: decides on the loop and delivers on a worker: the notifier and the
@@ -30,6 +33,10 @@ type attention struct {
 	sounds   map[domain.AgentState]string
 	co       *domain.Coalescer
 	queue    chan queuedBanner
+	// why: written by client.open on a connection goroutine, read by the worker.
+	terminal atomic.Pointer[string]
+	// why: owned by the loop; only sessions with a banner up are withdrawn, so a focus costs no process otherwise.
+	posted map[string]bool
 }
 
 // why: fg may be nil, which counts as the terminal never being in front.
@@ -41,6 +48,7 @@ func WithNotifier(n app.Notifier, fg app.Foreground, sounds map[domain.AgentStat
 			sounds:   sounds,
 			co:       domain.NewCoalescer(),
 			queue:    make(chan queuedBanner, bannerQueue),
+			posted:   map[string]bool{},
 		}
 	}
 }
@@ -59,6 +67,15 @@ func (a *attention) run(ctx context.Context) {
 func (a *attention) deliver(ctx context.Context, q queuedBanner) {
 	ctx, cancel := context.WithTimeout(ctx, bannerTimeout)
 	defer cancel()
+	if q.remove != "" {
+		if err := a.notifier.Remove(ctx, q.remove); err != nil {
+			log.Printf("notify remove: %v", err)
+		}
+		return
+	}
+	if t := a.terminal.Load(); t != nil {
+		q.banner.Terminal = *t
+	}
 	if q.focused && a.fg != nil && a.fg.TerminalFrontmost(ctx) {
 		return
 	}
@@ -87,10 +104,29 @@ func (s *state) announce(session domain.Session, effects []domain.Effect) {
 			continue
 		}
 		b.Sound = s.attn.sounds[b.State]
+		b.Group = session.ID
 		select {
 		case s.attn.queue <- queuedBanner{banner: b, focused: session.Focused}:
+			s.attn.posted[session.ID] = true
 		default:
 		}
+	}
+}
+
+func (s *state) withdraw(id string) {
+	if s.attn == nil || !s.attn.posted[id] {
+		return
+	}
+	select {
+	case s.attn.queue <- queuedBanner{remove: id}:
+		delete(s.attn.posted, id)
+	default:
+	}
+}
+
+func (a *attention) setTerminal(bundle string) {
+	if a != nil && bundle != "" {
+		a.terminal.Store(&bundle)
 	}
 }
 
@@ -139,6 +175,7 @@ func (d *Daemon) dispatchAttention(req rpc.Request) (*rpc.Response, bool) {
 }
 
 func (s *state) focus(session domain.Session) {
+	s.withdraw(session.ID)
 	for _, other := range sorted(s.sessions) {
 		if other.ID != session.ID && other.Focused {
 			s.emit(SessionChanged{Session: other.Blur()})

@@ -65,6 +65,7 @@ func (d *Daemon) dispatchClient(req rpc.Request) *rpc.Response {
 			return errorResponse(req.ID, rpc.CodeBadRequest, "client.open needs a command")
 		}
 		d.clients.dir = p.Dir
+		d.st.attn.setTerminal(p.Terminal)
 		if d.clients.slot == "" || !h.ClientOpen(ctx, d.clients.slot) {
 			slot, err := h.OpenClient(ctx, clientName, app.PaneSpec{Name: clientName, Command: p.Command, Env: p.Env})
 			if err != nil {
