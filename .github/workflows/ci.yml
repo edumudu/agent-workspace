@@ -39,6 +39,9 @@ jobs:
       - uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
+      # why: tdd-check runs the integration tests; without tmux or nvim they skip, and a skipped test passes on base.
+      - run: brew list tmux >/dev/null 2>&1 || brew install tmux
+      - run: brew list neovim >/dev/null 2>&1 || brew install neovim
       - run: cp scripts/tdd-check "$RUNNER_TEMP/" && "$RUNNER_TEMP/tdd-check" "origin/${{ github.base_ref }}" "${{ github.event.pull_request.head.sha }}"
         env:
           TDD_PR_TITLE: ${{ github.event.pull_request.title }}
