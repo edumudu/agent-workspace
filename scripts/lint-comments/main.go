@@ -100,6 +100,11 @@ func checkFile(name string, src []byte) ([]finding, error) {
 		return nil, err
 	}
 	var findings []finding
+	checkTODO := func(line int, text string) {
+		if todoPattern.MatchString(text) && !todoIssuePattern.MatchString(text) {
+			findings = append(findings, finding{name, line, "TODO must reference an issue: TODO(#<n>)"})
+		}
+	}
 	for _, group := range file.Comments {
 		needsMarker := true
 		for _, c := range group.List {
@@ -108,6 +113,7 @@ func checkFile(name string, src []byte) ([]finding, error) {
 				if strings.HasPrefix(c.Text, "//nolint:") && !nolintWithReason.MatchString(c.Text) {
 					findings = append(findings, finding{name, line, "//nolint: needs a reason: //nolint:x // why: ..."})
 				}
+				checkTODO(line, c.Text)
 				needsMarker = true
 				continue
 			}
@@ -117,9 +123,7 @@ func checkFile(name string, src []byte) ([]finding, error) {
 				continue
 			}
 			needsMarker = false
-			if todoPattern.MatchString(c.Text) && !todoIssuePattern.MatchString(c.Text) {
-				findings = append(findings, finding{name, line, "TODO must reference an issue: TODO(#<n>)"})
-			}
+			checkTODO(line, c.Text)
 		}
 	}
 	slices.SortStableFunc(findings, func(a, b finding) int { return a.line - b.line })
