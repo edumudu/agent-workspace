@@ -17,6 +17,7 @@ import (
 	"github.com/giovaniif/agent-workspace/internal/adapters/linear"
 	"github.com/giovaniif/agent-workspace/internal/adapters/notify"
 	"github.com/giovaniif/agent-workspace/internal/adapters/nvim"
+	"github.com/giovaniif/agent-workspace/internal/adapters/onboard"
 	"github.com/giovaniif/agent-workspace/internal/adapters/procs"
 	"github.com/giovaniif/agent-workspace/internal/adapters/setup"
 	"github.com/giovaniif/agent-workspace/internal/adapters/sqlite"
@@ -80,6 +81,10 @@ func Run(ctx context.Context, home string) (err error) {
 	hooks := testHooksFromEnv(os.Getenv)
 	cleanup := app.NewCleanup(gitadapter.Worktrees{}, procs.Table{}, trash, audit, filepath.Join(home, "backups"), hooks.cleanupClock)
 	sizes := app.NewDiskSizes(wsfs.Du{}, diskWorkers, diskSizeTTL, time.Now)
+	self, err := os.Executable()
+	if err != nil {
+		return err
+	}
 	opts := []Option{
 		WithWorkspaces(wsfs.FS{}, gitadapter.Inspector{}),
 		WithHarnesses(host, claude.Adapter{}, codex.Adapter{}),
@@ -95,6 +100,7 @@ func Run(ctx context.Context, home string) (err error) {
 		WithDisk(DiskDeps{Sizes: sizes, Volume: wsfs.Volume{}, History: audit, VolumePath: home, DepsStore: DepsStorePath()}),
 		WithTerminals(home, nvim.Editor{}),
 		WithHunks(gitadapter.Review{}),
+		WithOnboarding(onboard.FromEnv(home, self, os.Getenv)),
 	}
 	if hooks.prPoll > 0 {
 		opts = append(opts, WithWorktreePoll(DefaultWorktreePoll, hooks.prPoll))

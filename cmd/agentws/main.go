@@ -31,6 +31,8 @@ func run(args []string, stdout, stderr io.Writer) int {
 	case cmd == "hook":
 		home, _ := rpc.Home()
 		return runHook(args[1:], os.Stdin, stdout, home, os.Getenv("TMUX_PANE"))
+	case cmd == "setup" && len(args) == 1:
+		return runTUI([]string{"--setup"}, stderr)
 	case cmd == "setup":
 		self, err := os.Executable()
 		if err != nil {

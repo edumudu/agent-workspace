@@ -116,6 +116,8 @@ func (d *Daemon) dispatchTerminal(req rpc.Request) (*rpc.Response, bool) {
 	switch {
 	case errors.As(err, &bad):
 		return errorResponse(req.ID, rpc.CodeBadRequest, err.Error()), true
+	case errors.Is(err, errNoNvim):
+		return errorResponse(req.ID, rpc.CodeUnavailable, err.Error()), true
 	case err != nil:
 		return errorResponse(req.ID, rpc.CodeFailed, err.Error()), true
 	}
@@ -190,6 +192,9 @@ func (d *Daemon) toggleShell(ctx context.Context, session domain.Session, target
 	return out, err
 }
 
+// why: without nvim the pane would die at once and leave an empty slot, so the user gets a reason instead.
+var errNoNvim = errors.New("nvim is not on PATH: install Neovim to use e and o (brew install neovim on macOS, or your package manager), then press S to add the plugin")
+
 func (d *Daemon) nvimSocket(session string) string {
 	return filepath.Join(d.term.home, "nvim", session+".sock")
 }
@@ -206,6 +211,9 @@ func (d *Daemon) nvimPane(ctx context.Context, session domain.Session, dir, file
 			return existing, false, nil
 		}
 		delete(d.term.nvims, session.ID)
+	}
+	if !d.term.editor.Installed() {
+		return "", false, errNoNvim
 	}
 	if err := os.MkdirAll(filepath.Dir(sock), 0o700); err != nil {
 		return "", false, err
