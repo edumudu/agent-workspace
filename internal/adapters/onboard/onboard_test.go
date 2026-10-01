@@ -64,8 +64,8 @@ func TestAFreshMachineHasNothingSetUp(t *testing.T) {
 	if got.Claude.Backup != "" || got.Codex.Backup != "" {
 		t.Errorf("backups named for files that do not exist: %q, %q", got.Claude.Backup, got.Codex.Backup)
 	}
-	if got.Nvim.ConfigFile != filepath.Join(w.probe.NvimConfigDir, "init.lua") {
-		t.Errorf("nvim config file = %q, want init.lua under the config dir", got.Nvim.ConfigFile)
+	if got.Nvim.ConfigFile != filepath.Join(w.probe.NvimConfigDir, "plugin", "agentws.lua") {
+		t.Errorf("nvim setup file = %q, want plugin/agentws.lua under the config dir", got.Nvim.ConfigFile)
 	}
 	if got.Nvim.PluginFound || got.Nvim.PluginDir != w.probe.PluginDirs[0] {
 		t.Errorf("plugin = %q found %v, want the first candidate, not found", got.Nvim.PluginDir, got.Nvim.PluginFound)
@@ -131,12 +131,13 @@ func TestNvimPluginIsFoundAndItsConfigurationDetected(t *testing.T) {
 		configured bool
 		configFile string
 	}{
-		{"no config", nil, false, "init.lua"},
-		{"init.lua without agentws", map[string]string{"init.lua": "vim.o.number = true"}, false, "init.lua"},
-		{"init.lua requires it", map[string]string{"init.lua": "require('agentws').setup({})"}, true, "init.lua"},
-		{"a lua module requires it", map[string]string{"init.lua": "require('me')", "lua/me/plugins.lua": `require("agentws").setup{}`}, true, "init.lua"},
-		{"init.vim only", map[string]string{"init.vim": "set number"}, false, "init.vim"},
-		{"plugin manager spec names the dir", map[string]string{"init.lua": "{ dir = '~/.local/share/agentws/nvim' }"}, true, "init.lua"},
+		{"no config", nil, false, "plugin/agentws.lua"},
+		{"init.lua without agentws", map[string]string{"init.lua": "vim.o.number = true"}, false, "plugin/agentws.lua"},
+		{"init.lua requires it", map[string]string{"init.lua": "require('agentws').setup({})"}, true, "plugin/agentws.lua"},
+		{"a lua module requires it", map[string]string{"init.lua": "require('me')", "lua/me/plugins.lua": `require("agentws").setup{}`}, true, "plugin/agentws.lua"},
+		{"init.vim only", map[string]string{"init.vim": "set number"}, false, "plugin/agentws.lua"},
+		{"lazy.nvim spec in lua/plugins", map[string]string{"init.lua": "require('config.lazy')", "lua/plugins/agentws.lua": "return { dir = vim.fn.expand('~/.local/share/agentws/nvim'), config = function() require('agentws').setup({}) end }"}, true, "plugin/agentws.lua"},
+		{"plugin manager spec names the dir", map[string]string{"init.lua": "{ dir = '~/.local/share/agentws/nvim' }"}, true, "plugin/agentws.lua"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {

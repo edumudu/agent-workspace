@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-func TestSetupNvimAddsAndRemovesThePluginBlock(t *testing.T) {
+func TestSetupNvimWritesAndRemovesItsPluginFile(t *testing.T) {
 	root := t.TempDir()
 	env := map[string]string{
 		"HOME":            root,
@@ -18,7 +18,7 @@ func TestSetupNvimAddsAndRemovesThePluginBlock(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(root, "data", "agentws", "nvim"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	init := filepath.Join(root, "cfg", "nvim", "init.lua")
+	init := filepath.Join(root, "cfg", "nvim", "plugin", "agentws.lua")
 	run := func(args ...string) (int, string) {
 		var out, errOut bytes.Buffer
 		code := runSetup(append([]string{"nvim"}, args...), &out, &errOut, func(k string) string { return env[k] }, "/opt/agentws/bin/agentws")
@@ -31,8 +31,7 @@ func TestSetupNvimAddsAndRemovesThePluginBlock(t *testing.T) {
 		t.Fatalf("setup nvim: code %d, %q\n%s", code, out, b)
 	}
 	code, out = run("--remove")
-	b, _ = os.ReadFile(init)
-	if code != 0 || strings.Contains(string(b), "agentws") {
-		t.Fatalf("remove: code %d, %q\n%s", code, out, b)
+	if _, err := os.Stat(init); code != 0 || !os.IsNotExist(err) {
+		t.Fatalf("remove: code %d, %q", code, out)
 	}
 }

@@ -83,9 +83,12 @@ func (t *termFake) shownPanes() []app.PaneID {
 }
 
 type fakeEditor struct {
-	mu    sync.Mutex
-	calls []string
+	mu      sync.Mutex
+	calls   []string
+	missing bool
 }
+
+func (e *fakeEditor) Installed() bool { return !e.missing }
 
 func (e *fakeEditor) Eval(_ context.Context, socket, expr string) error {
 	e.mu.Lock()

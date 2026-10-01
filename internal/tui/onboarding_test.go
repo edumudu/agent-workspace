@@ -27,7 +27,7 @@ func freshMachine() domain.Onboarding {
 		Claude: domain.HarnessSetup{File: "/Users/me/.claude/settings.json", Backup: "/Users/me/.claude/settings.json.agentws-backup"},
 		Codex:  domain.HarnessSetup{File: "/Users/me/.codex/hooks.json", Backup: "/Users/me/.codex/hooks.json.agentws-<time>.bak"},
 		Nvim: domain.NvimSetup{
-			OnPath: true, ConfigFile: "/Users/me/.config/nvim/init.lua",
+			OnPath: true, ConfigFile: "/Users/me/.config/nvim/plugin/agentws.lua",
 			PluginDir: "/Users/me/.local/share/agentws/nvim", PluginFound: true,
 		},
 	}
@@ -61,7 +61,7 @@ func TestGoldenSetup(t *testing.T) {
 		{"claude", []tea.KeyPressMsg{keyDown, keySpace, keyEnter}},
 		{"codex", []tea.KeyPressMsg{keyEnter, keyEnter}},
 		{"nvim", []tea.KeyPressMsg{key("s")}},
-		{"finish", []tea.KeyPressMsg{keyEnter}},
+		{"finish", []tea.KeyPressMsg{key("s")}},
 	}
 	for _, s := range steps {
 		for _, k := range s.keys {
@@ -131,15 +131,14 @@ func TestSetupNvimStep(t *testing.T) {
 		not  []string
 	}{
 		{"snippet", freshMachine().Nvim, []string{
-			"vim.opt.runtimepath:prepend('/Users/me/.local/share/agentws/nvim')",
 			"require('agentws').setup({})",
-			"/Users/me/.config/nvim/init.lua",
-			"-- agentws:begin",
+			"/Users/me/.config/nvim/plugin/agentws.lua",
+			"local dir = '/Users/me/.local/share/agentws/nvim'",
 			"agentws setup nvim --remove",
-			"⏎ add to init.lua",
+			"⏎ write it",
 		}, nil},
 		{"configured", domain.NvimSetup{OnPath: true, Configured: true}, []string{"✓ the agentws plugin is configured"}, []string{"prepend"}},
-		{"no nvim", domain.NvimSetup{}, []string{"nvim is not on PATH"}, []string{"prepend"}},
+		{"no nvim", domain.NvimSetup{}, []string{"optional", "nvim is not on PATH", "brew install neovim", "⏎ next"}, []string{"prepend", "s skip"}},
 		{"no plugin dir", domain.NvimSetup{OnPath: true, PluginDir: "/Users/me/.local/share/agentws/nvim", ConfigFile: "/c/init.lua"}, []string{"plugin files are not at /Users/me/.local/share/agentws/nvim", "install script"}, nil},
 	}
 	for _, c := range cases {
@@ -162,7 +161,7 @@ func TestSetupNvimStep(t *testing.T) {
 func TestSetupFinishOrEscRecordsCompletionAndQuits(t *testing.T) {
 	m, f := setupModel(t, freshMachine())
 	m = pressCmd(pressCmd(m, keySpace), keyEnter)
-	m = pressCmd(m, keyEnter)
+	m = pressCmd(m, key("s"))
 	mustShow(t, screen(m), "You're set", "agentws setup")
 	next, cmd := m.Update(keyEnter)
 	if !quits(runUntilQuit(next.(tui.Model), cmd)) || f.finished != 1 {
@@ -251,7 +250,7 @@ func TestSetupNvimStepAddsTheBlockOnlyOnConfirmation(t *testing.T) {
 	if f.nvimInstalls != 1 {
 		t.Fatalf("installs = %d", f.nvimInstalls)
 	}
-	mustShow(t, screen(m), "✓ added to /Users/me/.config/nvim/init.lua", "init.lua.agentws-backup", "⏎ next")
+	mustShow(t, screen(m), "✓ wrote /Users/me/.config/nvim/plugin/agentws.lua", "agentws setup nvim --remove", "⏎ next")
 	mustShow(t, screen(pressCmd(m, keyEnter)), "You're set", "plugin configured")
 
 	m, f = setupModel(t, freshMachine())

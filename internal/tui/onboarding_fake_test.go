@@ -53,6 +53,5 @@ func (f *fakeOnboarder) OnboardNvim(context.Context) (domain.NvimSetup, error) {
 	}
 	f.nvimInstalls++
 	f.state.Nvim.Configured = true
-	f.state.Nvim.Backup = f.state.Nvim.ConfigFile + ".agentws-backup"
 	return f.state.Nvim, nil
 }

@@ -7,7 +7,7 @@
      
        ✓ Claude Code   hooks installed                                               
        – Codex         skipped                                                       
-       – Neovim        add the snippet to /Users/me/.config/nvim/init.lua            
+       – Neovim        skipped                                                       
      
       Open this again with S in the sidebar or agentws setup. n starts your first    
       session.                                                                       
