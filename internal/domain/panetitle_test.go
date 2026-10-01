@@ -54,3 +54,10 @@ func TestAgentTitleSkipsWorktreesItDoesNotOwn(t *testing.T) {
 		t.Fatalf("got %q", got)
 	}
 }
+
+func TestADetachedWorktreeIsNamedAfterItsFolder(t *testing.T) {
+	w := Worktree{ID: "/src/api-a", Path: "/src/api-a", Repo: "/src/api"}
+	if got := worktreeName(w); got != "api:api-a" {
+		t.Fatalf("got %q, want api:api-a", got)
+	}
+}
