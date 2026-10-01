@@ -14,7 +14,7 @@ Install the newest release (alphas included):
 curl -fsSL https://raw.githubusercontent.com/giovaniif/agent-workspace/main/scripts/install.sh | sh
 ```
 
-The script downloads the archive for your OS and CPU from GitHub Releases, checks it against `checksums.txt`, and puts the `agentws` binary in `~/.local/bin`. Two environment variables change that:
+The script downloads the archive for your OS and CPU from GitHub Releases, checks it against `checksums.txt`, puts the `agentws` binary in `~/.local/bin`, and puts the nvim plugin in `~/.local/share/agentws/nvim` (`$XDG_DATA_HOME/agentws/nvim` when that is set). Two environment variables change that:
 
 ```sh
 # a specific release
@@ -74,6 +74,18 @@ agentws
 
 The details are in [ARCHITECTURE.md](ARCHITECTURE.md), and the full scope is in [FEATURES.md](FEATURES.md).
 
+## Getting started
+
+Run `agentws`. The first time, a setup screen opens over the sidebar:
+
+1. **Agents.** Pick Claude Code, Codex or both (`↑/↓`, `space`, `⏎`). Each one shows whether its hooks are already set up.
+2. **Claude Code.** The screen shows the file it changes (`~/.claude/settings.json`, or `$CLAUDE_CONFIG_DIR`), what it adds (the agentws hooks and a status-line wrapper that still runs yours), where the backup goes, and how to undo it (`agentws setup claude --remove`). `⏎` installs, `s` skips.
+3. **Codex.** The same for `~/.codex/hooks.json` (or `$CODEX_HOME`). Codex then needs a one-time trust step: start `codex` and accept the review prompt for the new hooks, or trust them in `/hooks`.
+4. **Neovim (optional).** If `nvim` is on `PATH` and the plugin isn't configured anywhere in your nvim config yet, the screen shows the file it will write, `~/.config/nvim/plugin/agentws.lua`, which loads the plugin the install script put in `${XDG_DATA_HOME:-~/.local/share}/agentws/nvim`. `⏎` writes it, `s` skips. Your own files (init.lua, init.vim, lazy.nvim specs) are not edited; `agentws setup nvim --remove` deletes the file. Without nvim, the step says how to install it (`brew install neovim`) and `⏎` goes on; everything but `e` and `o` works without it.
+5. **Done.** Press `n` to start your first session.
+
+`esc` skips the rest at any step. Either way the screen doesn't come back on its own, and it never opens when a harness is already set up and nvim has nothing left to configure. Open it again with `S` in the sidebar or with `agentws setup`. `agentws setup claude`, `agentws setup codex` and `agentws setup nvim` do the same installs without the screen.
+
 ## Requirements
 
 macOS or Linux, tmux, git, the GitHub CLI (`gh`, signed in), and Claude Code and/or the Codex CLI. For the nvim integration: Neovim 0.10+ and, for `:AgentwsDiff`, [diffview.nvim](https://github.com/sindrets/diffview.nvim).
@@ -100,7 +112,7 @@ Integration tests use `-tags integration` and need `git` and `tmux`.
 
 In the sidebar, `t` shows a shell below the selected session's agent pane in its worktree (and hides it again), `T` opens it as a popup (`M-t` closes it), and `e` swaps the session's nvim into the main area and back. `o` in the review opens the file at the diff's top line in that nvim. In nvim, `C-h/j/k/l` move between its splits and, at the edge, to the neighbouring pane; every other pane receives those keys untouched.
 
-Add the plugin to nvim by putting the repo's `nvim/` directory on the runtimepath (with your plugin manager, or `vim.opt.rtp:prepend('<repo>/nvim')`) and calling `require('agentws').setup({})`. It needs `agentws` on `PATH`, and works in the nvim the `e` key starts, which carries `AGENTWS_SESSION`.
+The setup screen shows the exact lines for your install. By hand: put the plugin dir (`${XDG_DATA_HOME:-~/.local/share}/agentws/nvim` from a release, or the repo's `nvim/` in a checkout) on the runtimepath (with your plugin manager, or `vim.opt.rtp:prepend('<dir>')`) and call `require('agentws').setup({})`. It needs `agentws` on `PATH`, and works in the nvim the `e` key starts, which carries `AGENTWS_SESSION`.
 
 - `:AgentwsDiff [last_turn|uncommitted|branch]` opens the session's review scope in diffview (by default the one the review pane has open).
 - `:'<,'>AgentwsComment [text]` adds the selected lines as a draft review comment.

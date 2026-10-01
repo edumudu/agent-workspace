@@ -52,6 +52,11 @@ type Options struct {
 	// the program ends when it closes.
 	NewSessionOnly bool
 	LaunchDir      string
+	// why: nil turns the first-run walkthrough and S off, as in tests that are not about it.
+	Onboard Onboarder
+	// why: the setup popup's own program, like NewSessionOnly; it ends when the walkthrough does.
+	SetupOnly  bool
+	SetupPopup rpc.ClientPopupParams
 }
 
 type Caller interface {
@@ -122,6 +127,9 @@ type Model struct {
 	dialogs int
 	ending  string
 	pending string
+
+	ob             *onboarding
+	onboardChecked bool
 }
 
 func New(opts Options) Model {
@@ -165,6 +173,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.opts.NewSessionOnly && m.dialog == nil {
 			return m.openDialog(), nil
 		}
+		if m.opts.Onboard != nil && !m.onboardChecked && !m.opts.NewSessionOnly {
+			m.onboardChecked = true
+			return m, m.fetchOnboarding(false)
+		}
+	case onboardStatusMsg, onboardInstalledMsg, onboardFinishedMsg, onboardNvimMsg, setupPopupFailedMsg, setupPopupRetryMsg:
+		return m.onboardMsg(msg)
 	case popupFailedMsg:
 		return m.openDialog(), nil
 	case showFailedMsg:
@@ -199,6 +213,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case draftMsg:
 		return m.gotDraft(msg)
 	case tea.KeyPressMsg:
+		if m.ob != nil {
+			return m.onboardKey(msg)
+		}
 		if m.dialog != nil {
 			return m.dialogKey(msg)
 		}
@@ -451,6 +468,10 @@ func (m Model) key(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 			return m, m.openPopup()
 		default:
 			return m.openDialog(), nil
+		}
+	case "S":
+		if m.opts.Onboard != nil {
+			return m, m.openSetup(setupPopupRetries)
 		}
 	case "L":
 		if m.opts.Calls != nil {

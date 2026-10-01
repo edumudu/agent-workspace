@@ -1,0 +1,20 @@
+
+      Set up agentws                                                        esc skip 
+     
+      Agents › Claude Code › Codex › Neovim › Done                                   
+     
+      Neovim  optional                                                               
+     
+      ⏎ writes /Users/me/.config/nvim/plugin/agentws.lua                             
+      nvim loads every file in plugin/ at startup, whatever else your config uses    
+      (init.lua, init.vim, lazy.nvim), so nothing of yours is edited.                
+     
+        -- agentws: written by agentws setup nvim; agentws setup nvim --remove deletes this file.
+        local dir = '/Users/me/.local/share/agentws/nvim'
+        vim.opt.runtimepath:prepend(dir)
+        dofile(dir .. '/plugin/agentws.lua')
+        require('agentws').setup({})
+     
+      ▌ Undo    agentws setup nvim --remove                                          
+     
+      s skip                                                  esc skip   ⏎ write it  

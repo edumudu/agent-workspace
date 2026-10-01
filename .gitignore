@@ -1,3 +1,4 @@
 /bin/
 /.claude/worktrees/
 /.claude/settings.local.json
+dist/

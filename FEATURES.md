@@ -89,6 +89,7 @@ One terminal tool for running Claude Code and Codex sessions in parallel, each i
 - A subagent tree per session under its sidebar row, from the harness's subagent hooks. Claude only today; stop and steer controls are not offered because neither harness exposes them per subagent (see ADR 0019).
 - A Linear launcher: `L` takes one or more issue URLs and starts a worktree and session for each, up to `[launcher] max_parallel` (default 3) at once; the rest queue and start as sessions finish. See ADR 0031.
 - When Claude quota is low, offer to start queued work in Codex.
+- A first-run walkthrough: pick Claude, Codex or both, see each one's hook state and install it with a backup, follow Codex's trust step, and get the nvim snippet for the installed plugin. `S` or `agentws setup` reopens it (see ADR 0040).
 
 ## P2
 

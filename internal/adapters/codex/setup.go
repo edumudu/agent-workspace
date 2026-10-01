@@ -8,6 +8,8 @@ import (
 	"regexp"
 	"strings"
 	"time"
+
+	"github.com/giovaniif/agent-workspace/internal/domain"
 )
 
 // why: marks a hook command as ours wherever the binary lives, so a moved binary is updated instead of duplicated.
@@ -27,7 +29,7 @@ var managedEvents = []string{
 var toolEvents = map[string]bool{"PreToolUse": true, "PostToolUse": true, "PermissionRequest": true}
 
 // why: Codex keeps a hash of every hook it has been told to trust in config.toml, so a hooks.json change needs a manual trust step.
-const TrustStep = "Codex runs a hook only after you trust it. Start codex and accept the review prompt for the new agentws hooks, or open /hooks and trust them there."
+const TrustStep = domain.CodexTrustStep
 
 type SetupConfig struct {
 	Dir     string
@@ -41,9 +43,26 @@ type SetupResult struct {
 }
 
 func Setup(cfg SetupConfig) (SetupResult, error) {
+	file, changed, err := merged(cfg)
+	if err != nil || !changed {
+		return SetupResult{}, err
+	}
+	return file.save(cfg)
+}
+
+// why: it asks whether Setup would change nothing, so it can never disagree with what Setup does.
+func Installed(cfg SetupConfig) (bool, error) {
+	file, changed, err := merged(cfg)
+	if err != nil {
+		return false, err
+	}
+	return file.existed && !changed, nil
+}
+
+func merged(cfg SetupConfig) (*hooksFile, bool, error) {
 	file, err := loadHooksFile(cfg)
 	if err != nil {
-		return SetupResult{}, err
+		return nil, false, err
 	}
 	hooks := file.hooksObject(true)
 	changed := false
@@ -52,10 +71,7 @@ func Setup(cfg SetupConfig) (SetupResult, error) {
 			changed = true
 		}
 	}
-	if !changed {
-		return SetupResult{}, nil
-	}
-	return file.save(cfg)
+	return file, changed, nil
 }
 
 func Remove(cfg SetupConfig) (SetupResult, error) {

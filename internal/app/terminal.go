@@ -33,4 +33,5 @@ type TerminalHost interface {
 
 type Editor interface {
 	Eval(ctx context.Context, socket, expr string) error
+	Installed() bool
 }
