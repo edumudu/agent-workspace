@@ -116,3 +116,20 @@ func (m Model) focusShell() tea.Cmd {
 	}
 	return m.callDaemon(rpc.MethodShellFocus, rpc.ShellParams{Session: m.selected, Worktree: m.reviewWorktree()})
 }
+
+// leave detaches the terminal from the agentws layout, which keeps running
+// for the next agentws; with no layout to leave, it quits.
+func (m Model) leave() tea.Cmd {
+	c := m.opts.Calls
+	if c == nil {
+		return tea.Quit
+	}
+	return func() tea.Msg {
+		ctx, cancel := context.WithTimeout(context.Background(), terminalCallTimeout)
+		defer cancel()
+		if err := c.Call(ctx, rpc.MethodClientDetach, struct{}{}, nil); err != nil {
+			return tea.QuitMsg{}
+		}
+		return nil
+	}
+}

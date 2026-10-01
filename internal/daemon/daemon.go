@@ -481,7 +481,7 @@ func (d *Daemon) dispatch(c *conn, line []byte) (*rpc.Response, bool) {
 		return d.dispatchTerminal(req)
 	case rpc.MethodReviewComment:
 		return d.addComment(req)
-	case rpc.MethodOpenClient, rpc.MethodFocusMain, rpc.MethodClientReview, rpc.MethodClientPopup:
+	case rpc.MethodOpenClient, rpc.MethodFocusMain, rpc.MethodClientReview, rpc.MethodClientPopup, rpc.MethodClientDetach:
 		return d.dispatchClient(req), true
 	case rpc.MethodDebugSeed:
 		var p rpc.DebugSeedParams

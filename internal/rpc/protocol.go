@@ -64,6 +64,9 @@ const (
 	// MethodClientPopup runs a command in a centred popup over the attached
 	// client; the popup closes when the command exits.
 	MethodClientPopup = "client.popup"
+	// MethodClientDetach detaches the terminals attached to the client layout,
+	// which keeps running.
+	MethodClientDetach = "client.detach"
 	// MethodCleanupPlan returns the cleanup plan without acting on it;
 	// MethodCleanupRun executes it. Both answer []CleanupItem.
 	MethodCleanupPlan = "cleanup.plan"

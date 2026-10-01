@@ -29,6 +29,8 @@ type ClientHost interface {
 	// PopupCommand runs spec's command in a centred popup that closes when
 	// the command exits.
 	PopupCommand(ctx context.Context, spec app.PaneSpec) error
+	// Detach detaches the terminals attached to slot's layout.
+	Detach(ctx context.Context, slot app.Slot) error
 }
 
 const clientName = "main"
@@ -80,6 +82,14 @@ func (d *Daemon) dispatchClient(req rpc.Request) *rpc.Response {
 			return errorResponse(req.ID, rpc.CodeBadRequest, "client.popup needs a command")
 		}
 		if err := h.PopupCommand(ctx, app.PaneSpec{Command: p.Command, Env: p.Env}); err != nil {
+			return errorResponse(req.ID, rpc.CodeFailed, err.Error())
+		}
+		return result(req.ID, struct{}{})
+	case rpc.MethodClientDetach:
+		if d.clients.slot == "" {
+			return errorResponse(req.ID, rpc.CodeFailed, "no client layout is open")
+		}
+		if err := h.Detach(ctx, d.clients.slot); err != nil {
 			return errorResponse(req.ID, rpc.CodeFailed, err.Error())
 		}
 		return result(req.ID, struct{}{})
