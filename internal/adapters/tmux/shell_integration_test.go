@@ -5,6 +5,7 @@ package tmux_test
 import (
 	"context"
 	"os/exec"
+	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
