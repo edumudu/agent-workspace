@@ -23,9 +23,8 @@ func seedLimits(h domain.Harness, now time.Time) []domain.RateLimit {
 		}
 	}
 	return []domain.RateLimit{
-		{Window: "five_hour", UsedPercent: 57, ResetsAt: resets(2*time.Hour + 10*time.Minute)},
+		{Window: "five_hour", UsedPercent: 88, ResetsAt: resets(2*time.Hour + 10*time.Minute)},
 		{Window: "seven_day", UsedPercent: 71, ResetsAt: resets(3 * 24 * time.Hour)},
-		{Window: "seven_day_opus", UsedPercent: 88, ResetsAt: resets(3 * 24 * time.Hour)},
 	}
 }
 

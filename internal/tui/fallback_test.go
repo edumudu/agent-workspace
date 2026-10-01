@@ -50,7 +50,7 @@ func TestFallbackDialogOffersCodexWithTheMappedModelAndEffort(t *testing.T) {
 		Fallback: domain.FallbackConfig{Models: map[string]string{"opus": "gpt-5"}, Efforts: map[string]string{"high": "medium"}},
 	}
 	m, c := fallbackDialog(t, lowClaudeState(), opts)
-	if out := screen(m); !strings.Contains(out, "ctrl+s codex 64% gpt-5") {
+	if out := screen(m); !strings.Contains(out, "ctrl+s codex 36% gpt-5") {
 		t.Fatalf("offer does not name the mapped model:\n%s", out)
 	}
 	m = pressCmd(m, keyCtrlS)
@@ -86,7 +86,7 @@ func TestFallbackDialogHonoursTheConfiguredThreshold(t *testing.T) {
 		t.Fatalf("offered at 30%% with the default threshold:\n%s", out)
 	}
 	m, _ = fallbackDialog(t, st, tui.Options{Fallback: domain.FallbackConfig{Threshold: 40}})
-	if out := screen(m); !strings.Contains(out, "claude 5h 30% left") || !strings.Contains(out, "ctrl+s codex") {
+	if out := screen(m); !strings.Contains(out, "claude 5h 70% used") || !strings.Contains(out, "ctrl+s codex") {
 		t.Fatalf("no offer at 30%% with a threshold of 40:\n%s", out)
 	}
 }
@@ -125,7 +125,7 @@ func TestFallbackDialogDoesNotOfferAnExhaustedCodex(t *testing.T) {
 	st.Sessions[1].Limits[0].UsedPercent = 97
 	m, _ := fallbackDialog(t, st, tui.Options{})
 	out := screen(m)
-	if !strings.Contains(out, "claude 5h 10% left") || strings.Contains(out, "ctrl+s") {
+	if !strings.Contains(out, "claude 5h 90% used") || strings.Contains(out, "ctrl+s") {
 		t.Fatalf("warning should carry no offer:\n%s", out)
 	}
 }

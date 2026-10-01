@@ -376,12 +376,16 @@ func taskLabel(t domain.Task) string {
 	return t.ID
 }
 
-func worktreeLabel(w domain.Worktree) string {
-	repo := w.Repo
-	if repo != "" {
-		// why: Repo is the main checkout's path; its last element is the name people use.
-		repo = filepath.Base(repo)
+func repoName(w domain.Worktree) string {
+	if w.Repo == "" {
+		return ""
 	}
+	// why: Repo is the main checkout's path; its last element is the name people use.
+	return filepath.Base(w.Repo)
+}
+
+func worktreeLabel(w domain.Worktree) string {
+	repo := repoName(w)
 	part := w.SubtaskSlug
 	if part == "" {
 		part = w.Branch
