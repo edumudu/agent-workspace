@@ -77,12 +77,15 @@ func TestModelSwitchNewRequestRetiresASentUnconfirmedOneOfTheSameKind(t *testing
 	}
 }
 
-func TestModelSwitchModelNamesMatchExactlyOrByTheirFirstWord(t *testing.T) {
+func TestModelSwitchModelNamesMatchExactlyByFirstWordOrWithoutVersion(t *testing.T) {
 	cases := []struct {
 		requested, reported string
 		confirmed           bool
 	}{
 		{"opus", "Opus 4.7", true},
+		{"opus", "opus-5.5", true},
+		{"sonnet", "opus-5.5", false},
+		{"gpt-6", "gpt-6.1-sol", false},
 		{"gpt-5", "GPT-5", true},
 		{"gpt-5", "gpt-5-codex", false},
 		{"gpt-5-codex", "gpt-5", false},

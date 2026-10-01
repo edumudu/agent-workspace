@@ -410,6 +410,17 @@ func TestSFocusesTheSelectedSessionsShell(t *testing.T) {
 	}
 }
 
+func TestHelpListsTheReviewKey(t *testing.T) {
+	st := fixture(1, 0)
+	out := screen(press(newModel(&st, nil), "?"))
+	for _, line := range strings.Split(out, "\n") {
+		if f := strings.Fields(line); len(f) >= 2 && f[0] == "r" && strings.Contains(line, "review") {
+			return
+		}
+	}
+	t.Fatalf("help has no line for r:\n%s", out)
+}
+
 func TestASessionShowsNoContextFigureBeforeItsFirstReport(t *testing.T) {
 	st := rpc.State{Sessions: []domain.Session{{ID: "s1", Harness: domain.HarnessClaude, Model: "opus", Effort: "high"}}}
 	out := screen(newModel(&st, nil))
