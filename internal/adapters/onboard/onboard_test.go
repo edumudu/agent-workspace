@@ -208,3 +208,25 @@ func TestFromEnvFollowsTheHarnessAndXDGVariables(t *testing.T) {
 		t.Errorf("defaults = %+v", bare)
 	}
 }
+
+func TestNvimConfigBehindASymlinkIsScanned(t *testing.T) {
+	w := newWorld(t, true)
+	real := filepath.Join(t.TempDir(), "dotfiles-nvim")
+	write(t, filepath.Join(real, "init.lua"), "require('agentws').setup({})")
+	if err := os.RemoveAll(w.probe.NvimConfigDir); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Dir(w.probe.NvimConfigDir), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(real, w.probe.NvimConfigDir); err != nil {
+		t.Fatal(err)
+	}
+	got, err := w.probe.Onboarding(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !got.Nvim.Configured {
+		t.Errorf("nvim = %+v, want configured through the symlink", got.Nvim)
+	}
+}
