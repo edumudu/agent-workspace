@@ -100,7 +100,7 @@ func nextPicker(ctx context.Context, host TerminalHost, pane PaneID, last *domai
 	return domain.Picker{}, false, errors.New("the Codex picker did not redraw")
 }
 
-// escape uses its own context: the caller's may be the one that ran out.
+// why: its own context, because the caller's may be the one that ran out.
 func escape(host TerminalHost, pane PaneID) error {
 	ctx, cancel := context.WithTimeout(context.Background(), escapeTimeout)
 	defer cancel()
