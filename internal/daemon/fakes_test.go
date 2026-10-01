@@ -181,11 +181,12 @@ type fakeClientHost struct {
 	// duringCheck runs inside the SlotHasPane call that reports the pane missing.
 	duringCheck func()
 
-	slotPane     map[app.Slot]app.PaneID
-	below        app.PaneID
-	belowLog     []string
-	popups       []app.PaneID
-	focusedBelow int
+	slotPane      map[app.Slot]app.PaneID
+	below         app.PaneID
+	belowLog      []string
+	popups        []app.PaneID
+	commandPopups []app.PaneSpec
+	focusedBelow  int
 }
 
 // SlotHasPane reports the slot pane as missing once after loseSlotPane.
@@ -745,6 +746,13 @@ func (h *fakeClientHost) FocusBelow(context.Context, app.Slot) error {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	h.focusedBelow++
+	return nil
+}
+
+func (h *fakeClientHost) PopupCommand(_ context.Context, spec app.PaneSpec) error {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.commandPopups = append(h.commandPopups, spec)
 	return nil
 }
 

@@ -26,6 +26,9 @@ type ClientHost interface {
 	HideBelow(ctx context.Context, slot app.Slot) error
 	FocusBelow(ctx context.Context, slot app.Slot) error
 	Popup(ctx context.Context, pane app.PaneID) error
+	// PopupCommand runs spec's command in a centred popup that closes when
+	// the command exits.
+	PopupCommand(ctx context.Context, spec app.PaneSpec) error
 }
 
 const clientName = "main"
@@ -71,6 +74,15 @@ func (d *Daemon) dispatchClient(req rpc.Request) *rpc.Response {
 			d.clients.slot = slot
 		}
 		return result(req.ID, rpc.OpenClient{Slot: string(d.clients.slot), Attach: h.AttachCommand(d.clients.slot)})
+	case rpc.MethodClientPopup:
+		var p rpc.ClientPopupParams
+		if err := json.Unmarshal(req.Params, &p); err != nil || len(p.Command) == 0 {
+			return errorResponse(req.ID, rpc.CodeBadRequest, "client.popup needs a command")
+		}
+		if err := h.PopupCommand(ctx, app.PaneSpec{Command: p.Command, Env: p.Env}); err != nil {
+			return errorResponse(req.ID, rpc.CodeFailed, err.Error())
+		}
+		return result(req.ID, struct{}{})
 	case rpc.MethodClientReview:
 		var p rpc.ClientReviewParams
 		if err := json.Unmarshal(req.Params, &p); err != nil {

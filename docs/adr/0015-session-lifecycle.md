@@ -13,7 +13,7 @@ Status: accepted, 2026-09-30.
 - `session.end` (`x`, then `y`) kills the pane and calls `Session.End()`: state `idle`, `Pane` cleared, unfocused. The session and its worktrees stay until cleanup. (Superseded by [ADR 0035](0035-ended-sessions.md): the session also leaves the sidebar, and is forgotten once it has no worktree.)
 - On start, the daemon checks the sessions it restored against `tmux list-panes` off the loop and ends those whose pane is gone, such as after a reboot. This replaces the `PaneBinding` stand-in from #6.
 - The Codex adapter implements `app.HarnessAdapter` like Claude's, so both launch through the same path.
-- The dialog shows `domain.Advise`'s low-quota warning for the chosen harness, and `ctrl+s` switches to the other harness when it has figures (ADR 0017).
+- The dialog shows `domain.Advise`'s low-quota warning for the chosen harness, and `ctrl+s` switches to the other harness when it has figures (ADR 0017). (ADR 0037 moves the dialog into a centred popup and makes Model a picker.)
 
 ## Why
 

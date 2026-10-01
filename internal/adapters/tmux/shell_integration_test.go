@@ -222,3 +222,32 @@ func TestNavigationKeysReachTheAppInAPaneThatIsNotNvim(t *testing.T) {
 		t.Fatalf("active pane = %s; the keys must not move focus away from the agent %s", active, agent)
 	}
 }
+
+func TestPopupCommandRunsWithEnv(t *testing.T) {
+	ctx := context.Background()
+	h := newHost(t)
+	slot, _ := h.OpenClient(ctx, "main", app.PaneSpec{Name: "tui", Command: []string{"sleep", "600"}})
+	outer := outerTerminal(t, h, slot)
+	spec := app.PaneSpec{Command: []string{"sh", "-c", `echo "dialog-$POPUP_WORD"; read line`}, Env: map[string]string{"POPUP_WORD": "ready"}}
+	if err := h.PopupCommand(ctx, spec); err != nil {
+		t.Fatal(err)
+	}
+	waitFor(t, "the command to draw in the popup", func() bool {
+		return strings.Contains(outer("capture-pane", "-p", "-t", "outer"), "dialog-ready")
+	})
+	outer("send-keys", "-t", "outer", "Enter")
+	waitFor(t, "the popup to close with the command", func() bool {
+		return !strings.Contains(outer("capture-pane", "-p", "-t", "outer"), "dialog-ready")
+	})
+}
+
+func TestPopupCommandWithoutAClientFails(t *testing.T) {
+	ctx := context.Background()
+	h := newHost(t)
+	if _, err := h.OpenClient(ctx, "main", app.PaneSpec{Name: "tui", Command: []string{"sleep", "600"}}); err != nil {
+		t.Fatal(err)
+	}
+	if err := h.PopupCommand(ctx, app.PaneSpec{Command: []string{"true"}}); err == nil {
+		t.Fatal("PopupCommand succeeded with no client attached")
+	}
+}
