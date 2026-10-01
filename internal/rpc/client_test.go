@@ -8,10 +8,12 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/giovaniif/agent-workspace/internal/rpc"
+	"github.com/giovaniif/agent-workspace/internal/version"
 )
 
 func shortDir(t *testing.T) string {
@@ -113,5 +115,71 @@ func TestConnectReportsAFailedStart(t *testing.T) {
 	_, err := rpc.Connect(context.Background(), path, func() error { return boom })
 	if !errors.Is(err, boom) {
 		t.Fatalf("err %v, want %v", err, boom)
+	}
+}
+
+func serveRaw(t *testing.T, path string, answer func(rpc.Request) rpc.Response) {
+	t.Helper()
+	ln, err := net.Listen("unix", path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = ln.Close() })
+	go func() {
+		conn, err := ln.Accept()
+		if err != nil {
+			return
+		}
+		defer func() { _ = conn.Close() }()
+		sc := bufio.NewScanner(conn)
+		enc := json.NewEncoder(conn)
+		for sc.Scan() {
+			var req rpc.Request
+			if err := json.Unmarshal(sc.Bytes(), &req); err != nil {
+				return
+			}
+			_ = enc.Encode(answer(req))
+		}
+	}()
+}
+
+func TestCallsCarryTheClientBuild(t *testing.T) {
+	path := filepath.Join(shortDir(t), "agentws.sock")
+	got := make(chan rpc.Request, 1)
+	serveRaw(t, path, func(req rpc.Request) rpc.Response {
+		got <- req
+		return rpc.Response{V: rpc.Version, ID: req.ID, Build: req.Build}
+	})
+	c, err := rpc.Dial(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = c.Close() }()
+	if _, err := c.WorkspaceList(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	req := <-got
+	if req.Build != version.String() || req.BuiltAt == 0 {
+		t.Fatalf("request %+v", req)
+	}
+}
+
+func TestADaemonThatNamesNoBuildIsRefused(t *testing.T) {
+	path := filepath.Join(shortDir(t), "agentws.sock")
+	serveRaw(t, path, func(req rpc.Request) rpc.Response {
+		return rpc.Response{V: rpc.Version, ID: req.ID}
+	})
+	c, err := rpc.Dial(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = c.Close() }()
+	_, err = c.WorkspaceList(context.Background())
+	var rerr *rpc.Error
+	if !errors.As(err, &rerr) || rerr.Code != rpc.CodeVersionMismatch || !strings.Contains(rerr.Message, "agentws daemon stop") {
+		t.Fatalf("err %v", err)
+	}
+	if _, err := c.Status(context.Background()); err != nil {
+		t.Fatalf("status across builds: %v", err)
 	}
 }
