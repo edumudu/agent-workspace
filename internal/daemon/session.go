@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"path/filepath"
 	"sync"
 
 	"github.com/giovaniif/agent-workspace/internal/app"
@@ -73,6 +74,24 @@ func (d *Daemon) startSession(p rpc.NewSessionParams) (domain.Session, *rpc.Erro
 	adapter, ok := d.hs.adapters[domain.Harness(p.Harness)]
 	if !ok || d.hs.host == nil || d.sess.worktrees == nil {
 		return domain.Session{}, &rpc.Error{Code: rpc.CodeBadRequest, Message: "no harness " + p.Harness}, true
+	}
+	if p.Workspace != "" {
+		if !filepath.IsAbs(p.Workspace) {
+			return domain.Session{}, &rpc.Error{Code: rpc.CodeBadRequest, Message: "workspace must be an absolute path: " + p.Workspace}, true
+		}
+		p.Workspace = filepath.Clean(p.Workspace)
+	}
+	if p.Workspace != "" && d.ws.fs != nil {
+		var known bool
+		if !d.query(func(s *state) { _, known = s.workspaces[p.Workspace] }) {
+			return domain.Session{}, nil, false
+		}
+		if !known {
+			// why: any folder can start a session; registering it is the daemon's job, not a step before the first session.
+			if _, rerr, ok := d.addWorkspace(p.Workspace); rerr != nil || !ok {
+				return domain.Session{}, rerr, ok
+			}
+		}
 	}
 	parsed := domain.ParseWorkItem(p.WorkItem)
 	var in newSessionInput

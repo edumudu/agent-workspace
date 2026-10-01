@@ -43,7 +43,8 @@ func attachIn(home string) error {
 	}
 	opened, err := c.OpenClient(ctx, rpc.OpenClientParams{
 		Command: []string{self, "tui"},
-		Env:     map[string]string{"AGENTWS_HOME": home},
+		Env:     map[string]string{"AGENTWS_HOME": home, "AGENTWS_LAUNCH_DIR": launchDir()},
+		Dir:     launchDir(),
 	})
 	_ = c.Close()
 	if err != nil {
@@ -108,6 +109,13 @@ func tuiIn(home string, newSession bool) error {
 	}
 	defer func() { _ = caller.Close() }()
 	opts := tui.Options{Theme: theme, Defaults: defaults, Fallback: fallback, NewSessionOnly: newSession}
+	if newSession {
+		// why: the daemon opens the popup where agentws was launched, so this is the folder to start in.
+		opts.LaunchDir = launchDir()
+	} else {
+		// why: the inline dialog, used when the popup cannot open, starts in the same folder.
+		opts.LaunchDir = os.Getenv("AGENTWS_LAUNCH_DIR")
+	}
 	if self, err := os.Executable(); err == nil && !newSession {
 		opts.DialogPopup = rpc.ClientPopupParams{Command: []string{self, "tui", "--new-session"}, Env: map[string]string{"AGENTWS_HOME": home}}
 	}
@@ -146,4 +154,13 @@ func runDebugSeed(args []string, stdout, stderr io.Writer) int {
 	}
 	fmt.Fprintf(stdout, "seeded %d sessions\n", n)
 	return 0
+}
+
+// launchDir is the working directory, or "" when it cannot be read.
+func launchDir() string {
+	dir, err := os.Getwd()
+	if err != nil {
+		return ""
+	}
+	return dir
 }

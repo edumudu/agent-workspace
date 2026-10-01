@@ -71,22 +71,31 @@ func (d *Daemon) workspaceAdd(req rpc.Request) (*rpc.Response, bool) {
 	if !filepath.IsAbs(p.Path) {
 		return errorResponse(req.ID, rpc.CodeBadRequest, "path must be absolute: "+p.Path), true
 	}
-	root := filepath.Clean(p.Path)
+	ws, rerr, ok := d.addWorkspace(filepath.Clean(p.Path))
+	if rerr != nil {
+		return errorResponse(req.ID, rerr.Code, rerr.Message), ok
+	}
+	return result(req.ID, ws), ok
+}
+
+// addWorkspace discovers root (one repo, or a folder of repos), registers
+// it, and refreshes its git facts in the background.
+func (d *Daemon) addWorkspace(root string) (domain.Workspace, *rpc.Error, bool) {
 	var known []domain.Repo
 	if !d.query(func(s *state) { known = s.workspaces[root].Repos }) {
-		return nil, false
+		return domain.Workspace{}, nil, false
 	}
 	ws, err := app.DiscoverWorkspace(d.ws.fs, root, known)
 	if err != nil {
-		return errorResponse(req.ID, rpc.CodeBadRequest, err.Error()), true
+		return domain.Workspace{}, &rpc.Error{Code: rpc.CodeBadRequest, Message: err.Error()}, true
 	}
 	ws.LastUsed = d.ws.now()
 	if !d.commit(WorkspaceChanged{Workspace: ws}) {
-		return nil, false
+		return domain.Workspace{}, nil, false
 	}
 	go d.refreshWorkspace(root)
 	d.st.hints.wake()
-	return result(req.ID, ws), true
+	return ws, nil, true
 }
 
 func (d *Daemon) workspaceRemove(req rpc.Request) (*rpc.Response, bool) {
