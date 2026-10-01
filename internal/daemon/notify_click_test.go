@@ -105,6 +105,37 @@ func TestNotifyWithdrawalIsKeptWhileTheQueueIsFull(t *testing.T) {
 	}
 }
 
+func TestNotifyWithdrawnBannerStillQueuedIsNeverPosted(t *testing.T) {
+	r := newRig(t, &memStore{}, nil)
+	for i := range 66 {
+		pane := fmt.Sprintf("%%%d", i)
+		r.addRunning(t, fmt.Sprintf("s%d", i), domain.HarnessClaude, pane)
+		r.hook(t, "claude", "Stop", pane, "")
+	}
+	if err := r.c.FocusSession(context.Background(), "s65"); err != nil {
+		t.Fatal(err)
+	}
+	next(t, r.sub.Diffs)
+	seen := make(chan string, 128)
+	go func() {
+		for b := range r.n.banners {
+			seen <- b.Group
+		}
+	}()
+	if got := r.removal(t); got != "s65" {
+		t.Fatalf("removed %q", got)
+	}
+	r.sentinel(t)
+	for g := range seen {
+		if g == "s65" {
+			t.Fatal("the withdrawn banner was posted")
+		}
+		if g == "sentinel" {
+			return
+		}
+	}
+}
+
 func TestNotifyNothingToWithdrawWithoutABanner(t *testing.T) {
 	r := newRig(t, &memStore{}, nil)
 	r.addRunning(t, "s1", domain.HarnessClaude, "%1")
