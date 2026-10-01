@@ -221,7 +221,7 @@ func TestBadRequestsGetStructuredErrors(t *testing.T) {
 	}{
 		{`{"v":2,"id":7,"method":"status"}`, 7, rpc.CodeUnsupportedVersion},
 		{`{"id":8,"method":"status"}`, 8, rpc.CodeUnsupportedVersion},
-		{`{"v":1,"id":9,"method":"nope"}`, 9, rpc.CodeUnknownMethod},
+		{fmt.Sprintf(`{"v":1,"id":9,"method":"nope","build":%q}`, version.String()), 9, rpc.CodeUnknownMethod},
 		{`not json`, 0, rpc.CodeBadRequest},
 	}
 	for _, tt := range tests {
@@ -241,6 +241,7 @@ func TestRequestsFromAnotherBuildAreRefusedNamingTheStaleSide(t *testing.T) {
 	}{
 		{fmt.Sprintf(`{"v":1,"id":3,"method":"workspace.list","build":"other","built_at":%d}`, far), "restart the daemon"},
 		{`{"v":1,"id":3,"method":"workspace.list","build":"other","built_at":1}`, "restart this client"},
+		{`{"v":1,"id":3,"method":"workspace.list"}`, "restart the daemon"},
 	}
 	for _, tt := range tests {
 		resp := rawCall(t, path, tt.line)
@@ -279,7 +280,7 @@ func TestASlowSubscriberDoesNotStallTheLoop(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer func() { _ = conn.Close() }()
-	if _, err := conn.Write([]byte(`{"v":1,"id":1,"method":"subscribe"}` + "\n")); err != nil {
+	if _, err := conn.Write([]byte(fmt.Sprintf(`{"v":1,"id":1,"method":"subscribe","build":%q}`, version.String()) + "\n")); err != nil {
 		t.Fatal(err)
 	}
 	blob := strings.Repeat("x", 4096)
