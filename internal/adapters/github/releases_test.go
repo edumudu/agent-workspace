@@ -62,3 +62,13 @@ func TestReleaseCheckerFailsOnServerError(t *testing.T) {
 		t.Fatal("want an error")
 	}
 }
+
+func TestReleaseCheckerPicksTheHighestTagWhateverTheListOrder(t *testing.T) {
+	var hits atomic.Int32
+	srv := releaseServer(t, `[{"tag_name":"v0.1.0-alpha.2"},{"tag_name":"nightly"},{"tag_name":"v0.1.0-alpha.10"}]`, &hits)
+	c := ReleaseChecker{URL: srv.URL, CachePath: filepath.Join(t.TempDir(), "release.json")}
+	got, err := c.Latest(context.Background())
+	if err != nil || got != "v0.1.0-alpha.10" {
+		t.Fatalf("Latest = %q, %v", got, err)
+	}
+}

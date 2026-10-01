@@ -36,3 +36,20 @@ func TestNewerReleaseComparesSemverWithPrereleases(t *testing.T) {
 		}
 	}
 }
+
+func TestHighestReleasePrefersTheHighestSemverTag(t *testing.T) {
+	cases := []struct {
+		tags []string
+		want string
+	}{
+		{[]string{"v0.1.0-alpha.2", "nightly", "v0.1.0-alpha.10", "v0.1.0-alpha.9"}, "v0.1.0-alpha.10"},
+		{[]string{"nightly", "v0.1.0"}, "v0.1.0"},
+		{[]string{"nightly", "edge"}, "nightly"},
+		{nil, ""},
+	}
+	for _, c := range cases {
+		if got := HighestRelease(c.tags); got != c.want {
+			t.Errorf("HighestRelease(%v) = %q, want %q", c.tags, got, c.want)
+		}
+	}
+}
