@@ -127,6 +127,10 @@ func TestNotifyBannerMasksSecretTokens(t *testing.T) {
 		"use sk-ant-api03-abcdefghijklmnopqrstuvwxyz",
 		"password: hunter2",
 		"API_KEY=abcd",
+		`curl -H "Authorization: Bearer abcdeyJhbGciOi" https://x`,
+		`curl -H "Authorization: Basic abcdXNlcjpwYXNz" https://x`,
+		`curl -H "Cookie: session=hunter2" https://x`,
+		"git clone https://me:hunter2@example.com/r.git",
 	} {
 		b, _ := BannerFor(BannerInput{Session: Session{ID: "a"}, Name: "x", Effect: notify(StatePermission),
 			Events: bannerTurn("a", SessionEvent{Kind: EventPermissionRequest, Tool: "Bash", Detail: in})})
