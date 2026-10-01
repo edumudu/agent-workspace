@@ -2,8 +2,10 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
+	"os"
 	"path/filepath"
 	"time"
 
@@ -25,7 +27,14 @@ func runVersion(current, commit string, latest func(context.Context) (string, er
 	return 0
 }
 
+var errUpdateCheckOff = errors.New("update check off")
+
+// latestRelease is skipped when AGENTWS_NO_UPDATE_CHECK is set, so tests and
+// offline users never reach the network.
 func latestRelease(ctx context.Context) (string, error) {
+	if os.Getenv("AGENTWS_NO_UPDATE_CHECK") != "" {
+		return "", errUpdateCheckOff
+	}
 	home, err := rpc.Home()
 	if err != nil {
 		return "", err
