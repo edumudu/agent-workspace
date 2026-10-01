@@ -1,0 +1,120 @@
+#!/usr/bin/env bash
+# Runs a dev agentws from this checkout, isolated from the installed one: its
+# own AGENTWS_HOME and tmux socket. It attaches to the dev layout and, in the
+# background, rebuilds on every Go change, restarts the dev daemon and respawns
+# the dev TUI panes on the new binary. A failed build leaves the running
+# instance alone and shows the error on the dev tmux server.
+#
+#   scripts/dev            attach, with live reload
+#   SEED=3 scripts/dev     also add 3 fake sessions
+#   FAKES=1 scripts/dev    put the e2e fake claude/codex first on PATH
+#   scripts/dev stop       stop the watcher and the dev daemon
+#
+# AGENTWS_DEV_HOME (default /tmp/agentws-dev-$UID) and AGENTWS_DEV_SOCKET
+# (default agentws-dev) move the instance.
+set -euo pipefail
+
+repo=$(cd "$(dirname "$0")/.." && pwd)
+# why: macOS caps Unix socket paths at 104 bytes, so the home stays short and under /tmp.
+home=${AGENTWS_DEV_HOME:-/tmp/agentws-dev-$(id -u)}
+socket=${AGENTWS_DEV_SOCKET:-agentws-dev}
+bin=$home/bin/agentws
+log=$home/dev.log
+pidfile=$home/dev-watch.pid
+version_pkg=github.com/giovaniif/agent-workspace/internal/version
+
+export AGENTWS_HOME=$home
+export AGENTWS_TMUX_SOCKET=$socket
+mkdir -p "$home/bin"
+
+if [ "${FAKES:-}" = 1 ]; then
+	export PATH="$repo/test/e2e/testdata/bin:$PATH"
+	export AGENTWS_E2E=$home/e2e
+	mkdir -p "$AGENTWS_E2E"
+	touch "$AGENTWS_E2E/claude.steps" "$AGENTWS_E2E/codex.steps"
+fi
+
+note() {
+	printf '%s %s\n' "$(date +%H:%M:%S)" "$*" >>"$log"
+	tmux -L "$socket" display-message -d 5000 "agentws dev: $*" 2>/dev/null || true
+}
+
+build() {
+	local commit tmp
+	commit=$(git -C "$repo" rev-parse --short HEAD 2>/dev/null || echo none)
+	tmp=$bin.new
+	# why: a build id per build, so the handshake tells every rebuild apart.
+	if ! (cd "$repo" && go build -ldflags "-X $version_pkg.Version=dev -X $version_pkg.Commit=$commit.$(date +%s)" -o "$tmp" ./cmd/agentws) >"$home/build.log" 2>&1; then
+		cat "$home/build.log" >>"$log"
+		note "build failed, still running the last good build: $(grep -v '^#' "$home/build.log" | head -n 1) (see $log)"
+		return 1
+	fi
+	# why: rename is atomic, so panes running the old binary keep their file.
+	mv -f "$tmp" "$bin"
+}
+
+restart() {
+	"$bin" daemon stop >/dev/null 2>&1 || true
+	"$bin" daemon start >>"$log" 2>&1
+	tmux -L "$socket" list-panes -a -F '#{pane_id} #{pane_start_command}' 2>/dev/null |
+		while read -r pane cmd; do
+			case $cmd in
+			*"$bin"*tui*) tmux -L "$socket" respawn-pane -k -t "$pane" ;;
+			esac
+		done || true
+	note "reloaded $("$bin" version)"
+}
+
+sources() {
+	find "$repo/cmd" "$repo/internal" "$repo/go.mod" "$repo/go.sum" \( -name '*.go' -o -name '*.xml' -o -name 'go.*' \) "$@" 2>/dev/null
+}
+
+# why: -newer catches edits and the sorted list catches added or deleted files.
+sources_changed() {
+	local names
+	names=$(sources -print | sort | cksum)
+	[ "$names" != "$(cat "$home/sources" 2>/dev/null)" ] || [ -n "$(sources -newer "$home/sources" -print -quit)" ]
+}
+
+mark_sources() {
+	sources -print | sort | cksum >"$home/sources"
+}
+
+watch() {
+	while sleep 1; do
+		if sources_changed; then
+			mark_sources
+			build && restart
+		fi
+	done
+}
+
+stop_watcher() {
+	if [ -f "$pidfile" ]; then
+		kill "$(cat "$pidfile")" 2>/dev/null || true
+		rm -f "$pidfile"
+	fi
+}
+
+if [ "${1:-}" = stop ]; then
+	stop_watcher
+	[ -x "$bin" ] && "$bin" daemon stop || true
+	exit 0
+fi
+
+mark_sources
+if ! build; then
+	cat "$home/build.log" >&2
+	[ -x "$bin" ] || exit 1
+fi
+restart
+if [ -n "${SEED:-}" ]; then
+	"$bin" debug seed "$SEED"
+fi
+
+stop_watcher
+watch &
+echo $! >"$pidfile"
+trap stop_watcher EXIT
+echo "agentws dev: home $home, tmux -L $socket, log $log"
+"$bin"
