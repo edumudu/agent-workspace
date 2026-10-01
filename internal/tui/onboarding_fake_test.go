@@ -8,11 +8,12 @@ import (
 )
 
 type fakeOnboarder struct {
-	mu        sync.Mutex
-	state     domain.Onboarding
-	installed []domain.Harness
-	finished  int
-	err       error
+	mu           sync.Mutex
+	state        domain.Onboarding
+	installed    []domain.Harness
+	finished     int
+	nvimInstalls int
+	err          error
 }
 
 func (f *fakeOnboarder) Onboarding(context.Context) (domain.Onboarding, error) {
@@ -42,4 +43,16 @@ func (f *fakeOnboarder) OnboardFinish(context.Context) error {
 	f.finished++
 	f.state.Done = true
 	return nil
+}
+
+func (f *fakeOnboarder) OnboardNvim(context.Context) (domain.NvimSetup, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.err != nil {
+		return domain.NvimSetup{}, f.err
+	}
+	f.nvimInstalls++
+	f.state.Nvim.Configured = true
+	f.state.Nvim.Backup = f.state.Nvim.ConfigFile + ".agentws-backup"
+	return f.state.Nvim, nil
 }

@@ -9,10 +9,11 @@ import (
 )
 
 type fakeOnboarder struct {
-	mu        sync.Mutex
-	state     domain.Onboarding
-	installed []domain.Harness
-	failOn    domain.Harness
+	mu           sync.Mutex
+	state        domain.Onboarding
+	installed    []domain.Harness
+	failOn       domain.Harness
+	nvimInstalls int
 }
 
 func (f *fakeOnboarder) Onboarding(context.Context) (domain.Onboarding, error) {
@@ -42,4 +43,12 @@ func (f *fakeOnboarder) Finish(context.Context) error {
 	defer f.mu.Unlock()
 	f.state.Done = true
 	return nil
+}
+
+func (f *fakeOnboarder) InstallNvim(context.Context) (domain.NvimSetup, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.state.Nvim.Configured = true
+	f.nvimInstalls++
+	return f.state.Nvim, nil
 }

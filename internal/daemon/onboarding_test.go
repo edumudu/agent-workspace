@@ -66,3 +66,12 @@ func TestOnboardingWithoutAnOnboarderIsUnavailable(t *testing.T) {
 		t.Errorf("err = %v", err)
 	}
 }
+
+func TestOnboardNvimAddsThePluginSetup(t *testing.T) {
+	f := &fakeOnboarder{state: domain.Onboarding{Nvim: domain.NvimSetup{OnPath: true, PluginFound: true}}}
+	_, path := start(t, &memStore{}, daemon.WithOnboarding(f))
+	n, err := dial(t, path).OnboardNvim(context.Background())
+	if err != nil || !n.Configured || f.nvimInstalls != 1 {
+		t.Errorf("nvim = %+v, %v, installs %d", n, err, f.nvimInstalls)
+	}
+}

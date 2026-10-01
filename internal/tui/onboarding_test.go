@@ -134,7 +134,9 @@ func TestSetupNvimStep(t *testing.T) {
 			"vim.opt.runtimepath:prepend('/Users/me/.local/share/agentws/nvim')",
 			"require('agentws').setup({})",
 			"/Users/me/.config/nvim/init.lua",
-			"agentws never edits your nvim config",
+			"-- agentws:begin",
+			"agentws setup nvim --remove",
+			"⏎ add to init.lua",
 		}, nil},
 		{"configured", domain.NvimSetup{OnPath: true, Configured: true}, []string{"✓ the agentws plugin is configured"}, []string{"prepend"}},
 		{"no nvim", domain.NvimSetup{}, []string{"nvim is not on PATH"}, []string{"prepend"}},
@@ -236,5 +238,40 @@ func TestSetupOpensInlineWhenThePopupCannot(t *testing.T) {
 	m = pressCmd(m, keyEsc)
 	if out := screen(m); strings.Contains(out, "Set up agentws") || !strings.Contains(out, "SESSIONS") {
 		t.Fatalf("esc did not close the inline setup:\n%s", out)
+	}
+}
+
+func TestSetupNvimStepAddsTheBlockOnlyOnConfirmation(t *testing.T) {
+	m, f := setupModel(t, freshMachine())
+	m = pressCmd(pressCmd(m, keySpace), keyEnter)
+	if f.nvimInstalls != 0 {
+		t.Fatal("nvim config written before confirmation")
+	}
+	m = pressCmd(m, keyEnter)
+	if f.nvimInstalls != 1 {
+		t.Fatalf("installs = %d", f.nvimInstalls)
+	}
+	mustShow(t, screen(m), "✓ added to /Users/me/.config/nvim/init.lua", "init.lua.agentws-backup", "⏎ next")
+	mustShow(t, screen(pressCmd(m, keyEnter)), "You're set", "plugin configured")
+
+	m, f = setupModel(t, freshMachine())
+	m = pressCmd(pressCmd(pressCmd(m, keySpace), keyEnter), key("s"))
+	if f.nvimInstalls != 0 {
+		t.Fatal("s wrote the nvim config")
+	}
+	mustShow(t, screen(m), "You're set")
+}
+
+func TestAlreadySetUpMachinesSkipTheWalkthroughAndRecordIt(t *testing.T) {
+	c := &fakeCaller{}
+	o := freshMachine()
+	o.Codex.Installed = true
+	o.Nvim.Configured = true
+	m, f := sidebarWithSetup(t, o, c)
+	if len(c.methods()) != 0 || f.finished != 1 {
+		t.Fatalf("calls %v, finished %d", c.methods(), f.finished)
+	}
+	if strings.Contains(screen(m), "Set up agentws") {
+		t.Fatalf("walkthrough shown:\n%s", screen(m))
 	}
 }
