@@ -24,7 +24,7 @@ func ReadDefaults(path string) (model, effort string, err error) {
 	if err := json.Unmarshal(b, &s); err != nil {
 		return "", "", err
 	}
-	return s.Model, s.EffortLevel, nil
+	return shortModel(s.Model, s.Model), s.EffortLevel, nil
 }
 
 // ReadEffortByModel reads the effort Claude Code keeps per model under
