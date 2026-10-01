@@ -221,3 +221,16 @@ func TestNewSessionPopupNamesWhatDefaultMeans(t *testing.T) {
 		t.Fatalf("codex, with nothing known, should say just default:\n%s", out)
 	}
 }
+
+func TestNewSessionPopupNamesTheSameDefaultEveryTime(t *testing.T) {
+	st := repoWorkspaces(rpc.State{Sessions: []domain.Session{
+		{ID: "a", Harness: domain.HarnessClaude, Model: "sonnet-5.5"},
+		{ID: "b", Harness: domain.HarnessClaude, Model: "opus-5.5"},
+	}})
+	for range 20 {
+		m, _ := popupModel(t, st, 100)
+		if out := screen(m); !strings.Contains(out, "‹ default · opus-5.5 ›") {
+			t.Fatalf("with equal report times the label should be the last session's by ID:\n%s", out)
+		}
+	}
+}
