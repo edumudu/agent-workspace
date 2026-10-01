@@ -3,8 +3,6 @@ package tui
 import (
 	"cmp"
 	"context"
-	"fmt"
-	"path/filepath"
 	"slices"
 	"sort"
 	"strings"
@@ -42,17 +40,20 @@ type dialog struct {
 	field    field
 	workItem string
 	model    string
-	roots    []string
-	kinds    []domain.WorkspaceKind
-	ws       int
-	harness  int
-	effort   int
+	spaces   []domain.Workspace
+	// last is the last used workspace root, named on its facts line.
+	last    string
+	ws      int
+	harness int
+	effort  int
 	// efforts is effortChoices plus any mapped effort a fallback brought that the picker lacks.
 	efforts []string
 	// fallback remembers the Claude start a fallback replaced, so going back restores it.
 	fallback *fallbackTrace
 	err      string
 	busy     bool
+	// started is set once the session exists, so only esc is left to press.
+	started bool
 	// seq tells this dialog's start reply from one sent by a dialog closed earlier.
 	seq      int
 	defaults map[domain.Harness]Defaults
@@ -81,11 +82,10 @@ func (m Model) openDialog() Model {
 	d.model, d.effort = start.Model, effortIndex(d.efforts, start.Effort)
 	all := sorted(m.workspaces)
 	last, found := domain.LastUsedWorkspace(all)
+	d.spaces = all
 	for i, w := range all {
-		d.roots = append(d.roots, w.Root)
-		d.kinds = append(d.kinds, w.Kind)
 		if found && w.Root == last.Root {
-			d.ws = i
+			d.ws, d.last = i, w.Root
 		}
 	}
 	m.dialog = d
@@ -154,21 +154,31 @@ func cycle(i, delta, n int) int {
 }
 
 func (d *dialog) text() *string {
-	switch d.field {
-	case fieldWorkItem:
+	if d.field == fieldWorkItem {
 		return &d.workItem
-	case fieldModel:
-		return &d.model
 	}
 	return nil
+}
+
+// models is the default, the harness's switch choices, then the current model
+// when a default or a fallback brought one the list lacks.
+func (d *dialog) models() []string {
+	out := append([]string{""}, domain.SwitchChoices(domain.Harness(harnessChoices[d.harness]), domain.SwitchModel)...)
+	if !slices.Contains(out, d.model) {
+		out = append(out, d.model)
+	}
+	return out
 }
 
 func (d *dialog) change(delta int) {
 	switch d.field {
 	case fieldWorkspace:
-		d.ws = cycle(d.ws, delta, len(d.roots))
+		d.ws = cycle(d.ws, delta, len(d.spaces))
 	case fieldHarness:
 		d.cycleHarness(delta)
+	case fieldModel:
+		models := d.models()
+		d.model = models[cycle(slices.Index(models, d.model), delta, len(models))]
 	case fieldEffort:
 		d.effort = cycle(d.effort, delta, len(d.efforts))
 	}
@@ -196,11 +206,14 @@ func (m Model) dialogKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	case "ctrl+c":
 		return m, tea.Quit
 	case "esc":
+		if m.opts.NewSessionOnly {
+			return m, tea.Quit
+		}
 		// why: a start already sent keeps going; its reply still selects and shows the session.
 		m.dialog = nil
 		return m, nil
 	}
-	if d.busy {
+	if d.busy || d.started {
 		return m, nil
 	}
 	switch msg.String() {
@@ -239,7 +252,7 @@ func (m Model) submit() tea.Cmd {
 	case strings.TrimSpace(d.workItem) == "":
 		d.err = "work item is empty"
 		return nil
-	case len(d.roots) == 0:
+	case len(d.spaces) == 0:
 		d.err = "no workspace: run agentws workspace add <path>"
 		return nil
 	}
@@ -251,7 +264,7 @@ func (m Model) submit() tea.Cmd {
 	d.err, d.busy = "", true
 	seq := d.seq
 	p := rpc.NewSessionParams{
-		Workspace: d.roots[d.ws],
+		Workspace: d.spaces[d.ws].Root,
 		WorkItem:  strings.TrimSpace(d.workItem),
 		Harness:   harnessChoices[d.harness],
 		Model:     strings.TrimSpace(d.model),
@@ -289,6 +302,40 @@ func (m Model) showNew(id string) tea.Cmd {
 	return m.call(rpc.MethodSessionFocus, rpc.SessionFocusParams{ID: id})
 }
 
+// showNewAndQuit ends the popup's program only once the new session is in
+// view, so closing the popup never races the focus call.
+func (m Model) showNewAndQuit(id string) tea.Cmd {
+	show := m.showNew(id)
+	return func() tea.Msg {
+		if show != nil {
+			if e, ok := show().(errMsg); ok {
+				return showFailedMsg(e)
+			}
+		}
+		return tea.QuitMsg{}
+	}
+}
+
+// showFailedMsg keeps the popup open to say the session started but could
+// not be put in view, instead of closing on an error no one sees.
+type showFailedMsg struct{ err error }
+
+type popupFailedMsg struct{}
+
+// openPopup asks the daemon to run the dialog in a popup; if it cannot, the
+// dialog opens inline instead.
+func (m Model) openPopup() tea.Cmd {
+	c, p := m.opts.Calls, m.opts.DialogPopup
+	return func() tea.Msg {
+		ctx, cancel := context.WithTimeout(context.Background(), callTimeout)
+		defer cancel()
+		if err := c.Call(ctx, rpc.MethodClientPopup, p, nil); err != nil {
+			return popupFailedMsg{}
+		}
+		return nil
+	}
+}
+
 func (m Model) endSession(id string) tea.Cmd {
 	if id == "" {
 		return nil
@@ -301,7 +348,7 @@ func (m Model) quotas() []domain.Quota {
 	for _, x := range m.sessions {
 		sessions = append(sessions, x)
 	}
-	return domain.Quotas(sessions)
+	return domain.Current(domain.Quotas(sessions), m.opts.Now())
 }
 
 func (m Model) chosenHarness() domain.Harness {
@@ -326,93 +373,4 @@ func (m Model) fallbackOffer() (domain.FallbackOffer, bool) {
 		Model:   strings.TrimSpace(d.model),
 		Effort:  d.efforts[d.effort],
 	})
-}
-
-func (m Model) adviceLine() (string, bool) {
-	advice, ok := m.advice()
-	if !ok {
-		return "", false
-	}
-	s := m.styles
-	low := advice.Low
-	left := []piece{{s.peach, fmt.Sprintf(" ⚠ %s %s %d%% left", low.Harness, domain.WindowLabel(low.Window), low.LeftPercent)}}
-	if offer, ok := m.fallbackOffer(); ok {
-		left = append(left, piece{s.dim, " · "}, piece{s.bold, "ctrl+s"}, piece{s.sub, strings.TrimRight(fmt.Sprintf(" %s %d%% %s", offer.Request.Harness, offer.Advice.OtherShortest.LeftPercent, offer.Request.Model), " ")})
-	} else if o := advice.OtherShortest; o != nil && advice.Other != domain.HarnessCodex {
-		left = append(left, piece{s.dim, " · "}, piece{s.bold, "ctrl+s"}, piece{s.sub, fmt.Sprintf(" %s %d%%", advice.Other, o.LeftPercent)})
-	}
-	return m.line(false, left, nil), true
-}
-
-func workItemKind(input string) string {
-	t := domain.ParseWorkItem(input)
-	switch t.Source {
-	case domain.TaskLinear:
-		return "linear " + t.Ref
-	case domain.TaskPR:
-		return "PR " + t.Ref
-	}
-	return "text"
-}
-
-// dialogLines also returns the row to keep in view: the active field, or
-// the status line under the fields once there is one.
-func (m Model) dialogLines() ([]string, int) {
-	s := m.styles
-	d := m.dialog
-	row := func(f field, label string, value []piece) string {
-		bar := piece{s.text, " "}
-		if d.field == f {
-			bar = piece{s.bar, "▌"}
-		}
-		return m.line(false, append([]piece{bar, {s.sub, fmt.Sprintf("%-10s ", label)}}, value...), nil)
-	}
-	choice := func(v string) []piece { return []piece{{s.bold, "‹ " + v + " ›"}} }
-	input := func(v string, f field) []piece {
-		cursor := ""
-		if d.field == f {
-			cursor = "▏"
-		}
-		return []piece{{s.text, v + cursor}}
-	}
-
-	ws := []piece{{s.dim, "none"}}
-	if len(d.roots) > 0 {
-		ws = append(choice(filepath.Base(d.roots[d.ws])), piece{s.dim, "  " + string(d.kinds[d.ws])})
-	}
-	effort := d.efforts[d.effort]
-	if effort == "" {
-		effort = "default"
-	}
-	model := input(d.model, fieldModel)
-	if d.model == "" && d.field != fieldModel {
-		model = []piece{{s.dim, "default"}}
-	}
-	out := []string{"", m.line(false, []piece{{s.header, " NEW SESSION"}}, nil), ""}
-	keep := 0
-	add := func(f field, line string) {
-		if d.field == f {
-			keep = len(out)
-		}
-		out = append(out, line)
-	}
-	add(fieldWorkItem, row(fieldWorkItem, "Work item", input(d.workItem, fieldWorkItem)))
-	out = append(out, m.line(false, []piece{{s.dim, fmt.Sprintf(" %-11s%s", "", workItemKind(d.workItem))}}, nil))
-	add(fieldWorkspace, row(fieldWorkspace, "Workspace", ws))
-	add(fieldHarness, row(fieldHarness, "Harness", choice(harnessChoices[d.harness])))
-	if line, ok := m.adviceLine(); ok {
-		out = append(out, line)
-	}
-	add(fieldModel, row(fieldModel, "Model", model))
-	add(fieldEffort, row(fieldEffort, "Effort", choice(effort)))
-	out = append(out, "")
-	switch {
-	case d.busy:
-		keep = len(out)
-		out = append(out, m.line(false, []piece{{s.sub, " starting…"}}, nil))
-	case d.err != "":
-		keep = len(out)
-		out = append(out, m.line(false, []piece{{s.peach, " ✗ " + d.err}}, nil))
-	}
-	return append(out, m.line(false, []piece{{s.dim, " ⏎ start · ⇥ next · ←/→ change · esc cancel"}}, nil)), keep
 }
