@@ -473,10 +473,18 @@ func TestQDetachesFromTheLayoutInsteadOfQuitting(t *testing.T) {
 			t.Fatalf("%s calls %v", k, c.methods())
 		}
 	}
-	c.err = errors.New("no client layout is open")
+	c.err = &rpc.Error{Code: rpc.CodeNotFound, Message: "no client layout is open"}
 	if _, cmd := m.Update(key("q")); cmd == nil {
 		t.Fatal("q did nothing without a layout")
 	} else if _, quit := cmd().(tea.QuitMsg); !quit {
 		t.Fatal("q does not quit when there is no layout to leave")
+	}
+	c.err = errors.New("tmux: server exited")
+	next, cmd := m.Update(key("q"))
+	if _, quit := cmd().(tea.QuitMsg); quit {
+		t.Fatal("q quit the sidebar on a detach error, leaving no sidebar")
+	}
+	if out := screen(update(next.(tui.Model), cmd())); !strings.Contains(out, "server exited") {
+		t.Fatalf("the detach error is not shown:\n%s", out)
 	}
 }

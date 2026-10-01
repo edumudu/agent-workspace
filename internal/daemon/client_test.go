@@ -141,7 +141,7 @@ func TestClientDetachLeavesTheLayout(t *testing.T) {
 	c := dial(t, path)
 	ctx := context.Background()
 	var rerr *rpc.Error
-	if err := c.Call(ctx, rpc.MethodClientDetach, struct{}{}, nil); !errors.As(err, &rerr) {
+	if err := c.Call(ctx, rpc.MethodClientDetach, struct{}{}, nil); !errors.As(err, &rerr) || rerr.Code != rpc.CodeNotFound {
 		t.Fatalf("detach before any layout = %v; want an rpc error", err)
 	}
 	opened, err := c.OpenClient(ctx, rpc.OpenClientParams{Command: []string{"agentws", "tui"}})
