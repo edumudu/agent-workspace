@@ -9,6 +9,7 @@ import (
 	"context"
 	"encoding/json"
 	"net"
+	"slices"
 	"sort"
 	"sync"
 	"time"
@@ -69,6 +70,13 @@ func (e WorktreeChanged) apply(s *state) rpc.Diff {
 }
 
 func (e SessionChanged) apply(s *state) rpc.Diff {
+	if e.Session.Forgotten() {
+		delete(s.sessions, e.Session.ID)
+		delete(s.events, e.Session.ID)
+		s.subagents = slices.DeleteFunc(s.subagents, func(x domain.Subagent) bool { return x.SessionID == e.Session.ID })
+		s.store.DeleteSession(e.Session.ID)
+		return rpc.Diff{RemovedSession: e.Session.ID}
+	}
 	s.sessions[e.Session.ID] = e.Session
 	s.store.PutSession(e.Session)
 	return rpc.Diff{Session: &e.Session}
@@ -468,11 +476,11 @@ func (d *Daemon) dispatch(c *conn, line []byte) (*rpc.Response, bool) {
 		return errorResponse(req.ID, rpc.CodeUnknownMethod, "unknown method "+req.Method), true
 	case rpc.MethodReviewOpen, rpc.MethodReviewViewed, rpc.MethodReviewSend, rpc.MethodReviewHunk:
 		return d.dispatchReview(req)
-	case rpc.MethodShellToggle, rpc.MethodNvimToggle, rpc.MethodNvimOpen:
+	case rpc.MethodShellToggle, rpc.MethodShellFocus, rpc.MethodNvimToggle, rpc.MethodNvimOpen:
 		return d.dispatchTerminal(req)
 	case rpc.MethodReviewComment:
 		return d.addComment(req)
-	case rpc.MethodOpenClient, rpc.MethodFocusMain, rpc.MethodClientReview:
+	case rpc.MethodOpenClient, rpc.MethodFocusMain, rpc.MethodClientReview, rpc.MethodClientPopup:
 		return d.dispatchClient(req), true
 	case rpc.MethodDebugSeed:
 		var p rpc.DebugSeedParams
@@ -480,7 +488,7 @@ func (d *Daemon) dispatch(c *conn, line []byte) (*rpc.Response, bool) {
 			return errorResponse(req.ID, rpc.CodeBadRequest, "debug.seed needs a count of at least 1"), true
 		}
 		ok := d.query(func(s *state) {
-			for _, e := range seed(p.Count) {
+			for _, e := range seed(p.Count, p.Codex) {
 				s.emit(e)
 			}
 		})

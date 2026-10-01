@@ -10,10 +10,10 @@ Status: accepted, 2026-09-30.
 - The new worktree is recorded the way worktree detection (ADR 0012) records one: ID and path as git reports them with symlinks resolved, `Repo` the main checkout, `SessionID` the new session. A later scan then finds it known instead of adopting a duplicate.
 - `app.Sessions.Start` adds the worktree, runs the setup recipe (`app.SetupFunc`), then opens the harness pane. The daemon's `SetupFunc` is `app.WorktreeSetup.Run` (ADR 0013). It stops at the first failure and never removes a worktree it added. The work item text is the agent's first prompt.
 - `session.focus` swaps the session's pane into the client's main slot and focuses it. The TUI calls it on `enter` and right after a session starts. The focused session is marked read.
-- `session.end` (`x`, then `y`) kills the pane and calls `Session.End()`: state `idle`, `Pane` cleared, unfocused. The session and its worktrees stay until cleanup.
+- `session.end` (`x`, then `y`) kills the pane and calls `Session.End()`: state `idle`, `Pane` cleared, unfocused. The session and its worktrees stay until cleanup. (Superseded by [ADR 0035](0035-ended-sessions.md): the session also leaves the sidebar, and is forgotten once it has no worktree.)
 - On start, the daemon checks the sessions it restored against `tmux list-panes` off the loop and ends those whose pane is gone, such as after a reboot. This replaces the `PaneBinding` stand-in from #6.
 - The Codex adapter implements `app.HarnessAdapter` like Claude's, so both launch through the same path.
-- The dialog shows `domain.Advise`'s low-quota warning for the chosen harness, and `ctrl+s` switches to the other harness when it has figures (ADR 0017).
+- The dialog shows `domain.Advise`'s low-quota warning for the chosen harness, and `ctrl+s` switches to the other harness when it has figures (ADR 0017). (ADR 0037 moves the dialog into a centred popup and makes Model a picker.)
 
 ## Why
 

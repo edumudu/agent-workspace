@@ -126,6 +126,29 @@ func TestWorktreeDetectDeleteWorktreeRemovesTheRow(t *testing.T) {
 	}
 }
 
+func TestDeleteSessionRemovesTheRowAndItsEvents(t *testing.T) {
+	s, path := openTemp(t)
+	s.PutSession(domain.Session{ID: "gone"})
+	s.PutSession(domain.Session{ID: "kept"})
+	s.PutEvent(domain.SessionEvent{SessionID: "gone", Detail: "flushed"})
+	s.PutEvent(domain.SessionEvent{SessionID: "kept", Detail: "kept"})
+	if err := s.Flush(); err != nil {
+		t.Fatal(err)
+	}
+	s.PutEvent(domain.SessionEvent{SessionID: "gone", Detail: "unflushed"})
+	s.DeleteSession("gone")
+	snap, err := reopen(t, s, path).Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(snap.Sessions) != 1 || snap.Sessions[0].ID != "kept" {
+		t.Errorf("sessions = %+v, want only kept", snap.Sessions)
+	}
+	if len(snap.Events) != 1 || snap.Events[0].SessionID != "kept" {
+		t.Errorf("events = %+v, want only kept's", snap.Events)
+	}
+}
+
 func TestWritesReachDiskWithoutExplicitFlush(t *testing.T) {
 	s, path := openTemp(t)
 	s.PutTask(domain.Task{ID: "t1"})

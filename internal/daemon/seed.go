@@ -23,15 +23,15 @@ func seedLimits(h domain.Harness, now time.Time) []domain.RateLimit {
 		}
 	}
 	return []domain.RateLimit{
-		{Window: "five_hour", UsedPercent: 57, ResetsAt: resets(2*time.Hour + 10*time.Minute)},
+		{Window: "five_hour", UsedPercent: 88, ResetsAt: resets(2*time.Hour + 10*time.Minute)},
 		{Window: "seven_day", UsedPercent: 71, ResetsAt: resets(3 * 24 * time.Hour)},
-		{Window: "seven_day_opus", UsedPercent: 88, ResetsAt: resets(3 * 24 * time.Hour)},
 	}
 }
 
 // seed makes n fake sessions, two per task, each with one to three
 // worktrees. IDs are prefixed "seed-" so a second seed replaces the first.
-func seed(n int) []Event {
+// Every third session is Codex only when codex is set.
+func seed(n int, codex bool) []Event {
 	var events []Event
 	now := time.Now()
 	for i := range n {
@@ -51,7 +51,7 @@ func seed(n int) []Event {
 			State:   seedStates[i%len(seedStates)],
 			Usage:   domain.Usage{ContextLeftPercent: 90 - (i*13)%70},
 		}
-		if i%3 == 1 {
+		if codex && i%3 == 1 {
 			s.Harness, s.Model, s.Effort = domain.HarnessCodex, "gpt-6", "med"
 		}
 		s.Limits, s.LimitsAt = seedLimits(s.Harness, now), now

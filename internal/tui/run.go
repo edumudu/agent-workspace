@@ -6,7 +6,6 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/giovaniif/agent-workspace/internal/domain"
 	"github.com/giovaniif/agent-workspace/internal/rpc"
 )
 
@@ -20,12 +19,15 @@ const FPS = 120
 // Run subscribes to the daemon and runs the TUI until the user quits or ctx
 // ends. Diffs are read on a second connection so a slow frame never delays
 // FocusMain.
-func Run(ctx context.Context, subscriber, caller *rpc.Client, theme Theme, defaults map[domain.Harness]Defaults, fallback domain.FallbackConfig) error {
+func Run(ctx context.Context, subscriber, caller *rpc.Client, opts Options) error {
 	sub, err := subscriber.Subscribe(ctx)
 	if err != nil {
 		return err
 	}
-	m := New(Options{Theme: theme, Tick: TickInterval, Focus: caller, Attend: caller, Kill: caller, Calls: caller, Switch: caller, Defaults: defaults, Fallback: fallback, Review: caller, Disk: caller})
+	opts.Tick = TickInterval
+	opts.Focus, opts.Attend, opts.Kill, opts.Calls = caller, caller, caller, caller
+	opts.Switch, opts.Review, opts.Disk = caller, caller, caller
+	m := New(opts)
 	next, _ := m.Update(StateMsg(sub.State))
 	p := tea.NewProgram(next, tea.WithContext(ctx), tea.WithFPS(FPS))
 	go func() {

@@ -81,7 +81,7 @@ func TestDebugSeedAddsFakeSessionsWithWorktrees(t *testing.T) {
 	_, path := start(t, &memStore{})
 	c := dial(t, path)
 	ctx := context.Background()
-	if err := c.DebugSeed(ctx, 3); err != nil {
+	if err := c.DebugSeed(ctx, rpc.DebugSeedParams{Count: 3}); err != nil {
 		t.Fatal(err)
 	}
 	sub, err := dial(t, path).Subscribe(ctx)
@@ -110,7 +110,26 @@ func TestDebugSeedAddsFakeSessionsWithWorktrees(t *testing.T) {
 			}
 		}
 	}
-	if err := c.DebugSeed(ctx, 0); err == nil {
+	if err := c.DebugSeed(ctx, rpc.DebugSeedParams{Count: 0}); err == nil {
 		t.Fatal("seeding 0 sessions succeeded")
+	}
+}
+
+func TestClientPopupRunsTheCommandInAPopup(t *testing.T) {
+	d, path := start(t, &memStore{})
+	host := &fakeClientHost{}
+	d.SetClientHost(host)
+	c := dial(t, path)
+	ctx := context.Background()
+	p := rpc.ClientPopupParams{Command: []string{"agentws", "tui", "--new-session"}, Env: map[string]string{"AGENTWS_HOME": "/h"}}
+	if err := c.Call(ctx, rpc.MethodClientPopup, p, nil); err != nil {
+		t.Fatal(err)
+	}
+	if len(host.commandPopups) != 1 || !slices.Equal(host.commandPopups[0].Command, p.Command) || host.commandPopups[0].Env["AGENTWS_HOME"] != "/h" {
+		t.Fatalf("popups %+v", host.commandPopups)
+	}
+	var rerr *rpc.Error
+	if err := c.Call(ctx, rpc.MethodClientPopup, rpc.ClientPopupParams{}, nil); !errors.As(err, &rerr) || rerr.Code != rpc.CodeBadRequest {
+		t.Fatalf("empty command = %v; want %s", err, rpc.CodeBadRequest)
 	}
 }

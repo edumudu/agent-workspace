@@ -63,10 +63,15 @@ func attachIn(home string) error {
 	return syscall.Exec(bin, opened.Attach, env)
 }
 
-func runTUI(stderr io.Writer) int {
+func runTUI(args []string, stderr io.Writer) int {
+	newSession := len(args) == 1 && args[0] == "--new-session"
+	if len(args) > 0 && !newSession {
+		fmt.Fprintln(stderr, "usage: agentws tui [--new-session]")
+		return 2
+	}
 	home, err := rpc.Home()
 	if err == nil {
-		err = tuiIn(home)
+		err = tuiIn(home, newSession)
 	}
 	if err != nil {
 		fmt.Fprintf(stderr, "agentws tui: %v\n", err)
@@ -75,7 +80,9 @@ func runTUI(stderr io.Writer) int {
 	return 0
 }
 
-func tuiIn(home string) error {
+// tuiIn runs the sidebar, or with newSession the dialog alone, as the popup n
+// opens.
+func tuiIn(home string, newSession bool) error {
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGTERM)
 	defer cancel()
 	theme, err := tui.LoadTheme(filepath.Join(home, "config.toml"))
@@ -100,7 +107,11 @@ func tuiIn(home string) error {
 		return err
 	}
 	defer func() { _ = caller.Close() }()
-	err = tui.Run(ctx, subscriber, caller, theme, defaults, fallback)
+	opts := tui.Options{Theme: theme, Defaults: defaults, Fallback: fallback, NewSessionOnly: newSession}
+	if self, err := os.Executable(); err == nil && !newSession {
+		opts.DialogPopup = rpc.ClientPopupParams{Command: []string{self, "tui", "--new-session"}, Env: map[string]string{"AGENTWS_HOME": home}}
+	}
+	err = tui.Run(ctx, subscriber, caller, opts)
 	if errors.Is(err, context.Canceled) {
 		return nil
 	}
@@ -108,7 +119,8 @@ func tuiIn(home string) error {
 }
 
 func runDebugSeed(args []string, stdout, stderr io.Writer) int {
-	if len(args) != 2 || args[0] != "seed" {
+	codex := len(args) == 3 && args[2] == "--codex"
+	if (len(args) != 2 && !codex) || args[0] != "seed" {
 		fmt.Fprintln(stderr, debugUsage)
 		return 2
 	}
@@ -125,7 +137,7 @@ func runDebugSeed(args []string, stdout, stderr io.Writer) int {
 	ctx := context.Background()
 	c, err := connect(ctx, home)
 	if err == nil {
-		err = c.DebugSeed(ctx, n)
+		err = c.DebugSeed(ctx, rpc.DebugSeedParams{Count: n, Codex: codex})
 		_ = c.Close()
 	}
 	if err != nil {
