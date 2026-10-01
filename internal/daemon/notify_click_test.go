@@ -2,6 +2,7 @@ package daemon_test
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -62,6 +63,44 @@ func TestNotifyFocusingWithdrawsTheBanner(t *testing.T) {
 		t.Fatal(err)
 	}
 	if got := r.removal(t); got != "s1" {
+		t.Fatalf("removed %q", got)
+	}
+}
+
+func TestNotifyAttachFromAnUnknownTerminalActivatesNone(t *testing.T) {
+	r := newRig(t, &memStore{}, nil)
+	r.d.SetClientHost(&fakeClientHost{})
+	tui := rpc.OpenClientParams{Command: []string{"agentws", "tui"}, Terminal: "com.apple.Terminal"}
+	if _, err := r.c.OpenClient(context.Background(), tui); err != nil {
+		t.Fatal(err)
+	}
+	tui.Terminal = ""
+	if _, err := r.c.OpenClient(context.Background(), tui); err != nil {
+		t.Fatal(err)
+	}
+	r.addRunning(t, "s1", domain.HarnessClaude, "%1")
+	r.hook(t, "claude", "Stop", "%1", "")
+	if got := r.banner(t); got.Terminal != "" {
+		t.Fatalf("terminal %q", got.Terminal)
+	}
+}
+
+func TestNotifyWithdrawalIsKeptWhileTheQueueIsFull(t *testing.T) {
+	r := newRig(t, &memStore{}, nil)
+	for i := range 140 {
+		pane := fmt.Sprintf("%%%d", i)
+		r.addRunning(t, fmt.Sprintf("s%d", i), domain.HarnessClaude, pane)
+		r.hook(t, "claude", "Stop", pane, "")
+	}
+	if err := r.c.FocusSession(context.Background(), "s0"); err != nil {
+		t.Fatal(err)
+	}
+	next(t, r.sub.Diffs)
+	go func() {
+		for range r.n.banners {
+		}
+	}()
+	if got := r.removal(t); got != "s0" {
 		t.Fatalf("removed %q", got)
 	}
 }
