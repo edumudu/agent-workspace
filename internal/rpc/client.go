@@ -11,7 +11,25 @@ import (
 	"time"
 
 	"github.com/giovaniif/agent-workspace/internal/domain"
+	"github.com/giovaniif/agent-workspace/internal/version"
 )
+
+// checkBuild refuses an answer from a daemon that names no build: it predates
+// the handshake, so it cannot have checked ours.
+func checkBuild(method string, resp Response) error {
+	if resp.Build == "" && resp.Error == nil && !AnyBuild(method) {
+		return Mismatch("", version.String(), 0, builtAtUnix())
+	}
+	return nil
+}
+
+func builtAtUnix() int64 {
+	t := version.BuiltAt()
+	if t.IsZero() {
+		return 0
+	}
+	return t.Unix()
+}
 
 const StartTimeout = 2 * time.Second
 
@@ -84,6 +102,9 @@ func (c *Client) Call(ctx context.Context, method string, params, out any) error
 	defer c.forget(id)
 	resp, err := c.await(ctx, ch)
 	if err != nil {
+		return err
+	}
+	if err := checkBuild(method, resp); err != nil {
 		return err
 	}
 	return decode(resp, out)
@@ -214,6 +235,9 @@ func (c *Client) Subscribe(ctx context.Context) (Subscription, error) {
 	}
 	resp, err := c.await(ctx, ch)
 	if err == nil {
+		err = checkBuild(MethodSubscribe, resp)
+	}
+	if err == nil {
 		err = decode(resp, nil)
 	}
 	var sub Subscription
@@ -258,7 +282,7 @@ func (c *Client) send(method string, params any) (uint64, chan Response, error) 
 	c.mu.Unlock()
 
 	c.writeMu.Lock()
-	err := c.enc.Encode(Request{V: Version, ID: id, Method: method, Params: raw})
+	err := c.enc.Encode(Request{V: Version, ID: id, Method: method, Params: raw, Build: version.String(), BuiltAt: builtAtUnix()})
 	c.writeMu.Unlock()
 	if err != nil {
 		c.forget(id)
