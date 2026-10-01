@@ -233,3 +233,13 @@ func TestNewSessionPopupStartsInTheNewFolder(t *testing.T) {
 		t.Fatalf("calls %+v", c.calls)
 	}
 }
+
+func TestNewSessionPopupPrefersTheMostSpecificWorkspace(t *testing.T) {
+	st := rpc.State{Workspaces: []domain.Workspace{
+		{Root: "/src", Kind: domain.WorkspaceOrchestration},
+		{Root: "/src/api", Kind: domain.WorkspaceSingle},
+	}}
+	if out := screen(launchedIn(t, "/src/api/internal", st)); !strings.Contains(out, "‹ api ›") {
+		t.Fatalf("want /src/api, not its parent /src:\n%s", out)
+	}
+}
