@@ -54,3 +54,4 @@ Limits of the amendment:
 - Inside another multiplexer or over ssh, `__CFBundleIdentifier` and `TERM_PROGRAM` may name the wrong app or nothing.
 - The click command runs with terminal-notifier's environment, so it names the `agentws` binary and `AGENTWS_HOME` the daemon had at start. Replacing the binary in place keeps working; moving it does not until the daemon restarts.
 - A banner removed while macOS has it on screen may stay until it times out; removal clears it from Notification Center.
+- A failed `-remove` is logged, not retried; the stale banner stays until dismissed or replaced by the session's next banner (same group).
