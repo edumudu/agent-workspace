@@ -18,6 +18,7 @@ import (
 	"github.com/giovaniif/agent-workspace/internal/app"
 	"github.com/giovaniif/agent-workspace/internal/domain"
 	"github.com/giovaniif/agent-workspace/internal/rpc"
+	"github.com/giovaniif/agent-workspace/internal/version"
 )
 
 // outBuffer is how many messages a connection may fall behind before the
@@ -426,6 +427,13 @@ func (d *Daemon) dispatch(c *conn, line []byte) (*rpc.Response, bool) {
 	if req.V != rpc.Version {
 		return errorResponse(req.ID, rpc.CodeUnsupportedVersion, "this daemon speaks protocol v1"), true
 	}
+	if req.Build != "" && req.Build != version.String() && !rpc.AnyBuild(req.Method) {
+		var built int64
+		if t := version.BuiltAt(); !t.IsZero() {
+			built = t.Unix()
+		}
+		return &rpc.Response{V: rpc.Version, ID: req.ID, Error: rpc.Mismatch(version.String(), req.Build, built, req.BuiltAt)}, true
+	}
 	switch req.Method {
 	case rpc.MethodStatus:
 		var st rpc.Status
@@ -570,6 +578,7 @@ func newConn(nc net.Conn) *conn {
 // push queues resp without blocking. A connection too far behind is dropped,
 // and push reports false.
 func (c *conn) push(resp rpc.Response) bool {
+	resp.Build = version.String()
 	select {
 	case <-c.gone:
 		return false

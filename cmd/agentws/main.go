@@ -8,12 +8,7 @@ import (
 	"slices"
 
 	"github.com/giovaniif/agent-workspace/internal/rpc"
-)
-
-// Set at build time with -ldflags "-X main.version=... -X main.commit=...".
-var (
-	version = "dev"
-	commit  = ""
+	"github.com/giovaniif/agent-workspace/internal/version"
 )
 
 var stubs []string
@@ -32,7 +27,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 	case cmd == "debug":
 		return runDebug(args[1:], stdout, stderr)
 	case cmd == "version":
-		fmt.Fprintf(stdout, "agentws %s (commit %s)\n", version, buildCommit())
+		fmt.Fprintf(stdout, "agentws %s (commit %s)\n", version.Version, buildCommit())
 		return 0
 	case cmd == "hook":
 		home, _ := rpc.Home()
@@ -74,8 +69,8 @@ func run(args []string, stdout, stderr io.Writer) int {
 }
 
 func buildCommit() string {
-	if commit != "" {
-		return commit
+	if version.Commit != "" {
+		return version.Commit
 	}
 	if info, ok := debug.ReadBuildInfo(); ok {
 		for _, s := range info.Settings {
