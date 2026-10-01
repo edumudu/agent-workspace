@@ -34,7 +34,7 @@ func TestNotifyBannerFor(t *testing.T) {
 
 var bannerT0 = time.Date(2026, 10, 1, 12, 0, 0, 0, time.UTC)
 
-func turn(sessionID string, evs ...SessionEvent) []SessionEvent {
+func bannerTurn(sessionID string, evs ...SessionEvent) []SessionEvent {
 	out := []SessionEvent{{SessionID: sessionID, At: bannerT0, Kind: EventUserPromptSubmit}}
 	for _, ev := range evs {
 		ev.SessionID = sessionID
@@ -67,47 +67,47 @@ func TestNotifyBannerContent(t *testing.T) {
 			"x · api@feature/a-very-long-branch-n…", "done"},
 		{"done says the first line of the last message and the elapsed time",
 			BannerInput{Session: claude, Name: "x", Effect: notify(StateDone), Now: bannerT0.Add(4*time.Minute + 12*time.Second),
-				Events: turn("a", SessionEvent{Kind: EventStop, Text: "\n  Added the retry to the client.\n\nDetails follow."})},
+				Events: bannerTurn("a", SessionEvent{Kind: EventStop, Text: "\n  Added the retry to the client.\n\nDetails follow."})},
 			"x", "Added the retry to the client. (4m12s)"},
 		{"done with no message says how long it took",
 			BannerInput{Session: claude, Name: "x", Effect: notify(StateDone), Now: bannerT0.Add(90 * time.Minute),
-				Events: turn("a", SessionEvent{Kind: EventStop})},
+				Events: bannerTurn("a", SessionEvent{Kind: EventStop})},
 			"x", "done in 1h30m"},
 		{"done ignores another session's events",
 			BannerInput{Session: claude, Name: "x", Effect: notify(StateDone), Now: bannerT0.Add(time.Minute),
-				Events: turn("b", SessionEvent{Kind: EventStop, Text: "not mine"})},
+				Events: bannerTurn("b", SessionEvent{Kind: EventStop, Text: "not mine"})},
 			"x", "done"},
 		{"permission names the tool and target",
 			BannerInput{Session: claude, Name: "x", Effect: notify(StatePermission),
-				Events: turn("a", SessionEvent{Kind: EventPermissionRequest, Tool: "Bash", Detail: "npm test"})},
+				Events: bannerTurn("a", SessionEvent{Kind: EventPermissionRequest, Tool: "Bash", Detail: "npm test"})},
 			"x", "needs permission: Bash: npm test"},
 		{"permission without a tool uses the message",
 			BannerInput{Session: claude, Name: "x", Effect: notify(StatePermission),
-				Events: turn("a", SessionEvent{Kind: EventPermissionRequest, Text: "Claude needs your permission to use Edit"})},
+				Events: bannerTurn("a", SessionEvent{Kind: EventPermissionRequest, Text: "Claude needs your permission to use Edit"})},
 			"x", "needs permission: Claude needs your permission to use Edit"},
 		{"waiting quotes the question",
 			BannerInput{Session: claude, Name: "x", Effect: notify(StateWaiting),
-				Events: turn("a", SessionEvent{Kind: EventStop, Text: "I found two options.\n\nShould I use the cache?"}, SessionEvent{Kind: EventWaitingForInput, Text: "Claude is waiting for your input"})},
+				Events: bannerTurn("a", SessionEvent{Kind: EventStop, Text: "I found two options.\n\nShould I use the cache?"}, SessionEvent{Kind: EventWaitingForInput, Text: "Claude is waiting for your input"})},
 			"x", "asks: Should I use the cache?"},
 		{"waiting without a question uses the notification",
 			BannerInput{Session: claude, Name: "x", Effect: notify(StateWaiting),
-				Events: turn("a", SessionEvent{Kind: EventWaitingForInput, Text: "Claude is waiting for your input"})},
+				Events: bannerTurn("a", SessionEvent{Kind: EventWaitingForInput, Text: "Claude is waiting for your input"})},
 			"x", "waiting: Claude is waiting for your input"},
 		{"limit hit is explicit",
 			BannerInput{Session: claude, Name: "x", Effect: notify(StateDone), Now: bannerT0.Add(time.Minute),
-				Events: turn("a", SessionEvent{Kind: EventStop, Text: "You've hit your usage limit · resets 5pm"})},
+				Events: bannerTurn("a", SessionEvent{Kind: EventStop, Text: "You've hit your usage limit · resets 5pm"})},
 			"x", "usage limit: You've hit your usage limit · resets 5pm"},
 		{"api error is explicit",
 			BannerInput{Session: claude, Name: "x", Effect: notify(StateDone), Now: bannerT0.Add(time.Minute),
-				Events: turn("a", SessionEvent{Kind: EventStop, Text: "API Error: 529 overloaded"})},
+				Events: bannerTurn("a", SessionEvent{Kind: EventStop, Text: "API Error: 529 overloaded"})},
 			"x", "error: API Error: 529 overloaded"},
 		{"secrets are masked",
 			BannerInput{Session: claude, Name: "x", Effect: notify(StatePermission),
-				Events: turn("a", SessionEvent{Kind: EventPermissionRequest, Tool: "Bash", Detail: "curl -H token=abc123 https://x"})},
+				Events: bannerTurn("a", SessionEvent{Kind: EventPermissionRequest, Tool: "Bash", Detail: "curl -H token=abc123 https://x"})},
 			"x", "needs permission: Bash: curl -H token=… https://x"},
 		{"long body is truncated",
 			BannerInput{Session: claude, Name: "x", Effect: notify(StateDone),
-				Events: turn("a", SessionEvent{Kind: EventStop, Text: strings.Repeat("word ", 60)})},
+				Events: bannerTurn("a", SessionEvent{Kind: EventStop, Text: strings.Repeat("word ", 60)})},
 			"x", strings.Repeat("word ", 23) + "word…"},
 	}
 	for _, tt := range cases {
@@ -126,7 +126,7 @@ func TestNotifyBannerMasksSecretTokens(t *testing.T) {
 		"API_KEY=abcd",
 	} {
 		b, _ := BannerFor(BannerInput{Session: Session{ID: "a"}, Name: "x", Effect: notify(StatePermission),
-			Events: turn("a", SessionEvent{Kind: EventPermissionRequest, Tool: "Bash", Detail: in})})
+			Events: bannerTurn("a", SessionEvent{Kind: EventPermissionRequest, Tool: "Bash", Detail: in})})
 		for _, secret := range []string{"ghp_abc", "sk-ant", "hunter2", "abcd"} {
 			if strings.Contains(b.Body, secret) {
 				t.Errorf("%q leaked into %q", in, b.Body)
@@ -140,15 +140,15 @@ func TestNotifyBannerExamplesGolden(t *testing.T) {
 	web := Worktree{Repo: "web", Branch: "fix/login-redirect"}
 	examples := []BannerInput{
 		{Session: Session{ID: "a", Harness: HarnessClaude}, Name: "retry the client", Effect: notify(StateDone), Worktrees: []Worktree{api}, Now: bannerT0.Add(6*time.Minute + 3*time.Second),
-			Events: turn("a", SessionEvent{Kind: EventStop, Text: "Added exponential backoff to the HTTP client and covered it with tests.\n\nAll 48 tests pass."})},
+			Events: bannerTurn("a", SessionEvent{Kind: EventStop, Text: "Added exponential backoff to the HTTP client and covered it with tests.\n\nAll 48 tests pass."})},
 		{Session: Session{ID: "a", Harness: HarnessClaude}, Name: "retry the client", Effect: notify(StatePermission), Worktrees: []Worktree{api},
-			Events: turn("a", SessionEvent{Kind: EventPermissionRequest, Tool: "Bash", Detail: "go test ./internal/client/..."})},
+			Events: bannerTurn("a", SessionEvent{Kind: EventPermissionRequest, Tool: "Bash", Detail: "go test ./internal/client/..."})},
 		{Session: Session{ID: "b", Harness: HarnessCodex}, Name: "login redirect", Effect: notify(StatePermission), Worktrees: []Worktree{web},
-			Events: turn("b", SessionEvent{Kind: EventPermissionRequest, Tool: "Edit", Detail: "/src/routes/login.ts"})},
+			Events: bannerTurn("b", SessionEvent{Kind: EventPermissionRequest, Tool: "Edit", Detail: "/src/routes/login.ts"})},
 		{Session: Session{ID: "b", Harness: HarnessClaude}, Name: "login redirect", Effect: notify(StateWaiting), Worktrees: []Worktree{web},
-			Events: turn("b", SessionEvent{Kind: EventStop, Text: "The redirect loses the query string.\n\nShould I keep the old /signin route as an alias?"})},
+			Events: bannerTurn("b", SessionEvent{Kind: EventStop, Text: "The redirect loses the query string.\n\nShould I keep the old /signin route as an alias?"})},
 		{Session: Session{ID: "c", Harness: HarnessClaude}, Name: "", Effect: notify(StateDone), Worktrees: []Worktree{api, web}, Now: bannerT0.Add(2 * time.Hour),
-			Events: turn("c", SessionEvent{Kind: EventStop, Text: "You've hit your usage limit · resets 5pm"})},
+			Events: bannerTurn("c", SessionEvent{Kind: EventStop, Text: "You've hit your usage limit · resets 5pm"})},
 	}
 	var sb strings.Builder
 	for _, in := range examples {
@@ -171,7 +171,7 @@ func TestNotifyMutedSessionStillGoesUnread(t *testing.T) {
 		t.Fatal("muted session is not unread after done")
 	}
 	for _, e := range effects {
-		if _, ok := BannerFor(next, "x", e); ok {
+		if _, ok := BannerFor(BannerInput{Session: next, Name: "x", Effect: e}); ok {
 			t.Fatalf("muted session produced a banner for %+v", e)
 		}
 	}
@@ -219,7 +219,7 @@ func TestNotifyBurstOfTwentyAttentionEventsIsOneBanner(t *testing.T) {
 		var effects []Effect
 		s, effects = s.Apply(HarnessEvent{Kind: EventPermissionRequest})
 		for _, e := range effects {
-			if _, ok := BannerFor(s, "x", e); ok && c.Allow(s.ID, now.Add(time.Duration(i)*100*time.Millisecond)) {
+			if _, ok := BannerFor(BannerInput{Session: s, Name: "x", Effect: e}); ok && c.Allow(s.ID, now.Add(time.Duration(i)*100*time.Millisecond)) {
 				banners++
 			}
 		}
