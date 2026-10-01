@@ -54,7 +54,12 @@ build() {
 }
 
 restart() {
-	"$bin" daemon stop >/dev/null 2>&1 || true
+	local out
+	# why: only "not running" is fine; a daemon that would not stop must not be taken for the new one.
+	if ! out=$("$bin" daemon stop 2>&1) && [[ $out != *"not running"* ]]; then
+		note "could not stop the dev daemon: $out"
+		return 1
+	fi
 	"$bin" daemon start >>"$log" 2>&1
 	tmux -L "$socket" list-panes -a -F '#{pane_id} #{pane_start_command}' 2>/dev/null |
 		while read -r pane cmd; do
@@ -96,6 +101,14 @@ stop_watcher() {
 	fi
 }
 
+# why: another scripts/dev may have taken over the pid file; leave its watcher running.
+stop_own_watcher() {
+	kill "$watcher" 2>/dev/null || true
+	if [ "$(cat "$pidfile" 2>/dev/null)" = "$watcher" ]; then
+		rm -f "$pidfile"
+	fi
+}
+
 if [ "${1:-}" = stop ]; then
 	stop_watcher
 	[ -x "$bin" ] && "$bin" daemon stop || true
@@ -105,7 +118,7 @@ fi
 mark_sources
 if ! build; then
 	cat "$home/build.log" >&2
-	[ -x "$bin" ] || exit 1
+	exit 1
 fi
 restart
 if [ -n "${SEED:-}" ]; then
@@ -114,7 +127,8 @@ fi
 
 stop_watcher
 watch &
-echo $! >"$pidfile"
-trap stop_watcher EXIT
+watcher=$!
+echo "$watcher" >"$pidfile"
+trap stop_own_watcher EXIT
 echo "agentws dev: home $home, tmux -L $socket, log $log"
 "$bin"
