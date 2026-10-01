@@ -181,10 +181,11 @@ type fakeClientHost struct {
 	// duringCheck runs inside the SlotHasPane call that reports the pane missing.
 	duringCheck func()
 
-	slotPane map[app.Slot]app.PaneID
-	below    app.PaneID
-	belowLog []string
-	popups   []app.PaneID
+	slotPane      map[app.Slot]app.PaneID
+	below         app.PaneID
+	belowLog      []string
+	popups        []app.PaneID
+	commandPopups []app.PaneSpec
 }
 
 // SlotHasPane reports the slot pane as missing once after loseSlotPane.
@@ -738,6 +739,13 @@ func (g *fakeHunkGit) done() []string {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	return append([]string(nil), g.calls...)
+}
+
+func (h *fakeClientHost) PopupCommand(_ context.Context, spec app.PaneSpec) error {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.commandPopups = append(h.commandPopups, spec)
+	return nil
 }
 
 func (s *memStore) DeleteSession(id string) {
