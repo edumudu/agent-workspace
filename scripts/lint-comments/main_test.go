@@ -16,7 +16,7 @@ func TestCheckFile(t *testing.T) {
 		{"why.go.txt", nil},
 		{"directive.go.txt", []int{6}},
 		{"todo.go.txt", []int{3, 10}},
-		{"nolint_no_reason.go.txt", []int{4}},
+		{"nolint_no_reason.go.txt", []int{4, 9, 13}},
 		{"unmarked.go.txt", []int{1, 6, 9, 12, 15, 18, 21, 24}},
 		{"marked.go.txt", nil},
 		{"trailing.go.txt", []int{3, 5, 8, 11}},
