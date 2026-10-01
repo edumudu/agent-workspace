@@ -186,6 +186,7 @@ type fakeClientHost struct {
 	belowLog      []string
 	popups        []app.PaneID
 	commandPopups []app.PaneSpec
+	focusedBelow  int
 }
 
 // SlotHasPane reports the slot pane as missing once after loseSlotPane.
@@ -739,6 +740,13 @@ func (g *fakeHunkGit) done() []string {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	return append([]string(nil), g.calls...)
+}
+
+func (h *fakeClientHost) FocusBelow(context.Context, app.Slot) error {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.focusedBelow++
+	return nil
 }
 
 func (h *fakeClientHost) PopupCommand(_ context.Context, spec app.PaneSpec) error {

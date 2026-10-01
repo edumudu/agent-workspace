@@ -53,8 +53,15 @@ func TestShellSplitShowsBelowTheAgentPaneAndParksAgain(t *testing.T) {
 	if got := h.ShownIn(ctx, slot); got != agent {
 		t.Fatalf("the agent pane is %q after ShowBelow; want %q to stay in the slot", got, agent)
 	}
+	sidebar := tmuxIn(t, h, slot, "display-message", "-p", "-t", string(slot)+".0", "#{pane_id}")
+	if active := tmuxIn(t, h, slot, "display-message", "-p", "-t", string(slot), "#{pane_id}"); active != sidebar {
+		t.Fatalf("active pane = %s after ShowBelow; want focus left on the sidebar %s", active, sidebar)
+	}
+	if err := h.FocusBelow(ctx, slot); err != nil {
+		t.Fatal(err)
+	}
 	if active := tmuxIn(t, h, slot, "display-message", "-p", "-t", string(slot), "#{pane_id}"); active != string(shell) {
-		t.Fatalf("active pane = %s after ShowBelow; want the shell %s", active, shell)
+		t.Fatalf("active pane = %s after FocusBelow; want the shell %s", active, shell)
 	}
 
 	if err := h.HideBelow(ctx, slot); err != nil {

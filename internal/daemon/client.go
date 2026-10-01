@@ -24,6 +24,7 @@ type ClientHost interface {
 	BelowPane(ctx context.Context, slot app.Slot) app.PaneID
 	ShowBelow(ctx context.Context, pane app.PaneID, slot app.Slot) error
 	HideBelow(ctx context.Context, slot app.Slot) error
+	FocusBelow(ctx context.Context, slot app.Slot) error
 	Popup(ctx context.Context, pane app.PaneID) error
 	// PopupCommand runs spec's command in a centred popup that closes when
 	// the command exits.

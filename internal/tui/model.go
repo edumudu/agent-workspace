@@ -519,6 +519,8 @@ func (m Model) key(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return m, m.toggleShell(false)
 	case "T":
 		return m, m.toggleShell(true)
+	case "s":
+		return m, m.focusShell()
 	case "e":
 		return m, m.toggleNvim()
 	default:
