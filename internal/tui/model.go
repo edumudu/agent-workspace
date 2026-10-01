@@ -183,6 +183,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	case popupFailedMsg:
 		return m.openDialog(), nil
+	case showFailedMsg:
+		if m.dialog != nil {
+			d := m.own()
+			d.busy, d.started = false, true
+			d.err = "session started, but showing it failed: " + msg.err.Error() + " · esc closes"
+		}
 	case DiffMsg:
 		m.apply(rpc.Diff(msg))
 	case TickMsg:
@@ -236,14 +242,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.renamePaste(msg.Content), nil
 		}
 	case sessionStartedMsg:
+		if m.opts.NewSessionOnly {
+			// why: the popup draws only the dialog, so it stays up until the program ends or shows why it cannot.
+			return m, m.showNewAndQuit(msg.session.ID)
+		}
 		if m.dialog != nil && m.dialog.seq == msg.seq {
 			m.dialog = nil
 		}
 		m.pending = msg.session.ID
 		m.choosePending()
-		if m.opts.NewSessionOnly {
-			return m, m.showNewAndQuit(msg.session.ID)
-		}
 		return m, m.showNew(msg.session.ID)
 	case launchSentMsg:
 		if m.launching != nil && m.launching.seq == msg.seq {

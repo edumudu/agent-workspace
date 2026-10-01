@@ -22,12 +22,31 @@ const dialogColumnsFrom = 72
 func (m Model) dialogScreen() string {
 	f := m
 	f.width = min(m.width-4, dialogMaxWidth)
-	lines, _ := f.dialogLines()
+	lines, keep := f.dialogLines()
+	lines = dialogViewport(lines, keep, m.height)
 	margin := strings.Repeat(" ", max((m.width-f.width)/2, 0))
 	for i, l := range lines {
 		lines[i] = margin + l
 	}
-	return "\n" + strings.Join(lines, "\n")
+	if len(lines) < m.height {
+		return "\n" + strings.Join(lines, "\n")
+	}
+	return strings.Join(lines, "\n")
+}
+
+// dialogViewport fits the form into height rows: the title bar and the
+// action row stay, and the rows between scroll so keep stays in view.
+func dialogViewport(lines []string, keep, height int) []string {
+	if height <= 0 || len(lines) <= height {
+		return lines
+	}
+	if height < 3 {
+		return lines[len(lines)-height:]
+	}
+	title, body, actions := lines[0], lines[1:len(lines)-1], lines[len(lines)-1]
+	room := height - 2
+	start := min(max(keep-1-room/2, 0), len(body)-room)
+	return append(append([]string{title}, body[start:start+room]...), actions)
 }
 
 // dialogLines draws the form at m.width, as in docs/images/new-session.png.
@@ -77,7 +96,7 @@ func (m Model) dialogLines() ([]string, int) {
 	}
 	out = append(out, "")
 	switch {
-	case d.busy:
+	case d.busy && !d.started:
 		keep = len(out)
 		out = append(out, m.line(false, []piece{{s.sub, " starting…"}}, nil))
 	case d.err != "":

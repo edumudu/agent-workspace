@@ -1,6 +1,7 @@
 package tmux
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -9,6 +10,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/giovaniif/agent-workspace/internal/app"
 )
@@ -134,12 +136,26 @@ func (h *Host) PopupCommand(ctx context.Context, spec app.PaneSpec) error {
 	// why: display-popup returns only when the popup closes, and the daemon must not wait for a person.
 	cmd := exec.Command("tmux", append(args, strings.Join(quoted, " "))...)
 	cmd.Env = withoutTmuxEnv(os.Environ())
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
 	if err := cmd.Start(); err != nil {
 		return err
 	}
-	go func() { _ = cmd.Wait() }()
+	done := make(chan error, 1)
+	go func() { done <- cmd.Wait() }()
+	// why: tmux refuses a popup at once (a client gone since the size query); one still up after the grace was shown.
+	select {
+	case err := <-done:
+		if err != nil {
+			return &tmuxError{args: []string{"display-popup"}, stderr: strings.TrimSpace(stderr.String()), err: err}
+		}
+	case <-time.After(popupLaunchGrace):
+	}
 	return nil
 }
+
+// popupLaunchGrace is how long PopupCommand waits for tmux to refuse a popup.
+const popupLaunchGrace = 300 * time.Millisecond
 
 func (h *Host) parkedWindow(ctx context.Context, pane app.PaneID) (string, error) {
 	out, err := h.run(ctx, "", "display-message", "-p", "-t", string(pane), "#{window_id} #{window_panes}")

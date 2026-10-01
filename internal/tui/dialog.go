@@ -52,6 +52,8 @@ type dialog struct {
 	fallback *fallbackTrace
 	err      string
 	busy     bool
+	// started is set once the session exists, so only esc is left to press.
+	started bool
 	// seq tells this dialog's start reply from one sent by a dialog closed earlier.
 	seq      int
 	defaults map[domain.Harness]Defaults
@@ -211,7 +213,7 @@ func (m Model) dialogKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		m.dialog = nil
 		return m, nil
 	}
-	if d.busy {
+	if d.busy || d.started {
 		return m, nil
 	}
 	switch msg.String() {
@@ -306,11 +308,17 @@ func (m Model) showNewAndQuit(id string) tea.Cmd {
 	show := m.showNew(id)
 	return func() tea.Msg {
 		if show != nil {
-			show()
+			if e, ok := show().(errMsg); ok {
+				return showFailedMsg(e)
+			}
 		}
 		return tea.QuitMsg{}
 	}
 }
+
+// showFailedMsg keeps the popup open to say the session started but could
+// not be put in view, instead of closing on an error no one sees.
+type showFailedMsg struct{ err error }
 
 type popupFailedMsg struct{}
 
