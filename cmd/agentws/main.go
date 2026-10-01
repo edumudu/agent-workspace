@@ -28,7 +28,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 	}
 	switch cmd := args[0]; {
 	case cmd == "tui":
-		return runTUI(stderr)
+		return runTUI(args[1:], stderr)
 	case cmd == "debug":
 		return runDebug(args[1:], stdout, stderr)
 	case cmd == "version":

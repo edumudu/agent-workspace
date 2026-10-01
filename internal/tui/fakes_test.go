@@ -79,13 +79,15 @@ type fakeCaller struct {
 	mu    sync.Mutex
 	calls []call
 	err   error
+	// failOn makes only calls of that method fail, with err.
+	failOn string
 }
 
 func (f *fakeCaller) Call(_ context.Context, method string, params, out any) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.calls = append(f.calls, call{method, params})
-	if f.err != nil {
+	if f.err != nil && (f.failOn == "" || f.failOn == method) {
 		return f.err
 	}
 	if method == rpc.MethodNewSession {
