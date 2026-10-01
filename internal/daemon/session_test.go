@@ -473,3 +473,23 @@ func TestForgettingASessionDropsItsSubagents(t *testing.T) {
 		t.Fatalf("sessions %+v, subagents %+v; want both gone", st.Sessions, st.Subagents)
 	}
 }
+
+func TestNewSessionInAFolderNotYetRegisteredRegistersIt(t *testing.T) {
+	host := &fakeHost{}
+	_, path := start(t, &memStore{},
+		daemon.WithWorkspaces(soloFS, fakeGit{}),
+		daemon.WithHarnesses(host, claude.Adapter{}),
+		daemon.WithSessions(&fakeWorktrees{}, nil, "/h/worktrees"))
+	c := dial(t, path)
+	var s domain.Session
+	if err := c.Call(context.Background(), rpc.MethodNewSession, rpc.NewSessionParams{Workspace: "/solo", WorkItem: "x", Harness: "claude"}, &s); err != nil {
+		t.Fatal(err)
+	}
+	sub, err := c.Subscribe(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(sub.State.Workspaces) != 1 || sub.State.Workspaces[0].Root != "/solo" || sub.State.Workspaces[0].Kind != domain.WorkspaceSingle {
+		t.Fatalf("workspaces %+v; want /solo registered as a single repo", sub.State.Workspaces)
+	}
+}

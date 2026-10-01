@@ -133,3 +133,20 @@ func TestClientPopupRunsTheCommandInAPopup(t *testing.T) {
 		t.Fatalf("empty command = %v; want %s", err, rpc.CodeBadRequest)
 	}
 }
+
+func TestClientPopupOpensWhereAgentwsWasLaunched(t *testing.T) {
+	d, path := start(t, &memStore{})
+	host := &fakeClientHost{}
+	d.SetClientHost(host)
+	c := dial(t, path)
+	ctx := context.Background()
+	if _, err := c.OpenClient(ctx, rpc.OpenClientParams{Command: []string{"agentws", "tui"}, Dir: "/work/api"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := c.Call(ctx, rpc.MethodClientPopup, rpc.ClientPopupParams{Command: []string{"agentws", "tui", "--new-session"}}, nil); err != nil {
+		t.Fatal(err)
+	}
+	if len(host.commandPopups) != 1 || host.commandPopups[0].Dir != "/work/api" {
+		t.Fatalf("popups %+v; want it to start in /work/api", host.commandPopups)
+	}
+}

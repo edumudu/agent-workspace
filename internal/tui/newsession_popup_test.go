@@ -205,3 +205,31 @@ func TestNewSessionPopupSaysSoWhenTheNewSessionCannotBeShown(t *testing.T) {
 		t.Fatalf("no error in the popup:\n%s", out)
 	}
 }
+
+func launchedIn(t *testing.T, dir string, st rpc.State) tui.Model {
+	t.Helper()
+	m := tui.New(tui.Options{Theme: tui.Latte(), Now: clock, Calls: &fakeCaller{}, NewSessionOnly: true, LaunchDir: dir})
+	m = update(m, tea.WindowSizeMsg{Width: 100, Height: 30})
+	return update(m, tui.StateMsg(st))
+}
+
+func TestNewSessionPopupDefaultsToTheFolderAgentwsWasLaunchedIn(t *testing.T) {
+	out := screen(launchedIn(t, "/code/web", rpc.State{}))
+	if !strings.Contains(out, "‹ web ›") || !strings.Contains(out, "new · added when you create") || strings.Contains(out, "workspace add") {
+		t.Fatalf("want the launch folder as a new workspace:\n%s", out)
+	}
+	if out := screen(launchedIn(t, "/src/api/internal", repoWorkspaces(rpc.State{}))); !strings.Contains(out, "‹ api ›") || strings.Contains(out, "added when you create") {
+		t.Fatalf("want the registered workspace that holds the launch folder:\n%s", out)
+	}
+}
+
+func TestNewSessionPopupStartsInTheNewFolder(t *testing.T) {
+	c := &fakeCaller{}
+	m := tui.New(tui.Options{Theme: tui.Latte(), Now: clock, Calls: c, NewSessionOnly: true, LaunchDir: "/code/web"})
+	m = update(m, tea.WindowSizeMsg{Width: 100, Height: 30})
+	m = update(m, tui.StateMsg(rpc.State{}))
+	pressCmd(typeText(m, "fix it"), keyEnter)
+	if len(c.calls) == 0 || c.calls[0].params.(rpc.NewSessionParams).Workspace != "/code/web" {
+		t.Fatalf("calls %+v", c.calls)
+	}
+}
