@@ -29,6 +29,10 @@ const (
 	FocusSidebarKey = `C-\`
 )
 
+// titleFormat draws a pane's @agentws_title on its top border; q/h keeps a # in
+// the title from being read as a style or a format.
+const titleFormat = "#{?@agentws_title, #{q/h:@agentws_title} ,}"
+
 const configContents = `set -g status off
 set -g prefix None
 unbind-key -a
@@ -39,8 +43,7 @@ set -g remain-on-exit off
 set -g history-limit 50000
 set -g default-terminal "tmux-256color"
 set -g pane-border-status top
-set -g pane-border-format "#{?@agentws_title, #{@agentws_title} ,}"
-bind -n M-t if -F '#{m:agentws-popup-*,#{session_name}}' 'detach-client' 'send-keys M-t'
+` + "set -g pane-border-format \"" + titleFormat + "\"\n" + `bind -n M-t if -F '#{m:agentws-popup-*,#{session_name}}' 'detach-client' 'send-keys M-t'
 `
 
 type Config struct {
@@ -54,7 +57,11 @@ type Host struct {
 
 	configOnce sync.Once
 	configErr  error
-	bufferSeq  atomic.Uint64
+	// titlesOn is set once the running server has the title border options,
+	// which a server started with an older config lacks.
+	titlesMu  sync.Mutex
+	titlesOn  bool
+	bufferSeq atomic.Uint64
 }
 
 func New(cfg Config) *Host {
