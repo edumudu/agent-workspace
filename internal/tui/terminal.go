@@ -107,3 +107,12 @@ func (m *Model) putDraft(d domain.ReviewDraft) {
 		delete(m.drafts, d.Session)
 	}
 }
+
+// focusShell shows the selected session's shell if needed and moves keyboard
+// focus into it; t leaves focus in the sidebar.
+func (m Model) focusShell() tea.Cmd {
+	if m.opts.Calls == nil || m.selected == "" {
+		return nil
+	}
+	return m.callDaemon(rpc.MethodShellFocus, rpc.ShellParams{Session: m.selected, Worktree: m.reviewWorktree()})
+}
