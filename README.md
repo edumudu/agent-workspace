@@ -81,10 +81,10 @@ Run `agentws`. The first time, a setup screen opens over the sidebar:
 1. **Agents.** Pick Claude Code, Codex or both (`↑/↓`, `space`, `⏎`). Each one shows whether its hooks are already set up.
 2. **Claude Code.** The screen shows the file it changes (`~/.claude/settings.json`, or `$CLAUDE_CONFIG_DIR`), what it adds (the agentws hooks and a status-line wrapper that still runs yours), where the backup goes, and how to undo it (`agentws setup claude --remove`). `⏎` installs, `s` skips.
 3. **Codex.** The same for `~/.codex/hooks.json` (or `$CODEX_HOME`). Codex then needs a one-time trust step: start `codex` and accept the review prompt for the new hooks, or trust them in `/hooks`.
-4. **Neovim.** If `nvim` is on `PATH` and the plugin isn't configured yet, the screen shows the two lines to add to your `init.lua`, pointing at the plugin the install script put in `~/.local/share/agentws/nvim`. agentws never edits your nvim config.
+4. **Neovim (optional).** If `nvim` is on `PATH` and the plugin isn't configured anywhere in your nvim config yet, the screen shows the file it will write, `~/.config/nvim/plugin/agentws.lua`, which loads the plugin the install script put in `~/.local/share/agentws/nvim`. `⏎` writes it, `s` skips. Your own files (init.lua, init.vim, lazy.nvim specs) are not edited; `agentws setup nvim --remove` deletes the file. Without nvim, the step says how to install it (`brew install neovim`) and `⏎` goes on; everything but `e` and `o` works without it.
 5. **Done.** Press `n` to start your first session.
 
-`esc` skips the rest at any step. Either way the screen doesn't come back on its own. Open it again with `S` in the sidebar or with `agentws setup`. `agentws setup claude` and `agentws setup codex` do the same installs without the screen.
+`esc` skips the rest at any step. Either way the screen doesn't come back on its own, and it never opens when a harness is already set up and nvim has nothing left to configure. Open it again with `S` in the sidebar or with `agentws setup`. `agentws setup claude`, `agentws setup codex` and `agentws setup nvim` do the same installs without the screen.
 
 ## Requirements
 
