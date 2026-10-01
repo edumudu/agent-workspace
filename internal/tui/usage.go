@@ -12,11 +12,7 @@ import (
 // limitLines is one row per harness that has reported limits, under the top
 // bar. With no data it is empty: the slot is hidden, never shown as zero.
 func (m Model) limitLines() []string {
-	sessions := make([]domain.Session, 0, len(m.sessions))
-	for _, s := range m.sessions {
-		sessions = append(sessions, s)
-	}
-	quotas := domain.Quotas(sessions)
+	quotas := m.quotas()
 	now := m.opts.Now()
 	var lines []string
 	for _, h := range []domain.Harness{domain.HarnessClaude, domain.HarnessCodex} {
@@ -51,9 +47,9 @@ func (m Model) limitLine(h domain.Harness, quotas []domain.Quota, now time.Time)
 		if len(left) > 1 {
 			left = append(left, piece{s.text, "  "})
 		}
-		left = append(left, piece{text, domain.WindowLabel(q.Window) + " "}, piece{figure, fmt.Sprintf("%d%%", q.LeftPercent)})
-		if reset := untilReset(q.ResetsAt, now); reset != "" {
-			left = append(left, piece{text, " " + reset})
+		left = append(left, piece{text, domain.WindowLabel(q.Window) + " "}, piece{figure, fmt.Sprintf("%d%%", usedPercent(q))})
+		if reset := resetClock(q.ResetsAt, now); reset != "" {
+			left = append(left, piece{text, " ↻" + reset})
 		}
 	}
 	if len(left) == 1 {
@@ -66,18 +62,21 @@ func (m Model) limitLine(h domain.Harness, quotas []domain.Quota, now time.Time)
 	return m.line(false, left, right), true
 }
 
-func untilReset(resetsAt int64, now time.Time) string {
+// usedPercent is what claude.ai and Codex show; the domain keeps percent left
+// because the warning and fallback thresholds are set in it.
+func usedPercent(q domain.Quota) int { return 100 - q.LeftPercent }
+
+// resetClock is the reset as a wall-clock time in now's zone, or its weekday
+// when it is a day or more away.
+func resetClock(resetsAt int64, now time.Time) string {
 	if resetsAt == 0 {
 		return ""
 	}
-	d := time.Unix(resetsAt, 0).Sub(now)
-	if d <= 0 {
-		return ""
+	at := time.Unix(resetsAt, 0).In(now.Location())
+	if at.Sub(now) >= 24*time.Hour {
+		return at.Format("Mon")
 	}
-	if d < time.Minute {
-		return "<1m"
-	}
-	return shortDuration(d)
+	return at.Format("15:04")
 }
 
 func shortDuration(d time.Duration) string {
