@@ -412,3 +412,24 @@ func TestGoldenWorktrees(t *testing.T) {
 	r.m = update(r.m, tea.WindowSizeMsg{Width: 120, Height: 30})
 	golden.RequireEqual(t, screen(r.m))
 }
+
+func TestWorktreesDiskBarStaysItsWidthWhenWorktreesShareFiles(t *testing.T) {
+	rows := []domain.DiskRow{
+		{WorktreeID: "w01-0", Size: 40 * gb, Action: domain.CleanupKeep},
+		{WorktreeID: "w01-1", Size: 40 * gb, Action: domain.CleanupKeep},
+		{WorktreeID: "w02-0", Size: 40 * gb, Action: domain.CleanupRemove},
+	}
+	v := diskView(rows...)
+	v.Total, v.Free = 100*gb, 60*gb
+	out := screen(diskModel(v).open().m)
+	for _, line := range strings.Split(out, "\n") {
+		if strings.ContainsAny(line, "█░") {
+			cells := strings.Count(line, "█") + strings.Count(line, "░")
+			if cells != 40 || strings.Count(line, "░") != 24 {
+				t.Fatalf("bar has %d cells, %d free; want 40 with 60%% free:\n%s", cells, strings.Count(line, "░"), line)
+			}
+			return
+		}
+	}
+	t.Fatalf("no disk bar:\n%s", out)
+}
