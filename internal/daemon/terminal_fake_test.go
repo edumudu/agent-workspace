@@ -86,7 +86,17 @@ type fakeEditor struct {
 	missing bool
 }
 
-func (e *fakeEditor) Installed() bool { return !e.missing }
+func (e *fakeEditor) Installed() bool {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	return !e.missing
+}
+
+func (e *fakeEditor) setMissing() {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	e.missing = true
+}
 
 func (e *fakeEditor) Eval(_ context.Context, socket, expr string) error {
 	e.mu.Lock()

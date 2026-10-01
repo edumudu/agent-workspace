@@ -12,7 +12,7 @@ import (
 
 func TestNvimKeysWithoutNvimSayHowToGetItAndStartNoPane(t *testing.T) {
 	r := startTerm(t, []domain.Session{termSession}, termWTs)
-	r.editor.missing = true
+	r.editor.setMissing()
 	ctx := context.Background()
 	var out rpc.NvimResult
 	calls := []struct {
