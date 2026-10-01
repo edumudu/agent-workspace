@@ -22,3 +22,15 @@ func TestReadDefaultsTakesModelAndEffortFromSettings(t *testing.T) {
 		t.Fatalf("missing file: %q, %q, %v", model, effort, err)
 	}
 }
+
+func TestReadEffortByModelKeysEachModelsEffortByItsShortName(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "settings.json")
+	settings := `{"modelSettings":{"claude-opus-5-5":{"effortLevel":"low"},"claude-sonnet-5-5[1m]":{"effortLevel":"high"},"claude-haiku-4-5":{}}}`
+	if err := os.WriteFile(path, []byte(settings), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	got, err := claude.ReadEffortByModel(path)
+	if err != nil || len(got) != 2 || got["opus-5.5"] != "low" || got["sonnet-5.5"] != "high" {
+		t.Fatalf("got %v, %v", got, err)
+	}
+}

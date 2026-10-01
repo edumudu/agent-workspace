@@ -272,3 +272,14 @@ func TestNewSessionPopupNamesTheSameDefaultEveryTime(t *testing.T) {
 		}
 	}
 }
+
+func TestNewSessionPopupNamesThePerModelEffortOfTheDefaultModel(t *testing.T) {
+	st := repoWorkspaces(rpc.State{Sessions: []domain.Session{{ID: "s", Harness: domain.HarnessClaude, Model: "opus-5.5"}}})
+	m := tui.New(tui.Options{Theme: tui.Latte(), Now: clock, Calls: &fakeCaller{}, NewSessionOnly: true,
+		HarnessDefaults: map[domain.Harness]tui.Defaults{domain.HarnessClaude: {EffortByModel: map[string]string{"opus-5.5": "low", "sonnet-5.5": "high"}}}})
+	m = update(m, tea.WindowSizeMsg{Width: 100, Height: 30})
+	m = update(m, tui.StateMsg(st))
+	if out := screen(m); !strings.Contains(out, "‹ default · opus-5.5 ›") || !strings.Contains(out, "‹ default · low ›") {
+		t.Fatalf("want the effort set for opus-5.5:\n%s", out)
+	}
+}
