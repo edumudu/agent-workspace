@@ -58,6 +58,9 @@ type Options struct {
 	// DialogPopup is the command n asks the daemon to run in a centred popup;
 	// with no command, or when the popup fails, n opens the dialog inline.
 	DialogPopup rpc.ClientPopupParams
+	// HarnessDefaults are what each harness starts with when the dialog sends
+	// no model or effort, read from its own config; the dialog names them.
+	HarnessDefaults map[domain.Harness]Defaults
 	// NewSessionOnly is the popup's own program: the dialog fills the screen
 	// from the start and the program ends when it closes.
 	NewSessionOnly bool

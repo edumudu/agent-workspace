@@ -243,3 +243,32 @@ func TestNewSessionPopupPrefersTheMostSpecificWorkspace(t *testing.T) {
 		t.Fatalf("want /src/api, not its parent /src:\n%s", out)
 	}
 }
+
+func TestNewSessionPopupNamesWhatDefaultMeans(t *testing.T) {
+	st := repoWorkspaces(rpc.State{Sessions: []domain.Session{{ID: "s", Harness: domain.HarnessClaude, Model: "opus-5.5"}}})
+	c := &fakeCaller{}
+	m := tui.New(tui.Options{Theme: tui.Latte(), Now: clock, Calls: c, NewSessionOnly: true,
+		HarnessDefaults: map[domain.Harness]tui.Defaults{domain.HarnessClaude: {Effort: "low"}}})
+	m = update(m, tea.WindowSizeMsg{Width: 100, Height: 30})
+	m = update(m, tui.StateMsg(st))
+	if out := screen(m); !strings.Contains(out, "‹ default · opus-5.5 ›") || !strings.Contains(out, "‹ default · low ›") {
+		t.Fatalf("defaults not named:\n%s", out)
+	}
+	m = pressCmd(pressCmd(pressCmd(m, keyTab), keyTab), keyRight)
+	if out := screen(m); !strings.Contains(out, "‹ default ›") {
+		t.Fatalf("codex, with nothing known, should say just default:\n%s", out)
+	}
+}
+
+func TestNewSessionPopupNamesTheSameDefaultEveryTime(t *testing.T) {
+	st := repoWorkspaces(rpc.State{Sessions: []domain.Session{
+		{ID: "a", Harness: domain.HarnessClaude, Model: "sonnet-5.5"},
+		{ID: "b", Harness: domain.HarnessClaude, Model: "opus-5.5"},
+	}})
+	for range 20 {
+		m, _ := popupModel(t, st, 100)
+		if out := screen(m); !strings.Contains(out, "‹ default · opus-5.5 ›") {
+			t.Fatalf("with equal report times the label should be the last session's by ID:\n%s", out)
+		}
+	}
+}

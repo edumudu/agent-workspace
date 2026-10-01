@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
@@ -170,11 +171,11 @@ func (m Model) pickers(keep *int, at int) []string {
 	}
 	model := d.model
 	if model == "" {
-		model = "default"
+		model = defaultLabel(m.defaultModel())
 	}
 	effort := d.efforts[d.effort]
 	if effort == "" {
-		effort = "default"
+		effort = defaultLabel(m.opts.HarnessDefaults[m.chosenHarness()].Effort)
 	}
 	cols := []struct {
 		f     field
@@ -329,4 +330,28 @@ func harnessName(h domain.Harness) string {
 		return "Codex"
 	}
 	return "Claude"
+}
+
+func defaultLabel(name string) string {
+	if name == "" {
+		return "default"
+	}
+	return "default · " + name
+}
+
+// defaultModel is the model the chosen harness starts with when none is
+// sent: its config's, else the one its sessions last reported.
+func (m Model) defaultModel() string {
+	h := m.chosenHarness()
+	if name := m.opts.HarnessDefaults[h].Model; name != "" {
+		return name
+	}
+	var name, id string
+	var at time.Time
+	for _, s := range m.sessions {
+		if s.Harness == h && s.Model != "" && (name == "" || s.LimitsAt.After(at) || s.LimitsAt.Equal(at) && s.ID > id) {
+			name, at, id = s.Model, s.LimitsAt, s.ID
+		}
+	}
+	return name
 }
