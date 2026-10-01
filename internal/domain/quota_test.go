@@ -136,3 +136,19 @@ func TestUsageAdviseWithNoDataForTheChosenHarnessStaysQuiet(t *testing.T) {
 		t.Fatalf("got %+v", got)
 	}
 }
+
+func TestUsageCurrentDropsWindowsWhoseResetHasPassed(t *testing.T) {
+	quotas := []Quota{
+		{Window: "five_hour", ResetsAt: t0.Add(-time.Second).Unix()},
+		{Window: "seven_day", ResetsAt: t0.Unix()},
+		{Window: "seven_day_x", ResetsAt: t0.Add(time.Second).Unix()},
+		{Window: "unknown_reset"},
+	}
+	var got []string
+	for _, q := range Current(quotas, t0) {
+		got = append(got, q.Window)
+	}
+	if want := []string{"seven_day_x", "unknown_reset"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("got %v, want %v", got, want)
+	}
+}

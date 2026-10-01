@@ -360,6 +360,38 @@ func TestCountsUseTheSingularForOne(t *testing.T) {
 	}
 }
 
+func TestTaskHeaderNamesReposNotTheirPaths(t *testing.T) {
+	st := rpc.State{
+		Tasks:     []domain.Task{{ID: "t1", Source: domain.TaskText, Text: "add retries to upload"}},
+		Worktrees: []domain.Worktree{{ID: "w1", Repo: "/Users/someone/code/platform/api", SubtaskSlug: "retries"}},
+		Sessions:  []domain.Session{{ID: "s1", TaskID: "t1", Harness: domain.HarnessClaude, WorktreeIDs: []string{"w1"}}},
+	}
+	out := screen(newModel(&st, nil))
+	for _, line := range strings.Split(out, "\n") {
+		if strings.Contains(line, "add retries to upload") && strings.HasSuffix(strings.TrimSpace(line), " api") {
+			return
+		}
+	}
+	t.Fatalf("no header line with the task name and the repo name:\n%s", out)
+}
+
+func TestTaskHeaderKeepsTwoReposThatShareAName(t *testing.T) {
+	st := rpc.State{
+		Tasks: []domain.Task{{ID: "t1", Source: domain.TaskText, Text: "same name"}},
+		Worktrees: []domain.Worktree{
+			{ID: "w1", Repo: "/src/api", SubtaskSlug: "a"},
+			{ID: "w2", Repo: "/other/api", SubtaskSlug: "b"},
+		},
+		Sessions: []domain.Session{{ID: "s1", TaskID: "t1", Harness: domain.HarnessClaude, WorktreeIDs: []string{"w1", "w2"}}},
+	}
+	for _, line := range strings.Split(screen(newModel(&st, nil)), "\n") {
+		if strings.Contains(line, "same name") && strings.HasSuffix(strings.TrimSpace(line), "api api") {
+			return
+		}
+	}
+	t.Fatalf("the header should list both repos:\n%s", screen(newModel(&st, nil)))
+}
+
 func TestHelpListsTheReviewKey(t *testing.T) {
 	st := fixture(1, 0)
 	out := screen(press(newModel(&st, nil), "?"))
