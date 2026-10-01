@@ -158,7 +158,12 @@ func (p Probe) nvimSetup() domain.NvimSetup {
 func (p Probe) configMentionsPlugin() bool {
 	seen := 0
 	found := false
-	_ = filepath.WalkDir(p.NvimConfigDir, func(path string, d fs.DirEntry, err error) error {
+	root := p.NvimConfigDir
+	// why: WalkDir does not follow a symlinked root, and ~/.config/nvim often is one.
+	if r, err := filepath.EvalSymlinks(root); err == nil {
+		root = r
+	}
+	_ = filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
 		if err != nil || found {
 			return filepath.SkipDir
 		}
