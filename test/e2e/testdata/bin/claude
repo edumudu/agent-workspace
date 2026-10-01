@@ -3,7 +3,7 @@
 # one line at a time, firing the hooks the real harness would:
 #   hook <Event> [json]   pipe json (default {}) to `agentws hook`
 #   run <shell>           run a command as the Bash tool: PreToolUse, the command, PostToolUse
-#   gate <name>           block until $AGENTWS_E2E/gates/<name> exists (15 s cap)
+#   gate <name>           block until $AGENTWS_E2E/gates/<name> exists (30 s cap, twice the scripts' 15 s polling so a gate never gives up first)
 #   read <file>           take what is typed into the pane into $AGENTWS_E2E/<file>
 # After the last step it stays alive, holding its pane like a real agent.
 harness=${AGENTWS_E2E_HARNESS:-claude}
@@ -24,7 +24,7 @@ gate() {
 	i=0
 	while [ ! -e "$AGENTWS_E2E/gates/$1" ]; do
 		i=$((i + 1))
-		if [ "$i" -gt 750 ]; then
+		if [ "$i" -gt 1500 ]; then
 			echo "gate $1 never opened" >>"$AGENTWS_E2E/$harness.log"
 			exit 1
 		fi

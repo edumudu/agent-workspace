@@ -328,6 +328,10 @@ func (m *Model) apply(d rpc.Diff) {
 		delete(m.worktrees, d.RemovedWorktree)
 	case d.Worktree != nil:
 		m.worktrees[d.Worktree.ID] = *d.Worktree
+	case d.RemovedSession != "":
+		delete(m.sessions, d.RemovedSession)
+		delete(m.events, d.RemovedSession)
+		delete(m.subagents, d.RemovedSession)
 	case d.Session != nil:
 		m.sessions[d.Session.ID] = *d.Session
 	case d.Subagent != nil:
@@ -350,6 +354,7 @@ func (m *Model) putTask(t domain.Task) {
 }
 
 func (m *Model) rebuild() {
+	was := m.index(m.selected)
 	tasks := make([]domain.Task, 0, len(m.taskOrder))
 	for _, id := range m.taskOrder {
 		tasks = append(tasks, m.tasks[id])
@@ -373,9 +378,9 @@ func (m *Model) rebuild() {
 					continue
 				}
 				e.worktrees = append(e.worktrees, w)
-				if !seen[w.Repo] {
+				if name := repoName(w); !seen[w.Repo] {
 					seen[w.Repo] = true
-					repos = append(repos, w.Repo)
+					repos = append(repos, name)
 				}
 			}
 			m.entries = append(m.entries, e)
@@ -386,7 +391,8 @@ func (m *Model) rebuild() {
 	if m.index(m.selected) < 0 {
 		m.selected = ""
 		if len(m.entries) > 0 {
-			m.selected = m.entries[0].session.ID
+			// why: the daemon shows the next row once the one in view ends, so the selection follows it there.
+			m.selected = m.entries[min(max(was, 0), len(m.entries)-1)].session.ID
 		}
 	}
 	if m.index(m.last) < 0 {

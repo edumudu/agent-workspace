@@ -48,13 +48,16 @@ type Effect struct {
 }
 
 type Session struct {
-	ID          string
-	TaskID      string
-	Harness     Harness
-	Pane        string
-	Model       string
-	Effort      string
-	State       AgentState
+	ID      string
+	TaskID  string
+	Harness Harness
+	Pane    string
+	Model   string
+	Effort  string
+	State   AgentState
+	// Ended sessions are off the sidebar and kept only until their
+	// worktrees are gone.
+	Ended       bool
 	Unread      bool
 	Focused     bool
 	Muted       bool
