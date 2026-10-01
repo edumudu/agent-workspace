@@ -27,7 +27,7 @@ func (f finding) String() string { return fmt.Sprintf("%s:%d: %s", f.file, f.lin
 var (
 	todoPattern      = regexp.MustCompile(`\bTODO\b`)
 	todoIssuePattern = regexp.MustCompile(`\bTODO\(#\d+\)`)
-	nolintWithReason = regexp.MustCompile(`^//nolint:\S+\s+//\s*\S`)
+	nolintWithReason = regexp.MustCompile(`^//nolint:\S+\s+// (why|bug): \S`)
 )
 
 func main() {
