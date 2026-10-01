@@ -14,8 +14,8 @@ import (
 	"github.com/giovaniif/agent-workspace/internal/version"
 )
 
-// checkBuild refuses an answer from a daemon that names no build: it predates
-// the handshake, so it cannot have checked ours.
+// why: a daemon that names no build predates the handshake, so it cannot have
+// checked ours.
 func checkBuild(method string, resp Response) error {
 	if resp.Build == "" && resp.Error == nil && !AnyBuild(method) {
 		return Mismatch("", version.String(), 0, builtAtUnix())

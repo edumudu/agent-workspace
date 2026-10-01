@@ -5,8 +5,7 @@ import (
 	"strings"
 )
 
-// NewerRelease reports whether release tag latest is a later semver than
-// current. A version that does not parse (a dev build, `git describe` output
+// why: a version that does not parse (a dev build, `git describe` output
 // with commits past a tag) never offers an upgrade.
 func NewerRelease(current, latest string) bool {
 	cur, ok := parseSemver(current)
@@ -20,8 +19,7 @@ func NewerRelease(current, latest string) bool {
 	return compareSemver(lat, cur) > 0
 }
 
-// HighestRelease picks the highest semver tag, falling back to the first tag
-// when none parses.
+// why: GitHub lists releases by date, not version; with no semver tag the first one stands.
 func HighestRelease(tags []string) string {
 	var best string
 	var bestVer semver

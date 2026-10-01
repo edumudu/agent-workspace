@@ -229,20 +229,17 @@ const (
 	CodeUnavailable        = "unavailable"
 	CodeFailed             = "failed"
 	CodeLaunchFailed       = "launch_failed"
-	// CodeVersionMismatch: the client and the daemon are different builds.
-	// The message says which side to restart.
-	CodeVersionMismatch = "version_mismatch"
+	CodeVersionMismatch    = "version_mismatch"
 )
 
-// AnyBuild reports whether method is answered across builds: status and
-// stop must reach a stale daemon, and hooks may come from another install's
+// why: status and stop must reach a stale daemon, and hooks may come from another install's
 // binary that shares this AGENTWS_HOME.
 func AnyBuild(method string) bool {
 	return method == MethodStatus || method == MethodHook || method == MethodStatusLine
 }
 
-// Mismatch explains a build mismatch, naming the older side as the one to
-// restart. Built times are Unix seconds; zero means unknown.
+// why: the older side is the one to restart. Built times are Unix seconds;
+// zero means unknown.
 func Mismatch(daemonBuild, clientBuild string, daemonBuilt, clientBuilt int64) *Error {
 	fix := "restart the daemon: run `agentws daemon stop`; the next command starts the new one"
 	if clientBuilt != 0 && daemonBuilt > clientBuilt {
@@ -298,8 +295,8 @@ type Request struct {
 	ID     uint64          `json:"id"`
 	Method string          `json:"method"`
 	Params json.RawMessage `json:"params,omitempty"`
-	// Build is the client's version.String and BuiltAt its executable's
-	// Unix mtime. Raw hook lines leave both out.
+	// why: BuiltAt is the executable's Unix mtime, which tells the older side.
+	// Raw hook lines leave both out.
 	Build   string `json:"build,omitempty"`
 	BuiltAt int64  `json:"built_at,omitempty"`
 }

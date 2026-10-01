@@ -73,10 +73,10 @@
 
 ## Comments
 
-- Code explains itself through names. A comment only says *why*, never *what*.
-- Inside function bodies, the only comments allowed are ones starting with `// why:` and tool directives (`//go:`, `//nolint:` with a reason). `scripts/lint-comments` enforces this in CI.
-- Doc comments only where they add information a caller needs. No boilerplate docs that restate the name.
-- `scripts/lint-comments` rejects a declaration doc that starts with the name and says nothing else: once filler words (returns, is, a, the, new, creates...) and the words of the name, receiver, params and types are dropped, nothing is left (`// Close closes the store.`). It also rejects section banners (`// ---- helpers ----`, a lone `// Helpers` between declarations). See ADR 0020.
+- **No comments by default.** Code explains itself through names and tests. A comment must state a reason a reader could not get from the code: a hidden constraint, a specific bug or external quirk it works around, or behavior that would surprise. "What" comments, docs that restate a signature (exported identifiers included) and field docs that restate a type are not allowed.
+- Every comment carries a marker: `// why: ...` for a constraint or surprising behavior, `// bug: ...` for a workaround of a concrete bug or tool quirk. This applies to doc comments, package docs, trailing comments and `/* */` blocks; in a multi-line comment only the first line needs it. Shell, YAML and Lua comments follow the same rule with `# why:` / `-- why:`.
+- Exempt: tool directives (`//go:`, `//line`, `//export`, `//nolint:` with a reason), `// TODO(#12): ...`, `// Code generated ... DO NOT EDIT.` and license headers.
+- `scripts/lint-comments` fails `make lint` on any Go comment without a marker. See ADR 0020.
 - A TODO must reference an issue: `// TODO(#12): ...`.
 - A `//nolint:` directive needs a reason after it: `//nolint:gosec // why: ...`.
 - `scripts/lint-comments` fixtures live in its `testdata/` as `*.go.txt` so no other tool compiles them.
