@@ -175,7 +175,7 @@ func (m Model) pickers(keep *int, at int) []string {
 	}
 	effort := d.efforts[d.effort]
 	if effort == "" {
-		effort = defaultLabel(m.opts.HarnessDefaults[m.chosenHarness()].Effort)
+		effort = defaultLabel(m.defaultEffort())
 	}
 	cols := []struct {
 		f     field
@@ -354,4 +354,14 @@ func (m Model) defaultModel() string {
 		}
 	}
 	return name
+}
+
+// defaultEffort is the chosen harness's own effort, else the one it keeps for
+// the default model.
+func (m Model) defaultEffort() string {
+	d := m.opts.HarnessDefaults[m.chosenHarness()]
+	if d.Effort != "" {
+		return d.Effort
+	}
+	return d.EffortByModel[m.defaultModel()]
 }
