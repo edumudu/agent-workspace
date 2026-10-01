@@ -12,6 +12,9 @@ import (
 	"strconv"
 	"syscall"
 
+	"github.com/giovaniif/agent-workspace/internal/adapters/claude"
+	"github.com/giovaniif/agent-workspace/internal/adapters/codex"
+	"github.com/giovaniif/agent-workspace/internal/domain"
 	"github.com/giovaniif/agent-workspace/internal/rpc"
 	"github.com/giovaniif/agent-workspace/internal/tui"
 )
@@ -108,6 +111,7 @@ func tuiIn(home string, newSession bool) error {
 	}
 	defer func() { _ = caller.Close() }()
 	opts := tui.Options{Theme: theme, Defaults: defaults, Fallback: fallback, NewSessionOnly: newSession}
+	opts.HarnessDefaults = harnessDefaults()
 	if self, err := os.Executable(); err == nil && !newSession {
 		opts.DialogPopup = rpc.ClientPopupParams{Command: []string{self, "tui", "--new-session"}, Env: map[string]string{"AGENTWS_HOME": home}}
 	}
@@ -146,4 +150,22 @@ func runDebugSeed(args []string, stdout, stderr io.Writer) int {
 	}
 	fmt.Fprintf(stdout, "seeded %d sessions\n", n)
 	return 0
+}
+
+// harnessDefaults reads what Claude Code and Codex start with when a session
+// is given no model or effort, so the dialog can name it. A file that cannot
+// be read leaves that harness unnamed.
+func harnessDefaults() map[domain.Harness]tui.Defaults {
+	out := map[domain.Harness]tui.Defaults{}
+	if path, err := claudeSettingsPath(os.Getenv); err == nil {
+		if model, effort, err := claude.ReadDefaults(path); err == nil {
+			out[domain.HarnessClaude] = tui.Defaults{Model: model, Effort: effort}
+		}
+	}
+	if dir, err := codexHome(os.Getenv); err == nil {
+		if model, effort, err := codex.ReadDefaults(filepath.Join(dir, "config.toml")); err == nil {
+			out[domain.HarnessCodex] = tui.Defaults{Model: model, Effort: effort}
+		}
+	}
+	return out
 }
