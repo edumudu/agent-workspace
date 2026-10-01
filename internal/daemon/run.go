@@ -81,10 +81,6 @@ func Run(ctx context.Context, home string) (err error) {
 	hooks := testHooksFromEnv(os.Getenv)
 	cleanup := app.NewCleanup(gitadapter.Worktrees{}, procs.Table{}, trash, audit, filepath.Join(home, "backups"), hooks.cleanupClock)
 	sizes := app.NewDiskSizes(wsfs.Du{}, diskWorkers, diskSizeTTL, time.Now)
-	self, err := os.Executable()
-	if err != nil {
-		return err
-	}
 	opts := []Option{
 		WithWorkspaces(wsfs.FS{}, gitadapter.Inspector{}),
 		WithHarnesses(host, claude.Adapter{}, codex.Adapter{}),
