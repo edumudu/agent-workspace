@@ -64,6 +64,9 @@ const (
 	// MethodClientPopup runs a command in a centred popup over the attached
 	// client; the popup closes when the command exits.
 	MethodClientPopup = "client.popup"
+	// MethodClientDetach detaches the terminals attached to the client layout,
+	// which keeps running.
+	MethodClientDetach = "client.detach"
 	// MethodCleanupPlan returns the cleanup plan without acting on it;
 	// MethodCleanupRun executes it. Both answer []CleanupItem.
 	MethodCleanupPlan = "cleanup.plan"
@@ -306,6 +309,8 @@ type WorkspaceList struct {
 type OpenClientParams struct {
 	Command []string          `json:"command"`
 	Env     map[string]string `json:"env,omitempty"`
+	// Dir is where agentws was launched; the new-session popup opens there.
+	Dir string `json:"dir,omitempty"`
 }
 
 // OpenClient names the layout's window (Slot) and the argv that attaches the

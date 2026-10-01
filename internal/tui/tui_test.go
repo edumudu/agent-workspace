@@ -1,6 +1,7 @@
 package tui_test
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -450,5 +451,40 @@ func TestStatusBarListsThePortsInUse(t *testing.T) {
 	last := lines[len(lines)-1]
 	if !strings.Contains(last, "2 sessions · 2 worktrees · ports 8081 8084") {
 		t.Fatalf("status bar %q; want the counts and the ports in use", last)
+	}
+}
+
+func TestQDetachesFromTheLayoutInsteadOfQuitting(t *testing.T) {
+	st := fixture(1, 0)
+	c := &fakeCaller{}
+	m := tui.New(tui.Options{Theme: tui.Latte(), Now: clock, Calls: c})
+	m = update(m, tea.WindowSizeMsg{Width: 48, Height: 40})
+	m = update(m, tui.StateMsg(st))
+	for _, k := range []tea.KeyPressMsg{key("q"), {Code: 'c', Mod: tea.ModCtrl}} {
+		c.calls = nil
+		_, cmd := m.Update(k)
+		if cmd == nil {
+			t.Fatalf("%s did nothing", k)
+		}
+		if _, quit := cmd().(tea.QuitMsg); quit {
+			t.Fatalf("%s quit the sidebar instead of detaching", k)
+		}
+		if !slices.Equal(c.methods(), []string{rpc.MethodClientDetach}) {
+			t.Fatalf("%s calls %v", k, c.methods())
+		}
+	}
+	c.err = &rpc.Error{Code: rpc.CodeNotFound, Message: "no client layout is open"}
+	if _, cmd := m.Update(key("q")); cmd == nil {
+		t.Fatal("q did nothing without a layout")
+	} else if _, quit := cmd().(tea.QuitMsg); !quit {
+		t.Fatal("q does not quit when there is no layout to leave")
+	}
+	c.err = errors.New("tmux: server exited")
+	next, cmd := m.Update(key("q"))
+	if _, quit := cmd().(tea.QuitMsg); quit {
+		t.Fatal("q quit the sidebar on a detach error, leaving no sidebar")
+	}
+	if out := screen(update(next.(tui.Model), cmd())); !strings.Contains(out, "server exited") {
+		t.Fatalf("the detach error is not shown:\n%s", out)
 	}
 }

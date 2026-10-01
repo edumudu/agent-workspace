@@ -29,6 +29,8 @@ type ClientHost interface {
 	// PopupCommand runs spec's command in a centred popup that closes when
 	// the command exits.
 	PopupCommand(ctx context.Context, spec app.PaneSpec) error
+	// Detach detaches the terminals attached to slot's layout.
+	Detach(ctx context.Context, slot app.Slot) error
 }
 
 const clientName = "main"
@@ -39,6 +41,8 @@ type clients struct {
 	mu   sync.Mutex
 	host ClientHost
 	slot app.Slot
+	// dir is where the last attach ran agentws from.
+	dir string
 	// watchEvery is how often watchMainSlot looks; zero disables it.
 	watchEvery time.Duration
 }
@@ -66,6 +70,7 @@ func (d *Daemon) dispatchClient(req rpc.Request) *rpc.Response {
 		if err := json.Unmarshal(req.Params, &p); err != nil || len(p.Command) == 0 {
 			return errorResponse(req.ID, rpc.CodeBadRequest, "client.open needs a command")
 		}
+		d.clients.dir = p.Dir
 		if d.clients.slot == "" || !h.ClientOpen(ctx, d.clients.slot) {
 			slot, err := h.OpenClient(ctx, clientName, app.PaneSpec{Name: clientName, Command: p.Command, Env: p.Env})
 			if err != nil {
@@ -79,7 +84,15 @@ func (d *Daemon) dispatchClient(req rpc.Request) *rpc.Response {
 		if err := json.Unmarshal(req.Params, &p); err != nil || len(p.Command) == 0 {
 			return errorResponse(req.ID, rpc.CodeBadRequest, "client.popup needs a command")
 		}
-		if err := h.PopupCommand(ctx, app.PaneSpec{Command: p.Command, Env: p.Env}); err != nil {
+		if err := h.PopupCommand(ctx, app.PaneSpec{Command: p.Command, Env: p.Env, Dir: d.clients.dir}); err != nil {
+			return errorResponse(req.ID, rpc.CodeFailed, err.Error())
+		}
+		return result(req.ID, struct{}{})
+	case rpc.MethodClientDetach:
+		if d.clients.slot == "" {
+			return errorResponse(req.ID, rpc.CodeNotFound, "no client layout is open")
+		}
+		if err := h.Detach(ctx, d.clients.slot); err != nil {
 			return errorResponse(req.ID, rpc.CodeFailed, err.Error())
 		}
 		return result(req.ID, struct{}{})

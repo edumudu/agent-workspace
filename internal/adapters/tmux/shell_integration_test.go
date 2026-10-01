@@ -5,6 +5,7 @@ package tmux_test
 import (
 	"context"
 	"os/exec"
+	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
@@ -304,4 +305,35 @@ func TestTitlesShowAHashAsText(t *testing.T) {
 	waitFor(t, "the title to be drawn as text", func() bool {
 		return strings.Contains(outer("capture-pane", "-p", "-t", "outer"), "cwd /wt/api#[default]x")
 	})
+}
+
+func TestDetachLeavesTheLayoutRunning(t *testing.T) {
+	ctx := context.Background()
+	h := newHost(t)
+	slot, _ := h.OpenClient(ctx, "main", app.PaneSpec{Name: "tui", Command: []string{"sleep", "600"}})
+	outerTerminal(t, h, slot)
+	if err := h.Detach(ctx, slot); err != nil {
+		t.Fatal(err)
+	}
+	waitFor(t, "the client to detach", func() bool {
+		return tmuxIn(t, h, slot, "list-clients") == ""
+	})
+	if !h.ClientOpen(ctx, slot) {
+		t.Fatal("detaching closed the layout")
+	}
+}
+
+func TestPopupCommandRunsInTheGivenDir(t *testing.T) {
+	ctx := context.Background()
+	h := newHost(t)
+	slot, _ := h.OpenClient(ctx, "main", app.PaneSpec{Name: "tui", Command: []string{"sleep", "600"}})
+	outer := outerTerminal(t, h, slot)
+	dir := t.TempDir()
+	if err := h.PopupCommand(ctx, app.PaneSpec{Command: []string{"sh", "-c", "echo in-$(basename $PWD); read line"}, Dir: dir}); err != nil {
+		t.Fatal(err)
+	}
+	waitFor(t, "the popup to start in dir", func() bool {
+		return strings.Contains(outer("capture-pane", "-p", "-t", "outer"), "in-"+filepath.Base(dir))
+	})
+	outer("send-keys", "-t", "outer", "Enter")
 }

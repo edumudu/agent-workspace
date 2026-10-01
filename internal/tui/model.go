@@ -64,6 +64,8 @@ type Options struct {
 	// NewSessionOnly is the popup's own program: the dialog fills the screen
 	// from the start and the program ends when it closes.
 	NewSessionOnly bool
+	// LaunchDir is where agentws was run; the dialog starts there.
+	LaunchDir string
 }
 
 // Caller makes daemon calls such as session.new; *rpc.Client is one.
@@ -485,7 +487,7 @@ func (m Model) key(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 			m.status = fmt.Sprintf("end session %d? y/n", m.entries[cur].num)
 		}
 	case "q", "ctrl+c":
-		return m, tea.Quit
+		return m, m.leave()
 	case "?":
 		m.help = !m.help
 	case "M":

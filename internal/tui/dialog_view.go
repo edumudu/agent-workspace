@@ -218,6 +218,9 @@ func padTo(width int, ps ...piece) []piece {
 }
 
 func workspaceKind(w domain.Workspace) string {
+	if w.Kind == "" {
+		return "new · added when you create"
+	}
 	if w.Kind == domain.WorkspaceSingle {
 		return "single repo"
 	}
@@ -253,6 +256,13 @@ func (m Model) startsAt() []string {
 		return nil
 	}
 	space := d.spaces[d.ws]
+	if space.Kind == "" {
+		bar := piece{s.dim, " ▌ "}
+		return []string{
+			m.line(false, []piece{bar, {s.bold, "Starts in " + filepath.Base(space.Root)}}, nil),
+			m.line(false, []piece{bar, {s.sub, "agentws checks whether it is one repo or a folder of repos when you create"}}, nil),
+		}
+	}
 	plan := domain.PlanSessionStart(space, domain.TaskSlug(domain.ParseWorkItem(d.workItem)), "", nil)
 	title := "Starts at the " + filepath.Base(space.Root) + " root"
 	detail := "The agent creates worktrees as it needs them; each one attaches to this session."
