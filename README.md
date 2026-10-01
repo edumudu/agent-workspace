@@ -6,24 +6,45 @@ A terminal workspace for running Claude Code and Codex sessions in parallel. It 
 
 ## Install
 
-Builds exist for macOS (arm64, amd64) and Linux (amd64). No Go toolchain is needed.
+Builds exist for macOS (arm64, amd64) and Linux (amd64); no Go toolchain is needed. You need `tmux`, `git` and the GitHub CLI (`gh`, signed in), plus Claude Code and/or the Codex CLI.
+
+Install the newest release (alphas included):
 
 ```sh
-# install script (to ~/.local/bin; set AGENTWS_INSTALL_DIR to change it,
-# AGENTWS_VERSION=v0.1.0-alpha.1 to pin a release)
 curl -fsSL https://raw.githubusercontent.com/giovaniif/agent-workspace/main/scripts/install.sh | sh
+```
+
+The script downloads the archive for your OS and CPU from GitHub Releases, checks it against `checksums.txt`, and puts the `agentws` binary in `~/.local/bin`. Two environment variables change that:
+
+```sh
+# a specific release
+curl -fsSL https://raw.githubusercontent.com/giovaniif/agent-workspace/main/scripts/install.sh | AGENTWS_VERSION=v0.1.0-alpha.1 sh
+# another directory
+curl -fsSL https://raw.githubusercontent.com/giovaniif/agent-workspace/main/scripts/install.sh | AGENTWS_INSTALL_DIR=/usr/local/bin sh
+```
+
+If the install directory is not on your `PATH`, the script says so. Add it in your shell profile (`~/.zshrc` or `~/.bashrc`):
+
+```sh
+export PATH="$HOME/.local/bin:$PATH"
+```
+
+Check the install:
+
+```sh
+agentws version   # agentws v0.1.0-alpha.1 (commit abc1234)
 ```
 
 ## Upgrade
 
-`agentws version` prints the installed version and, once a day at most, checks GitHub for a newer release. It never updates itself. To upgrade, run the install script again, then stop the old daemon so the new binary starts its own:
+`agentws version` prints the installed version and, at most once a day, checks GitHub for a newer release (set `AGENTWS_NO_UPDATE_CHECK=1` to turn that off). It never updates itself. To upgrade, run the install script again, then stop the old daemon so the new binary starts its own:
 
 ```sh
+curl -fsSL https://raw.githubusercontent.com/giovaniif/agent-workspace/main/scripts/install.sh | sh
 agentws daemon stop
+agentws version
 agentws
 ```
-
-![Sessions](docs/images/sessions.png)
 
 ## What it does
 
