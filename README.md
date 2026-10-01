@@ -8,6 +8,8 @@ A terminal workspace for running Claude Code and Codex sessions in parallel. It 
 
 Builds exist for macOS (arm64, amd64) and Linux (amd64); no Go toolchain is needed. You need `tmux`, `git` and the GitHub CLI (`gh`, signed in), plus Claude Code and/or the Codex CLI.
 
+Optional, on macOS: `brew install terminal-notifier`. With it on `PATH` when the daemon starts, each session keeps one banner that a newer one replaces, clicking a banner brings up your terminal on that session, and a banner goes away once the session moves on. Without it, banners go through `osascript`.
+
 Install the newest release (alphas included):
 
 ```sh
