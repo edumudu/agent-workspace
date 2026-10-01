@@ -2,6 +2,7 @@ package tui
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	tea "charm.land/bubbletea/v2"
@@ -115,4 +116,27 @@ func (m Model) focusShell() tea.Cmd {
 		return nil
 	}
 	return m.callDaemon(rpc.MethodShellFocus, rpc.ShellParams{Session: m.selected, Worktree: m.reviewWorktree()})
+}
+
+// leave detaches the terminal from the agentws layout, which keeps running
+// for the next agentws; with no layout to leave, it quits.
+func (m Model) leave() tea.Cmd {
+	c := m.opts.Calls
+	if c == nil {
+		return tea.Quit
+	}
+	return func() tea.Msg {
+		ctx, cancel := context.WithTimeout(context.Background(), terminalCallTimeout)
+		defer cancel()
+		err := c.Call(ctx, rpc.MethodClientDetach, struct{}{}, nil)
+		var rerr *rpc.Error
+		switch {
+		case errors.As(err, &rerr) && rerr.Code == rpc.CodeNotFound:
+			return tea.QuitMsg{}
+		case err != nil:
+			// why: the terminal may still be attached, or already detached; a sidebar that quits cannot come back.
+			return errMsg{err}
+		}
+		return nil
+	}
 }

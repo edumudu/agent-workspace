@@ -314,7 +314,7 @@ func (m Model) helpLines() []string {
 		{"X", "clear the queue"},
 		{"x", "end session"},
 		{"?", "close help"},
-		{"q", "quit (sessions keep running)"},
+		{"q", "leave (sessions keep running)"},
 	}
 	out := []string{"", m.line(false, []piece{{s.header, " KEYS"}}, nil)}
 	for _, k := range keys {

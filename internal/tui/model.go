@@ -484,7 +484,7 @@ func (m Model) key(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 			m.status = fmt.Sprintf("end session %d? y/n", m.entries[cur].num)
 		}
 	case "q", "ctrl+c":
-		return m, tea.Quit
+		return m, m.leave()
 	case "?":
 		m.help = !m.help
 	case "M":

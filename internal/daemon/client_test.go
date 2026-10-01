@@ -134,6 +134,28 @@ func TestClientPopupRunsTheCommandInAPopup(t *testing.T) {
 	}
 }
 
+func TestClientDetachLeavesTheLayout(t *testing.T) {
+	d, path := start(t, &memStore{})
+	host := &fakeClientHost{}
+	d.SetClientHost(host)
+	c := dial(t, path)
+	ctx := context.Background()
+	var rerr *rpc.Error
+	if err := c.Call(ctx, rpc.MethodClientDetach, struct{}{}, nil); !errors.As(err, &rerr) || rerr.Code != rpc.CodeNotFound {
+		t.Fatalf("detach before any layout = %v; want an rpc error", err)
+	}
+	opened, err := c.OpenClient(ctx, rpc.OpenClientParams{Command: []string{"agentws", "tui"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := c.Call(ctx, rpc.MethodClientDetach, struct{}{}, nil); err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Equal(host.detached, []app.Slot{app.Slot(opened.Slot)}) {
+		t.Fatalf("detached %v", host.detached)
+	}
+}
+
 func TestClientPopupOpensWhereAgentwsWasLaunched(t *testing.T) {
 	d, path := start(t, &memStore{})
 	host := &fakeClientHost{}
