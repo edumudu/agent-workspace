@@ -330,3 +330,15 @@ func TestLauncherAddsOneWorktreeAtATimeSoGitDoesNotRaceOnItsConfig(t *testing.T)
 		t.Fatal("two worktrees were added at the same time")
 	}
 }
+
+func TestLauncherStillHandsTheIssueToTheAgent(t *testing.T) {
+	r := startLauncher(t, 1, nil)
+	r.enqueue(t, issueURLs(1))
+	r.waitStarted(t, 1)
+	r.host.mu.Lock()
+	defer r.host.mu.Unlock()
+	cmd := r.host.specs[0].Command
+	if len(cmd) < 2 || cmd[len(cmd)-2] != "--" || !strings.Contains(cmd[len(cmd)-1], "ENG-1") {
+		t.Fatalf("launch command %v; want the issue as the prompt", cmd)
+	}
+}
