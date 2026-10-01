@@ -170,9 +170,11 @@ func bannerLine(prefix, text, suffix string) string {
 }
 
 // why: compiled on first use, since package init runs on every hook.
-var secretPatterns = sync.OnceValue(func() [2]*regexp.Regexp {
-	return [2]*regexp.Regexp{
+var secretPatterns = sync.OnceValue(func() [4]*regexp.Regexp {
+	return [4]*regexp.Regexp{
 		regexp.MustCompile(`(?i)\b([a-z0-9_]*(?:token|secret|password|passwd|api[_-]?key)[a-z0-9_]*)(\s*[=:]\s*)\S+`),
+		regexp.MustCompile(`(?i)\b(authorization|cookie)(\s*:\s*)(?:(?:bearer|basic|token)\s+)?[^\s"']+`),
+		regexp.MustCompile(`(://[^/\s:@]+:)[^@\s/]+@`),
 		regexp.MustCompile(`\b(?:sk-|ghp_|gho_|ghs_|ghu_|github_pat_|xox[abpr]-|AKIA)[A-Za-z0-9_\-]{6,}`),
 	}
 })
@@ -180,7 +182,9 @@ var secretPatterns = sync.OnceValue(func() [2]*regexp.Regexp {
 func maskSecrets(s string) string {
 	p := secretPatterns()
 	s = p[0].ReplaceAllString(s, "${1}${2}…")
-	return p[1].ReplaceAllString(s, "…")
+	s = p[1].ReplaceAllString(s, "${1}${2}…")
+	s = p[2].ReplaceAllString(s, "${1}…@")
+	return p[3].ReplaceAllString(s, "…")
 }
 
 func (s Session) SetMuted(muted bool) Session {
