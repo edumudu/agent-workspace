@@ -1,5 +1,5 @@
 #!/bin/sh
-# Fake gh: `gh api graphql` answers with $AGENTWS_E2E/prs.json, or no PRs.
+# why: usage: `gh api graphql` answers with $AGENTWS_E2E/prs.json, or no PRs.
 if [ "$1" = api ]; then
 	cat "$AGENTWS_E2E/prs.json" 2>/dev/null || echo '{"data":{}}'
 	exit 0

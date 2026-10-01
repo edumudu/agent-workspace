@@ -8,12 +8,8 @@ import (
 	"github.com/giovaniif/agent-workspace/internal/domain"
 )
 
-// refreshParallelism bounds how many repos are inspected at once.
 const refreshParallelism = 4
 
-// WorkspaceFS is the filesystem view discovery needs. Marker fails when path
-// is not an existing directory. Children lists the direct children that are
-// directories once symlinks are followed.
 type WorkspaceFS interface {
 	Marker(path string) (domain.GitMarker, error)
 	Children(path string) ([]domain.Child, error)
@@ -25,13 +21,11 @@ type RepoFacts struct {
 	ChangedFiles  int
 }
 
-// RepoInspector reads a repo's facts; it runs git, so it is only for workers.
+// why: it runs git, so it is only for workers.
 type RepoInspector interface {
 	Inspect(ctx context.Context, path string) (RepoFacts, error)
 }
 
-// DiscoverWorkspace lists the repos under root without running git. Facts of
-// repos in known carry over until the next RefreshRepoFacts.
 func DiscoverWorkspace(fs WorkspaceFS, root string, known []domain.Repo) (domain.Workspace, error) {
 	marker, err := fs.Marker(root)
 	if err != nil {
@@ -51,8 +45,6 @@ func DiscoverWorkspace(fs WorkspaceFS, root string, known []domain.Repo) (domain
 	return ws, nil
 }
 
-// RefreshRepoFacts returns ws with every repo's facts re-read. A repo git
-// cannot answer for keeps its old facts.
 func RefreshRepoFacts(ctx context.Context, git RepoInspector, ws domain.Workspace) domain.Workspace {
 	repos := make([]domain.Repo, len(ws.Repos))
 	copy(repos, ws.Repos)

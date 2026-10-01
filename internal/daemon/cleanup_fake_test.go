@@ -8,12 +8,9 @@ import (
 	"github.com/giovaniif/agent-workspace/internal/domain"
 )
 
-// fakeCleanupWorld reports every worktree clean and long idle, nobody inside
-// it, and records what gets moved to the trash.
 type fakeCleanupWorld struct {
-	mu    sync.Mutex
-	moved []string
-	// dirty maps a worktree path to how many uncommitted changes it has.
+	mu        sync.Mutex
+	moved     []string
 	dirty     map[string]int
 	backedUp  []string
 	holdersOf map[string][]string

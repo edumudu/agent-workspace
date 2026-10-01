@@ -16,8 +16,6 @@ const defaultRefreshInterval = 30 * time.Second
 
 type Option func(*Daemon)
 
-// WithWorkspaces enables the workspace.* methods. fs and git do IO, so they
-// only ever run on connection goroutines and refresh workers, never the loop.
 func WithWorkspaces(fs app.WorkspaceFS, git app.RepoInspector) Option {
 	return func(d *Daemon) { d.ws.fs, d.ws.git = fs, git }
 }
@@ -46,8 +44,6 @@ func (e WorkspaceRemoved) apply(s *state) rpc.Diff {
 	return rpc.Diff{RemovedWorkspace: e.Root}
 }
 
-// workspaceMethod handles workspace.*; handled is false when workspaces are
-// not enabled. ok is false when the daemon stopped.
 func (d *Daemon) workspaceMethod(req rpc.Request) (resp *rpc.Response, ok, handled bool) {
 	if d.ws.fs == nil {
 		return nil, true, false
@@ -78,8 +74,6 @@ func (d *Daemon) workspaceAdd(req rpc.Request) (*rpc.Response, bool) {
 	return result(req.ID, ws), ok
 }
 
-// addWorkspace discovers root (one repo, or a folder of repos), registers
-// it, and refreshes its git facts in the background.
 func (d *Daemon) addWorkspace(root string) (domain.Workspace, *rpc.Error, bool) {
 	var known []domain.Repo
 	if !d.query(func(s *state) { known = s.workspaces[root].Repos }) {
@@ -129,8 +123,6 @@ func (d *Daemon) workspaceList(req rpc.Request) (*rpc.Response, bool) {
 	return result(req.ID, list), ok
 }
 
-// refreshWorkspace re-reads git facts for root off the loop and publishes
-// them only if they changed and the workspace is still registered.
 func (d *Daemon) refreshWorkspace(root string) {
 	var ws domain.Workspace
 	var found bool

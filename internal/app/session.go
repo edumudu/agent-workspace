@@ -7,13 +7,12 @@ import (
 	"github.com/giovaniif/agent-workspace/internal/domain"
 )
 
-// WorktreeAdder runs `git worktree add -b branch path base` in repo.
 type WorktreeAdder interface {
 	AddWorktree(ctx context.Context, repo, path, branch, base string) (AddedWorktree, error)
 }
 
-// AddedWorktree holds the paths as git reports them, symlinks resolved, so
-// the worktree gets the same ID and repo that worktree detection gives it.
+// why: paths are as git reports them, symlinks resolved, so the worktree gets
+// the same ID and repo that worktree detection gives it.
 type AddedWorktree struct {
 	Main string
 	Path string
@@ -21,7 +20,7 @@ type AddedWorktree struct {
 
 type SetupFunc func(ctx context.Context, worktree string) error
 
-// Every Sessions method runs git or tmux, so it is for connection
+// why: every Sessions method runs git or tmux, so it is for connection
 // goroutines and workers, never the daemon loop.
 type Sessions struct {
 	Host      TerminalHost
@@ -29,7 +28,6 @@ type Sessions struct {
 	Setup     SetupFunc
 }
 
-// NewSession is one session to start. Task must already carry its ID.
 type NewSession struct {
 	ID      string
 	Task    domain.Task
@@ -46,11 +44,9 @@ type Started struct {
 	Worktree *domain.Worktree
 }
 
-// Start adds the planned worktree, runs its setup, then opens the harness
-// pane in Plan.Dir. It stops at the first failure. A worktree already added
-// stays on disk, since it may hold the setup's work and cleanup owns
-// removal; it comes back unowned in Started.Worktree beside the error, so the
-// caller can record it and a retry plans a fresh path.
+// why: a worktree already added stays on disk, since it may hold the setup's
+// work and cleanup owns removal; it comes back unowned beside the error so
+// the caller can record it and a retry plans a fresh path.
 func (s Sessions) Start(ctx context.Context, req NewSession) (Started, error) {
 	var wt *domain.Worktree
 	dir := req.Plan.Dir
@@ -88,7 +84,6 @@ func (s Sessions) Start(ctx context.Context, req NewSession) (Started, error) {
 	return Started{Session: session, Worktree: wt}, nil
 }
 
-// End leaves the session's worktrees; cleanup decides about them.
 func (s Sessions) End(ctx context.Context, session domain.Session) (domain.Session, error) {
 	if session.Pane != "" {
 		if err := s.Host.Kill(ctx, PaneID(session.Pane)); err != nil {

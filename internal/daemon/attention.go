@@ -12,8 +12,7 @@ import (
 )
 
 const (
-	// bannerQueue is how many banners may wait for the worker; more are dropped
-	// rather than stall the loop.
+	// why: more are dropped rather than stall the loop.
 	bannerQueue   = 64
 	bannerTimeout = 5 * time.Second
 )
@@ -23,8 +22,8 @@ type queuedBanner struct {
 	focused bool
 }
 
-// attention decides on the loop and delivers on a worker: the notifier and
-// the frontmost check both run processes.
+// why: decides on the loop and delivers on a worker: the notifier and the
+// frontmost check both run processes.
 type attention struct {
 	notifier app.Notifier
 	fg       app.Foreground
@@ -33,8 +32,7 @@ type attention struct {
 	queue    chan queuedBanner
 }
 
-// WithNotifier turns on banners. fg may be nil, which counts as the terminal
-// never being in front. sounds names a macOS sound per event state.
+// why: fg may be nil, which counts as the terminal never being in front.
 func WithNotifier(n app.Notifier, fg app.Foreground, sounds map[domain.AgentState]string) Option {
 	return func(d *Daemon) {
 		d.st.attn = &attention{
@@ -69,8 +67,6 @@ func (a *attention) deliver(ctx context.Context, q queuedBanner) {
 	}
 }
 
-// announce queues a banner for each notify effect that survives mute and
-// coalescing. It runs on the loop and never blocks.
 func (s *state) announce(session domain.Session, effects []domain.Effect) {
 	if s.attn == nil {
 		return
@@ -133,7 +129,6 @@ func (d *Daemon) dispatchAttention(req rpc.Request) (*rpc.Response, bool) {
 	return result(req.ID, struct{}{}), ok
 }
 
-// focus makes session the one in view. Only sessions that change are emitted.
 func (s *state) focus(session domain.Session) {
 	for _, other := range sorted(s.sessions) {
 		if other.ID != session.ID && other.Focused {

@@ -61,7 +61,6 @@ func addComments(t *testing.T, c *rpc.Client, cs ...domain.ReviewComment) domain
 	return d
 }
 
-// params addresses c by worktree ID, which in these tests is its path.
 func params(c domain.ReviewComment) rpc.CommentParams {
 	return rpc.CommentParams{Session: "s1", Worktree: c.Worktree, Path: c.Path, StartLine: c.Start, EndLine: c.End,
 		Code: strings.Join(c.Code, "\n"), Body: c.Body, Removed: c.Removed}

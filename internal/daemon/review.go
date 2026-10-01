@@ -12,15 +12,12 @@ import (
 	"github.com/giovaniif/agent-workspace/internal/rpc"
 )
 
-// turnQueue bounds the prompts waiting for a snapshot; one past it is
-// dropped rather than block the loop, and its last-turn review falls back to
-// the previous snapshot.
+// why: one past it is dropped rather than block the loop, and its last-turn
+// review falls back to the previous snapshot.
 const turnQueue = 64
 
 const reviewTimeout = 10 * time.Second
 
-// turnJob.sent is the draft whose prompt started this turn, if any; it is
-// linked to the refs the snapshot makes.
 type turnJob struct {
 	session string
 	dirs    []string
@@ -34,9 +31,6 @@ type review struct {
 	jobs     chan turnJob
 }
 
-// WithReview enables review.open and review.viewed, snapshots each session's
-// worktrees when a prompt is submitted, and drops a removed worktree's
-// snapshots. All git runs on workers and connection goroutines.
 func WithReview(g app.ReviewGit) Option {
 	return func(d *Daemon) {
 		d.rv = review{git: g, reviewer: app.NewReviewer(g), jobs: make(chan turnJob, turnQueue)}
@@ -77,8 +71,6 @@ func (d *Daemon) snapshotTurns(ctx context.Context) {
 	}
 }
 
-// reviewTargets are the worktrees session owns, or, when it owns none, the
-// directory its hooks report, which is a checkout in a single-repo workspace.
 func (s *state) reviewTargets(session string) []app.ReviewTarget {
 	defaults := map[string]string{}
 	for _, ws := range s.workspaces {
@@ -172,8 +164,7 @@ func (d *Daemon) dispatchReview(req rpc.Request) (*rpc.Response, bool) {
 	return result(req.ID, out), ok
 }
 
-// reviewScope remembers the scope a session's review was last opened with,
-// so callers that do not choose one, such as nvim, see what the TUI shows.
+// why: so callers that do not choose a scope, such as nvim, see what the TUI shows.
 func (s *state) reviewScope(session string, asked domain.ReviewScope) domain.ReviewScope {
 	if asked == "" {
 		asked = s.scopes[session]
@@ -203,8 +194,6 @@ func (d *Daemon) markViewed(req rpc.Request) (*rpc.Response, bool) {
 	return result(req.ID, struct{}{}), ok
 }
 
-// dropTurns deletes the snapshots of worktrees the scanner saw removed,
-// from their repo's main checkout. Called on the scanner goroutine.
 func (d *Daemon) dropTurns(ctx context.Context, removed map[string][]string) {
 	if d.rv.git == nil {
 		return

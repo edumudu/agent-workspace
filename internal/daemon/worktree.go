@@ -17,8 +17,6 @@ const (
 	DefaultPRPoll       = 60 * time.Second
 )
 
-// WithWorktrees enables worktree detection and PR lookup. Both do IO, so
-// they run only on the scanner goroutine, never the loop.
 func WithWorktrees(lister app.WorktreeLister, prs app.PRFinder) Option {
 	return func(d *Daemon) { d.wt.lister, d.wt.prs = lister, prs }
 }
@@ -28,16 +26,13 @@ func WithWorktreePoll(every, prEvery time.Duration) Option {
 }
 
 type worktreeScanner struct {
-	lister  app.WorktreeLister
-	prs     app.PRFinder
-	every   time.Duration
-	prEvery time.Duration
-	// baselined is owned by the scanner goroutine: repos already scanned once.
+	lister    app.WorktreeLister
+	prs       app.PRFinder
+	every     time.Duration
+	prEvery   time.Duration
 	baselined map[string]bool
 }
 
-// worktreeHints is what the loop learns from hooks for attribution. kick
-// wakes the scanner without blocking the loop.
 type worktreeHints struct {
 	cwd    map[string]string
 	claims []domain.WorktreeClaim
@@ -70,7 +65,6 @@ type hookPayload struct {
 	} `json:"tool_input"`
 }
 
-// command reads tool_input.command as Claude's string or Codex's argv.
 func (p hookPayload) command() string {
 	var s string
 	if json.Unmarshal(p.ToolInput.Command, &s) == nil {
@@ -83,8 +77,6 @@ func (p hookPayload) command() string {
 	return ""
 }
 
-// noteHook records where the session works and any `git worktree add` it
-// ran, and wakes the scanner when either gives it something new to look at.
 func (s *state) noteHook(sessionID string, kind domain.HarnessEventKind, payload json.RawMessage, now time.Time) {
 	var p hookPayload
 	if len(payload) == 0 || json.Unmarshal(payload, &p) != nil {
@@ -144,7 +136,6 @@ func (d *Daemon) watchWorktrees(ctx context.Context) {
 	}
 }
 
-// ticker returns a channel that never fires for a non-positive interval.
 func ticker(every time.Duration) (<-chan time.Time, func()) {
 	if every <= 0 {
 		return nil, func() {}
@@ -153,9 +144,7 @@ func ticker(every time.Duration) (<-chan time.Time, func()) {
 	return t.C, t.Stop
 }
 
-// scanWorktrees lists every repo in a registered workspace or under a
-// session's cwd, then reconciles on the loop. A repo seen for the first time
-// is adopted: its worktrees start unassigned.
+// why: a repo seen for the first time is adopted: its worktrees start unassigned.
 func (d *Daemon) scanWorktrees(ctx context.Context) {
 	var dirs []string
 	if !d.query(func(s *state) {
@@ -217,8 +206,6 @@ func (s *state) sessionHints() []domain.SessionHint {
 	return hints
 }
 
-// putWorktree publishes w and moves it between sessions' WorktreeIDs when its
-// owner changed.
 func (s *state) putWorktree(w domain.Worktree) {
 	prev := s.worktrees[w.ID].SessionID
 	w.Ports = s.portsOf(w)

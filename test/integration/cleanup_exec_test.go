@@ -27,8 +27,7 @@ type cleanupRig struct {
 	cleanup   *app.Cleanup
 }
 
-// newCleanupRig clones a bare origin into tmp/api and wires the real
-// adapters. The clock runs past CleanupGrace so fresh worktrees count as idle.
+// why: the clock runs past CleanupGrace so fresh worktrees count as idle.
 func newCleanupRig(t *testing.T) cleanupRig {
 	t.Helper()
 	for _, bin := range []string{"git", "lsof", "tar"} {

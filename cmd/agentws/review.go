@@ -22,8 +22,8 @@ const (
 
 var errBadComment = errors.New("bad comment arguments")
 
-// sessionFromEnv is the default for --session: the shell and nvim panes the
-// daemon starts carry their session in AGENTWS_SESSION.
+// why: the shell and nvim panes the daemon starts carry their session in
+// AGENTWS_SESSION, so it is the default for --session.
 func sessionFromEnv() string { return os.Getenv("AGENTWS_SESSION") }
 
 func parseCommentArgs(args []string, stderr io.Writer) (rpc.CommentParams, error) {

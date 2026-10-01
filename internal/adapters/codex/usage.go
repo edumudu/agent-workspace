@@ -15,8 +15,7 @@ import (
 const (
 	UnknownPercent = -1
 
-	// promptBaselineTokens is the fixed system prompt Codex leaves out when
-	// it works out the context it shows the user.
+	// why: Codex leaves this fixed system prompt out when it works out the context it shows the user.
 	promptBaselineTokens = 12000
 )
 
@@ -26,21 +25,15 @@ type LimitWindow struct {
 	ResetsAt      time.Time
 }
 
-// Snapshot is what a Codex rollout file says about a session right now.
-// ContextLeftPercent is UnknownPercent until the first token count.
 type Snapshot struct {
 	Model              string
 	Effort             string
 	ContextLeftPercent int
 	Limits             []LimitWindow
-	// LimitsAt is the rollout's time for the event that carried Limits, zero
-	// when the rollout has no timestamp.
-	LimitsAt time.Time
-	// TurnAt is the rollout's time for the turn that set Model and Effort.
-	TurnAt time.Time
+	LimitsAt           time.Time
+	TurnAt             time.Time
 }
 
-// RateLimits is Limits as the session shows them, named like Claude's windows.
 func (s Snapshot) RateLimits() []domain.RateLimit {
 	var out []domain.RateLimit
 	for _, w := range s.Limits {
@@ -53,8 +46,7 @@ func (s Snapshot) RateLimits() []domain.RateLimit {
 	return out
 }
 
-// Usage folds the limit windows into the highest one, which is the one that
-// blocks the session first.
+// why: the highest window is the one that blocks the session first.
 func (s Snapshot) Usage() domain.Usage {
 	var highest float64
 	for _, w := range s.Limits {
@@ -66,8 +58,6 @@ func (s Snapshot) Usage() domain.Usage {
 	}
 }
 
-// ContextLeftPercent is the share of the context window still free, after
-// setting aside the baseline prompt.
 func ContextLeftPercent(usedTokens, window int) int {
 	effective := window - promptBaselineTokens
 	if effective <= 0 {
@@ -113,9 +103,7 @@ type rateWindow struct {
 	ResetsAt      int64   `json:"resets_at"`
 }
 
-// ReadSnapshot scans a rollout, a JSON line per event, and keeps the newest
-// value of each field. Lines that do not parse, such as one cut short by a
-// tail read, are skipped.
+// why: lines that do not parse, such as one cut short by a tail read, are skipped.
 func ReadSnapshot(r io.Reader) (Snapshot, error) {
 	snap := Snapshot{ContextLeftPercent: UnknownPercent}
 	sc := bufio.NewScanner(r)
@@ -171,8 +159,7 @@ func (s *Snapshot) applyTokenCount(ev eventMsg, at time.Time) {
 	}
 }
 
-// ReadSnapshotFile reads at most the last maxBytes of a rollout, which keeps
-// a days-old session's multi-megabyte file cheap to poll.
+// why: reading only the tail keeps a days-old session's multi-megabyte rollout cheap to poll.
 func ReadSnapshotFile(path string, maxBytes int64) (Snapshot, error) {
 	f, err := os.Open(path)
 	if err != nil {

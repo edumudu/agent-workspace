@@ -1,4 +1,3 @@
-# A root with repos, a symlinked repo, a worktree and a plain dir lists only the repos.
 symlink shop/linked -> ../elsewhere/linked
 
 exec agentws workspace add shop
@@ -17,7 +16,6 @@ stdout '^  solo\s'
 ! stdout 'api-feature'
 ! stdout 'docs'
 
-# The workspace survives a daemon restart, with its last-used mark.
 exec agentws daemon stop
 exec agentws workspace list
 stdout '^\S*/solo \(single, last used\)$'

@@ -1,4 +1,3 @@
-# debug seed adds fake sessions to the daemon, starting it if needed.
 exec agentws debug seed 3
 stdout '^seeded 3 sessions$'
 

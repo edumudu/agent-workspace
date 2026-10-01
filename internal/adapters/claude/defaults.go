@@ -7,8 +7,6 @@ import (
 	"os"
 )
 
-// ReadDefaults reads the model and effort Claude Code starts with from its
-// settings file. A missing file or key gives "".
 func ReadDefaults(path string) (model, effort string, err error) {
 	b, err := os.ReadFile(path)
 	if errors.Is(err, fs.ErrNotExist) {
@@ -27,8 +25,6 @@ func ReadDefaults(path string) (model, effort string, err error) {
 	return shortModel(s.Model, s.Model), s.EffortLevel, nil
 }
 
-// ReadEffortByModel reads the effort Claude Code keeps per model under
-// modelSettings, keyed by the short model name the sidebar shows.
 func ReadEffortByModel(path string) (map[string]string, error) {
 	b, err := os.ReadFile(path)
 	if errors.Is(err, fs.ErrNotExist) {

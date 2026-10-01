@@ -171,14 +171,13 @@ func (g *liveGit) Inspect(context.Context, string) (app.RepoFacts, error) {
 }
 
 type fakeClientHost struct {
-	mu      sync.Mutex
-	opened  []app.PaneSpec
-	open    map[app.Slot]bool
-	focused []app.Slot
-	wide    []bool
-	ensured []app.Slot
-	gone    bool
-	// duringCheck runs inside the SlotHasPane call that reports the pane missing.
+	mu          sync.Mutex
+	opened      []app.PaneSpec
+	open        map[app.Slot]bool
+	focused     []app.Slot
+	wide        []bool
+	ensured     []app.Slot
+	gone        bool
 	duringCheck func()
 
 	slotPane      map[app.Slot]app.PaneID
@@ -190,7 +189,6 @@ type fakeClientHost struct {
 	detached      []app.Slot
 }
 
-// SlotHasPane reports the slot pane as missing once after loseSlotPane.
 func (h *fakeClientHost) SlotHasPane(context.Context, app.Slot) bool {
 	h.mu.Lock()
 	had := !h.gone
@@ -324,23 +322,19 @@ type shown struct {
 
 type fakeHost struct {
 	app.TerminalHost
-	mu       sync.Mutex
-	titles   map[app.PaneID][]string
-	specs    []app.PaneSpec
-	err      error
-	panes    []app.PaneInfo
-	killed   []app.PaneID
-	shown    []shown
-	typed    []string
-	failText string
-	gates    map[app.PaneID]chan struct{}
-	// distinct gives each pane its own ID, %7 then %8 and so on.
-	distinct bool
-	// failFirst makes the next Create fail once.
+	mu        sync.Mutex
+	titles    map[app.PaneID][]string
+	specs     []app.PaneSpec
+	err       error
+	panes     []app.PaneInfo
+	killed    []app.PaneID
+	shown     []shown
+	typed     []string
+	failText  string
+	gates     map[app.PaneID]chan struct{}
+	distinct  bool
 	failFirst bool
-	// screens are what Capture shows, one per call; after the last it shows
-	// an empty pane.
-	screens []string
+	screens   []string
 }
 
 func (h *fakeHost) Capture(context.Context, app.PaneID, int) (string, error) {
@@ -599,8 +593,6 @@ func (f *fakeWorktrees) AddWorktree(_ context.Context, repo, path, branch, base 
 	return app.AddedWorktree{Main: repo, Path: path}, nil
 }
 
-// fakeReviewGit resolves every rev to itself and answers diffs keyed by
-// "<from>..<tree>". refs are per dir, ref → tree.
 type fakeReviewGit struct {
 	mu    sync.Mutex
 	trees map[string]string
@@ -715,7 +707,6 @@ func (f *fakeTitles) calls() []domain.Task {
 	return append([]domain.Task(nil), f.called...)
 }
 
-// fakeHunkGit records "<action> <dir>" for each patch and keeps the patches.
 type fakeHunkGit struct {
 	mu      sync.Mutex
 	calls   []string

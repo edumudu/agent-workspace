@@ -1,6 +1,5 @@
-// Package daemon owns the in-memory state and serves it over the RPC socket.
-// One goroutine, the loop, owns the state: adapters Post events to it, and
-// connections send it queries. Nothing in the loop touches disk or runs
+// why: one goroutine, the loop, owns the state: adapters Post events to it,
+// and connections send it queries. Nothing in the loop touches disk or runs
 // commands; the store only enqueues writes.
 package daemon
 
@@ -21,11 +20,9 @@ import (
 	"github.com/giovaniif/agent-workspace/internal/version"
 )
 
-// outBuffer is how many messages a connection may fall behind before the
-// daemon drops it rather than stall the loop.
+// why: a connection further behind is dropped rather than stall the loop.
 const outBuffer = 1024
 
-// Event is a state change an adapter posts to the loop.
 type Event interface {
 	apply(s *state) rpc.Diff
 }
@@ -35,8 +32,8 @@ type TaskChanged struct{ Task domain.Task }
 type WorktreeChanged struct{ Worktree domain.Worktree }
 type SessionChanged struct{ Session domain.Session }
 
-// SessionHooked is a session change together with the hook event that caused
-// it, published as one diff so a subscriber never sees one without the other.
+// why: published as one diff so a subscriber never sees the session change
+// without the hook event that caused it.
 type SessionHooked struct {
 	Session domain.Session
 	Event   domain.SessionEvent
@@ -107,47 +104,40 @@ type state struct {
 	subs       map[*conn]uint64
 	usage      map[string]*usageJob
 	attn       *attention
-	// requestUsage is set by New; state cannot reach the Daemon that owns it.
+	// why: set by New; state cannot reach the Daemon that owns it.
 	requestUsage func(sessionID, path string, force bool)
-	// sendSwitches is set by New for the same reason.
 	sendSwitches func(session domain.Session, sws []domain.Switch)
 	hints        worktreeHints
 	listeners    []domain.Listener
-	// requestTurn is set by WithReview and must not block.
+	// why: must not block.
 	requestTurn func(session string, dirs []string, sent *domain.ReviewDraft) bool
 	viewed      map[string]domain.ViewedMark
-	// queue is the launcher's waiting issues; launched is the sessions it
-	// started, which hold its slots. Neither is persisted.
+	// why: neither queue nor launched is persisted.
 	queue    []domain.LaunchItem
 	launched map[string]bool
-	// kickLauncher is set by New and must not block.
+	// why: must not block.
 	kickLauncher func()
 	scopes       map[string]domain.ReviewScope
-	// drafts holds each session's open or queued draft; awaiting, the sent
-	// draft whose prompt has not been seen yet.
-	drafts   map[string]domain.ReviewDraft
-	awaiting map[string]domain.ReviewDraft
-	// pasting marks a session whose draft is being pasted; the next waits.
-	pasting map[string]bool
-	// sendDraft is set by New, like sendSwitches.
-	sendDraft func(session domain.Session, draft domain.ReviewDraft, prompt string)
+	drafts       map[string]domain.ReviewDraft
+	awaiting     map[string]domain.ReviewDraft
+	pasting      map[string]bool
+	sendDraft    func(session domain.Session, draft domain.ReviewDraft, prompt string)
 }
 
 type Daemon struct {
-	pid     int
-	started time.Time
-	events  chan Event
-	queries chan func(*state)
-	stopped chan struct{}
-	st      *state
-	ws      workspaces
-	clients clients
-	hs      harnesses
-	wt      worktreeScanner
-	ports   portScanner
-	sess    sessionDeps
-	titles  app.TitleResolver
-	// restored is the sessions loaded from the store, checked once against tmux on Serve.
+	pid      int
+	started  time.Time
+	events   chan Event
+	queries  chan func(*state)
+	stopped  chan struct{}
+	st       *state
+	ws       workspaces
+	clients  clients
+	hs       harnesses
+	wt       worktreeScanner
+	ports    portScanner
+	sess     sessionDeps
+	titles   app.TitleResolver
 	restored []domain.Session
 	rv       review
 	cl       cleanupWorker
@@ -156,7 +146,6 @@ type Daemon struct {
 	term     terminals
 }
 
-// New restores state from store. pid is what status reports.
 func New(store app.Store, pid int, opts ...Option) (*Daemon, error) {
 	snap, err := store.Load()
 	if err != nil {
@@ -230,8 +219,6 @@ func New(store app.Store, pid int, opts ...Option) (*Daemon, error) {
 	return d, nil
 }
 
-// Post hands an event to the loop. It blocks only while the loop's queue is
-// full, and returns at once after Serve has stopped.
 func (d *Daemon) Post(e Event) {
 	select {
 	case d.events <- e:
@@ -239,7 +226,6 @@ func (d *Daemon) Post(e Event) {
 	}
 }
 
-// query runs f on the loop and waits for it.
 func (d *Daemon) query(f func(*state)) bool {
 	done := make(chan struct{})
 	select {
@@ -251,8 +237,6 @@ func (d *Daemon) query(f func(*state)) bool {
 	return true
 }
 
-// Serve runs the loop and accepts connections on ln until ctx is done, then
-// closes every connection and flushes the store.
 func (d *Daemon) Serve(ctx context.Context, ln net.Listener) error {
 	d.ws.ctx = ctx
 	go d.refreshWorkspacesEvery(ctx)
@@ -338,9 +322,6 @@ func (s *state) emit(e Event) {
 	}
 }
 
-// hook applies a harness hook to the session on its pane. Hooks from panes
-// no session owns, and hook names the harness adapter does not know, are
-// ignored.
 func (s *state) hook(h rpc.Hook, now time.Time) {
 	kind, ok := hookEvent(h)
 	if !ok {
@@ -372,8 +353,6 @@ func (s *state) hook(h rpc.Hook, now time.Time) {
 	}
 }
 
-// trackSubagents follows a subagent start or stop, and stops what a session
-// spawned when it starts over or ends.
 func (s *state) trackSubagents(sessionID string, kind domain.HarnessEventKind, at time.Time, payload []byte) {
 	switch kind {
 	case domain.EventSubagentStart, domain.EventSubagentStop:
@@ -392,8 +371,7 @@ func (s *state) trackSubagents(sessionID string, kind domain.HarnessEventKind, a
 	}
 }
 
-// commit applies e on the loop and returns once it has taken effect, so a
-// query issued afterwards sees it. It reports false if the daemon stopped.
+// why: returns once e has taken effect, so a query issued afterwards sees it.
 func (d *Daemon) commit(e Event) bool {
 	return d.query(func(s *state) { s.emit(e) })
 }
@@ -417,8 +395,7 @@ func (d *Daemon) handle(c *conn) {
 	}
 }
 
-// dispatch answers one request line. A nil response means the loop already
-// replied, as subscribe does.
+// why: a nil response means the loop already replied, as subscribe does.
 func (d *Daemon) dispatch(c *conn, line []byte) (*rpc.Response, bool) {
 	var req rpc.Request
 	if err := json.Unmarshal(line, &req); err != nil {
@@ -575,8 +552,6 @@ func newConn(nc net.Conn) *conn {
 	return &conn{nc: nc, out: make(chan rpc.Response, outBuffer), gone: make(chan struct{})}
 }
 
-// push queues resp without blocking. A connection too far behind is dropped,
-// and push reports false.
 func (c *conn) push(resp rpc.Response) bool {
 	resp.Build = version.String()
 	select {
@@ -615,8 +590,7 @@ func (c *conn) write() {
 	}
 }
 
-// codexObservation takes the model Codex reports at once, and asks for a
-// read of the rollout, which has the effort and usage the hook lacks.
+// why: the rollout has the effort and usage the hook lacks.
 func (s *state) codexObservation(h rpc.Hook, kind domain.HarnessEventKind, before, next domain.Session) domain.Session {
 	obs, err := codex.ParseHook(h.Event, h.Payload)
 	if err != nil {

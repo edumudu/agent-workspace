@@ -10,7 +10,6 @@ import (
 	"github.com/giovaniif/agent-workspace/internal/rpc"
 )
 
-// Reviewer builds reviews and widens the layout for them; *rpc.Client is one.
 type Reviewer interface {
 	Review(ctx context.Context, p rpc.ReviewParams) (rpc.Review, error)
 	MarkViewed(ctx context.Context, mark domain.ViewedMark, viewed bool) error
@@ -27,9 +26,6 @@ type styledLine struct {
 	toks []tok
 }
 
-// diffRow is one row of a file's diff: a hunk header, or a line (unified)
-// or a pair of lines (split, either side may be nil). hunk is the index of
-// the hunk the row belongs to.
 type diffRow struct {
 	hunk   int
 	header string
@@ -45,15 +41,15 @@ type reviewFile struct {
 	split   []diffRow
 }
 
-// treeRow is a worktree heading when file is -1, else an index into files.
+// why: file is -1 for a worktree heading.
 type treeRow struct {
 	wt   domain.Worktree
 	err  string
 	file int
 }
 
-// prepared is a review ready to draw: parsed, highlighted and laid out in
-// the command that fetched it, so View never lexes.
+// why: parsed, highlighted and laid out in the command that fetched it, so View
+// never lexes.
 type prepared struct {
 	files []reviewFile
 	tree  []treeRow
@@ -82,8 +78,6 @@ type reviewState struct {
 	cur    int
 	scroll int
 
-	// line is the cursor's row in the current file's diff; mark, when
-	// marking, is where a V range started.
 	line    int
 	mark    int
 	marking bool
@@ -168,9 +162,8 @@ func layout(r layouter, open bool) tea.Cmd {
 	}
 }
 
-// fetchReview asks for the review with the current settings; the answer
-// carries the seq it was asked with, and one that is no longer current is
-// dropped.
+// why: the answer carries the seq it was asked with, and one that is no longer
+// current is dropped.
 func (m *Model) fetchReview() tea.Cmd {
 	m.rv.seq++
 	m.rv.loading = true
@@ -307,7 +300,6 @@ func (m Model) reviewKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-// nextWorktree cycles all, then each of the session's worktrees.
 func (m Model) nextWorktree() string {
 	ids := []string{""}
 	for _, e := range m.entries {

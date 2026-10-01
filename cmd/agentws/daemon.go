@@ -52,8 +52,6 @@ func foreground(home string) error {
 	return daemon.Run(ctx, home)
 }
 
-// spawn starts a detached `agentws daemon` that outlives this process and
-// logs to home/daemon.log.
 func spawn(home string) error {
 	self, err := os.Executable()
 	if err != nil {

@@ -35,13 +35,11 @@ func launchSpec(bin string, req LaunchRequest) app.PaneSpec {
 	return app.PaneSpec{Name: req.Name, Dir: req.Dir, Command: command}
 }
 
-// Launch starts codex in a new pane. The pane's $TMUX_PANE is how the
-// session's hooks find their way back to it.
+// why: the pane's $TMUX_PANE is how the session's hooks find their way back to it.
 func Launch(ctx context.Context, host app.TerminalHost, req LaunchRequest) (app.PaneID, error) {
 	return host.Create(ctx, LaunchSpec(req))
 }
 
-// Adapter launches Binary, or `codex` from PATH when it is empty.
 type Adapter struct {
 	Binary string
 }

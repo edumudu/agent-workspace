@@ -1,7 +1,6 @@
 //go:build integration
 
-// Package integration runs the daemon with its real git and gh adapters
-// against temporary repos. gh is a fake script, so nothing reaches GitHub.
+// why: gh is a fake script, so nothing reaches GitHub.
 package integration
 
 import (
@@ -53,8 +52,6 @@ func newRepo(t *testing.T, path string) {
 	git(t, path, "commit", "-q", "-m", "init")
 }
 
-// start runs a daemon with one session, s1 on pane %1, and a workspace root
-// holding the repos api and web, plus a hand-made worktree api-old.
 func start(t *testing.T, poll, prPoll time.Duration) env {
 	t.Helper()
 	for _, bin := range []string{"git", "sh"} {
@@ -181,8 +178,6 @@ func find(st rpc.State, path string) (domain.Worktree, bool) {
 	return domain.Worktree{}, false
 }
 
-// agentRuns is what a fake agent in pane %1 does: run the command, then fire
-// the PostToolUse hook the harness would.
 func (e env) agentRuns(t *testing.T, cwd string, args ...string) {
 	t.Helper()
 	git(t, cwd, args...)

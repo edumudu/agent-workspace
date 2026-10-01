@@ -12,8 +12,6 @@ import (
 
 type Adder struct{}
 
-// AddWorktree makes branch at base and checks it out at path, creating
-// path's parents. It fails if branch or path already exists.
 func (Adder) AddWorktree(ctx context.Context, repo, path, branch, base string) (app.AddedWorktree, error) {
 	cmd := exec.CommandContext(ctx, "git", "-C", repo, "worktree", "add", "-q", "-b", branch, path, base)
 	cmd.Env = isolated(cmd.Environ())

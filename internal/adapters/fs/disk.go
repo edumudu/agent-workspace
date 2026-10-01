@@ -22,10 +22,7 @@ var (
 	_ app.CleanupHistory = (*AuditLog)(nil)
 )
 
-// Du measures a directory with `du -sk -P`. One du run counts a hardlinked
-// file once, so a worktree whose dependencies are hardlinked is not charged
-// for the same file twice. Symlinks are not followed. APFS clones are not
-// visible to du and count in full.
+// why: one du run counts a hardlinked file once, so hardlinked dependencies are not charged twice; APFS clones are invisible to du and count in full.
 type Du struct{}
 
 func (Du) Size(ctx context.Context, path string) (int64, error) {
@@ -56,7 +53,6 @@ func (Volume) Stat(path string) (free, total uint64, err error) {
 	return uint64(st.Bavail) * bsize, uint64(st.Blocks) * bsize, nil
 }
 
-// Recent returns the newest n well-formed records, newest first.
 func (a *AuditLog) Recent(n int) []app.CleanupRecord {
 	a.mu.Lock()
 	data, err := os.ReadFile(a.Path)

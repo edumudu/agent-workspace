@@ -12,18 +12,14 @@ import (
 	"github.com/giovaniif/agent-workspace/internal/rpc"
 )
 
-// titleTimeout bounds one lookup; the name shows up as soon as it lands, so
-// a slow source only delays it.
 const titleTimeout = 10 * time.Second
 
-// WithTitles looks up the title of each new Linear or PR work item.
 func WithTitles(r app.TitleResolver) Option {
 	return func(d *Daemon) { d.titles = r }
 }
 
-// resolveTitleAsync runs the lookup on a worker; the loop never waits on the
-// network. The title is merged into the task as it is when the answer lands,
-// so a pin made meanwhile stays.
+// why: the title is merged into the task as it is when the answer lands, so
+// a pin made meanwhile stays.
 func (d *Daemon) resolveTitleAsync(task domain.Task) {
 	if d.titles == nil || task.Source == domain.TaskText {
 		return

@@ -8,8 +8,7 @@ import (
 	"io"
 )
 
-// object is a JSON object that keeps its keys in file order, so merging into
-// a user's hooks.json does not reshuffle what they wrote.
+// why: keeps keys in file order, so merging into a user's hooks.json does not reshuffle what they wrote.
 type object struct {
 	keys []string
 	vals map[string]any
@@ -102,8 +101,7 @@ func encodeCompact(v any) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-// encodeIndented renders v with two-space indentation and a trailing newline,
-// leaving <, > and & unescaped as users write them in shell commands.
+// why: <, > and & stay unescaped as users write them in shell commands.
 func encodeIndented(v any) ([]byte, error) {
 	compact, err := encodeCompact(v)
 	if err != nil {

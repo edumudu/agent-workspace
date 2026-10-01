@@ -8,7 +8,7 @@ import (
 	"unicode"
 )
 
-// fillerWords carry no information in a doc comment: after dropping them and
+// why: filler words carry no information in a doc comment: after dropping them and
 // every word taken from the declaration's own identifiers, a useful doc still
 // has something left.
 var fillerWords = map[string]bool{
@@ -125,8 +125,8 @@ func fieldWords(fields *ast.FieldList) []string {
 	return words
 }
 
-// identWords returns only the top-level identifiers of a type expression: a
-// struct's field names are what its doc comment may talk about.
+// why: only top-level identifiers count: a struct's field names are what its
+// doc comment may talk about.
 func identWords(expr ast.Expr) []string {
 	switch e := expr.(type) {
 	case *ast.Ident:
@@ -149,9 +149,8 @@ func identWords(expr ast.Expr) []string {
 	return nil
 }
 
-// restates reports whether text is "<name> ..." where every other word is a
-// filler word or comes from name and the related identifiers, compared after
-// stripping plural and verb endings so "Close closes" matches.
+// why: words are compared after stripping plural and verb endings so
+// "Close closes" matches.
 func restates(text, name string, related []string) bool {
 	words := wordPattern.FindAllString(text, -1)
 	if len(words) == 0 || words[0] != name {
@@ -200,8 +199,6 @@ func stem(word string) string {
 	return strings.TrimSuffix(w, "e")
 }
 
-// banners reports comment groups outside any declaration that only label a
-// section of the file, such as "// ---- helpers ----" or "// Helpers".
 func banners(fset *token.FileSet, file string, f *ast.File) []finding {
 	docs := map[*ast.CommentGroup]bool{f.Doc: true}
 	ast.Inspect(f, func(n ast.Node) bool {
@@ -240,7 +237,7 @@ func insideDecl(fset *token.FileSet, group *ast.CommentGroup, decls []ast.Decl) 
 	return false
 }
 
-// isSeparator is checked on doc comments too: Go attaches a banner that sits
+// why: checked on doc comments too: Go attaches a banner that sits
 // right above a declaration to it as its doc.
 func isSeparator(text string) bool {
 	body, ok := commentBody(text)

@@ -13,19 +13,12 @@ import (
 )
 
 const (
-	// diskWorkers bounds the du processes running at once.
 	diskWorkers = 2
-	// diskSizeTTL is how long a measured size is trusted before it is
-	// measured again in the background.
 	diskSizeTTL = 5 * time.Minute
 )
 
-// recentCleanups is how many audit log lines a DiskView carries.
 const recentCleanups = 8
 
-// DiskDeps are what disk.view reads besides the cleanup plan. VolumePath is
-// the directory whose volume is reported; DepsStore, when set, is the shared
-// dependency store whose size is shown.
 type DiskDeps struct {
 	Sizes      *app.DiskSizes
 	Volume     app.VolumeStat
@@ -34,9 +27,8 @@ type DiskDeps struct {
 	DepsStore  string
 }
 
-// WithDisk serves disk.view. It needs WithCleanup: the rows are its plan.
-// Sizes are only ever measured by deps.Sizes' own workers, never on the
-// loop or the connection asking.
+// why: needs WithCleanup, whose plan gives the rows. Sizes are only measured
+// by deps.Sizes' own workers, never on the loop or the asking connection.
 func WithDisk(deps DiskDeps) Option {
 	return func(d *Daemon) { d.disk = deps }
 }
@@ -104,8 +96,8 @@ func (d *Daemon) cleanupWorktree(req rpc.Request) (*rpc.Response, bool) {
 	return errorResponse(req.ID, rpc.CodeNotFound, "no worktree "+p.Path), true
 }
 
-// afterRemoval drops the worktree from state at once, so the row does not
-// wait for the next scan, and forgets its size.
+// why: drops the worktree from state at once, so the row does not wait for
+// the next scan.
 func (d *Daemon) afterRemoval(w domain.Worktree) {
 	if d.disk.Sizes != nil {
 		d.disk.Sizes.Forget(w.Path)
@@ -114,9 +106,6 @@ func (d *Daemon) afterRemoval(w domain.Worktree) {
 	d.st.hints.wake()
 }
 
-// DepsStorePath is the shared dependency store to report: $AGENTWS_DEPS_STORE
-// when set, else pnpm's store if one exists in its default place. Empty means
-// none, and the disk view leaves the store out.
 func DepsStorePath() string {
 	if p := os.Getenv("AGENTWS_DEPS_STORE"); p != "" {
 		return p

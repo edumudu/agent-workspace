@@ -29,9 +29,8 @@ var markUnread = Effect{Kind: EffectMarkUnread}
 
 var doneEffects = []Effect{notify(StateDone), markUnread}
 
-// expected lists every (state, event) pair for an unfocused session. Tool,
-// permission and waiting events seen while idle or done are stale (hooks can
-// arrive out of order), so they must not revive the session.
+// why: hooks can arrive out of order, so tool, permission and waiting events
+// seen while idle or done must not revive the session.
 var expected = map[AgentState]map[HarnessEventKind]transition{
 	StateIdle: {
 		EventSessionStart:      {StateIdle, nil},

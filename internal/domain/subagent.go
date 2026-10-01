@@ -5,7 +5,6 @@ import (
 	"time"
 )
 
-// MaxSubagents caps one session's list; past it the oldest stopped ones go.
 const MaxSubagents = 30
 
 type SubagentState string
@@ -15,9 +14,8 @@ const (
 	SubagentStopped SubagentState = "stopped"
 )
 
-// Subagent is one agent a session spawned. ParentID is empty for agents the
-// session started itself, which is all Claude reports today: its hooks name
-// the agent but not who spawned it.
+// bug: ParentID is always empty for now: Claude's hooks name the agent but
+// not who spawned it.
 type Subagent struct {
 	SessionID string
 	ID        string
@@ -26,13 +24,9 @@ type Subagent struct {
 	State     SubagentState
 	StartedAt time.Time
 	StoppedAt time.Time
-	// Summary is the first line of the agent's last message, set on stop.
-	Summary string
+	Summary   string
 }
 
-// SubagentFromHook reads a subagent start or stop from a hook payload. Other
-// kinds, and payloads without an agent_id, report false. SessionID is left
-// for the caller, who knows the pane.
 func SubagentFromHook(kind HarnessEventKind, at time.Time, payload []byte) (Subagent, bool) {
 	var p struct {
 		AgentID              string `json:"agent_id"`
@@ -55,9 +49,8 @@ func SubagentFromHook(kind HarnessEventKind, at time.Time, payload []byte) (Suba
 	return sub, true
 }
 
-// TrackSubagent folds a start or stop into subs and returns the new list and
-// the entry that changed. A stop for an agent never seen start is added as
-// stopped, since hooks can be lost.
+// why: a stop for an agent never seen start is added as stopped, since hooks
+// can be lost.
 func TrackSubagent(subs []Subagent, seen Subagent) ([]Subagent, Subagent) {
 	for i, s := range subs {
 		if s.SessionID != seen.SessionID || s.ID != seen.ID {
@@ -97,8 +90,6 @@ func dropOldestStopped(subs []Subagent, sessionID string) []Subagent {
 	return subs
 }
 
-// EndSubagents stops every running subagent of a session, for when the
-// session ends or restarts and nothing it spawned can still be running.
 func EndSubagents(subs []Subagent, sessionID string, at time.Time) ([]Subagent, []Subagent) {
 	var changed []Subagent
 	for i, s := range subs {
@@ -116,8 +107,6 @@ type SubagentNode struct {
 	Depth int
 }
 
-// SubagentTree lists one session's subagents parent before children. An agent
-// whose parent is unknown is a root.
 func SubagentTree(subs []Subagent) []SubagentNode {
 	known := map[string]bool{}
 	for _, s := range subs {

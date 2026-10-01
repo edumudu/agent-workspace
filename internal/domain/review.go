@@ -17,7 +17,6 @@ const (
 	ScopeBranch      ReviewScope = "branch"
 )
 
-// ReviewScopes is the order the scope toggle cycles through.
 var ReviewScopes = []ReviewScope{ScopeLastTurn, ScopeUncommitted, ScopeBranch}
 
 var (
@@ -26,8 +25,6 @@ var (
 	ErrUnknownScope    = errors.New("unknown review scope")
 )
 
-// Shift moves delta steps through ReviewScopes, wrapping. An unknown scope
-// counts as the first.
 func (s ReviewScope) Shift(delta int) ReviewScope {
 	i := 0
 	for j, x := range ReviewScopes {
@@ -39,15 +36,11 @@ func (s ReviewScope) Shift(delta int) ReviewScope {
 	return ReviewScopes[((i+delta)%n+n)%n]
 }
 
-// RangeFacts is what a worktree knows when a review opens: its newest turn
-// snapshot ref (empty if none) and its repo's default branch.
 type RangeFacts struct {
 	LatestTurn    string
 	DefaultBranch string
 }
 
-// DiffRange is where a scope's diff starts; it always ends at the working
-// tree. With MergeBase, From is resolved to its merge base with HEAD.
 type DiffRange struct {
 	From      string
 	MergeBase bool
@@ -73,14 +66,13 @@ func RangeFor(scope ReviewScope, f RangeFacts) (DiffRange, error) {
 
 const turnPrefix = "refs/agentws/turns/"
 
-// WorktreeKey names a worktree inside a ref. Worktrees of one repo share its
-// refs, so turn refs carry the worktree they snapshot.
+// why: worktrees of one repo share its refs, so turn refs carry the worktree
+// they snapshot.
 func WorktreeKey(path string) string {
 	sum := sha1.Sum([]byte(filepath.Clean(path)))
 	return hex.EncodeToString(sum[:6])
 }
 
-// TurnRef is refs/agentws/turns/<session>/<worktree key>/<n>.
 func TurnRef(session, worktree string, n int) string {
 	return turnPrefix + refSafe(session) + "/" + WorktreeKey(worktree) + "/" + strconv.Itoa(n)
 }
@@ -118,8 +110,6 @@ func parseTurn(ref string) (turn, bool) {
 	return turn{ref: ref, session: parts[0], key: parts[1], n: n, numeric: err == nil}, true
 }
 
-// LatestTurn is the highest-numbered turn ref of session in worktree, or ""
-// and 0 when it has none.
 func LatestTurn(refs []string, session, worktree string) (string, int) {
 	best, bestN := "", 0
 	for _, t := range turnsOf(refs, session, worktree) {
@@ -130,8 +120,6 @@ func LatestTurn(refs []string, session, worktree string) (string, int) {
 	return best, bestN
 }
 
-// OlderTurns are session's turn refs in worktree numbered below n: the ones
-// a new snapshot n makes obsolete.
 func OlderTurns(refs []string, session, worktree string, n int) []string {
 	var out []string
 	for _, t := range turnsOf(refs, session, worktree) {
@@ -142,8 +130,6 @@ func OlderTurns(refs []string, session, worktree string, n int) []string {
 	return out
 }
 
-// TurnsOfWorktree is every turn ref of any session in worktree, the ones to
-// drop when it is removed.
 func TurnsOfWorktree(refs []string, worktree string) []string {
 	key := WorktreeKey(worktree)
 	var out []string
@@ -183,8 +169,6 @@ const (
 	LineDeleted LineKind = '-'
 )
 
-// DiffLine numbers are 1-based; Old is 0 on an added line and New on a
-// deleted one. NoEOL marks a last line with no newline after it.
 type DiffLine struct {
 	Kind  LineKind
 	Old   int
@@ -198,8 +182,6 @@ type Hunk struct {
 	Lines  []DiffLine
 }
 
-// FileDiff.Blob is the new side's blob hash from the index line
-// (zeros for a deletion), which identifies the content a viewed mark saw.
 type FileDiff struct {
 	Path    string
 	OldPath string
@@ -208,13 +190,11 @@ type FileDiff struct {
 	Deleted int
 	Binary  bool
 	Blob    string
-	// Mode is set only for an added or deleted file.
-	Mode  string `json:",omitempty"`
-	Hunks []Hunk
+	Mode    string `json:",omitempty"`
+	Hunks   []Hunk
 }
 
-// ParseDiff reads `git diff` output made without color or external diff.
-// Paths are taken from the header lines, so quoted paths stay quoted.
+// why: paths are taken from the header lines, so quoted paths stay quoted.
 func ParseDiff(out string) []FileDiff {
 	var files []FileDiff
 	var f *FileDiff
@@ -285,8 +265,8 @@ func ParseDiff(out string) []FileDiff {
 	return files
 }
 
-// headerPath takes b/<path> from "a/<path> b/<path>"; both halves are equal
-// unless the file was renamed, and a rename names its paths again later.
+// why: both halves are equal unless the file was renamed, and a rename names
+// its paths again later.
 func headerPath(rest string) string {
 	if i := strings.Index(rest, " b/"); i >= 0 {
 		return rest[i+3:]
@@ -303,8 +283,8 @@ func indexBlob(line string) string {
 	return blob
 }
 
-// hunkStarts reads the start lines of "@@ -a[,b] +c[,d] @@". A hunk with a
-// zero count starts one before its first line, so the next line is start+1.
+// bug: git starts a zero-count hunk one before its first line, so the next
+// line is start+1.
 func hunkStarts(header string) (int, int) {
 	fields := strings.Fields(header)
 	if len(fields) < 3 {
@@ -321,7 +301,6 @@ func hunkStarts(header string) (int, int) {
 	return start(fields[1]), start(fields[2])
 }
 
-// ViewedMark says the user viewed Path in Worktree when its content was Blob.
 type ViewedMark struct {
 	Worktree string
 	Path     string
@@ -330,21 +309,16 @@ type ViewedMark struct {
 
 func (m ViewedMark) Key() string { return m.Worktree + "\x00" + m.Path }
 
-// IsViewed holds only while the file's content is the one that was viewed,
-// so a mark resets as soon as the file changes again.
 func IsViewed(marks map[string]ViewedMark, worktree string, f FileDiff) bool {
 	m, ok := marks[ViewedMark{Worktree: worktree, Path: f.Path}.Key()]
 	return ok && m.Blob == f.Blob
 }
 
-// SplitRow is one row of the split view; a nil side is blank.
 type SplitRow struct {
 	Left  *DiffLine
 	Right *DiffLine
 }
 
-// SplitRows pairs each run of deletions with the additions that follow it,
-// line by line, and puts context on both sides.
 func SplitRows(h Hunk) []SplitRow {
 	var rows []SplitRow
 	lines := h.Lines
@@ -378,9 +352,6 @@ func SplitRows(h Hunk) []SplitRow {
 	return rows
 }
 
-// WorktreeReview is one worktree's files in a review, diffed from the commit
-// From to its working tree. Err is set, and Files and From empty, when its
-// diff could not be built.
 type WorktreeReview struct {
 	Worktree Worktree
 	From     string

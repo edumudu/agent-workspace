@@ -26,8 +26,6 @@ var _ app.ProcessTable = procs.Table{}
 
 const helperEnv = "AGENTWS_PROCS_HELPER"
 
-// TestMain lets the test binary act as a dev server: it listens on a free
-// port, starts one child in its own process group, and waits.
 func TestMain(m *testing.M) {
 	switch os.Getenv(helperEnv) {
 	case "":

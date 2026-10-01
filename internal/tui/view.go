@@ -48,8 +48,6 @@ type piece struct {
 	s  string
 }
 
-// line lays left and right pieces out across width, truncating the left
-// side first. With sel set, every cell gets the selection background.
 func (m Model) line(sel bool, left, right []piece) string {
 	w := m.width
 	render := func(ps []piece) (string, int) {
@@ -176,7 +174,6 @@ func (m Model) topBar() string {
 	return m.line(false, left, right)
 }
 
-// body renders the sidebar rows and returns the row the selection starts on.
 func (m Model) body() ([]string, int) {
 	s := m.styles
 	if m.dialog != nil {
@@ -351,14 +348,13 @@ func (m Model) footer() []string {
 	}
 }
 
-// keyRow is one footer row of two key hints in columns, as in the mockup.
 func (m Model) keyRow(k1, what1, k2, what2 string) string {
 	s := m.styles
 	return m.line(false, []piece{{s.bold, " " + k1}, {s.sub, fmt.Sprintf(" %-14s", what1)}, {s.bold, k2}, {s.sub, " " + what2}}, nil)
 }
 
-// statusLeft is the status line's left side. Ports and the kill prompt need
-// the room the counts would take, so they leave the counts out.
+// why: ports and the kill prompt need the room the counts would take, so they
+// leave the counts out.
 func (m Model) statusLeft() (left []piece, withCounts bool) {
 	s := m.styles
 	if m.renaming != nil {
@@ -420,7 +416,6 @@ func count(n int, noun string) string {
 	return fmt.Sprintf("%d %ss", n, noun)
 }
 
-// minCardHeight is the shortest pane that still has room for the card.
 const minCardHeight = 24
 
 func (m Model) cardLines() []string {
@@ -474,8 +469,6 @@ func (m Model) cardLines() []string {
 	return out
 }
 
-// prBoardLines is the board under the card's PR chips. A PR the daemon has
-// no state for yet gets none.
 func (m Model) prBoardLines(prs []domain.PullRequest) []string {
 	s := m.styles
 	var out []string
@@ -506,7 +499,6 @@ func (m Model) prBoardLines(prs []domain.PullRequest) []string {
 	return out
 }
 
-// nameLines is the session's full name, wrapped, since the sidebar row cuts it.
 func (m Model) nameLines(name string) []string {
 	if name == "" {
 		return nil
@@ -523,9 +515,9 @@ func (m Model) nameLines(name string) []string {
 	return out
 }
 
-// link wraps text in an OSC 8 hyperlink when url is a plain http(s) URL.
-// The URL comes from GitHub, so anything with a control character or another
-// scheme is left as text rather than risk breaking out of the sequence.
+// why: the URL comes from GitHub, so anything with a control character or a
+// scheme other than http(s) is left as text rather than risk breaking out of
+// the OSC 8 sequence.
 func link(url, text string) string {
 	if !strings.HasPrefix(url, "https://") && !strings.HasPrefix(url, "http://") {
 		return text
@@ -538,8 +530,8 @@ func link(url, text string) string {
 	return ansi.SetHyperlink(url) + text + ansi.ResetHyperlink()
 }
 
-// cleanText drops escape sequences and control characters an agent put in
-// its text, so they cannot repaint the terminal.
+// why: drops escape sequences and control characters an agent put in its
+// text, so they cannot repaint the terminal.
 func cleanText(s string) string {
 	s = strings.ReplaceAll(ansi.Strip(s), "\t", "    ")
 	return strings.Map(func(r rune) rune {

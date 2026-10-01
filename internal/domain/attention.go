@@ -5,11 +5,8 @@ import (
 	"time"
 )
 
-// CoalesceWindow is how long a session stays quiet after a banner.
 const CoalesceWindow = 10 * time.Second
 
-// Banner is one desktop notification. Sound is filled in by whoever owns
-// the per-event sound settings.
 type Banner struct {
 	Title string
 	Body  string
@@ -23,8 +20,6 @@ var bannerBody = map[AgentState]string{
 	StateDone:       "done",
 }
 
-// BannerFor turns a notify effect into a banner titled with the session's
-// name. Muted sessions and other effects give none.
 func BannerFor(s Session, name string, e Effect) (Banner, bool) {
 	body, ok := bannerBody[e.State]
 	if e.Kind != EffectNotify || s.Muted || !ok {
@@ -42,7 +37,6 @@ func (s Session) SetMuted(muted bool) Session {
 	return s
 }
 
-// Coalescer lets one banner per session through each CoalesceWindow.
 type Coalescer struct {
 	last map[string]time.Time
 }

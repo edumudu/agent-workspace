@@ -1,4 +1,3 @@
-// Package fs implements app.WorkspaceFS on the local filesystem.
 package fs
 
 import (
@@ -14,7 +13,6 @@ var _ app.WorkspaceFS = FS{}
 
 type FS struct{}
 
-// Marker reports what path/.git is. It fails when path is not a directory.
 func (FS) Marker(path string) (domain.GitMarker, error) {
 	info, err := os.Stat(path)
 	if err != nil {
@@ -38,8 +36,6 @@ func marker(dir string) domain.GitMarker {
 	}
 }
 
-// Children lists the directories directly under path, following symlinks. An
-// entry that cannot be stat'ed, such as a dangling link, is skipped.
 func (FS) Children(path string) ([]domain.Child, error) {
 	entries, err := os.ReadDir(path)
 	if err != nil {

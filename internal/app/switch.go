@@ -9,16 +9,13 @@ import (
 	"github.com/giovaniif/agent-workspace/internal/domain"
 )
 
-// PasteSettle is how long to wait between pasting a command and pressing
-// Enter, so the harness has taken the whole paste before it sees the key.
+// why: the harness must take the whole paste before it sees Enter.
 const PasteSettle = 150 * time.Millisecond
 
 const (
-	// codexPickerSteps covers the quick model popup, the "All models" list,
-	// the reasoning level popup and one spare.
+	// why: covers the quick model popup, the "All models" list, the reasoning
+	// level popup and one spare.
 	codexPickerSteps = 4
-	// codexPickerPolls bounds how many captures one step waits for Codex to
-	// redraw, one settle apart.
 	codexPickerPolls = 20
 	codexPickerLines = 40
 	escapeTimeout    = time.Second
@@ -26,9 +23,6 @@ const (
 
 var errNoCodexPicker = errors.New("the Codex /model picker did not open")
 
-// SendSwitches types each switch into the session's pane and stops at the
-// first failure. Claude takes the slash command as one bracketed paste
-// followed by Enter; Codex gets `/model` and then the keys that walk its picker.
 func SendSwitches(ctx context.Context, host TerminalHost, s domain.Session, sws []domain.Switch, settle time.Duration) error {
 	pane := PaneID(s.Pane)
 	for _, sw := range sws {
@@ -56,11 +50,9 @@ func SendSwitches(ctx context.Context, host TerminalHost, s domain.Session, sws 
 	return nil
 }
 
-// walkCodexPicker reads the pane and presses the keys the domain picks,
-// until no popup is left. After each press it waits for the picker to change,
-// since tmux returns before Codex redraws and a stale screen would steer the
-// next keys into the wrong popup. Anything it cannot place closes the picker
-// with Escape, so no half-made choice is left open for later input.
+// bug: tmux returns before Codex redraws and a stale screen would steer the
+// next keys into the wrong popup, so it waits for the picker to change. Anything
+// it cannot place closes the picker with Escape, so no half-made choice stays open.
 func walkCodexPicker(ctx context.Context, host TerminalHost, pane PaneID, s domain.Session, sw domain.Switch, settle time.Duration) error {
 	var last *domain.Picker
 	for range codexPickerSteps {
@@ -85,8 +77,6 @@ func walkCodexPicker(ctx context.Context, host TerminalHost, pane PaneID, s doma
 	return errors.Join(errors.New("the Codex picker is still open"), escape(host, pane))
 }
 
-// nextPicker polls until the pane shows a picker other than last, or none
-// once one was acted on. Before the first step it waits for one to open.
 func nextPicker(ctx context.Context, host TerminalHost, pane PaneID, last *domain.Picker, settle time.Duration) (domain.Picker, bool, error) {
 	for range codexPickerPolls {
 		if err := wait(ctx, settle); err != nil {

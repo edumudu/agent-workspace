@@ -69,7 +69,6 @@ func reviewModel(t testing.TB, width, height int) (tui.Model, *fakeReviewer) {
 	return m, rv
 }
 
-// drive runs msg and every command it leads to, the way the program would.
 func drive(m tui.Model, msgs ...tea.Msg) tui.Model {
 	for _, msg := range msgs {
 		next, cmd := m.Update(msg)
@@ -277,8 +276,8 @@ func TestGoldenReview(t *testing.T) {
 	golden.RequireEqual(t, screen(m))
 }
 
-// BenchmarkReviewScroll guards the 16 ms frame budget while scrolling a
-// 50-file, 3,000-line review.
+// why: guards the 16 ms frame budget while scrolling a 50-file, 3,000-line
+// review.
 func BenchmarkReviewScroll(b *testing.B) {
 	st := fixture(1, 1)
 	var diff strings.Builder

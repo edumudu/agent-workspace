@@ -7,19 +7,13 @@ import (
 	"unicode/utf8"
 )
 
-// SessionEventsKept is how many of a session's newest events the daemon, the
-// store and the TUI keep; the card needs only the last few.
 const SessionEventsKept = 20
 
 const (
-	// MaxDetail is the most runes of a tool's input kept for the actions list.
 	MaxDetail = 80
-	// MaxText caps the permission, notification and assistant text of one event.
-	MaxText = 4000
+	MaxText   = 4000
 )
 
-// SessionEvent is one hook, reduced to what the session card shows. Text is
-// the permission prompt, notification message or last assistant message.
 type SessionEvent struct {
 	SessionID string
 	At        time.Time
@@ -31,9 +25,6 @@ type SessionEvent struct {
 
 var toolInputFields = []string{"command", "file_path", "path", "pattern", "url", "query", "description", "prompt"}
 
-// SessionEventFromHook reads the fields the card needs from a hook payload,
-// which both harnesses send as a JSON object. A payload that is not one gives
-// an event with only the kind and time.
 func SessionEventFromHook(kind HarnessEventKind, at time.Time, payload []byte) SessionEvent {
 	ev := SessionEvent{Kind: kind, At: at}
 	var p struct {

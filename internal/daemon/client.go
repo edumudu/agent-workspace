@@ -10,8 +10,6 @@ import (
 	"github.com/giovaniif/agent-workspace/internal/rpc"
 )
 
-// ClientHost is the part of the terminal host that manages the client layout:
-// one window with the TUI on the left and the main slot on the right.
 type ClientHost interface {
 	OpenClient(ctx context.Context, name string, tui app.PaneSpec) (app.Slot, error)
 	ClientOpen(ctx context.Context, slot app.Slot) bool
@@ -26,10 +24,7 @@ type ClientHost interface {
 	HideBelow(ctx context.Context, slot app.Slot) error
 	FocusBelow(ctx context.Context, slot app.Slot) error
 	Popup(ctx context.Context, pane app.PaneID) error
-	// PopupCommand runs spec's command in a centred popup that closes when
-	// the command exits.
 	PopupCommand(ctx context.Context, spec app.PaneSpec) error
-	// Detach detaches the terminals attached to slot's layout.
 	Detach(ctx context.Context, slot app.Slot) error
 }
 
@@ -41,13 +36,12 @@ type clients struct {
 	mu   sync.Mutex
 	host ClientHost
 	slot app.Slot
-	// dir is where the last attach ran agentws from.
-	dir string
-	// watchEvery is how often watchMainSlot looks; zero disables it.
+	dir  string
+	// why: zero disables watchMainSlot.
 	watchEvery time.Duration
 }
 
-// SetClientHost enables client.open and client.focus_main. Call it before Serve.
+// why: call it before Serve.
 func (d *Daemon) SetClientHost(h ClientHost) {
 	d.clients.mu.Lock()
 	defer d.clients.mu.Unlock()

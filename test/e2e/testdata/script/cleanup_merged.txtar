@@ -1,6 +1,5 @@
-# The fake gh marks one PR merged. The next cleanup removes only that
-# worktree, and keeps its branch. The daemon's cleanup clock runs 5 h ahead
-# (AGENTWS_TEST_CLOCK), past the 4 h activity grace.
+# why: the daemon's cleanup clock runs 5 h ahead (AGENTWS_TEST_CLOCK), past
+# the 4 h activity grace.
 repo api
 exec agentws workspace add api
 exec agentws new --workspace api 'ship two parts'
@@ -12,14 +11,14 @@ eventually '/api-b\s+feat-b\s+'$SID'\s' agentws worktree list
 capture A '^(\S+/api-a)\s'
 capture B '^(\S+/api-b)\s'
 
-# Seeing the PR merged kicks a cleanup run, so wait for its log line.
+# why: seeing the PR merged kicks a cleanup run, so wait for its log line.
 cp prs-merged.json prs.json
 eventually '/api-a","branch":"feat-a","action":"remove",.*"outcome":"removed"' cat $AGENTWS_HOME/cleanup.log
 ! exists $A
 exists $B/b.txt
 exec git -C api branch --list feat-a
 stdout 'feat-a'
-# The log line lands before the worktree scan drops api-a from the list.
+# why: the log line lands before the worktree scan drops api-a from the list.
 ! eventually '/api-a\s' agentws worktree list
 stdout '/api-b\s+feat-b\s+'$SID'\s'
 exec agentws cleanup

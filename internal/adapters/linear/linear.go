@@ -1,5 +1,3 @@
-// Package linear implements app.TitleResolver for Linear issues with the
-// GraphQL API. The token is optional; without one it answers nothing.
 package linear
 
 import (
@@ -25,12 +23,9 @@ const defaultEndpoint = "https://api.linear.app/graphql"
 
 const query = `query($id: String!) { issue(id: $id) { title } }`
 
-// maxResponse bounds what a reply may read into memory.
 const maxResponse = 1 << 20
 
-// Client asks Endpoint (Linear's API when empty) with Token, a personal API
-// key. HTTP defaults to a client that does not follow redirects, so the token
-// is never forwarded anywhere else.
+// why: HTTP defaults to a client that does not follow redirects, so the token is never forwarded anywhere else.
 type Client struct {
 	Token    string
 	Endpoint string
@@ -97,8 +92,6 @@ func (c Client) Title(ctx context.Context, task domain.Task) (string, error) {
 	return strings.TrimSpace(reply.Data.Issue.Title), nil
 }
 
-// LoadToken reads the token from the [linear] table of a config.toml. A
-// missing file, or one without the table, means no token.
 func LoadToken(path string) (string, error) {
 	var cfg struct {
 		Linear struct {

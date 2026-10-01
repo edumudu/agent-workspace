@@ -1,7 +1,5 @@
 package domain
 
-// NextInView picks the session to show once the session in view has ended:
-// the next one down the sidebar that still has a pane, wrapping to the top.
 func NextInView(tasks []Task, sessions []Session, ended string) (Session, bool) {
 	var order []Session
 	for _, g := range Sidebar(tasks, sessions) {

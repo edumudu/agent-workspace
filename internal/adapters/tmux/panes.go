@@ -104,8 +104,6 @@ func parsePanes(out string) []app.PaneInfo {
 	return panes
 }
 
-// SetTitle sets the text the pane's top border shows, through a pane option
-// the border format reads.
 func (h *Host) SetTitle(ctx context.Context, pane app.PaneID, title string) error {
 	if err := h.turnTitlesOn(ctx); err != nil {
 		return err
@@ -114,9 +112,7 @@ func (h *Host) SetTitle(ctx context.Context, pane app.PaneID, title string) erro
 	return err
 }
 
-// turnTitlesOn sets the title border options on the running server: tmux
-// reads the config only when a server starts, and one may have started
-// before these options were in it.
+// why: tmux reads the config only when a server starts, and one may have started before these options were in it.
 func (h *Host) turnTitlesOn(ctx context.Context) error {
 	h.titlesMu.Lock()
 	defer h.titlesMu.Unlock()

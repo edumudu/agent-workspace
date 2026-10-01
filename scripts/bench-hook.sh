@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
+# why: usage: [BUDGET_SCALE=2] scripts/bench-hook.sh [path/to/agentws]
 # Times 200 runs of `agentws hook` with the daemon up and down and prints
 # p50/p95. Fails if p95 is over budget: 20 ms up, 60 ms down.
 # BUDGET_SCALE multiplies both budgets, for slow shared CI runners.
-# Usage: [BUDGET_SCALE=2] scripts/bench-hook.sh [path/to/agentws]
 set -euo pipefail
 bin="${1:-./bin/agentws}"
 [ -x "$bin" ] || make build >/dev/null

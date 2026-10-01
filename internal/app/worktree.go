@@ -9,21 +9,16 @@ import (
 	"github.com/giovaniif/agent-workspace/internal/domain"
 )
 
-// WorktreeLister lists the worktrees of the repo that dir belongs to. dir may
-// be the main checkout, any worktree, or a directory inside one.
 type WorktreeLister interface {
 	ListWorktrees(ctx context.Context, dir string) (domain.RepoListing, error)
 }
 
-// PRFinder lists the recent PRs of every repo in one request. A repo it
-// cannot resolve is left out of the result.
 type PRFinder interface {
 	PRs(ctx context.Context, repos []string) (map[string][]domain.PullRequest, error)
 }
 
-// ScanWorktrees lists every repo reachable from dirs once, sorted by main
-// checkout. A dir git cannot read is skipped, so its repo's worktrees are
-// never taken as removed.
+// why: a dir git cannot read is skipped, so its repo's worktrees are never
+// taken as removed.
 func ScanWorktrees(ctx context.Context, lister WorktreeLister, dirs []string) []domain.RepoListing {
 	listings := make([]*domain.RepoListing, len(dirs))
 	var wg sync.WaitGroup
@@ -54,15 +49,11 @@ func ScanWorktrees(ctx context.Context, lister WorktreeLister, dirs []string) []
 	return out
 }
 
-// PRRefresh is Changed, the worktrees whose PR changed, and whether any open
-// PR has checks running after the refresh.
 type PRRefresh struct {
 	Changed       []domain.Worktree
 	ChecksRunning bool
 }
 
-// RefreshPRs asks for every repo's PRs in one request. On error nothing
-// changes, and a repo missing from the answer keeps its PRs.
 func RefreshPRs(ctx context.Context, finder PRFinder, worktrees []domain.Worktree) (PRRefresh, error) {
 	var repos []string
 	seen := map[string]bool{}

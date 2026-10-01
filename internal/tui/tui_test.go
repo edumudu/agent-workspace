@@ -28,8 +28,6 @@ var fixtureStates = []domain.AgentState{
 	domain.StateRunning, domain.StateIdle, domain.StateWaiting, domain.StateDone, domain.StatePermission,
 }
 
-// fixture builds sessions spread over tasks, two sessions per task, with
-// worktreesEach worktrees per session.
 func fixture(sessions, worktreesEach int) rpc.State {
 	var st rpc.State
 	for i := range sessions {
@@ -326,9 +324,8 @@ func TestLoadThemeOverridesLatteFromConfig(t *testing.T) {
 	}
 }
 
-// BenchmarkKeypressToFrame guards the 16 ms keypress-to-frame budget: one
-// Update for a key plus the View it produces, with 10 sessions and 30
-// worktrees.
+// why: guards the 16 ms keypress-to-frame budget: one Update for a key plus
+// the View it produces, with 10 sessions and 30 worktrees.
 func BenchmarkKeypressToFrame(b *testing.B) {
 	st := fixture(10, 3)
 	m := newModel(&st, nil)

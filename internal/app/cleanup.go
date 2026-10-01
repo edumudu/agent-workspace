@@ -11,8 +11,6 @@ import (
 	"github.com/giovaniif/agent-workspace/internal/domain"
 )
 
-// WorktreeGitFacts is what git knows about one worktree. Fingerprint changes
-// whenever HEAD or the status of any path does.
 type WorktreeGitFacts struct {
 	InDefault   bool
 	OnDefault   bool
@@ -23,25 +21,18 @@ type WorktreeGitFacts struct {
 
 type CleanupGit interface {
 	CleanupFacts(ctx context.Context, w domain.Worktree) (WorktreeGitFacts, error)
-	// Backup writes the worktree's uncommitted changes, untracked files and
-	// status under dir, which it creates.
 	Backup(ctx context.Context, w domain.Worktree, dir string) error
-	// CreateBranch points a new branch at HEAD without ever moving an
-	// existing one, and returns the name it used.
+	// why: must never move an existing branch.
 	CreateBranch(ctx context.Context, w domain.Worktree, name string) (string, error)
 	Prune(ctx context.Context, repo string) error
 }
 
-// WorktreeHolders maps each of paths to the processes whose cwd is inside it.
 type WorktreeHolders interface {
 	Holders(ctx context.Context, paths []string) (map[string][]string, error)
 }
 
-// Trash takes a directory out of place at once; deleting it is the trash's
-// business, in the background.
 type Trash interface {
 	Move(path string) error
-	// Purge deletes, in the background, whatever an earlier run left behind.
 	Purge()
 }
 
@@ -58,7 +49,6 @@ type CleanupRecord struct {
 	Outcome string               `json:"outcome"`
 }
 
-// SessionActivity is what the daemon knows about the worktree's session.
 type SessionActivity struct {
 	Live         bool
 	LastActivity time.Time
@@ -69,8 +59,8 @@ type CleanupResult struct {
 	Outcome  string
 }
 
-// Cleanup plans and executes worktree cleanup. It remembers which states it
-// already backed up, so a dirty worktree is not backed up on every run.
+// why: it remembers which states it backed up, so a dirty worktree is not
+// backed up on every run.
 type Cleanup struct {
 	git        CleanupGit
 	procs      WorktreeHolders
@@ -93,7 +83,6 @@ type plannedWorktree struct {
 	fingerprint string
 }
 
-// Plan decides every worktree without changing anything.
 func (c *Cleanup) Plan(ctx context.Context, wts []domain.Worktree, activity func(domain.Worktree) SessionActivity) []domain.CleanupDecision {
 	planned := c.plan(ctx, wts, activity)
 	out := make([]domain.CleanupDecision, len(planned))
@@ -148,8 +137,6 @@ func (c *Cleanup) decide(w domain.Worktree, g WorktreeGitFacts, gitErr error, ho
 	return plannedWorktree{decision: domain.PlanCleanup(w, f, c.now()), fingerprint: g.Fingerprint}
 }
 
-// recheck runs stillRemovable, at most refreshParallelism at once, on every
-// planned removal that passed the last process check.
 func (c *Cleanup) recheck(ctx context.Context, planned []plannedWorktree, holders map[string][]string, procErr error, activity func(domain.Worktree) SessionActivity) []string {
 	stale := make([]string, len(planned))
 	if procErr != nil {
@@ -174,8 +161,8 @@ func (c *Cleanup) recheck(ctx context.Context, planned []plannedWorktree, holder
 	return stale
 }
 
-// stillRemovable asks git again right before the move, so a write that
-// landed after planning keeps the worktree. It returns why not, or "".
+// why: git is asked again right before the move, so a write that landed
+// after planning keeps the worktree.
 func (c *Cleanup) stillRemovable(ctx context.Context, p plannedWorktree, act SessionActivity) string {
 	w := p.decision.Worktree
 	g, err := c.git.CleanupFacts(ctx, w)
@@ -196,9 +183,6 @@ func latest(a, b time.Time) time.Time {
 	return b
 }
 
-// Execute plans afresh and acts on it: dirty or detached worktrees are
-// backed up and kept for the user, merged clean ones go to the trash once a
-// last process check still finds nobody inside, and their repos are pruned.
 func (c *Cleanup) Execute(ctx context.Context, wts []domain.Worktree, activity func(domain.Worktree) SessionActivity) []CleanupResult {
 	c.trash.Purge()
 	planned := c.plan(ctx, wts, activity)
@@ -261,11 +245,8 @@ func (c *Cleanup) Execute(ctx context.Context, wts []domain.Worktree, activity f
 	return results
 }
 
-// RemoveWorktree acts on one worktree the user picked. Without withBackup it
-// removes only what Execute would, and leaves a dirty or detached worktree
-// alone. With it, such a worktree is backed up (and, when detached, gets its
-// branch) and then removed, unless the backup fails, someone entered it, or
-// it changed after the backup was taken.
+// why: with withBackup, removal still stops if the backup fails, someone
+// entered the worktree, or it changed after the backup was taken.
 func (c *Cleanup) RemoveWorktree(ctx context.Context, w domain.Worktree, activity func(domain.Worktree) SessionActivity, withBackup bool) CleanupResult {
 	p := c.plan(ctx, []domain.Worktree{w}, activity)[0]
 	switch p.decision.Action {
@@ -296,7 +277,6 @@ func (c *Cleanup) backupThenRemove(ctx context.Context, p plannedWorktree, activ
 	return res
 }
 
-// removeAfterBackup is the suffix for the outcome: ", removed", or why not.
 func (c *Cleanup) removeAfterBackup(ctx context.Context, p plannedWorktree, activity func(domain.Worktree) SessionActivity) string {
 	w := p.decision.Worktree
 	// why: a shell or editor may have entered the worktree while the backup ran.
@@ -350,8 +330,6 @@ func (c *Cleanup) backup(ctx context.Context, p plannedWorktree) string {
 	return outcome
 }
 
-// claimBackupDir is <root>/<ts>/<name>, with -2, -3 and so on appended when
-// another worktree of the same name was backed up in the same second.
 func (c *Cleanup) claimBackupDir(w domain.Worktree) string {
 	base := filepath.Join(c.backupRoot, c.now().Format("20060102-150405"), filepath.Base(w.Path))
 	c.mu.Lock()

@@ -6,9 +6,6 @@ import (
 	"github.com/giovaniif/agent-workspace/internal/domain"
 )
 
-// MethodSwitch asks the daemon to change a session's model or effort. The
-// daemon types the harness's command into the pane once the agent is between
-// tools; the result is the session with the switch queued or sent.
 const MethodSwitch = "session.switch"
 
 type SwitchParams struct {

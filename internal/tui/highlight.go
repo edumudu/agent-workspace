@@ -9,20 +9,15 @@ import (
 	"github.com/giovaniif/agent-workspace/internal/domain"
 )
 
-// tok is a run of text in one syntax color; an empty color is the theme's
-// text color.
 type tok struct {
 	text  string
 	color string
 }
 
-// highlight colors each line of a file's hunks with chroma. The lines are
-// lexed as one text so multi-line tokens such as block comments keep their
-// color; the old and new sides are interleaved, which is close enough for a
-// diff.
-// syntaxColors maps token categories to theme colors. It stands in for
-// chroma's styles package, whose init parses every bundled style and would
-// cost each `agentws hook` run about 3 ms.
+// why: hunks are lexed as one text so multi-line tokens keep their color; the
+// old and new sides are interleaved, which is close enough for a diff. These
+// colors stand in for chroma's styles package, whose init parses every bundled
+// style and would cost each `agentws hook` run about 3 ms.
 type syntaxColors struct {
 	keyword, name, function, str, number, comment, operator string
 }

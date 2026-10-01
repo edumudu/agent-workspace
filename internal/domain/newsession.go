@@ -20,9 +20,7 @@ const (
 	slugMax   = 40
 )
 
-// ParseWorkItem reads what the user typed as the work item: a Linear issue
-// URL, a GitHub PR URL, or anything else as free text. A URL that does not
-// fit either shape is kept as text, never rejected.
+// why: a URL that fits neither shape is kept as text, never rejected.
 func ParseWorkItem(input string) Task {
 	input = strings.TrimSpace(input)
 	text := Task{Source: TaskText, Text: input}
@@ -50,8 +48,6 @@ func ParseWorkItem(input string) Task {
 	return text
 }
 
-// TaskSlug names a task's worktree dir and branch: the Linear key, the PR
-// ref, or the first words of the text, lowercased with dashes.
 func TaskSlug(t Task) string {
 	src := t.Text
 	if t.Source != TaskText {
@@ -71,8 +67,6 @@ func TaskSlug(t Task) string {
 	return slug
 }
 
-// FindTask is the known task for the same work item, so sessions started on
-// it group together.
 func FindTask(known []Task, t Task) (Task, bool) {
 	for _, k := range known {
 		if k.Source != t.Source {
@@ -89,15 +83,11 @@ func FindTask(known []Task, t Task) (Task, bool) {
 	return Task{}, false
 }
 
-// SessionPlan is where a new session starts. Worktree is set only for a
-// single-repo workspace, and Dir is then the worktree's path.
 type SessionPlan struct {
 	Dir      string
 	Worktree *WorktreePlan
 }
 
-// WorktreePlan is one `git worktree add` in RepoPath: a new Branch at Path,
-// started from Base.
 type WorktreePlan struct {
 	Repo     string
 	RepoPath string
@@ -106,9 +96,6 @@ type WorktreePlan struct {
 	Base     string
 }
 
-// PlanSessionStart places a session. An orchestration root starts at the
-// root and the agent creates its own worktrees; a single repo gets one fresh
-// worktree at <home>/<repo>/<slug>, numbered when a known path has it.
 func PlanSessionStart(ws Workspace, slug, worktreeHome string, taken []string) SessionPlan {
 	if ws.Kind != WorkspaceSingle || len(ws.Repos) == 0 {
 		return SessionPlan{Dir: ws.Root}
@@ -126,8 +113,8 @@ func PlanSessionStart(ws Workspace, slug, worktreeHome string, taken []string) S
 	return SessionPlan{Dir: wt.Path, Worktree: wt}
 }
 
-// End is what ending a session leaves: idle, unfocused, and no longer on a
-// pane, so a later pane with the same ID is not mistaken for it.
+// why: the session leaves its pane so a later pane with the same ID is not
+// mistaken for it.
 func (s Session) End() Session {
 	s.State = StateIdle
 	s.Ended = true
@@ -136,8 +123,6 @@ func (s Session) End() Session {
 	return s
 }
 
-// Forgotten is true once an ended session has no worktree left for cleanup
-// to weigh it against, so nothing needs its record any more.
 func (s Session) Forgotten() bool {
 	return s.Ended && len(s.WorktreeIDs) == 0
 }

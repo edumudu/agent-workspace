@@ -154,9 +154,8 @@ function M.comment(line1, line2, body)
   end)
 end
 
--- Moves to the split in direction dir ("h", "j", "k" or "l"); at nvim's edge
--- it asks tmux for the neighbouring pane, unless the pane is at tmux's edge
--- too, so focus never wraps around.
+-- why: at nvim's edge it asks tmux for the neighbouring pane, unless the pane
+-- is at tmux's edge too, so focus never wraps around.
 function M.navigate(dir)
   local nav = navigation[dir]
   local before = vim.api.nvim_get_current_win()

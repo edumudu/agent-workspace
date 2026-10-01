@@ -1,5 +1,3 @@
-// Package setup implements the ports of app.WorktreeSetup: recipe files, the
-// disk operations a recipe needs, and command execution.
 package setup
 
 import (
@@ -42,8 +40,6 @@ type recipeDoc struct {
 	} `toml:"setup"`
 }
 
-// Load reads the [setup] table of repoDir/.agentws.toml. A missing file is not
-// an error; a malformed one, or one with keys we do not know, is.
 func (Recipes) Load(repoDir string) (domain.Recipe, bool, error) {
 	file := filepath.Join(repoDir, recipeFile)
 	data, err := os.ReadFile(file)
@@ -67,7 +63,7 @@ func (Recipes) Load(repoDir string) (domain.Recipe, bool, error) {
 
 type FS struct{}
 
-// Exists is true for a dangling symlink too: something is at that path.
+// why: true for a dangling symlink too: something is at that path.
 func (FS) Exists(path string) bool {
 	_, err := os.Lstat(path)
 	return err == nil
@@ -87,8 +83,7 @@ func (FS) Symlink(target, link string) error {
 	return os.Symlink(target, link)
 }
 
-// CloneTree uses APFS clonefile on macOS (`cp -c`) and reflinks elsewhere, so
-// the copy shares blocks with src until either side changes.
+// why: `cp -c` uses APFS clonefile on macOS and reflinks elsewhere, so the copy shares blocks with src until either side changes.
 func (FS) CloneTree(ctx context.Context, src, dst string) error {
 	if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
 		return err
@@ -107,8 +102,6 @@ func cp(ctx context.Context, args ...string) error {
 	return nil
 }
 
-// Lockfile returns the first known lockfile in dir with its content hash, or
-// the zero value when there is none.
 func (FS) Lockfile(dir string) (domain.Lockfile, error) {
 	for _, name := range domain.LockfileNames {
 		data, err := os.ReadFile(filepath.Join(dir, name))
@@ -124,7 +117,6 @@ func (FS) Lockfile(dir string) (domain.Lockfile, error) {
 	return domain.Lockfile{}, nil
 }
 
-// FreeBytes is the space available to unprivileged users on path's volume.
 func (FS) FreeBytes(path string) (int64, error) {
 	var st syscall.Statfs_t
 	if err := syscall.Statfs(path, &st); err != nil {

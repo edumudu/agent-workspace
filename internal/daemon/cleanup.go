@@ -12,8 +12,7 @@ import (
 
 const DefaultCleanupEvery = 10 * time.Minute
 
-// cleanupWorker runs cleanup off the loop, on its own goroutine or a
-// connection's. mu keeps two runs from racing over the same worktrees.
+// why: mu keeps two cleanup runs from racing over the same worktrees.
 type cleanupWorker struct {
 	c     *app.Cleanup
 	every time.Duration
@@ -21,8 +20,6 @@ type cleanupWorker struct {
 	mu    sync.Mutex
 }
 
-// WithCleanup runs c every interval and whenever a worktree's PR is first
-// seen merged, and serves cleanup.plan and cleanup.run.
 func WithCleanup(c *app.Cleanup, every time.Duration) Option {
 	return func(d *Daemon) { d.cl.c, d.cl.every = c, every }
 }
@@ -52,8 +49,6 @@ func (d *Daemon) cleanupEvery(ctx context.Context) {
 	}
 }
 
-// cleanupInputs reads the worktrees and what each one's session is doing.
-// A session is live unless idle; its activity is its newest hook event.
 func (d *Daemon) cleanupInputs() ([]domain.Worktree, func(domain.Worktree) app.SessionActivity, bool) {
 	var wts []domain.Worktree
 	activity := map[string]app.SessionActivity{}

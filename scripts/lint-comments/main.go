@@ -1,4 +1,4 @@
-// Command lint-comments enforces the comment rules in AGENTS.md: inside
+// why: usage: lint-comments enforces the comment rules in AGENTS.md: inside
 // function bodies only "// why:" comments and tool directives are allowed,
 // every to-do marker references an issue number, a declaration's doc comment
 // says more than its name, and there are no section banners.

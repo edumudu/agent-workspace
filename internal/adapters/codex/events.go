@@ -1,5 +1,3 @@
-// Package codex adapts the Codex CLI: its hook and notify payloads, its
-// hooks.json, its rollout files and how it is launched.
 package codex
 
 import (
@@ -10,11 +8,8 @@ import (
 	"github.com/giovaniif/agent-workspace/internal/domain"
 )
 
-// ErrUnmapped means the hook or notify type has no place in the state
-// machine, so the caller should drop it.
 var ErrUnmapped = errors.New("codex event is not mapped")
 
-// Observation is what one hook or notify call tells the daemon.
 type Observation struct {
 	Event          domain.HarnessEvent
 	SessionID      string
@@ -34,8 +29,7 @@ type hookPayload struct {
 	TranscriptPath string `json:"transcript_path"`
 }
 
-// ParseHook maps a hook by its Codex name. A payload that is not valid JSON
-// still yields the event: the name alone is enough to move the state.
+// why: a payload that is not valid JSON still yields the event: the name alone is enough to move the state.
 func ParseHook(name string, stdin []byte) (Observation, error) {
 	kind, ok := domain.HookEvent(domain.HarnessCodex, name)
 	if !ok {
@@ -58,7 +52,6 @@ type notifyPayload struct {
 	Cwd      string `json:"cwd"`
 }
 
-// ParseNotify maps the JSON argument Codex passes to its `notify` program.
 func ParseNotify(arg string) (Observation, error) {
 	var p notifyPayload
 	if err := json.Unmarshal([]byte(arg), &p); err != nil {

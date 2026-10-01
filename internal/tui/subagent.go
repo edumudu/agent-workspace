@@ -7,8 +7,6 @@ import (
 	"github.com/giovaniif/agent-workspace/internal/domain"
 )
 
-// maxSubagentRows is how many subagent rows one session shows before the
-// rest fold into a count.
 const maxSubagentRows = 8
 
 func (m *Model) putSubagent(sub domain.Subagent) {
