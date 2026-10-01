@@ -2,7 +2,29 @@
 
 A terminal workspace for running Claude Code and Codex sessions in parallel. It creates and cleans up git worktrees for you, and lets you review what agents changed in a local, PR-style pane.
 
-**Status:** pre-alpha. The design and the [v1 issues](https://github.com/giovaniif/agent-workspace/milestone/1) exist; nothing is installable yet. The screens below are design mockups; their sources are in [docs/design](docs/design).
+**Status:** alpha. Builds are published as pre-releases on [GitHub Releases](https://github.com/giovaniif/agent-workspace/releases); expect rough edges and breaking changes between alphas. The screens below are design mockups; their sources are in [docs/design](docs/design).
+
+## Install
+
+Builds exist for macOS (arm64, amd64) and Linux (amd64). No Go toolchain is needed.
+
+```sh
+# Homebrew
+brew install giovaniif/tap/agentws
+
+# or the install script (to ~/.local/bin; set AGENTWS_INSTALL_DIR to change it,
+# AGENTWS_VERSION=v0.1.0-alpha.1 to pin a release)
+curl -fsSL https://raw.githubusercontent.com/giovaniif/agent-workspace/main/scripts/install.sh | sh
+```
+
+## Upgrade
+
+`agentws version` prints the installed version and, once a day at most, checks GitHub for a newer release. It never updates itself. To upgrade, run `brew upgrade agentws` or the install script again, then stop the old daemon so the new binary starts its own:
+
+```sh
+agentws daemon stop
+agentws
+```
 
 ![Sessions](docs/images/sessions.png)
 
@@ -34,7 +56,7 @@ A terminal workspace for running Claude Code and Codex sessions in parallel. It 
 
 The details are in [ARCHITECTURE.md](ARCHITECTURE.md), and the full scope is in [FEATURES.md](FEATURES.md).
 
-## Requirements (planned)
+## Requirements
 
 macOS, tmux, git, the GitHub CLI (`gh`, signed in), and Claude Code and/or the Codex CLI. For the nvim integration: Neovim 0.10+ and, for `:AgentwsDiff`, [diffview.nvim](https://github.com/sindrets/diffview.nvim).
 

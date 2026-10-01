@@ -1,0 +1,47 @@
+version: 2
+
+project_name: agentws
+
+builds:
+  - main: ./cmd/agentws
+    binary: agentws
+    env:
+      - CGO_ENABLED=0
+    goos: [darwin, linux]
+    goarch: [arm64, amd64]
+    ignore:
+      - goos: linux
+        goarch: arm64
+    ldflags:
+      - -s -w -X main.version={{ .Tag }} -X main.commit={{ .ShortCommit }}
+
+archives:
+  - formats: [tar.gz]
+    name_template: "{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}"
+    files:
+      - README.md
+
+checksum:
+  name_template: checksums.txt
+
+changelog:
+  use: github-native
+
+release:
+  prerelease: auto
+
+brews:
+  - name: agentws
+    repository:
+      owner: giovaniif
+      name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
+    skip_upload: "{{ if .Env.HOMEBREW_TAP_TOKEN }}false{{ else }}true{{ end }}"
+    homepage: https://github.com/giovaniif/agent-workspace
+    description: Terminal workspace for running Claude Code and Codex sessions in parallel
+    dependencies:
+      - name: tmux
+      - name: git
+      - name: gh
+    test: |
+      system "#{bin}/agentws", "version"
