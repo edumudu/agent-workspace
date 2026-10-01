@@ -73,7 +73,7 @@ func (s *state) announce(session domain.Session, effects []domain.Effect) {
 	}
 	name := s.sessionName(session)
 	for _, e := range effects {
-		b, ok := domain.BannerFor(session, name, e)
+		b, ok := domain.BannerFor(domain.BannerInput{Session: session, Name: name, Effect: e})
 		if !ok || !s.attn.co.Allow(session.ID, time.Now()) {
 			continue
 		}
