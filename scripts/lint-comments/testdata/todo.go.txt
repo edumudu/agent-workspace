@@ -5,3 +5,7 @@ func a() {}
 
 // TODO(#12): rename this
 func b() {}
+
+func c() {
+	_ = 1 //nolint:all // why: TODO drop this
+}
