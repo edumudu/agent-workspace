@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/giovaniif/agent-workspace/internal/app"
 	"github.com/giovaniif/agent-workspace/internal/domain"
 )
 
@@ -46,6 +47,17 @@ func (d *Daemon) refillLostSlot(ctx context.Context) {
 	}
 	if now, stillFound, ok := d.sessionInView(); !ok || !stillFound || now.ID != inView.ID || now.Pane != inView.Pane {
 		return
+	}
+	// why: an editor or shell shown in the slot leaves it empty when it quits, while the agent it replaced is still alive.
+	if d.hs.host != nil && inView.Pane != "" {
+		alive, err := d.hs.host.Alive(ctx, app.PaneID(inView.Pane))
+		if err != nil {
+			return
+		}
+		if alive {
+			_ = d.hs.host.Show(ctx, app.PaneID(inView.Pane), slot)
+			return
+		}
 	}
 	_, _, _ = d.endAndRefill(inView)
 }
