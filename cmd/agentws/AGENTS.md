@@ -1,0 +1,33 @@
+# cmd/agentws
+
+`main`: one binary that is the daemon, the TUI, the CLI and the hook handler. Subcommands are dispatched with the standard library; see [ADR 0002](../../docs/adr/0002-cli-and-ci-tooling.md).
+
+## Startup cost
+
+Keep startup light: package init costs every `agentws hook`, and `modernc.org/sqlite` init is already about 4.5 of the 5 ms locally. `scripts/bench-hook.sh` guards the 20 ms p95 hook budget. Chroma's `lexers`/`styles` packages are banned for the same reason (see [internal/tui/](../../internal/tui/AGENTS.md)).
+
+## The hook
+
+Hooks call `agentws hook`, which writes one message to the socket and exits. It never waits on the daemon for more than 50 ms and never blocks the agent. If the daemon is down, the event is dropped and a log line is written to `hook.log`. It dials the socket directly instead of using `rpc.Client`, sends one `hook` request and closes without reading the reply, except for events whose stdout the harness reads (`UserPromptSubmit`), where it waits up to the same 50 ms and prints nothing on timeout. See [ADR 0006](../../docs/adr/0006-hook-ingestion.md).
+
+## Version
+
+`internal/version.Version` and `.Commit` are stamped with `-ldflags -X` (`make build`, `scripts/dev`, releases), the commit falling back to the Go build info's VCS revision. The build handshake that uses them is in [internal/rpc/](../../internal/rpc/AGENTS.md).
+
+## Subcommands
+
+- `agentws` attaches to the client layout (creating it and the daemon if needed: `client.open`, then `exec` of the tmux attach argv it returns); `agentws tui` is what runs in its left pane. `agentws tui --new-session` is the new-session dialog alone, which `n` runs in a centred tmux popup (ADR 0037).
+- `agentws daemon [start|status|stop]`: `agentws daemon` runs in the foreground; the rest are in [internal/daemon/](../../internal/daemon/AGENTS.md).
+- `agentws workspace add <path>|list|remove <path>` registers workspaces through the daemon (auto-started). It is optional: `session.new` registers a folder it does not know, and the new-session dialog defaults to the folder `agentws` was launched from. `list` shows `-` for a repo's git facts until the first background refresh lands.
+- `agentws new [--workspace p] [--harness claude|codex] [--model m] [--effort e] <work item>` starts a session like the TUI's `n` dialog; without `--workspace` it uses the last used one. New single-repo worktrees go under `$AGENTWS_HOME/worktrees`.
+- `agentws focus <id>` focuses a session through the daemon; a `terminal-notifier` banner runs it on click.
+- `agentws worktree list|assign <path> <session>` prints each worktree's path, branch, owner and PR, and sets an owner.
+- `agentws cleanup [--dry-run]` runs (or only prints) the cleanup plan through the daemon (see [internal/daemon/](../../internal/daemon/AGENTS.md)).
+- `agentws pr <session id or name> [--json]` prints a session's PR board from daemon state. The JSON shape is pinned by `testdata/pr.json.golden` (regenerate with `go test ./cmd/agentws -run PRBoardJSON -update` and review the diff) and documented in [ADR 0024](../../docs/adr/0024-pr-board.md). Run the board tests with `go test ./... -run PRBoard`; the github adapter's and the integration tests use a fake `gh` script, so nothing reaches GitHub.
+- `agentws review comment [--session id] (--file abs | --worktree id --path rel) --start n [--end n] [--code text] --body text` adds a draft comment; `agentws review scope [--session id] [--scope s]` prints each worktree's path, base commit and files as JSON; `agentws review send [--session id]` sends the draft, or queues it until the agent is between tools. `--session` defaults to `$AGENTWS_SESSION`, which the shell and nvim panes carry.
+- `agentws setup claude|codex [--remove]`: see [internal/adapters/](../../internal/adapters/AGENTS.md). `agentws setup` with no arguments and `agentws setup nvim [--remove]`: see [internal/adapters/onboard/](../../internal/adapters/onboard/AGENTS.md).
+- `agentws setup-worktree <path>`: see [internal/adapters/setup/](../../internal/adapters/setup/AGENTS.md).
+- `agentws statusline` chains the user's own status line and reports model, effort, context left and rate limits.
+- `agentws debug seed N [--codex]` adds N fake Claude sessions (two per task, one to three worktrees each), with event logs for the session card and fresh limits (the Claude 5h window is 88% used, so the red state shows), for trying the TUI; `--codex` makes every third one Codex, with Codex limits. The first seeded session also gets three subagents, one nested, two running. Its PR is open with failing checks, so the card shows a PR board (`agentws pr seed-session-1`).
+- `agentws debug session [--once] <id>` prints a session's state, harness, pane, model, effort, context left and limit used, then each change to it until interrupted (`--once` prints just the current line).
+- `agentws debug launch --harness claude --dir <dir> [--model m] [--effort e]` opens a harness pane in any dir, with no task or worktree.
