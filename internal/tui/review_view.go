@@ -106,7 +106,7 @@ func (m Model) reviewView() string {
 	var lines []string
 	lines = append(lines, m.topBar())
 	right := []string{m.scopeBar(area), m.worktreeBar(area), p.cell(area, "", seg{text: strings.Repeat("─", area), fg: t.Surface})}
-	tree := m.treeLines(treeW, bodyH)
+	tree, _ := m.treeLines(treeW, bodyH)
 	diff := m.diffLines(diffW, bodyH)
 	sep := p.style(t.Surface, "", false).Render("│")
 	for i := range bodyH {
@@ -213,19 +213,7 @@ func (m Model) scopeBar(width int) string {
 			viewed++
 		}
 	}
-	active := 0
-	labels := make([]string, len(domain.ReviewScopes))
-	for i, s := range domain.ReviewScopes {
-		labels[i] = scopeLabel(s)
-		if s == domain.ScopeBranch {
-			if b := m.sharedDefaultBranch(); b != "" {
-				labels[i] = "branch vs " + b
-			}
-		}
-		if s == m.rv.scope {
-			active = i
-		}
-	}
+	labels, active := m.scopeChips()
 	right := []seg{
 		{text: count(files, "file") + "  ", fg: t.Subtext},
 		{text: fmt.Sprintf("+%d", add), fg: t.Green},
@@ -243,7 +231,46 @@ func (m Model) scopeBar(width int) string {
 	if m.rv.loading {
 		right = append([]seg{{text: "loading…  ", fg: t.Overlay}}, right...)
 	}
-	return m.chips(seg{text: " REVIEW  ", fg: t.Subtext, bold: true}, labels, active, t.Blue, right, width)
+	return m.chips(seg{text: scopeLead, fg: t.Subtext, bold: true}, labels, active, t.Blue, right, width)
+}
+
+const (
+	scopeLead    = " REVIEW  "
+	worktreeLead = " worktree  "
+)
+
+func (m Model) scopeChips() (labels []string, active int) {
+	labels = make([]string, len(domain.ReviewScopes))
+	for i, s := range domain.ReviewScopes {
+		labels[i] = scopeLabel(s)
+		if s == domain.ScopeBranch {
+			if b := m.sharedDefaultBranch(); b != "" {
+				labels[i] = "branch vs " + b
+			}
+		}
+		if s == m.rv.scope {
+			active = i
+		}
+	}
+	return labels, active
+}
+
+// why: ids[0] is "" for all worktrees, matching labels[0].
+func (m Model) worktreeChips() (labels, ids []string, active int) {
+	labels, ids = []string{"all"}, []string{""}
+	for _, e := range m.entries {
+		if e.session.ID != m.rv.session {
+			continue
+		}
+		for _, w := range e.worktrees {
+			if w.ID == m.rv.worktree {
+				active = len(labels)
+			}
+			labels = append(labels, worktreeChip(w))
+			ids = append(ids, w.ID)
+		}
+	}
+	return labels, ids, active
 }
 
 func (m Model) sharedDefaultBranch() string {
@@ -271,20 +298,8 @@ func (m Model) sharedDefaultBranch() string {
 
 func (m Model) worktreeBar(width int) string {
 	t := m.opts.Theme
-	labels := []string{"all"}
-	active := 0
-	for _, e := range m.entries {
-		if e.session.ID != m.rv.session {
-			continue
-		}
-		for _, w := range e.worktrees {
-			if w.ID == m.rv.worktree {
-				active = len(labels)
-			}
-			labels = append(labels, worktreeChip(w))
-		}
-	}
-	return m.chips(seg{text: " worktree  ", fg: t.Subtext}, labels, active, t.Text, nil, width)
+	labels, _, active := m.worktreeChips()
+	return m.chips(seg{text: worktreeLead, fg: t.Subtext}, labels, active, t.Text, nil, width)
 }
 
 func worktreeChip(w domain.Worktree) string {
@@ -306,10 +321,12 @@ func statusColor(t Theme, s domain.FileStatus) string {
 	return t.Peach
 }
 
-func (m Model) treeLines(width, height int) []string {
+// why: the second slice holds the file index each row shows, or -1.
+func (m Model) treeLines(width, height int) ([]string, []int) {
 	t := m.opts.Theme
 	p := m.paint
 	var rows []string
+	var files []int
 	curRow := 0
 	for _, r := range m.rv.prep.tree {
 		if r.file < 0 {
@@ -323,6 +340,9 @@ func (m Model) treeLines(width, height int) []string {
 			rows = append(rows, p.cellRight(width, "", []seg{{text: " " + worktreeLabel(r.wt), bold: true}}, pr))
 			if r.err != "" {
 				rows = append(rows, p.cell(width, "", seg{text: "   ! " + r.err, fg: t.Overlay}))
+			}
+			for len(files) < len(rows) {
+				files = append(files, -1)
 			}
 			continue
 		}
@@ -342,6 +362,10 @@ func (m Model) treeLines(width, height int) []string {
 		rows = append(rows, p.cellRight(width, bg,
 			[]seg{mark, {text: string(f.file.Status) + " ", fg: statusColor(t, f.file.Status), bold: true}, {text: path.Base(f.file.Path)}},
 			[]seg{{text: stat, fg: t.Subtext}}))
+		for len(files) < len(rows)-1 {
+			files = append(files, -1)
+		}
+		files = append(files, r.file)
 	}
 	if len(m.rv.prep.files) == 0 && !m.rv.loading {
 		msg := "  no changes"
@@ -354,11 +378,15 @@ func (m Model) treeLines(width, height int) []string {
 	if curRow >= height {
 		off = curRow - height + 1
 	}
-	rows = rows[min(off, len(rows)):]
+	for len(files) < len(rows) {
+		files = append(files, -1)
+	}
+	rows, files = rows[min(off, len(rows)):], files[min(off, len(files)):]
 	for len(rows) < height {
 		rows = append(rows, p.cell(width, ""))
+		files = append(files, -1)
 	}
-	return rows[:height]
+	return rows[:height], files[:height]
 }
 
 const numWidth = 5

@@ -120,6 +120,16 @@ The setup screen shows the exact lines for your install. By hand: put the plugin
 - `:'<,'>AgentwsComment [text]` adds the selected lines as a draft review comment.
 - `setup{bin = 'agentws', tmux = 'tmux', navigate = true}`; `navigate = false` leaves `C-h/j/k/l` alone in nvim.
 
+## Mouse
+
+Click a session card to select it, and click it again to jump to its agent pane. Key hints and buttons at the bottom of each screen are clickable, as are picker choices, dialog fields, worktree rows, review files, scope and worktree chips, and diff lines (drag over lines to select a range, then `c` to comment). The wheel moves through lists. In tmux, clicking a pane focuses it, dragging a border resizes, and the wheel scrolls an agent's history (`q` leaves it). To select text the terminal's own way, hold Shift while dragging (Option in iTerm2 and Terminal.app). To turn it all off:
+
+```toml
+# $AGENTWS_HOME/config.toml
+[ui]
+mouse = false
+```
+
 ## Codex setup
 
 `agentws setup codex` adds the hooks Codex needs to report state, and prints the one-time trust step Codex requires. `agentws setup codex --remove` takes them out. It backs up an existing `hooks.json` first and leaves your other hooks alone.

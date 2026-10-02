@@ -31,7 +31,6 @@ const configContents = `set -g status off
 set -g prefix None
 unbind-key -a
 bind-key -n C-\\ select-pane -t :.0
-set -g mouse off
 set -g escape-time 0
 set -g remain-on-exit off
 set -g history-limit 50000
@@ -40,14 +39,44 @@ set -g pane-border-status top
 ` + "set -g pane-border-format \"" + titleFormat + "\"\n" + `bind -n M-t if -F '#{m:agentws-popup-*,#{session_name}}' 'detach-client' 'send-keys M-t'
 `
 
+// why: unbind-key -a drops tmux's own mouse bindings, so they are spelled out.
+// A pane whose program takes the mouse (mouse_any_flag) gets the event as is;
+// any other pane scrolls or selects in copy-mode.
+const mouseOn = `set -g mouse on
+bind -n MouseDown1Pane select-pane -t = \; send -M
+bind -n MouseDrag1Border resize-pane -M
+bind -n MouseDrag1Pane if -F '#{||:#{pane_in_mode},#{mouse_any_flag}}' 'send -M' 'copy-mode -M'
+bind -n WheelUpPane if -F '#{||:#{pane_in_mode},#{mouse_any_flag}}' 'send -M' 'copy-mode -e'
+bind -n WheelDownPane if -F '#{||:#{pane_in_mode},#{mouse_any_flag}}' 'send -M'
+bind -T copy-mode WheelUpPane select-pane \; send -X -N 5 scroll-up
+bind -T copy-mode WheelDownPane select-pane \; send -X -N 5 scroll-down
+bind -T copy-mode MouseDown1Pane select-pane \; send -X clear-selection
+bind -T copy-mode MouseDrag1Pane select-pane \; send -X begin-selection
+bind -T copy-mode MouseDragEnd1Pane send -X copy-selection-and-cancel
+bind -T copy-mode q send -X cancel
+bind -T copy-mode Escape send -X cancel
+`
+
+const mouseOff = "set -g mouse off\n"
+
+func config(noMouse bool) string {
+	if noMouse {
+		return configContents + mouseOff
+	}
+	return configContents + mouseOn
+}
+
 type Config struct {
 	Socket     string
 	ConfigPath string
+	// why: [ui] mouse = false leaves clicks and the wheel to the terminal.
+	NoMouse bool
 }
 
 type Host struct {
 	socket     string
 	configPath string
+	noMouse    bool
 
 	configOnce sync.Once
 	configErr  error
@@ -62,7 +91,7 @@ func New(cfg Config) *Host {
 	if socket == "" {
 		socket = DefaultSocket
 	}
-	return &Host{socket: socket, configPath: cfg.ConfigPath}
+	return &Host{socket: socket, configPath: cfg.ConfigPath, noMouse: cfg.NoMouse}
 }
 
 func (h *Host) Close(ctx context.Context) error {
@@ -107,7 +136,7 @@ func (h *Host) ensureConfig() error {
 			h.configErr = err
 			return
 		}
-		h.configErr = os.WriteFile(h.configPath, []byte(configContents), 0o644)
+		h.configErr = os.WriteFile(h.configPath, []byte(config(h.noMouse)), 0o644)
 	})
 	return h.configErr
 }

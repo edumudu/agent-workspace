@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
@@ -95,9 +96,7 @@ func (m Model) line(sel bool, left, right []piece) string {
 
 func (m Model) View() tea.View {
 	if m.ob != nil {
-		v := tea.NewView(m.setupScreen())
-		v.AltScreen = true
-		return v
+		return m.view(m.setupScreen())
 	}
 	if m.opts.SetupOnly {
 		return tea.NewView("")
@@ -106,22 +105,21 @@ func (m Model) View() tea.View {
 		if m.dialog == nil {
 			return tea.NewView("")
 		}
-		v := tea.NewView(m.dialogScreen())
-		v.AltScreen = true
-		return v
+		return m.view(m.dialogScreen())
 	}
 	if m.rv.open {
-		v := tea.NewView(m.reviewView())
-		v.AltScreen = true
-		return v
+		return m.view(m.reviewView())
 	}
 	if m.dk.open {
-		v := tea.NewView(m.diskScreen())
-		v.AltScreen = true
-		return v
+		return m.view(m.diskScreen())
 	}
+	lines, _ := m.mainScreen()
+	return m.view(strings.Join(lines, "\n"))
+}
+
+// why: owners names what each row shows, so a click can be mapped back to it.
+func (m Model) mainScreen() (lines, owners []string) {
 	s := m.styles
-	var lines []string
 	lines = append(lines, m.topBar())
 	lines = append(lines, m.limitLines()...)
 	lines = append(lines, "")
@@ -138,7 +136,7 @@ func (m Model) View() tea.View {
 	}
 	lines = append(lines, m.line(false, []piece{{s.header, " SESSIONS"}}, right))
 
-	body, selRow := m.body()
+	body, selRow, bodyOwners := m.body()
 	footer := append(m.cardLines(), m.footer()...)
 	room := m.height - len(lines) - len(footer)
 	if room < 0 {
@@ -151,18 +149,32 @@ func (m Model) View() tea.View {
 	if off > len(body)-room {
 		off = max(0, len(body)-room)
 	}
-	body = body[off:]
-	if len(body) > room {
-		body = body[:room]
+	for len(bodyOwners) < len(body) {
+		bodyOwners = append(bodyOwners, "")
 	}
+	body, bodyOwners = body[off:], bodyOwners[off:]
+	if len(body) > room {
+		body, bodyOwners = body[:room], bodyOwners[:room]
+	}
+	owners = make([]string, len(lines), m.height)
 	lines = append(lines, body...)
+	owners = append(owners, bodyOwners...)
 	for len(lines)+len(footer) < m.height {
 		lines = append(lines, "")
 	}
 	lines = append(lines, footer...)
+	for len(owners) < len(lines) {
+		owners = append(owners, "")
+	}
+	return lines, owners
+}
 
-	v := tea.NewView(strings.Join(lines, "\n"))
+func (m Model) view(content string) tea.View {
+	v := tea.NewView(content)
 	v.AltScreen = true
+	if !m.opts.NoMouse {
+		v.MouseMode = tea.MouseModeCellMotion
+	}
 	return v
 }
 
@@ -182,19 +194,23 @@ func (m Model) topBar() string {
 	return m.line(false, left, right)
 }
 
-func (m Model) body() ([]string, int) {
+func (m Model) body() ([]string, int, []string) {
 	s := m.styles
 	if m.dialog != nil {
 		return m.dialogLines()
 	}
 	if m.launching != nil {
-		return m.launcherLines(), 0
+		return m.launcherLines(), 0, nil
 	}
 	if m.help {
-		return m.helpLines(), 0
+		return m.helpLines(), 0, nil
 	}
 	if m.picker != nil {
-		return m.pickerLines(), 0
+		owners := []string{"", ""}
+		for i := range m.picker.choices {
+			owners = append(owners, ownPick+strconv.Itoa(i))
+		}
+		return m.pickerLines(), 0, owners
 	}
 	if m.resuming != nil {
 		return m.resumeLines(), 0
@@ -204,21 +220,27 @@ func (m Model) body() ([]string, int) {
 			"",
 			m.line(false, []piece{{s.sub, " No sessions yet."}}, nil),
 			m.line(false, []piece{{s.dim, " Sessions you start show up here."}}, nil),
-		}, m.queueLines()...), 0
+		}, m.queueLines()...), 0, nil
 	}
-	var out []string
+	var out, owners []string
 	selRow := 0
 	for _, e := range m.entries {
+		own := ownSession + e.session.ID
 		if e.groupStart {
 			out = append(out, "", m.line(false, []piece{{s.sub, " " + taskLabel(e.task)}}, []piece{{s.sub, strings.Join(e.groupRepos, " ")}}))
+			owners = append(owners, "", own)
 		}
 		sel := e.session.ID == m.selected
 		if sel {
 			selRow = len(out)
 		}
-		out = append(out, m.sessionLines(e, sel)...)
+		card := m.sessionLines(e, sel)
+		out = append(out, card...)
+		for range card {
+			owners = append(owners, own)
+		}
 	}
-	return append(out, m.queueLines()...), selRow
+	return append(out, m.queueLines()...), selRow, owners
 }
 
 func (m Model) sessionLines(e entry, sel bool) []string {
