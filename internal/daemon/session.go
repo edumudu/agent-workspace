@@ -198,6 +198,32 @@ func (d *Daemon) endSession(req rpc.Request) (*rpc.Response, bool) {
 	return result(req.ID, ended), ok
 }
 
+func (d *Daemon) resumeSession(req rpc.Request) (*rpc.Response, bool) {
+	session, resp, ok := d.sessionByRef(req)
+	if resp != nil || !ok {
+		return resp, ok
+	}
+	adapter, found := d.hs.adapters[session.Harness]
+	if !found {
+		return errorResponse(req.ID, rpc.CodeBadRequest, "no harness "+string(session.Harness)), true
+	}
+	var task domain.Task
+	if !d.query(func(s *state) { task = s.tasks[session.TaskID] }) {
+		return nil, false
+	}
+	resumed, err := d.sessions().Resume(d.ws.ctx, session, adapter, domain.NameFor(task, nil))
+	switch {
+	case errors.Is(err, app.ErrNotResumable):
+		return errorResponse(req.ID, rpc.CodeBadRequest, "session "+session.ID+" is live or has no harness session to resume"), true
+	case err != nil:
+		return errorResponse(req.ID, rpc.CodeLaunchFailed, err.Error()), true
+	}
+	if !d.commit(SessionChanged{Session: resumed}) {
+		return nil, false
+	}
+	return result(req.ID, resumed), true
+}
+
 func (d *Daemon) endAndRefill(session domain.Session) (domain.Session, bool, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), clientTimeout)
 	defer cancel()

@@ -79,6 +79,7 @@ func (d *Daemon) launch(req rpc.Request) (*rpc.Response, bool) {
 		Model:   p.Model,
 		Effort:  p.Effort,
 		State:   domain.StateIdle,
+		Dir:     p.Dir,
 	}
 	if p.Name != "" {
 		task := domain.Task{ID: newID(), Source: domain.TaskText, Text: p.Name}
