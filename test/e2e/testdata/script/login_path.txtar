@@ -1,0 +1,18 @@
+# why: a daemon started over a bare ssh has no ~/.local/bin and the like; it
+# takes them from the login shell, so the agent pane still finds the harness.
+[!barepath] skip 'a real claude or codex is on the bare PATH'
+env HOME=$WORK/home
+env SHELL=/bin/sh
+env PATH=$AGENTWS_E2E_BARE_PATH
+
+repo api
+exec agentws workspace add api
+exec agentws new --workspace api 'add a thing'
+capture SID '^session (\S+) on pane %\d+$'
+eventually ' state=done ' agentws debug session --once $SID
+
+-- home/.profile --
+PATH="$PATH:$AGENTWS_E2E_FAKES"
+-- claude.steps --
+hook UserPromptSubmit {"prompt":"add a thing"}
+hook Stop {"last_assistant_message":"Added it."}
