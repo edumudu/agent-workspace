@@ -56,6 +56,8 @@ type Session struct {
 	Focused       bool
 	Muted         bool
 	WorktreeIDs   []string
+	ResumeID      string
+	Dir           string
 	Usage         Usage
 	Limits        []RateLimit
 	LimitsAt      time.Time
