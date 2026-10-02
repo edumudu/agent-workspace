@@ -76,3 +76,21 @@ func TestNotifyStreamSkipsMutedSessions(t *testing.T) {
 		t.Fatalf("notice %+v", got)
 	}
 }
+
+func TestNotifyStreamEndsWhenItsContextIsCancelled(t *testing.T) {
+	r := newRig(t, &memStore{}, nil)
+	ctx, cancel := context.WithCancel(context.Background())
+	ch, err := dial(t, r.path).StreamNotices(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cancel()
+	select {
+	case _, ok := <-ch:
+		if ok {
+			t.Fatal("a notice arrived after cancel")
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("the stream stayed open after its context was cancelled")
+	}
+}
