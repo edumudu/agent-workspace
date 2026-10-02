@@ -14,6 +14,7 @@ const (
 
 type HarnessSpec struct {
 	Harness Harness
+	Name    string
 	Tag     string
 	Hooks   map[string]HarnessEventKind
 	Switch  SwitchForm
@@ -24,6 +25,7 @@ type HarnessSpec struct {
 var harnessTable = []HarnessSpec{
 	{
 		Harness: HarnessClaude,
+		Name:    "Claude Code",
 		Tag:     "CC",
 		Switch:  SwitchSlash,
 		Models:  []string{"opus", "sonnet", "haiku"},
@@ -42,6 +44,7 @@ var harnessTable = []HarnessSpec{
 	},
 	{
 		Harness: HarnessCodex,
+		Name:    "Codex",
 		Tag:     "CX",
 		Switch:  SwitchPicker,
 		Models:  []string{"gpt-6.1-sol", "gpt-6-astra", "gpt-6-sol", "gpt-6-luna", "gpt-5.5"},
@@ -59,6 +62,7 @@ var harnessTable = []HarnessSpec{
 	},
 	{
 		Harness: HarnessOmp,
+		Name:    "Oh My Pi",
 		Tag:     "OM",
 		Switch:  SwitchOmpSwitch,
 		// why: agent_end carries willContinue and turn_end is one model round, so

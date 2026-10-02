@@ -66,10 +66,12 @@ func (p Probe) Onboarding(context.Context) (domain.Onboarding, error) {
 		return domain.Onboarding{}, err
 	}
 	return domain.Onboarding{
-		Done:   err == nil,
-		Claude: p.claudeSetup(),
-		Codex:  p.codexSetup(),
-		Nvim:   p.nvimSetup(),
+		Done: err == nil,
+		Harnesses: map[domain.Harness]domain.HarnessSetup{
+			domain.HarnessClaude: p.claudeSetup(),
+			domain.HarnessCodex:  p.codexSetup(),
+		},
+		Nvim: p.nvimSetup(),
 	}, nil
 }
 
