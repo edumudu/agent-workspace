@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -12,7 +13,9 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/giovaniif/agent-workspace/internal/adapters/loginshell"
 	"github.com/giovaniif/agent-workspace/internal/daemon"
+	"github.com/giovaniif/agent-workspace/internal/domain"
 	"github.com/giovaniif/agent-workspace/internal/rpc"
 )
 
@@ -49,8 +52,28 @@ func runDaemon(args []string, stdout, stderr io.Writer) int {
 func foreground(home string) error {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
+	adoptLoginPath(ctx)
 	return daemon.Run(ctx, home)
 }
+
+// why: tmux gives a new pane the PATH of the client that ran new-window, the
+// daemon, and whatever started the daemon (a bare ssh, launchd, systemd) may
+// lack the user's own dirs, so a harness in ~/.local/bin would not be found.
+func adoptLoginPath(ctx context.Context) {
+	ctx, cancel := context.WithTimeout(ctx, loginPathWithin)
+	defer cancel()
+	login, err := loginshell.Path(ctx, os.Getenv("SHELL"))
+	if err != nil {
+		log.Printf("login shell PATH ignored: %v", err)
+		return
+	}
+	if err := os.Setenv("PATH", domain.MergeLoginPath(os.Getenv("PATH"), login)); err != nil {
+		log.Printf("login shell PATH ignored: %v", err)
+	}
+}
+
+// why: well under rpc.StartTimeout, which a client waits for a new daemon's socket.
+const loginPathWithin = time.Second
 
 func spawn(home string) error {
 	self, err := os.Executable()

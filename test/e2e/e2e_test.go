@@ -46,6 +46,7 @@ func TestScripts(t *testing.T) {
 		Setup: func(env *testscript.Env) error {
 			return setup(env, fakes)
 		},
+		Condition: condition,
 		Cmds: map[string]func(ts *testscript.TestScript, neg bool, args []string){
 			"eventually": eventually,
 			"capture":    capture,
@@ -56,6 +57,8 @@ func TestScripts(t *testing.T) {
 
 func setup(env *testscript.Env, fakes string) error {
 	sep := string(os.PathListSeparator)
+	env.Setenv("AGENTWS_E2E_FAKES", fakes)
+	env.Setenv("AGENTWS_E2E_BARE_PATH", barePath())
 	env.Setenv("PATH", binDir+sep+fakes+sep+env.Getenv("PATH"))
 	// why: macOS caps Unix socket paths at 104 bytes, so the home that holds agentws.sock must be short.
 	tmp, err := os.MkdirTemp("", "aws")
@@ -177,4 +180,33 @@ func repo(ts *testscript.TestScript, neg bool, args []string) {
 			ts.Fatalf("git %s: %v\n%s", strings.Join(c, " "), err, ts.ReadFile("stderr"))
 		}
 	}
+}
+
+// why: a PATH with agentws and only what git and tmux need, standing in for
+// the bare one a daemon gets over a non-interactive ssh.
+func barePath() string {
+	dirs := []string{binDir}
+	for _, tool := range []string{"git", "tmux"} {
+		if p, err := exec.LookPath(tool); err == nil {
+			dirs = append(dirs, filepath.Dir(p))
+		}
+	}
+	dirs = append(dirs, "/usr/bin", "/bin")
+	return strings.Join(dirs, string(os.PathListSeparator))
+}
+
+// why: [barepath] is false when a real claude or codex sits on the bare PATH,
+// since a script would then launch it instead of the fake.
+func condition(cond string) (bool, error) {
+	if cond != "barepath" {
+		return false, fmt.Errorf("unknown condition %q", cond)
+	}
+	for _, dir := range filepath.SplitList(barePath()) {
+		for _, harness := range []string{"claude", "codex"} {
+			if _, err := os.Stat(filepath.Join(dir, harness)); err == nil {
+				return false, nil
+			}
+		}
+	}
+	return true, nil
 }
