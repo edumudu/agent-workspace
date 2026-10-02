@@ -16,9 +16,9 @@ stdout '^agentws daemon already running \(pid [0-9]+\)$'
 
 exec agentws daemon stop
 stdout '^agentws daemon stopped \(pid [0-9]+\)$'
-exec agentws daemon status
-stdout '^sessions 0$'
+! exec agentws daemon status
+stderr '^agentws daemon: not running$'
+! exists $AGENTWS_HOME/agentws.pid
 
-exec agentws daemon stop
 ! exec agentws daemon stop
 stderr 'not running'
