@@ -346,6 +346,11 @@ func (m *Model) apply(d rpc.Diff) {
 		delete(m.events, d.RemovedSession)
 		delete(m.subagents, d.RemovedSession)
 	case d.Session != nil:
+		// why: a banner click or agentws focus shows a session without the sidebar, so the selection follows it;
+		// only the change to focused counts, so later updates to that session never undo j/k.
+		if d.Session.Focused && !m.sessions[d.Session.ID].Focused {
+			m.pending = d.Session.ID
+		}
 		m.sessions[d.Session.ID] = *d.Session
 	case d.Subagent != nil:
 		m.putSubagent(*d.Subagent)
