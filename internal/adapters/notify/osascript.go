@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"os/exec"
 	"strings"
@@ -19,8 +20,16 @@ var (
 
 type Runner func(ctx context.Context, name string, args ...string) ([]byte, error)
 
+// why: a bare "exit status 3" hides why; terminal-notifier says on stderr that notifications are off.
 func execRunner(ctx context.Context, name string, args ...string) ([]byte, error) {
-	return exec.CommandContext(ctx, name, args...).Output()
+	out, err := exec.CommandContext(ctx, name, args...).Output()
+	var exit *exec.ExitError
+	if errors.As(err, &exit) {
+		if line, _, _ := strings.Cut(strings.TrimSpace(string(exit.Stderr)), "\n"); line != "" {
+			err = fmt.Errorf("%s: %w: %s", name, err, line)
+		}
+	}
+	return out, err
 }
 
 type Osascript struct {

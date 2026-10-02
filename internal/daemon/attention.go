@@ -119,6 +119,7 @@ func (s *state) announce(session domain.Session, effects []domain.Effect) {
 		if s.attn.enqueue(queuedBanner{banner: b, focused: session.Focused}) {
 			s.attn.posted[session.ID] = true
 		}
+		s.notice(rpc.Notice{Banner: &b, Focused: session.Focused})
 	}
 }
 
@@ -127,6 +128,7 @@ func (s *state) withdraw(id string) {
 		return
 	}
 	delete(s.attn.posted, id)
+	s.notice(rpc.Notice{Remove: id})
 	s.attn.removeMu.Lock()
 	s.attn.removals[id] = true
 	s.attn.withdrawn[id] = s.attn.gens[id]
@@ -134,6 +136,16 @@ func (s *state) withdraw(id string) {
 	select {
 	case s.attn.wake <- struct{}{}:
 	default:
+	}
+}
+
+// why: bridges post banners on another machine, so they get every banner the
+// loop lets through, before the local worker's frontmost check.
+func (s *state) notice(n rpc.Notice) {
+	for c, id := range s.noticeSubs {
+		if !c.push(rpc.Response{V: rpc.Version, ID: id, Notice: &n}) {
+			delete(s.noticeSubs, c)
+		}
 	}
 }
 
