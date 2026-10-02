@@ -1,0 +1,44 @@
+# internal/rpc
+
+Protocol types (`protocol.go`) and the client, used by the TUI, the hook, the CLI and nvim. See [ADR 0005](../../docs/adr/0005-daemon-rpc.md). The daemon side is in [internal/daemon/](../daemon/AGENTS.md).
+
+## Protocol
+
+A Unix socket at `$AGENTWS_HOME/agentws.sock` carrying one JSON object per line, at most 16 MiB. Every message carries `"v":1`.
+
+```
+→ {"v":1,"id":1,"method":"status"}
+← {"v":1,"id":1,"result":{"pid":42,"started_at":"…","sessions":2,"worktrees":3}}
+→ {"v":1,"id":2,"method":"subscribe"}
+← {"v":1,"id":2,"result":{"seq":17,"workspaces":[…],"tasks":[…],"worktrees":[…],"sessions":[…]}}
+← {"v":1,"id":2,"diff":{"seq":18,"session":{…}}}
+→ {"v":2,"id":3,"method":"status"}
+← {"v":1,"id":3,"error":{"code":"unsupported_version","message":"this daemon speaks protocol v1"}}
+```
+
+- The client picks `id`; responses and a subscription's diffs carry it back. A connection may have several requests in flight.
+- `subscribe` answers with the full `State` at `seq`, then one `diff` per change starting at `seq+1`. A diff sets exactly one of `workspace`, `task`, `worktree`, `session`, and replaces that entity by key. The one exception is a hook, whose diff sets `session` and `event` together; `event` is appended to its session's events. `State.events` holds each session's last 20. Domain structs encode with their Go field names.
+- A diff may instead set `removed_workspace` (a root), `removed_worktree` (an ID) or `removed_session` (an ID): drop that entity, and for a session its events too.
+- A subagent change is a diff of its own that sets `subagent`, replacing the subagent with the same `SessionID` and `ID`. `State.subagents` holds every session's subagents (at most 30 each, in memory only). See [ADR 0019](../../docs/adr/0019-subagent-tree.md).
+- Adding a method or an optional field keeps `v:1`. Removing or changing the meaning of a field bumps `v`.
+
+## Build handshake
+
+Every RPC request and response carries the build (`version.String()`). The daemon refuses a request from another build, and a client refuses a daemon that names none, with `version_mismatch` saying which side to restart (the older one). `status`, `hook` and `statusline` answer any build, so `agentws daemon stop` always reaches a stale daemon. See [ADR 0039](../../docs/adr/0039-dev-loop-and-build-handshake.md).
+
+## Methods
+
+- `hook` carries one harness hook: `{"harness","event","pane","at","payload"}`, with the hook's stdin JSON as `payload`. The daemon maps `pane` to the session whose `Pane` matches (`domain.SessionOnPane`) and the name to a harness event (`domain.HookEvent`), then applies it; unknown panes and names are ignored. The result is a `HookReply` whose optional `output` the hook prints for the harness.
+- `statusline` carries one status-line update: `{"pane","report"}`. The daemon applies it with `Session.Report` to the session on that pane.
+- `session.launch` (`{"harness","dir","model","effort","name","prompt"}` → `Session`) opens a pane through the harness adapter and adds an `idle` session on it; a non-empty `name` also creates a text task with that name, so the session and its banners carry it. It exists only with `WithHarnesses`, and fails with `launch_failed` if the pane cannot be created.
+- `session.switch` (`{"session_id","kind","value"}` → `Session`, kind `model` or `effort`) queues a model or effort switch and sends it when the session is idle, done or waiting; see [ADR 0018](../../docs/adr/0018-model-effort-switching.md), and [ADR 0034](../../docs/adr/0034-codex-model-picker-switching.md) for Codex. It also needs `WithHarnesses`.
+- `session.new` (`{"workspace","work_item","harness","model","effort"}` → `Session`) starts a session: it parses the work item, plans the dir and worktree in `domain`, then runs git, the setup recipe and tmux on the connection goroutine and commits the task, worktree, session and last-used workspace. `session.end` (`{"id"}` → `Session`) kills the pane and ends the session: idle, `Ended`, and forgotten at once when it has no worktree. With a terminal host and an open client layout, `session.focus` also swaps the session's pane into the main slot and focuses it. They need `WithHarnesses` and, for `session.new`, `WithSessions`.
+- Also: `status`, `subscribe`, `session.mute` (`{"id","muted"}`), `session.focus` (`{"id"}`), `session.rename` (`{"id","name"}`), `session.unpin` (`{"id"}`), `launcher.enqueue`, `launcher.drop`, `launcher.retarget`, `ports.kill`, `disk.view`, `cleanup.worktree`, `review.open`, `review.viewed`, `review.comment`, `review.send`, `review.hunk`, `client.review`, `shell.toggle`, `shell.focus`, `nvim.toggle`, `nvim.open`, `onboarding.status`, `onboarding.install`, `onboarding.finish`, `debug.seed`, and `workspace.add` (`{"path": abs}` → `Workspace`), `workspace.list` (→ `{"workspaces": [...], "last_used": root}`), `workspace.remove` (`{"root": …}`), and `worktree.assign` (`{"id", "session"}`; an empty session unassigns). The workspace methods exist only when the daemon is built with `WithWorkspaces`; otherwise they answer `unknown_method`. Their params are in [internal/daemon/](../daemon/AGENTS.md).
+- `review.open` (`{"session","scope","worktree"}` → `{"scope","worktrees":[{Worktree,From,Files,Err}],"viewed":[marks]}`; an empty `worktree` means all of the session's, an empty `scope` the session's last opened one, `From` the commit the diff starts from) and `review.viewed` (`{"mark":{Worktree,Path,Blob},"viewed"}`) exist only with `WithReview`, as do `review.send` (`{"session"}` → `ReviewDraft`: queues the draft and sends it once the session is idle, done or waiting; an empty draft is `bad_request`) and `review.hunk` (`{"session","worktree","file","hunk","action"}`, action `stage` or `revert`, which also needs `WithHunks`; git refusing the patch is `failed`). `review.open` also returns the session's `draft`. `client.review` (`{"open"}`) widens the sidebar pane for the review or puts it back.
+- `client.open` `{"command":[…],"env":{…}}` returns `{"slot","attach"}`: the client window (TUI pane on the left running `command`, main slot on the right), created on the first call and reused while it exists, plus the argv that attaches a terminal to it. `client.focus_main` makes that window's main slot the active pane. `client.popup` `{"command":[…],"env":{…}}` runs `command` in a centred popup over the attached client that closes when it exits; the TUI uses it for the new-session dialog (ADR 0037). Both run tmux on the connection goroutine, never on the loop. Without a terminal host they return `unavailable`; a tmux failure returns `failed`.
+- `debug.seed` `{"count":N}` adds N fake sessions for manual testing; `agentws debug seed N` calls it.
+- Error codes: `unsupported_version` (missing or other `v`), `unknown_method`, `bad_request` (not JSON, bad params, or a path that is not a directory; `id` 0 when not JSON), `not_found` (removing an unknown workspace, or muting, focusing or ending an unknown session), `unavailable` and `failed` (above), `launch_failed`, `version_mismatch`.
+
+## Client
+
+`rpc.Dial(path)` connects; `rpc.Connect(ctx, path, start)` calls `start` once if nothing listens and retries for `rpc.StartTimeout` (2 s). `Client.Call(ctx, method, params, out)` is the generic call and returns `*rpc.Error` for daemon errors; `Status` and `Subscribe` wrap it. `Subscribe` returns the `State` and a `Diffs` channel closed when the connection ends; its diffs share the connection's reader, so a slow consumer should use its own `Client`. `rpc` cannot exec, so the caller supplies `start` (`cmd/agentws` spawns `agentws daemon`).

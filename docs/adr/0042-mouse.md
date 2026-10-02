@@ -1,4 +1,4 @@
-# ADR 0041: Mouse support
+# ADR 0042: Mouse support
 
 Status: accepted, 2026-10-01.
 
