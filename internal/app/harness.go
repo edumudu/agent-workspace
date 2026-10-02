@@ -8,6 +8,7 @@ type LaunchRequest struct {
 	Model  string
 	Effort string
 	Prompt string
+	Resume string
 }
 
 // why: the pane's $TMUX_PANE is how the session's hooks find their way back.
