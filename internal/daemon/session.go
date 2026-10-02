@@ -295,8 +295,11 @@ func (d *Daemon) focusSession(req rpc.Request) (*rpc.Response, bool) {
 	if !found {
 		return errorResponse(req.ID, rpc.CodeNotFound, "no session "+p.ID), true
 	}
+	// why: the pane is shown and the session marked focused under one hold of clients.mu, so slot recovery never sees one without the other.
+	d.clients.mu.Lock()
+	defer d.clients.mu.Unlock()
 	if session.Pane != "" && d.hs.host != nil {
-		if err := d.showInMain(app.PaneID(session.Pane)); err != nil && !errors.Is(err, errNoLayout) {
+		if err := d.showInMainLocked(app.PaneID(session.Pane)); err != nil && !errors.Is(err, errNoLayout) {
 			return errorResponse(req.ID, rpc.CodeFailed, err.Error()), true
 		}
 	}
@@ -308,9 +311,7 @@ func (d *Daemon) focusSession(req rpc.Request) (*rpc.Response, bool) {
 	return result(req.ID, struct{}{}), ok
 }
 
-func (d *Daemon) showInMain(pane app.PaneID) error {
-	d.clients.mu.Lock()
-	defer d.clients.mu.Unlock()
+func (d *Daemon) showInMainLocked(pane app.PaneID) error {
 	if d.clients.host == nil || d.clients.slot == "" {
 		return errNoLayout
 	}

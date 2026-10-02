@@ -322,22 +322,23 @@ type shown struct {
 
 type fakeHost struct {
 	app.TerminalHost
-	mu         sync.Mutex
-	titles     map[app.PaneID][]string
-	specs      []app.PaneSpec
-	err        error
-	panes      []app.PaneInfo
-	killed     []app.PaneID
-	shown      []shown
-	typed      []string
-	failText   string
-	gates      map[app.PaneID]chan struct{}
-	held       map[app.PaneID]chan struct{}
-	distinct   bool
-	failFirst  bool
-	screens    []string
-	creating   chan struct{}
-	createGate chan struct{}
+	mu          sync.Mutex
+	duringAlive func()
+	titles      map[app.PaneID][]string
+	specs       []app.PaneSpec
+	err         error
+	panes       []app.PaneInfo
+	killed      []app.PaneID
+	shown       []shown
+	typed       []string
+	failText    string
+	gates       map[app.PaneID]chan struct{}
+	held        map[app.PaneID]chan struct{}
+	distinct    bool
+	failFirst   bool
+	screens     []string
+	creating    chan struct{}
+	createGate  chan struct{}
 }
 
 func (h *fakeHost) Capture(context.Context, app.PaneID, int) (string, error) {
@@ -840,4 +841,32 @@ func (h *fakeClientHost) Detach(_ context.Context, slot app.Slot) error {
 	defer h.mu.Unlock()
 	h.detached = append(h.detached, slot)
 	return nil
+}
+
+func (h *fakeHost) Alive(_ context.Context, pane app.PaneID) (bool, error) {
+	h.mu.Lock()
+	during := h.duringAlive
+	h.duringAlive = nil
+	h.mu.Unlock()
+	if during != nil {
+		during()
+	}
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	for _, p := range h.panes {
+		if p.ID == pane {
+			return p.Alive, nil
+		}
+	}
+	return false, nil
+}
+
+func (h *fakeHost) die(pane app.PaneID) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	for i := range h.panes {
+		if h.panes[i].ID == pane {
+			h.panes[i].Alive = false
+		}
+	}
 }

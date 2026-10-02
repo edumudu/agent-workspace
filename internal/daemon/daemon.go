@@ -102,6 +102,7 @@ type state struct {
 	events     map[string][]domain.SessionEvent
 	subagents  []domain.Subagent
 	subs       map[*conn]uint64
+	noticeSubs map[*conn]uint64
 	usage      map[string]*usageJob
 	attn       *attention
 	// why: set by New; state cannot reach the Daemon that owns it.
@@ -160,6 +161,7 @@ func New(store app.Store, pid int, opts ...Option) (*Daemon, error) {
 		sessions:   map[string]domain.Session{},
 		events:     map[string][]domain.SessionEvent{},
 		subs:       map[*conn]uint64{},
+		noticeSubs: map[*conn]uint64{},
 		usage:      map[string]*usageJob{},
 		hints:      newWorktreeHints(),
 		viewed:     map[string]domain.ViewedMark{},
@@ -386,7 +388,10 @@ func (d *Daemon) commit(e Event) bool {
 func (d *Daemon) handle(c *conn) {
 	defer func() {
 		c.kill()
-		d.query(func(s *state) { delete(s.subs, c) })
+		d.query(func(s *state) {
+			delete(s.subs, c)
+			delete(s.noticeSubs, c)
+		})
 	}()
 	go c.write()
 	sc := bufio.NewScanner(c.nc)
@@ -429,6 +434,13 @@ func (d *Daemon) dispatch(c *conn, line []byte) (*rpc.Response, bool) {
 		ok := d.query(func(s *state) {
 			if c.push(*result(req.ID, s.snapshot())) {
 				s.subs[c] = req.ID
+			}
+		})
+		return nil, ok
+	case rpc.MethodNotifyStream:
+		ok := d.query(func(s *state) {
+			if c.push(*result(req.ID, struct{}{})) {
+				s.noticeSubs[c] = req.ID
 			}
 		})
 		return nil, ok

@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/giovaniif/agent-workspace/internal/app"
 	"github.com/giovaniif/agent-workspace/internal/domain"
 )
 
@@ -44,10 +45,33 @@ func (d *Daemon) refillLostSlot(ctx context.Context) {
 		d.refillMain(domain.Session{}, false)
 		return
 	}
-	if now, stillFound, ok := d.sessionInView(); !ok || !stillFound || now.ID != inView.ID || now.Pane != inView.Pane {
+	if d.restoreLiveAgent(ctx, inView, slot) {
 		return
 	}
 	_, _, _ = d.endAndRefill(inView)
+}
+
+// why: holds clients.mu, which focusSession holds from showing a pane until it marks the session focused,
+// so a session focused meanwhile is seen and never covered. An editor or shell shown in the slot leaves
+// it empty when it quits, while the agent it replaced is still alive. Returns false only when the agent's
+// pane is gone and the session should end.
+func (d *Daemon) restoreLiveAgent(ctx context.Context, inView domain.Session, slot app.Slot) bool {
+	d.clients.mu.Lock()
+	defer d.clients.mu.Unlock()
+	if now, stillFound, ok := d.sessionInView(); !ok || !stillFound || now.ID != inView.ID || now.Pane != inView.Pane {
+		return true
+	}
+	if d.hs.host == nil || inView.Pane == "" {
+		return false
+	}
+	alive, err := d.hs.host.Alive(ctx, app.PaneID(inView.Pane))
+	if err != nil {
+		return true
+	}
+	if alive {
+		_ = d.hs.host.Show(ctx, app.PaneID(inView.Pane), slot)
+	}
+	return alive
 }
 
 func (d *Daemon) sessionInView() (session domain.Session, found, ok bool) {

@@ -55,3 +55,17 @@ Limits of the amendment:
 - The click command runs with terminal-notifier's environment, so it names the `agentws` binary and `AGENTWS_HOME` the daemon had at start. Replacing the binary in place keeps working; moving it does not until the daemon restarts.
 - A banner removed while macOS has it on screen may stay until it times out; removal clears it from Notification Center.
 - A failed `-remove` is logged, not retried; the stale banner stays until dismissed or replaced by the session's next banner (same group).
+
+## Amendment, 2026-10-01: notification bridge for a remote daemon
+
+- A daemon on a remote host (a VPS reached over ssh) cannot post banners on the user's Mac. `notify.stream` is an rpc stream: an empty Result, then one `rpc.Notice` per banner the loop lets through (after mute and coalescing, before the worker's frontmost check, with `Focused` set) and per withdrawal (`Remove`).
+- `agentws notify stream` prints those notices as JSON lines. `agentws notify bridge [--remote-bin path] <ssh host>` runs it over `ssh -T` on the Mac, posts each banner through the local backend (`notify.Relay`), drops a focused session's banner while a terminal is in front, and reconnects with a backoff of 2 s doubling to 1 min. A click runs `ssh -T <host> <remote-bin> focus <session id>` (`TerminalNotifier.FocusCmd`).
+- `notify.Select` returns `Silent` when neither `terminal-notifier` nor `osascript` is on `PATH`, so a Linux daemon logs nothing per banner. With both, it returns `Fallback`: a banner terminal-notifier fails to post (macOS often has its notifications off after install) goes through osascript, without grouping or click, and the error, with the tool's stderr line, is logged.
+
+- `agentws setup bridge [--remote-bin path] [--remove] <ssh host>` keeps the bridge running: `adapters/launchd` writes `~/Library/LaunchAgents/dev.agentws.bridge.<host>.plist` (a host with characters other than letters, digits, `.` and `-` has them replaced by `-` and gets 8 hex digits of its SHA-256, so `me@vps` and `me-vps` stay apart) (`RunAtLoad`, `KeepAlive`, the `PATH` and `AGENTWS_HOME` of the shell that ran it, output to `$AGENTWS_HOME/bridge-<host>.log`) and loads it with `launchctl bootout` then `bootstrap gui/<uid>`. The same arguments again change nothing, but load the agent if `launchctl print` finds it unloaded; different ones back the old file up as `.bak`, rewrite and reload it. `--remove` boots it out if loaded and deletes the file; a failed bootout keeps the file, and an unreadable directory stops before `launchctl`. Tests use a temp dir and a fake runner.
+
+Limits:
+
+- The agent runs the binary that ran setup, by path; moving or deleting it breaks the agent until setup runs again.
+- The bridge needs key-based ssh with no prompt, and `agentws` on the remote's non-interactive `PATH` (else `--remote-bin`).
+- Banners posted while the bridge is disconnected are lost; the sidebar still shows the state.
