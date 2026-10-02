@@ -213,7 +213,7 @@ func (m Model) body() ([]string, int, []string) {
 		return m.pickerLines(), 0, owners
 	}
 	if m.resuming != nil {
-		return m.resumeLines(), 0, nil
+		return m.resumeLines(), 2 + m.resuming.cursor, nil
 	}
 	if len(m.entries) == 0 {
 		return append([]string{

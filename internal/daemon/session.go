@@ -6,6 +6,7 @@ import (
 	"errors"
 	"path/filepath"
 	"sync"
+	"time"
 
 	"github.com/giovaniif/agent-workspace/internal/app"
 	"github.com/giovaniif/agent-workspace/internal/domain"
@@ -17,6 +18,7 @@ type sessionDeps struct {
 	setup        app.SetupFunc
 	worktreeHome string
 	addMu        sync.Mutex
+	resumeMu     sync.Mutex
 }
 
 func WithSessions(worktrees app.WorktreeAdder, setup app.SetupFunc, worktreeHome string) Option {
@@ -198,7 +200,11 @@ func (d *Daemon) endSession(req rpc.Request) (*rpc.Response, bool) {
 	return result(req.ID, ended), ok
 }
 
+// why: two clients can resume the same session at once; the lock spans the
+// read, the launch and the commit so only one pane is ever started for it.
 func (d *Daemon) resumeSession(req rpc.Request) (*rpc.Response, bool) {
+	d.sess.resumeMu.Lock()
+	defer d.sess.resumeMu.Unlock()
 	session, resp, ok := d.sessionByRef(req)
 	if resp != nil || !ok {
 		return resp, ok
@@ -219,6 +225,10 @@ func (d *Daemon) resumeSession(req rpc.Request) (*rpc.Response, bool) {
 		return errorResponse(req.ID, rpc.CodeLaunchFailed, err.Error()), true
 	}
 	if !d.commit(SessionChanged{Session: resumed}) {
+		// why: the loop stopped, so nothing will ever track this pane.
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		defer cancel()
+		_ = d.hs.host.Kill(ctx, app.PaneID(resumed.Pane))
 		return nil, false
 	}
 	return result(req.ID, resumed), true

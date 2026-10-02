@@ -141,5 +141,8 @@ func (s Session) DetachWorktree(id string) Session {
 		}
 	}
 	s.WorktreeIDs = kept
+	if s.Dir == id {
+		s.Dir = ""
+	}
 	return s
 }
