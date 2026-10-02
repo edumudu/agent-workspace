@@ -156,11 +156,18 @@ func TestUserPromptSubmitFallsBackToNoOutputAfter50ms(t *testing.T) {
 	fakeDaemon(t, home, func(rpc.Request) *rpc.Response { return nil })
 	start := time.Now()
 	code, out := hook(home, "UserPromptSubmit", `{"prompt":"p"}`)
-	if took := time.Since(start); took > 100*time.Millisecond {
+	// why: the fake holds the connection for a second, so finishing well inside
+	// it proves the hook's own deadline ended the wait; a tighter wall-clock
+	// bound only measured how busy the machine was.
+	if took := time.Since(start); took < hookTimeout || took > 500*time.Millisecond {
 		t.Fatalf("took %v", took)
 	}
 	if code != 0 || out != "" {
 		t.Fatalf("code %d, stdout %q", code, out)
+	}
+	log, err := os.ReadFile(filepath.Join(home, "hook.log"))
+	if err != nil || !strings.Contains(string(log), "no reply within 50ms") {
+		t.Fatalf("hook.log %q, %v", log, err)
 	}
 }
 
