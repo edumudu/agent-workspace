@@ -49,7 +49,11 @@ func Install(ctx context.Context, a Agent, run Runner) (Result, error) {
 	old, err := os.ReadFile(res.Path)
 	switch {
 	case err == nil && bytes.Equal(old, want):
-		return res, nil
+		// why: a bootstrap that failed earlier leaves this plist written but unloaded.
+		if loaded(ctx, a, run) {
+			return res, nil
+		}
+		return res, run(ctx, "launchctl", "bootstrap", a.domain(), res.Path)
 	case err == nil:
 		res.Backup = res.Path + ".bak"
 		if err := os.WriteFile(res.Backup, old, 0o644); err != nil {
@@ -70,12 +74,23 @@ func Install(ctx context.Context, a Agent, run Runner) (Result, error) {
 	return res, run(ctx, "launchctl", "bootstrap", a.domain(), res.Path)
 }
 
+// why: a loaded agent that fails to unload keeps its plist, so a later --remove can still find and stop it.
 func Remove(ctx context.Context, a Agent, run Runner) (bool, error) {
 	if _, err := os.Stat(a.path()); errors.Is(err, os.ErrNotExist) {
 		return false, nil
+	} else if err != nil {
+		return false, err
 	}
-	_ = run(ctx, "launchctl", "bootout", a.service())
+	if loaded(ctx, a, run) {
+		if err := run(ctx, "launchctl", "bootout", a.service()); err != nil {
+			return false, err
+		}
+	}
 	return true, os.Remove(a.path())
+}
+
+func loaded(ctx context.Context, a Agent, run Runner) bool {
+	return run(ctx, "launchctl", "print", a.service()) == nil
 }
 
 func render(a Agent) []byte {

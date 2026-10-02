@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"flag"
 	"fmt"
@@ -92,11 +94,17 @@ func setupBridgeAgent(args []string, env func(string) string, self, userHome str
 	}, *remove, nil
 }
 
+// why: replacing characters can make two hosts alike (me@vps and me-vps), so a changed host gets a hash of the original.
 func labelSafe(host string) string {
-	return strings.Map(func(r rune) rune {
+	slug := strings.Map(func(r rune) rune {
 		if r == '.' || r == '-' || r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' {
 			return r
 		}
 		return '-'
 	}, host)
+	if slug != host {
+		sum := sha256.Sum256([]byte(host))
+		slug += "-" + hex.EncodeToString(sum[:])[:8]
+	}
+	return slug
 }
