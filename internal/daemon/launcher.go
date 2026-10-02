@@ -44,6 +44,23 @@ func LoadMaxParallel(path string) (int, error) {
 	return cfg.Launcher.MaxParallel, nil
 }
 
+// why: [ui] mouse is opt-out, so a missing file or key keeps the tmux mouse on.
+func LoadNoMouse(path string) (bool, error) {
+	var cfg struct {
+		UI struct {
+			Mouse *bool `toml:"mouse"`
+		} `toml:"ui"`
+	}
+	_, err := toml.DecodeFile(path, &cfg)
+	if errors.Is(err, fs.ErrNotExist) {
+		return false, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("ui: %s: %w", path, err)
+	}
+	return cfg.UI.Mouse != nil && !*cfg.UI.Mouse, nil
+}
+
 type QueueChanged struct{ Queue []domain.LaunchItem }
 
 func (e QueueChanged) apply(s *state) rpc.Diff {

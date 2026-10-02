@@ -97,6 +97,10 @@ func tuiIn(home string, newSession, setup bool) error {
 	if err != nil {
 		return err
 	}
+	mouse, err := tui.LoadMouse(filepath.Join(home, "config.toml"))
+	if err != nil {
+		return err
+	}
 	subscriber, err := connect(ctx, home)
 	if err != nil {
 		return err
@@ -107,7 +111,7 @@ func tuiIn(home string, newSession, setup bool) error {
 		return err
 	}
 	defer func() { _ = caller.Close() }()
-	opts := tui.Options{Theme: theme, Defaults: defaults, Fallback: fallback, NewSessionOnly: newSession, SetupOnly: setup}
+	opts := tui.Options{Theme: theme, Defaults: defaults, Fallback: fallback, NewSessionOnly: newSession, SetupOnly: setup, NoMouse: !mouse}
 	opts.HarnessDefaults = harnessDefaults()
 	if newSession {
 		// why: the daemon opens the popup where agentws was launched, so this is the folder to start in.
