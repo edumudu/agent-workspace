@@ -1,15 +1,32 @@
 package domain
 
+type SwitchForm int
+
+const (
+	SwitchNone SwitchForm = iota
+	SwitchSlash
+	// why: Codex's /model takes no argument; it opens a picker that is walked by keys.
+	SwitchPicker
+	// why: omp's /model drops its argument and opens a picker, while /switch
+	// takes a model id or model:level.
+	SwitchOmpSwitch
+)
+
 type HarnessSpec struct {
 	Harness Harness
 	Tag     string
 	Hooks   map[string]HarnessEventKind
+	Switch  SwitchForm
+	// why: nil means the harness takes any model id, typed rather than picked.
+	Models []string
 }
 
 var harnessTable = []HarnessSpec{
 	{
 		Harness: HarnessClaude,
 		Tag:     "CC",
+		Switch:  SwitchSlash,
+		Models:  []string{"opus", "sonnet", "haiku"},
 		Hooks: map[string]HarnessEventKind{
 			"SessionStart":      EventSessionStart,
 			"UserPromptSubmit":  EventUserPromptSubmit,
@@ -26,6 +43,8 @@ var harnessTable = []HarnessSpec{
 	{
 		Harness: HarnessCodex,
 		Tag:     "CX",
+		Switch:  SwitchPicker,
+		Models:  []string{"gpt-6.1-sol", "gpt-6-astra", "gpt-6-sol", "gpt-6-luna", "gpt-5.5"},
 		Hooks: map[string]HarnessEventKind{
 			"SessionStart":     EventSessionStart,
 			"UserPromptSubmit": EventUserPromptSubmit,
@@ -41,6 +60,7 @@ var harnessTable = []HarnessSpec{
 	{
 		Harness: HarnessOmp,
 		Tag:     "OM",
+		Switch:  SwitchOmpSwitch,
 		// why: agent_end carries willContinue and turn_end is one model round, so
 		// neither means done; session_switch would idle the pane on a fork. An
 		// approval is not an event: the tool_call after it sets running.
