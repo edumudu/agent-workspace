@@ -31,9 +31,17 @@ const (
 )
 
 var (
-	harnessChoices = []string{string(domain.HarnessClaude), string(domain.HarnessCodex)}
+	harnessChoices = catalogNames()
 	effortChoices  = []string{"", "low", "medium", "high"}
 )
+
+func catalogNames() []string {
+	var out []string
+	for _, h := range domain.Harnesses() {
+		out = append(out, string(h))
+	}
+	return out
+}
 
 type dialog struct {
 	field    field
@@ -153,10 +161,17 @@ func cycle(i, delta, n int) int {
 }
 
 func (d *dialog) text() *string {
-	if d.field == fieldWorkItem {
+	switch {
+	case d.field == fieldWorkItem:
 		return &d.workItem
+	case d.field == fieldModel && d.typedModel():
+		return &d.model
 	}
 	return nil
+}
+
+func (d *dialog) typedModel() bool {
+	return domain.Spec(domain.Harness(harnessChoices[d.harness])).Models == nil
 }
 
 func (d *dialog) models() []string {
@@ -174,6 +189,9 @@ func (d *dialog) change(delta int) {
 	case fieldHarness:
 		d.cycleHarness(delta)
 	case fieldModel:
+		if d.typedModel() {
+			return
+		}
 		models := d.models()
 		d.model = models[cycle(slices.Index(models, d.model), delta, len(models))]
 	case fieldEffort:
@@ -225,7 +243,7 @@ func (m Model) dialogKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		if offer, ok := m.fallbackOffer(); ok {
 			d.takeFallback(offer.Request)
 		} else if advice, ok := m.advice(); ok && advice.OtherShortest != nil && advice.Other != domain.HarnessCodex {
-			d.cycleHarness(1)
+			d.cycleHarness(slices.Index(harnessChoices, string(advice.Other)) - d.harness)
 		}
 	case "enter":
 		return m, m.submit()

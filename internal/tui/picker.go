@@ -3,7 +3,9 @@ package tui
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
+	"unicode/utf8"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -20,6 +22,9 @@ type picker struct {
 	kind      domain.SwitchKind
 	choices   []string
 	cursor    int
+	// why: a harness with no model list takes the id typed here instead.
+	typed bool
+	text  string
 }
 
 func (m Model) openPicker(kind domain.SwitchKind) Model {
@@ -32,12 +37,16 @@ func (m Model) openPicker(kind domain.SwitchKind) Model {
 		m.status = fmt.Sprintf("switching is not supported for %s", s.Harness)
 		return m
 	}
-	m.picker = &picker{sessionID: s.ID, harness: s.Harness, kind: kind, choices: domain.SwitchChoices(s.Harness, kind)}
+	choices := domain.SwitchChoices(s.Harness, kind)
+	m.picker = &picker{sessionID: s.ID, harness: s.Harness, kind: kind, choices: choices, typed: len(choices) == 0}
 	return m
 }
 
 func (m Model) pickerKey(k string) (tea.Model, tea.Cmd) {
 	p := *m.picker
+	if p.typed {
+		return m.typedPickerKey(p, k)
+	}
 	switch k {
 	case "ctrl+c":
 		return m, tea.Quit
@@ -50,22 +59,46 @@ func (m Model) pickerKey(k string) (tea.Model, tea.Cmd) {
 		p.cursor = max(p.cursor-1, 0)
 		m.picker = &p
 	case "enter":
-		return m.applyChoice(p, p.cursor)
+		return m.applyChoice(p, p.choices[p.cursor])
 	default:
 		if len(k) == 1 && k[0] >= '1' && k[0] <= '9' && int(k[0]-'1') < len(p.choices) {
-			return m.applyChoice(p, int(k[0]-'1'))
+			return m.applyChoice(p, p.choices[k[0]-'1'])
 		}
 	}
 	return m, nil
 }
 
-func (m Model) applyChoice(p picker, i int) (tea.Model, tea.Cmd) {
+func (m Model) typedPickerKey(p picker, k string) (tea.Model, tea.Cmd) {
+	switch k {
+	case "ctrl+c":
+		return m, tea.Quit
+	case "esc":
+		m.picker = nil
+		return m, nil
+	case "enter":
+		if v := strings.TrimSpace(p.text); v != "" {
+			return m.applyChoice(p, v)
+		}
+		return m, nil
+	case "backspace":
+		r := []rune(p.text)
+		p.text = string(r[:max(len(r)-1, 0)])
+	default:
+		if utf8.RuneCountInString(k) == 1 {
+			p.text += k
+		}
+	}
+	m.picker = &p
+	return m, nil
+}
+
+func (m Model) applyChoice(p picker, value string) (tea.Model, tea.Cmd) {
 	m.picker = nil
 	sw := m.opts.Switch
 	return m, func() tea.Msg {
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 		defer cancel()
-		if _, err := sw.SwitchSession(ctx, p.sessionID, p.kind, p.choices[i]); err != nil {
+		if _, err := sw.SwitchSession(ctx, p.sessionID, p.kind, value); err != nil {
 			return errMsg{err}
 		}
 		return nil
@@ -80,6 +113,11 @@ func (m Model) pickerLines() []string {
 		title = " EFFORT"
 	}
 	out := []string{"", m.line(false, []piece{{s.header, title}, {s.sub, fmt.Sprintf(" · %s", p.harness)}}, nil)}
+	if p.typed {
+		return append(out,
+			m.line(true, []piece{{s.bold, "▌" + p.text}, {s.text, "▏"}}, nil),
+			"", m.line(false, []piece{{s.dim, " type a model id · ⏎ apply · esc cancel"}}, nil))
+	}
 	for i, c := range p.choices {
 		label := piece{s.text, fmt.Sprintf(" %d  %s", i+1, c)}
 		if i == p.cursor {

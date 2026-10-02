@@ -142,7 +142,10 @@ func (m Model) clickOwner(owner string, x int) (tea.Model, tea.Cmd) {
 		m.choose(m.index(id))
 	case strings.HasPrefix(owner, ownPick):
 		i, _ := strconv.Atoi(strings.TrimPrefix(owner, ownPick))
-		return m.applyChoice(*m.picker, i)
+		if i < 0 || i >= len(m.picker.choices) {
+			return m, nil
+		}
+		return m.applyChoice(*m.picker, m.picker.choices[i])
 	case strings.HasPrefix(owner, ownFieldColumns):
 		w, _ := strconv.Atoi(strings.TrimPrefix(owner, ownFieldColumns))
 		col := min(max(x, 0)/max(w, 1), int(fieldEffort-fieldHarness))
