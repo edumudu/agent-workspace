@@ -333,6 +333,40 @@ func TestQuittingAnEditorInTheSlotPutsTheLiveAgentBack(t *testing.T) {
 	}
 }
 
+func TestFocusingDuringSlotRecoveryLeavesTheNewSessionShown(t *testing.T) {
+	r, clientHost, slot := startWithClient(t, "a",
+		domain.Session{ID: "a", Pane: "%7"},
+		domain.Session{ID: "b", Pane: "%8"})
+	focused := make(chan struct{})
+	r.host.mu.Lock()
+	r.host.duringAlive = func() {
+		go func() {
+			defer close(focused)
+			if err := r.c.Call(context.Background(), rpc.MethodSessionFocus, rpc.SessionFocusParams{ID: "b"}, nil); err != nil {
+				t.Error(err)
+			}
+		}()
+		time.Sleep(100 * time.Millisecond)
+	}
+	r.host.mu.Unlock()
+	clientHost.loseSlotPane()
+	<-focused
+	waitUntil(t, "both the recovery and the focus to show a pane", func() bool {
+		r.host.mu.Lock()
+		defer r.host.mu.Unlock()
+		return len(r.host.shown) >= 2
+	})
+	r.host.mu.Lock()
+	last := r.host.shown[len(r.host.shown)-1]
+	r.host.mu.Unlock()
+	if last != (shown{"%8", slot}) {
+		t.Fatalf("recovery showed a over the newly focused b: last shown %+v", last)
+	}
+	if b := sessionState(t, r, "b"); !b.Focused {
+		t.Fatalf("b not focused: %+v", b)
+	}
+}
+
 func TestLastAgentExitingLeavesAnEmptyStateInTheSlot(t *testing.T) {
 	r, clientHost, slot := startWithClient(t, "a", domain.Session{ID: "a", Pane: "%7"})
 	r.host.die("%7")
