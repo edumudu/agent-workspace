@@ -1,0 +1,39 @@
+# internal/domain
+
+Pure types and rules: no IO, no imports from other `internal/*` packages. `Workspace`, `Repo`, `Task`, `Session`, `Worktree`, `Harness`, `AgentState`, `Usage`, `ReviewDraft`, `Comment`, `CleanupPlan`.
+
+## Tests
+
+- Everything here is table-tested, with no mocks. Tests are in-package (`package domain`): depguard bans `domain` from importing `internal/...`, and that includes an external `domain_test` package importing `domain`.
+- `gremlins` runs here in CI; the mutation score must stay ≥ 80%.
+- The review prompt format is pinned by `testdata/review_prompt.golden`; change it only on purpose and update the golden by hand.
+
+## Rules
+
+- `Session.Apply(event) (Session, []Effect)`: the state machine. Adapters map hooks to harness-neutral events (`session_start`, `user_prompt_submit`, `pre_tool_use`, `post_tool_use`, `permission_request`, `waiting_for_input`, `stop`, `session_end`, `subagent_start`, `subagent_stop`); hook names map to them in `HookEvent` and `ClaudeNotification`. Subagent events count as progress inside the turn, like tool events. Tool, permission and waiting events that arrive while `idle` or `done` are stale and ignored. `done` marks the session unread only when it is not focused; `Focus()` clears it.
+- `NameFor(task, prs)`: naming precedence (pin, PR, Linear title, prompt summary), with `SummarizeText`, `PinName` and `WithTitle`. See [ADR 0026](../../docs/adr/0026-session-naming.md).
+- `BannerFor(session, name, effect)` and `Coalescer`: which notify effects become a banner (not for muted sessions) and the one-per-10-s rule per session.
+- `PlanCleanup(worktree, facts, now)`: the cleanup decision (`remove`, `backup_then_ask` or `keep` with a reason). See [ADR 0021](../../docs/adr/0021-worktree-cleanup.md).
+- `Quotas(sessions)`, `Quota.Low`/`Stale`, `Advise(quotas, harness)`: the usage bar and the low-quota warning. See [ADR 0017](../../docs/adr/0017-usage-and-limits-bar.md).
+- `OfferFallback(quotas, cfg, request)` and `OfferFallbacks(quotas, cfg, queue)`: a mapped Codex start for a Claude one when Claude's shortest window is under the configured threshold. See [ADR 0027](../../docs/adr/0027-codex-fallback.md).
+- `ParseWorkItem`, `PlanSessionStart`, `NextInView`, `AgentTitle`, `DrainLauncher`, `Sidebar`, `BuildSessionCard`, `SubagentTree`: session start, end, title strips, launcher and sidebar rules (see [internal/daemon/](../daemon/AGENTS.md) and [internal/tui/](../tui/AGENTS.md)).
+- `Recipe.Validate`, `PlanDeps`, `InstallCommand`: setup recipes (see [internal/adapters/setup/](../adapters/setup/AGENTS.md)).
+- `OnboardSteps`, `NextOnboardStep`, `DefaultOnboardPicks`, `HarnessOffer`, `NvimOfferFor`, `OnboardingNeeded`, the `CodexTrustStep` text: the first-run walkthrough (see [ADR 0040](../../docs/adr/0040-first-run-walkthrough.md)).
+- Ports rules: `PortsByWorktree`, `KillGroups`. Disk rules: `Reclaimable`, `TotalSize`.
+
+### Discovery
+
+See [ADR 0007](../../docs/adr/0007-workspace-discovery.md). `KindOfRoot`, `ReposIn`, `SingleRepo`, `MergeRepoState`, `LastUsedWorkspace`.
+
+- **Kind.** `<path>/.git` a directory means `single`, with the path itself as the only repo. Anything else is an `orchestration` root: its direct children are scanned, symlinks followed, and each child with a `.git` directory is a repo. A child whose `.git` is a file is a worktree and is skipped, as is a dangling link. Nothing deeper than one level is read. Repos are sorted by name, and a symlinked repo keeps the link's name and path.
+- **Budget.** Discovery over 15 repos must finish in < 300 ms; `BenchmarkDiscovery` fails above that.
+
+### Worktrees
+
+`IsWorktreeAdd`, `SubagentParent`, `AttributeWorktree`, `ReclaimWorktrees`, `ReconcileWorktrees`, `RollupChecks`, `PRForBranch`. See [ADR 0012](../../docs/adr/0012-worktree-detection.md).
+
+- **Attribution** (`AttributeWorktree`), for worktrees not seen before: the parent session of a subagent worktree (`<cwd>/.claude/worktrees/agent-*`), then a session whose cwd is inside it, then a `git worktree add` claim from a `PostToolUse` hook in the last 30 s. With claims from several sessions, only one whose command names the path or branch wins. Otherwise unassigned. A scan can run while `git worktree add` does, before the `PostToolUse` claim lands; `ReclaimWorktrees` then attaches an unassigned worktree once a recent claim from one session names its path or branch.
+
+### Review
+
+`RangeFor` (scopes), `TurnRef`/`LatestTurn`/`OlderTurns`/`TurnsOfWorktree`, `ParseDiff`, `IsViewed`, `SplitRows`, and for comments `CommentOn`, `ReviewPrompt` (golden-tested), `ReviewDraft.Queue`/`Dispatch`, `HunkPatch`. The prompt lists `worktree:path:lines`, the quoted code and the comment. See [ADR 0023](../../docs/adr/0023-review-pane.md) and [ADR 0028](../../docs/adr/0028-review-comments-and-hunks.md).

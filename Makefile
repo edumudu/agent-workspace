@@ -16,6 +16,7 @@ test:
 lint:
 	golangci-lint run ./...
 	go run ./scripts/lint-comments .
+	go run ./scripts/lint-agents .
 
 bench:
 	go test $(GO_TEST_FLAGS) -run '^$$' -bench . -benchtime 1s ./...

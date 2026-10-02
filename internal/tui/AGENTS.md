@@ -1,0 +1,45 @@
+# internal/tui
+
+Bubble Tea v2, Lip Gloss and Bubbles. The TUI talks only to `rpc.Client` (it may import `domain` types) and never runs git, gh or tmux on the render path. See [ADR 0008](../../docs/adr/0008-tui-shell.md).
+
+## Tests
+
+- Goldens live in `testdata/*.golden`; regenerate with `go test ./internal/tui/ -run Golden -update` and review the diff. The setup walkthrough's are `testdata/TestGoldenSetup/*.golden`.
+- `BenchmarkReviewScroll` fails if a review frame takes over 16 ms p95 (about 2 ms).
+- Worktrees and disk view: `go test ./internal/tui/... -run Worktrees` (the daemon side is in [internal/daemon/](../daemon/AGENTS.md)).
+- By hand, run against a temp `AGENTWS_HOME` and `AGENTWS_TMUX_SOCKET`, seeded with `agentws debug seed N`.
+
+## Sidebar
+
+The client layout's left pane runs `agentws tui`, 48 columns wide; a `window-resized` hook on the window puts it back to 48 when the terminal resizes.
+
+`agentws tui` opens two connections: one subscribes and feeds diffs to the Bubble Tea program, the other makes calls such as `client.focus_main`, so a burst of diffs never delays a keypress. The model keeps the snapshot in maps and rebuilds the sidebar rows only when a diff arrives; grouping and order come from `domain.Sidebar` (sessions that need you first in each task group). Keys only move the selection, and `View` renders from memory. One 200 ms ticker drives every running spinner and the clock. The renderer runs at 120 fps: at the default 60 a key can wait a whole 16 ms frame before it is drawn.
+
+- `M` and `E` open the model and effort pickers; the choice is sent as `session.switch`, and the sidebar shows unconfirmed switches as `→ value` and a `!` when a harness did not confirm one.
+- The selected session's card (task, PR chips, last 3 tool calls, what it waits on) is built by `domain.BuildSessionCard` from the events the model holds; see [ADR 0014](../../docs/adr/0014-session-card.md). The sidebar cuts long names with an ellipsis; the card shows the full name.
+- Under the top bar, one row per harness shows its quota windows (percent used, reset clock time; see ADR 0036), derived from the sessions' `Limits` by `domain.Quotas`; red below 20% left, dimmed with an age when older than 15 minutes, absent without data. See [ADR 0017](../../docs/adr/0017-usage-and-limits-bar.md).
+- Each session row lists its subagents underneath as a tree (`domain.SubagentTree`, at most 8 rows), collapsed with the worktrees by `o`.
+- Ports show on worktree rows, the session's second row and the status line. `K` asks (`y`) before killing the selected session's dev servers.
+- Other keys: `n` new session (popup via `client.popup`, ADR 0037), `enter` focus, `x` then `y` end, `m` mute, `R` rename and pin, `A` unpin, `L` launcher, `r` review, `w` worktrees and disk, `t` shell, `T` shell popup, `s` focus the shell, `e` nvim, `S` setup walkthrough. `ctrl+\` (`tmux.FocusSidebarKey`) returns to the sidebar from an agent pane ([ADR 0025](../../docs/adr/0025-focus-return-key.md)).
+
+## Config
+
+Colors are Catppuccin Latte, overridden per key in the `[theme]` table of `$AGENTWS_HOME/config.toml` (`text`, `subtext`, `overlay`, `surface`, `mantle`, `base`, `blue`, `peach`, `green`, `red`, `teal`, `mauve`, `selected`, `added_bg`, `deleted_bg`), read once at startup. Review syntax colors come from the same keys. The same file holds `[defaults.claude]` and `[defaults.codex]` tables with `model` and `effort`, the starting values for the new-session dialog (`tui.LoadDefaults`).
+
+## Review viewer
+
+See [ADR 0023](../../docs/adr/0023-review-pane.md). `r` opens the review of the selected session; the sidebar pane widens to 75% of the window (`client.review`) and collapses to a rail. The TUI highlights and lays out the `review.open` answer in the command that fetched it.
+
+- File tree grouped by worktree with its PR, unified or split diff, hunk headers, a `✓` per viewed file, a line cursor.
+- Keys: `[`/`]` scope, `w` worktree (all, then each), `n`/`p` file, `j`/`k` line, `u` split, `v` viewed, `c` comment, `V` range, `S` send, `s` stage hunk, `x` revert hunk (after `y`), `o` open the diff's top visible line in nvim and close the review, `r` or `esc` close.
+- **Syntax.** chroma's lexer engine with a curated set of its lexers: new lexers go in `syntax/` as chroma XML files. depguard bans chroma's `lexers` and `styles` packages (their init costs every hook).
+
+## Disk view
+
+`w` opens it. See [ADR 0030](../../docs/adr/0030-worktrees-disk-view.md).
+
+- **Header.** Volume free and total, worktree total, reclaimable total (`domain.Reclaimable`: rows the engine would remove or back up and remove), the auto-cleanup interval and the shared deps store size. A total that misses sizes still being measured ends in `+`.
+- **Rows.** One per worktree from `disk.view`; a size still being measured shows `…`. Nothing on the render path waits for `du`.
+- **Actions.** `d` and `b` (after `y`) call `cleanup.worktree`: `d` removes only merged clean worktrees, `b` backs up a dirty or detached one first, and both end with the engine's last process and repo-state checks. They really remove worktrees, so try them only against temp repos. `k` kills the row's dev servers, `g` goes to its session, `o` opens its shell through `shell.toggle` with just the worktree.
+- **Recently cleaned.** The last audit log lines (`fs.AuditLog.Recent`).
+- **Refresh.** Every 2 s while sizes are pending and every 10 s after.
