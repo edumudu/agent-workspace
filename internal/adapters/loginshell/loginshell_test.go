@@ -74,3 +74,25 @@ func TestLoginPathGivesUpOnAHangingShell(t *testing.T) {
 		t.Fatalf("Path took %v, want it to stop soon after the deadline", took)
 	}
 }
+
+func TestLoginPathIgnoresWhatAnExitTrapPrints(t *testing.T) {
+	profileHome(t, "trap 'echo goodbye' EXIT\nPATH=\"$PATH:/opt/extra/bin\"\n")
+	got, err := Path(context.Background(), "/bin/sh")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.HasSuffix(got, ":/opt/extra/bin") {
+		t.Fatalf("Path = %q, want the profile's PATH alone", got)
+	}
+}
+
+func TestLoginPathKeepsTheAnswerWhenAProfileJobHoldsStdout(t *testing.T) {
+	profileHome(t, "PATH=\"$PATH:/opt/extra/bin\"\nsleep 5 &\n")
+	got, err := Path(context.Background(), "/bin/sh")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.HasSuffix(got, ":/opt/extra/bin") {
+		t.Fatalf("Path = %q, want the profile's PATH", got)
+	}
+}
