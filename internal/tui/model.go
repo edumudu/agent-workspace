@@ -57,6 +57,8 @@ type Options struct {
 	// why: the setup popup's own program, like NewSessionOnly; it ends when the walkthrough does.
 	SetupOnly  bool
 	SetupPopup rpc.ClientPopupParams
+	// why: [ui] mouse = false; the zero value keeps the mouse on.
+	NoMouse bool
 }
 
 type Caller interface {
@@ -232,6 +234,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.diskKey(msg.String())
 		}
 		return m.key(msg)
+	case tea.MouseMsg:
+		return m.mouse(msg)
 	case tea.PasteMsg:
 		if m.dialog != nil {
 			return m.dialogPaste(msg.Content), nil

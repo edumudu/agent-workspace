@@ -3,6 +3,7 @@ package tui
 import (
 	"fmt"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -17,21 +18,32 @@ const dialogMaxWidth = 96
 const dialogColumnsFrom = 72
 
 func (m Model) dialogScreen() string {
-	f := m
-	f.width = min(m.width-4, dialogMaxWidth)
-	lines, keep := f.dialogLines()
-	lines = dialogViewport(lines, keep, m.height)
-	margin := strings.Repeat(" ", max((m.width-f.width)/2, 0))
-	for i, l := range lines {
-		lines[i] = margin + l
-	}
-	if len(lines) < m.height {
-		return "\n" + strings.Join(lines, "\n")
-	}
+	lines, _, _ := m.dialogScreenLines()
 	return strings.Join(lines, "\n")
 }
 
-func dialogViewport(lines []string, keep, height int) []string {
+// why: margin is how far right the dialog is drawn, which a click's column has to undo.
+func (m Model) dialogScreenLines() (lines, owners []string, margin int) {
+	f := m
+	f.width = min(m.width-4, dialogMaxWidth)
+	lines, keep, owners := f.dialogLines()
+	for len(owners) < len(lines) {
+		owners = append(owners, "")
+	}
+	lines = dialogViewport(lines, keep, m.height)
+	owners = dialogViewport(owners, keep, m.height)
+	margin = max((m.width-f.width)/2, 0)
+	pad := strings.Repeat(" ", margin)
+	for i, l := range lines {
+		lines[i] = pad + l
+	}
+	if len(lines) < m.height {
+		return append([]string{""}, lines...), append([]string{""}, owners...), margin
+	}
+	return lines, owners, margin
+}
+
+func dialogViewport[T any](lines []T, keep, height int) []T {
 	if height <= 0 || len(lines) <= height {
 		return lines
 	}
@@ -41,20 +53,26 @@ func dialogViewport(lines []string, keep, height int) []string {
 	title, body, actions := lines[0], lines[1:len(lines)-1], lines[len(lines)-1]
 	room := height - 2
 	start := min(max(keep-1-room/2, 0), len(body)-room)
-	return append(append([]string{title}, body[start:start+room]...), actions)
+	return append(append([]T{title}, body[start:start+room]...), actions)
 }
 
-func (m Model) dialogLines() ([]string, int) {
+func (m Model) dialogLines() ([]string, int, []string) {
 	s := m.styles
 	d := m.dialog
 	w := m.width
-	var out []string
+	var out, owners []string
 	keep := 0
 	add := func(f field, lines ...string) {
 		if d.field == f {
 			keep = len(out)
 		}
+		for len(owners) < len(out) {
+			owners = append(owners, "")
+		}
 		out = append(out, lines...)
+		for range lines {
+			owners = append(owners, ownField+strconv.Itoa(int(f)))
+		}
 	}
 	out = append(out, m.titleBar(" New session", "esc "), "")
 
@@ -80,7 +98,12 @@ func (m Model) dialogLines() ([]string, int) {
 	add(fieldWorkspace, append([]string{m.label(fieldWorkspace, "Workspace")}, m.box(w, ws, d.field == fieldWorkspace)...)...)
 	out = append(out, m.line(false, []piece{{s.sub, " " + facts}}, nil), "")
 
-	out = append(out, m.pickers(&keep, len(out))...)
+	for len(owners) < len(out) {
+		owners = append(owners, "")
+	}
+	pick := m.pickers(&keep, len(out))
+	out = append(out, pick...)
+	owners = append(owners, m.pickerOwners(len(pick))...)
 	out = append(out, "")
 	out = append(out, m.startsAt()...)
 	if lines := m.adviceBox(); len(lines) > 0 {
@@ -97,7 +120,20 @@ func (m Model) dialogLines() ([]string, int) {
 	}
 	hint := []piece{{s.dim, " ⇥ next · ←/→ change"}}
 	buttons := []piece{{s.sub, "esc cancel"}, {s.text, "  "}, {s.badge, " ⏎ create "}, {s.text, " "}}
-	return append(out, m.line(false, hint, buttons)), keep
+	return append(out, m.line(false, hint, buttons)), keep, owners
+}
+
+// why: wide dialogs put the three pickers side by side, so the column picks the field.
+func (m Model) pickerOwners(n int) []string {
+	out := make([]string, n)
+	for i := range out {
+		if m.width < dialogColumnsFrom {
+			out[i] = ownField + strconv.Itoa(int(fieldHarness)+i/2)
+		} else {
+			out[i] = ownFieldColumns + strconv.Itoa((m.width-1)/3)
+		}
+	}
+	return out
 }
 
 func (m Model) titleBar(left, right string) string {

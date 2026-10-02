@@ -357,8 +357,13 @@ func totalText(n int64, pending int) string {
 }
 
 func (m Model) diskScreen() string {
+	lines, _ := m.diskScreenLines()
+	return strings.Join(lines, "\n")
+}
+
+func (m Model) diskScreenLines() (lines, owners []string) {
 	s := m.styles
-	lines := []string{m.line(false, []piece{{s.header, " WORKTREES & DISK"}}, []piece{{s.sub, "esc back "}})}
+	lines = []string{m.line(false, []piece{{s.header, " WORKTREES & DISK"}}, []piece{{s.sub, "esc back "}})}
 	switch {
 	case m.dk.err != "":
 		lines = append(lines, "", m.line(false, []piece{{s.peach, " " + m.dk.err}}, nil))
@@ -366,13 +371,20 @@ func (m Model) diskScreen() string {
 		lines = append(lines, "", m.line(false, []piece{{s.sub, " loading…"}}, nil))
 	default:
 		lines = append(lines, m.diskHeader()...)
-		lines = append(lines, m.diskTable()...)
+		table, tableOwners := m.diskTable()
+		owners = make([]string, len(lines), m.height)
+		owners = append(owners, tableOwners...)
+		lines = append(lines, table...)
 	}
 	footer := m.diskFooter()
 	for len(lines)+len(footer) < m.height {
 		lines = append(lines, "")
 	}
-	return strings.Join(append(lines, footer...), "\n")
+	lines = append(lines, footer...)
+	for len(owners) < len(lines) {
+		owners = append(owners, "")
+	}
+	return lines, owners
 }
 
 type diskColumns struct{ task, branch int }
@@ -418,7 +430,7 @@ func (m Model) taskOf(w domain.Worktree) string {
 	return "–"
 }
 
-func (m Model) diskTable() []string {
+func (m Model) diskTable() ([]string, []string) {
 	s := m.styles
 	cols := m.diskColumns()
 	head := []piece{
@@ -429,7 +441,7 @@ func (m Model) diskTable() []string {
 	out := []string{m.line(false, head, nil)}
 	rows := m.diskRows()
 	sel, selRow := m.selectedID(rows), 0
-	var body []string
+	var body, owners []string
 	for _, r := range rows {
 		w := m.worktrees[r.WorktreeID]
 		isSel := r.WorktreeID == sel
@@ -437,8 +449,10 @@ func (m Model) diskTable() []string {
 			selRow = len(body)
 		}
 		body = append(body, m.diskRowLine(r, w, cols, isSel))
+		owners = append(owners, ownDisk+r.WorktreeID)
 		if r.Action == domain.CleanupBackupThenAsk {
 			body = append(body, m.line(isSel, []piece{{s.dim, "     ↳ "}, {s.peach, r.Reason}, {s.sub, " · b backup + remove · o shell · g session"}}, nil))
+			owners = append(owners, ownDisk+r.WorktreeID)
 		}
 	}
 	recent := m.recentLines()
@@ -448,12 +462,13 @@ func (m Model) diskTable() []string {
 		off = selRow - room + 2
 	}
 	off = min(off, max(len(body)-room, 0))
-	body = body[off:]
+	body, owners = body[off:], owners[off:]
 	if len(body) > room {
-		body = body[:room]
+		body, owners = body[:room], owners[:room]
 	}
 	out = append(out, body...)
-	return append(append(out, ""), recent...)
+	owners = append([]string{""}, owners...)
+	return append(append(out, ""), recent...), owners
 }
 
 func (m Model) selectedID(rows []domain.DiskRow) string {
