@@ -354,6 +354,22 @@ func TestOnlyOneDaemonHoldsTheLock(t *testing.T) {
 	_ = again.Release()
 }
 
+// why: rpc.Connect hides an early Run error behind its 2 s start timeout;
+// Run is in-process here, so wait until it serves or say why it returned.
+func waitServing(t *testing.T, home string, done <-chan error) *rpc.Client {
+	t.Helper()
+	for {
+		if c, err := rpc.Dial(rpc.SocketPath(home)); err == nil {
+			return c
+		}
+		select {
+		case err := <-done:
+			t.Fatalf("Run returned before serving: %v", err)
+		case <-time.After(10 * time.Millisecond):
+		}
+	}
+}
+
 func TestRunServesStateRestoredFromTheStore(t *testing.T) {
 	home := shortDir(t)
 	store, err := sqlite.Open(filepath.Join(home, "state.db"))
@@ -369,10 +385,7 @@ func TestRunServesStateRestoredFromTheStore(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		done := make(chan error, 1)
 		go func() { done <- daemon.Run(ctx, home) }()
-		c, err := rpc.Connect(ctx, rpc.SocketPath(home), func() error { return nil })
-		if err != nil {
-			t.Fatal(err)
-		}
+		c := waitServing(t, home, done)
 		st, err := c.Status(ctx)
 		if err != nil {
 			t.Fatal(err)
