@@ -14,19 +14,19 @@ import (
 )
 
 type attentionRig struct {
-	c   *rpc.Client
-	d   *daemon.Daemon
-	sub rpc.Subscription
-	n   *fakeNotifier
-	fg  *fakeForeground
+	c    *rpc.Client
+	d    *daemon.Daemon
+	sub  rpc.Subscription
+	n    *fakeNotifier
+	fg   *fakeForeground
+	path string
 }
 
 func newRig(t *testing.T, store app.Store, sounds map[domain.AgentState]string) *attentionRig {
 	t.Helper()
 	r := &attentionRig{n: newFakeNotifier(), fg: &fakeForeground{}}
-	var path string
-	r.d, path = start(t, store, daemon.WithNotifier(r.n, r.fg, sounds))
-	r.c = dial(t, path)
+	r.d, r.path = start(t, store, daemon.WithNotifier(r.n, r.fg, sounds))
+	r.c = dial(t, r.path)
 	var err error
 	if r.sub, err = r.c.Subscribe(context.Background()); err != nil {
 		t.Fatal(err)

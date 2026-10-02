@@ -93,8 +93,13 @@ func TestNotifySelectPrefersTerminalNotifierOnPath(t *testing.T) {
 }
 
 func TestNotifySelectFallsBackToOsascript(t *testing.T) {
-	missing := func(string) (string, error) { return "", errors.New("not found") }
-	if got, ok := notify.Select(missing, "/bin/agentws", "/h").(notify.Osascript); !ok || got.Run == nil {
+	onlyOsascript := func(name string) (string, error) {
+		if name == "osascript" {
+			return "/usr/bin/osascript", nil
+		}
+		return "", errors.New("not found")
+	}
+	if got, ok := notify.Select(onlyOsascript, "/bin/agentws", "/h").(notify.Osascript); !ok || got.Run == nil {
 		t.Fatalf("got %#v", got)
 	}
 }
