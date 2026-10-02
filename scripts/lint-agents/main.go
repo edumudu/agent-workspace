@@ -122,8 +122,12 @@ func brokenLinks(path, rel string) ([]string, error) {
 				continue
 			}
 			file, _, _ := strings.Cut(target, "#")
-			if _, err := os.Stat(filepath.Join(filepath.Dir(path), file)); err != nil {
+			_, err := os.Stat(filepath.Join(filepath.Dir(path), file))
+			switch {
+			case errors.Is(err, fs.ErrNotExist):
 				findings = append(findings, fmt.Sprintf("%s:%d: broken link %s", rel, i+1, target))
+			case err != nil:
+				return nil, err
 			}
 		}
 	}
