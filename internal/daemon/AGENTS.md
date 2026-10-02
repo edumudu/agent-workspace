@@ -4,7 +4,7 @@ Socket server, event loop and workers; wires the adapters into `app`. It may not
 
 ## Process
 
-`agentws daemon` runs in the foreground until SIGINT/SIGTERM. `agentws daemon start` spawns it detached (`setsid`, output to `$AGENTWS_HOME/daemon.log`) and waits for the socket. `daemon status` prints pid, uptime, and session and worktree counts; `daemon stop` sends SIGTERM and waits for the pid file to go. Files in `$AGENTWS_HOME` (default `~/.agentws`):
+`agentws daemon` runs in the foreground until SIGINT/SIGTERM. `agentws daemon start` spawns it detached (`setsid`, output to `$AGENTWS_HOME/daemon.log`) and waits for the socket. `daemon status` prints pid, uptime, and session and worktree counts; `daemon stop` sends SIGTERM and waits for the pid file to go. On start, before anything else, the daemon appends the login shell's PATH entries it lacks to its own (`loginshell.Path` with a 1 s cap, `domain.MergeLoginPath`; a failure is logged and PATH left alone). tmux gives each new pane the daemon's PATH, and whatever started the daemon (a bare `ssh`, launchd, systemd) may lack `~/.local/bin` and the like (#153). The e2e `login_path.txtar` covers it. Files in `$AGENTWS_HOME` (default `~/.agentws`):
 
 | File | Purpose |
 |---|---|

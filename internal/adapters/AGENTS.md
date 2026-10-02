@@ -19,4 +19,5 @@ Implementations of the `app` ports. This is where exec, disk and network live. g
 - **github**: one read-only `gh api graphql` request per poll for all repos; tests use a fake `gh`, nothing reaches GitHub. GraphQL POSTs cannot use ETags ([ADR 0024](../../docs/adr/0024-pr-board.md)). Also `gh pr view` titles for naming.
 - **linear**: issue titles over the Linear API, tested against a mocked API.
 - **sqlite**: `modernc.org/sqlite` (no cgo), embedded migrations, write-behind; `$AGENTWS_HOME/state.db`. See [ADR 0004](../../docs/adr/0004-sqlite-store.md).
+- **loginshell**: `Path` runs `$SHELL -l -c` (else `/bin/sh`) and reads its PATH after a marker, so profile output is ignored. Tests use a temp `HOME` with its own `.profile`: `go test ./internal/adapters/loginshell/`.
 - **nvim**: drives each session's nvim over `nvim --listen`; `Installed` is `exec.LookPath`.
