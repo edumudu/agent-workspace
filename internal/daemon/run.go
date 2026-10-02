@@ -39,10 +39,15 @@ func Run(ctx context.Context, home string) (err error) {
 	}
 	defer func() { err = errors.Join(err, store.Close()) }()
 
+	noMouse, err := LoadNoMouse(filepath.Join(home, "config.toml"))
+	if err != nil {
+		log.Printf("[ui] mouse ignored: %v", err)
+	}
 	// why: tests and manual validation point this at a throwaway server so the real one is untouched.
 	host := tmux.New(tmux.Config{
 		Socket:     os.Getenv("AGENTWS_TMUX_SOCKET"),
 		ConfigPath: filepath.Join(home, "tmux.conf"),
+		NoMouse:    noMouse,
 	})
 	worktreeHome, err := realDir(filepath.Join(home, "worktrees"))
 	if err != nil {
