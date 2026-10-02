@@ -1,0 +1,22 @@
+# why: the Mac bridge runs `notify stream` over a bare `ssh -T`; a daemon it
+# started would launch every agent with that login-less PATH, so it waits instead.
+! exec sh -c 'exec agentws notify stream 2>$WORK/stream.err' &stream&
+eventually '^agentws notify stream: waiting for the daemon$' cat stream.err
+exec agentws daemon start
+stdout '^agentws daemon started \(pid [0-9]+\)$'
+eventually '^agentws notify stream: connected$' cat stream.err
+
+repo api
+exec agentws workspace add api
+exec agentws new --workspace api 'add a thing'
+capture SID '^session (\S+) on pane %\d+$'
+eventually ' state=done ' agentws debug session --once $SID
+
+exec agentws daemon stop
+wait stream
+stdout '"Group":"'$SID'"'
+eventually 'daemon went away' cat stream.err
+
+-- claude.steps --
+hook UserPromptSubmit {"prompt":"add a thing"}
+hook Stop {"last_assistant_message":"Added it."}
