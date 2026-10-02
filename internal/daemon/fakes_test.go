@@ -835,3 +835,24 @@ func (h *fakeClientHost) Detach(_ context.Context, slot app.Slot) error {
 	h.detached = append(h.detached, slot)
 	return nil
 }
+
+func (h *fakeHost) Alive(_ context.Context, pane app.PaneID) (bool, error) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	for _, p := range h.panes {
+		if p.ID == pane {
+			return p.Alive, nil
+		}
+	}
+	return false, nil
+}
+
+func (h *fakeHost) die(pane app.PaneID) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	for i := range h.panes {
+		if h.panes[i].ID == pane {
+			h.panes[i].Alive = false
+		}
+	}
+}

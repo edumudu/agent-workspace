@@ -278,6 +278,7 @@ func TestAgentExitingInViewShowsTheNextOne(t *testing.T) {
 	r, clientHost, slot := startWithClient(t, "a",
 		domain.Session{ID: "a", Pane: "%7"},
 		domain.Session{ID: "b", Pane: "%8"})
+	r.host.die("%7")
 	clientHost.loseSlotPane()
 	waitUntil(t, "b to be shown", func() bool {
 		r.host.mu.Lock()
@@ -303,6 +304,7 @@ func TestSlotWatchDoesNotEndASessionThatTookTheSlotMeanwhile(t *testing.T) {
 		}
 	}
 	clientHost.mu.Unlock()
+	r.host.die("%7")
 	clientHost.loseSlotPane()
 	<-checked
 	time.Sleep(200 * time.Millisecond)
@@ -311,8 +313,29 @@ func TestSlotWatchDoesNotEndASessionThatTookTheSlotMeanwhile(t *testing.T) {
 	}
 }
 
+func TestQuittingAnEditorInTheSlotPutsTheLiveAgentBack(t *testing.T) {
+	r, clientHost, slot := startWithClient(t, "a",
+		domain.Session{ID: "a", Pane: "%7"},
+		domain.Session{ID: "b", Pane: "%8"})
+	clientHost.loseSlotPane()
+	waitUntil(t, "a's agent back in the slot", func() bool {
+		r.host.mu.Lock()
+		defer r.host.mu.Unlock()
+		return reflect.DeepEqual(r.host.shown, []shown{{"%7", slot}})
+	})
+	if a := sessionState(t, r, "a"); a.Pane != "%7" || !a.Focused {
+		t.Fatalf("session a was ended though its agent is alive: %+v", a)
+	}
+	r.host.mu.Lock()
+	defer r.host.mu.Unlock()
+	if len(r.host.killed) != 0 {
+		t.Fatalf("killed %v", r.host.killed)
+	}
+}
+
 func TestLastAgentExitingLeavesAnEmptyStateInTheSlot(t *testing.T) {
 	r, clientHost, slot := startWithClient(t, "a", domain.Session{ID: "a", Pane: "%7"})
+	r.host.die("%7")
 	clientHost.loseSlotPane()
 	waitUntil(t, "the empty-state pane", func() bool {
 		clientHost.mu.Lock()
