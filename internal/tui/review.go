@@ -81,9 +81,11 @@ type reviewState struct {
 	line    int
 	mark    int
 	marking bool
-	typing  bool
-	text    string
-	confirm bool
+	// why: a press on a diff line, so motion until release extends the range.
+	dragging bool
+	typing   bool
+	text     string
+	confirm  bool
 }
 
 func prepare(syntax syntaxColors, r rpc.Review) prepared {
