@@ -16,6 +16,7 @@ const Version = 1
 const (
 	MethodStatus          = "status"
 	MethodSubscribe       = "subscribe"
+	MethodNotifyStream    = "notify.stream"
 	MethodHook            = "hook"
 	MethodWorkspaceAdd    = "workspace.add"
 	MethodWorkspaceList   = "workspace.list"
@@ -308,8 +309,18 @@ type Response struct {
 	ID     uint64          `json:"id"`
 	Result json.RawMessage `json:"result,omitempty"`
 	Diff   *Diff           `json:"diff,omitempty"`
+	Notice *Notice         `json:"notice,omitempty"`
 	Error  *Error          `json:"error,omitempty"`
 	Build  string          `json:"build,omitempty"`
+}
+
+// why: a notify.stream request gets an empty Result, then one Response per
+// banner posted or withdrawn. Exactly one of Banner and Remove is set; Focused
+// lets a bridge drop the banner while its own terminal is in front.
+type Notice struct {
+	Banner  *domain.Banner `json:"banner,omitempty"`
+	Remove  string         `json:"remove,omitempty"`
+	Focused bool           `json:"focused,omitempty"`
 }
 
 type Error struct {

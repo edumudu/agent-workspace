@@ -261,6 +261,34 @@ func (c *Client) Subscribe(ctx context.Context) (Subscription, error) {
 	return sub, nil
 }
 
+func (c *Client) StreamNotices(ctx context.Context) (<-chan Notice, error) {
+	id, ch, err := c.send(MethodNotifyStream, nil)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := c.await(ctx, ch)
+	if err == nil {
+		err = checkBuild(MethodNotifyStream, resp)
+	}
+	if err == nil {
+		err = decode(resp, nil)
+	}
+	if err != nil {
+		c.forget(id)
+		return nil, err
+	}
+	notices := make(chan Notice, 64)
+	go func() {
+		defer close(notices)
+		for resp := range ch {
+			if resp.Notice != nil {
+				notices <- *resp.Notice
+			}
+		}
+	}()
+	return notices, nil
+}
+
 func (c *Client) send(method string, params any) (uint64, chan Response, error) {
 	var raw json.RawMessage
 	if params != nil {

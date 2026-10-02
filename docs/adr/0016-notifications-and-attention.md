@@ -55,3 +55,14 @@ Limits of the amendment:
 - The click command runs with terminal-notifier's environment, so it names the `agentws` binary and `AGENTWS_HOME` the daemon had at start. Replacing the binary in place keeps working; moving it does not until the daemon restarts.
 - A banner removed while macOS has it on screen may stay until it times out; removal clears it from Notification Center.
 - A failed `-remove` is logged, not retried; the stale banner stays until dismissed or replaced by the session's next banner (same group).
+
+## Amendment, 2026-10-01: notification bridge for a remote daemon
+
+- A daemon on a remote host (a VPS reached over ssh) cannot post banners on the user's Mac. `notify.stream` is an rpc stream: an empty Result, then one `rpc.Notice` per banner the loop lets through (after mute and coalescing, before the worker's frontmost check, with `Focused` set) and per withdrawal (`Remove`).
+- `agentws notify stream` prints those notices as JSON lines. `agentws notify bridge [--remote-bin path] <ssh host>` runs it over `ssh -T` on the Mac, posts each banner through the local backend (`notify.Relay`), drops a focused session's banner while a terminal is in front, and reconnects with a backoff of 2 s doubling to 1 min. A click runs `ssh -T <host> <remote-bin> focus <session id>` (`TerminalNotifier.FocusCmd`).
+- `notify.Select` returns `Silent` when neither `terminal-notifier` nor `osascript` is on `PATH`, so a Linux daemon logs nothing per banner.
+
+Limits:
+
+- The bridge needs key-based ssh with no prompt, and `agentws` on the remote's non-interactive `PATH` (else `--remote-bin`).
+- Banners posted while the bridge is disconnected are lost; the sidebar still shows the state.

@@ -19,6 +19,8 @@ type TerminalNotifier struct {
 	// why: Self and Home build the click command, which runs outside the daemon's environment.
 	Self string
 	Home string
+	// why: set by a bridge, whose sessions live on another machine; the session id is appended.
+	FocusCmd string
 }
 
 func (n TerminalNotifier) Notify(ctx context.Context, b domain.Banner) error {
@@ -32,7 +34,9 @@ func (n TerminalNotifier) Notify(ctx context.Context, b domain.Banner) error {
 	if b.Terminal != "" {
 		args = append(args, "-activate", b.Terminal)
 	}
-	if b.Group != "" && n.Self != "" {
+	if b.Group != "" && n.FocusCmd != "" {
+		args = append(args, "-execute", n.FocusCmd+" "+shellQuote(b.Group))
+	} else if b.Group != "" && n.Self != "" {
 		args = append(args, "-execute", "AGENTWS_HOME="+shellQuote(n.Home)+" "+shellQuote(n.Self)+" focus "+shellQuote(b.Group))
 	}
 	_, err := n.Run(ctx, n.Bin, args...)
@@ -62,7 +66,10 @@ func Select(lookPath func(string) (string, error), self, home string) app.Notifi
 	if bin, err := lookPath("terminal-notifier"); err == nil {
 		return TerminalNotifier{Run: execRunner, Bin: bin, Self: self, Home: home}
 	}
-	return New()
+	if _, err := lookPath("osascript"); err == nil {
+		return New()
+	}
+	return Silent{}
 }
 
 func Detect(self, home string) app.Notifier { return Select(exec.LookPath, self, home) }
