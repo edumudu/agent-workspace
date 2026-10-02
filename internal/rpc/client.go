@@ -280,9 +280,26 @@ func (c *Client) StreamNotices(ctx context.Context) (<-chan Notice, error) {
 	notices := make(chan Notice, 64)
 	go func() {
 		defer close(notices)
-		for resp := range ch {
-			if resp.Notice != nil {
-				notices <- *resp.Notice
+		for {
+			var resp Response
+			var ok bool
+			select {
+			case <-ctx.Done():
+				c.forget(id)
+				return
+			case resp, ok = <-ch:
+			}
+			if !ok {
+				return
+			}
+			if resp.Notice == nil {
+				continue
+			}
+			select {
+			case notices <- *resp.Notice:
+			case <-ctx.Done():
+				c.forget(id)
+				return
 			}
 		}
 	}()
