@@ -18,7 +18,7 @@ var spinner = []string{"◐", "◓", "◑", "◒"}
 
 type styles struct {
 	text, sub, dim, bold, brand, header, need lipgloss.Style
-	blue, peach, teal, green                  lipgloss.Style
+	blue, peach, teal, green, mauve           lipgloss.Style
 	bar, badge                                lipgloss.Style
 	selectedBg, base                          lipgloss.Style
 }
@@ -37,11 +37,23 @@ func newStyles(t Theme) styles {
 		peach:      fg(t.Peach),
 		teal:       fg(t.Teal),
 		green:      fg(t.Green),
+		mauve:      fg(t.Mauve),
 		bar:        fg(t.Blue),
 		badge:      lipgloss.NewStyle().Foreground(lipgloss.Color(t.Base)).Background(lipgloss.Color(t.Blue)).Bold(true),
 		selectedBg: lipgloss.NewStyle().Background(lipgloss.Color(t.Selected)),
 		base:       lipgloss.NewStyle().Background(lipgloss.Color(t.Base)),
 	}
+}
+
+func (m Model) harnessTag(h domain.Harness, pad string) piece {
+	st := m.styles.blue
+	switch h {
+	case domain.HarnessCodex:
+		st = m.styles.teal
+	case domain.HarnessOmp:
+		st = m.styles.mauve
+	}
+	return piece{st.Bold(true), pad + domain.Spec(h).Tag + pad}
 }
 
 type piece struct {
@@ -251,10 +263,7 @@ func (m Model) sessionLines(e entry, sel bool) []string {
 	}
 	x := e.session
 	glyph := m.glyph(x)
-	tag := piece{s.blue.Bold(true), "CC"}
-	if x.Harness == domain.HarnessCodex {
-		tag = piece{s.teal.Bold(true), "CX"}
-	}
+	tag := m.harnessTag(x.Harness, "")
 	name := domain.NameFor(e.task, entryPRs(e))
 	if name == "" {
 		name = x.ID

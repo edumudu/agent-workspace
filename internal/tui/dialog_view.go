@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"cmp"
 	"fmt"
 	"path/filepath"
 	"strconv"
@@ -195,6 +196,16 @@ func (m Model) pickers(keep *int, at int) []string {
 	if model == "" {
 		model = defaultLabel(m.defaultModel())
 	}
+	modelValue := []piece{{s.bold, "‹ " + model + " ›"}}
+	if d.typedModel() {
+		modelValue = []piece{{s.bold, d.model}}
+		if d.field == fieldModel {
+			modelValue = append(modelValue, piece{s.text, "▏"})
+		}
+		if d.model == "" {
+			modelValue = append(modelValue, piece{s.dim, model})
+		}
+	}
 	effort := d.efforts[d.effort]
 	if effort == "" {
 		effort = defaultLabel(m.defaultEffort())
@@ -205,7 +216,7 @@ func (m Model) pickers(keep *int, at int) []string {
 		value []piece
 	}{
 		{fieldHarness, "Harness", harness},
-		{fieldModel, "Model", []piece{{s.bold, "‹ " + model + " ›"}}},
+		{fieldModel, "Model", modelValue},
 		{fieldEffort, "Effort", []piece{{s.bold, "‹ " + effort + " ›"}}},
 	}
 	if m.width < dialogColumnsFrom {
@@ -342,11 +353,12 @@ func (m Model) adviceBox() []string {
 	}
 }
 
+// why: Claude reads better than its catalog name, Claude Code, in a one-line warning.
 func harnessName(h domain.Harness) string {
-	if h == domain.HarnessCodex {
-		return "Codex"
+	if h == domain.HarnessClaude {
+		return "Claude"
 	}
-	return "Claude"
+	return cmp.Or(domain.Spec(h).Name, string(h))
 }
 
 func defaultLabel(name string) string {
