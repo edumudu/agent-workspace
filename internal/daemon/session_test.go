@@ -566,3 +566,40 @@ func TestResumeSessionRefusesALiveOrUnknownSession(t *testing.T) {
 		t.Fatalf("unknown session: %v", err)
 	}
 }
+
+func TestResumeSessionLaunchesOnceWhenTwoClientsResumeTogether(t *testing.T) {
+	r := startSessions(t, &memStore{}, nil)
+	ctx := context.Background()
+	var s domain.Session
+	if err := r.c.Call(ctx, rpc.MethodNewSession, rpc.NewSessionParams{Workspace: "/src/api", WorkItem: "x", Harness: "claude"}, &s); err != nil {
+		t.Fatal(err)
+	}
+	hook := rpc.Hook{Harness: "claude", Event: "SessionStart", Pane: s.Pane, At: time.Now(), Payload: []byte(`{"session_id":"c-1"}`)}
+	if err := r.c.Call(ctx, rpc.MethodHook, hook, nil); err != nil {
+		t.Fatal(err)
+	}
+	endSession(t, r, s.ID)
+	r.host.mu.Lock()
+	before := len(r.host.specs)
+	r.host.creating, r.host.createGate = make(chan struct{}, 2), make(chan struct{})
+	r.host.mu.Unlock()
+	errs := make(chan error, 2)
+	resume := func() { errs <- dial(t, r.path).Call(ctx, rpc.MethodResumeSession, rpc.SessionRef{ID: s.ID}, nil) }
+	go resume()
+	<-r.host.creating
+	go resume()
+	time.Sleep(100 * time.Millisecond)
+	close(r.host.createGate)
+	var failed int
+	for range 2 {
+		if <-errs != nil {
+			failed++
+		}
+	}
+	r.host.mu.Lock()
+	launched := len(r.host.specs) - before
+	r.host.mu.Unlock()
+	if launched != 1 || failed != 1 {
+		t.Fatalf("launched %d panes, %d calls failed; want 1 and 1", launched, failed)
+	}
+}

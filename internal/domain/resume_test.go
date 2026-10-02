@@ -75,3 +75,13 @@ func TestResumableSessionsListsTheMostRecentlyActiveFirst(t *testing.T) {
 		t.Fatalf("ResumableSessions = %v, want %v", ids, want)
 	}
 }
+
+func TestRemovingTheWorktreeASessionRanInMakesItUnresumable(t *testing.T) {
+	s := Session{Ended: true, ResumeID: "r", Dir: "/w/a", WorktreeIDs: []string{"/w/a", "/w/b"}}
+	if got := s.DetachWorktree("/w/b"); got.Dir != "/w/a" || !got.Resumable() {
+		t.Fatalf("another worktree removed: %+v", got)
+	}
+	if got := s.DetachWorktree("/w/a"); got.Dir != "" || got.Resumable() {
+		t.Fatalf("its own worktree removed: %+v", got)
+	}
+}

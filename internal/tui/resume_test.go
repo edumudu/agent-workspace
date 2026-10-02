@@ -1,6 +1,7 @@
 package tui_test
 
 import (
+	"fmt"
 	"reflect"
 	"slices"
 	"strings"
@@ -62,5 +63,21 @@ func TestResumeWithNothingToResumeSaysSo(t *testing.T) {
 	m, _ := resumeModel(t, domain.Session{ID: "live", TaskID: "t1", Pane: "%1"})
 	if out := screen(press(m, "u")); !strings.Contains(out, "no ended session to resume") {
 		t.Fatalf("screen:\n%s", out)
+	}
+}
+
+func TestResumePickerScrollsToTheChosenRow(t *testing.T) {
+	var sessions []domain.Session
+	for i := range 30 {
+		sessions = append(sessions, domain.Session{ID: fmt.Sprintf("s%02d", i), TaskID: "t2", Ended: true, ResumeID: "r", Dir: fmt.Sprintf("/w/dir%02d", i)})
+	}
+	m, _ := resumeModel(t, sessions...)
+	m = update(m, tea.WindowSizeMsg{Width: 48, Height: 12})
+	m = press(m, "u")
+	for range 29 {
+		m = press(m, "j")
+	}
+	if out := screen(m); !strings.Contains(out, "▌30  retry queue") {
+		t.Fatalf("chosen row not in view:\n%s", out)
 	}
 }

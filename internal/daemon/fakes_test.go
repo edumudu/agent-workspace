@@ -322,20 +322,22 @@ type shown struct {
 
 type fakeHost struct {
 	app.TerminalHost
-	mu        sync.Mutex
-	titles    map[app.PaneID][]string
-	specs     []app.PaneSpec
-	err       error
-	panes     []app.PaneInfo
-	killed    []app.PaneID
-	shown     []shown
-	typed     []string
-	failText  string
-	gates     map[app.PaneID]chan struct{}
-	held      map[app.PaneID]chan struct{}
-	distinct  bool
-	failFirst bool
-	screens   []string
+	mu         sync.Mutex
+	titles     map[app.PaneID][]string
+	specs      []app.PaneSpec
+	err        error
+	panes      []app.PaneInfo
+	killed     []app.PaneID
+	shown      []shown
+	typed      []string
+	failText   string
+	gates      map[app.PaneID]chan struct{}
+	held       map[app.PaneID]chan struct{}
+	distinct   bool
+	failFirst  bool
+	screens    []string
+	creating   chan struct{}
+	createGate chan struct{}
 }
 
 func (h *fakeHost) Capture(context.Context, app.PaneID, int) (string, error) {
@@ -434,6 +436,10 @@ func (h *fakeHost) waitTyped(t *testing.T, n int) []string {
 }
 
 func (h *fakeHost) Create(_ context.Context, spec app.PaneSpec) (app.PaneID, error) {
+	if h.createGate != nil {
+		h.creating <- struct{}{}
+		<-h.createGate
+	}
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	if h.err != nil {
