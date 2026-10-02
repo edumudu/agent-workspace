@@ -92,11 +92,46 @@ func TestNotifyTerminalNotifierRunsTheGivenFocusCommandOnClick(t *testing.T) {
 
 func TestNotifySelectIsSilentWithoutAnyNotifier(t *testing.T) {
 	missing := func(string) (string, error) { return "", errors.New("not found") }
-	n := notify.Select(missing, "/bin/agentws", "/h")
+	n := notify.Select(missing, notify.Click{Self: "/bin/agentws", Home: "/h"})
 	if _, ok := n.(notify.Silent); !ok {
 		t.Fatalf("got %#v", n)
 	}
 	if err := n.Notify(context.Background(), domain.Banner{Title: "t"}); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestNotifyFallbackPostsThroughTheSecondWhenTheFirstFails(t *testing.T) {
+	first, second := &failing{}, &sink{}
+	n := notify.Fallback{Primary: first, Secondary: second}
+	if err := n.Notify(context.Background(), domain.Banner{Title: "t", Group: "s1"}); err != nil {
+		t.Fatal(err)
+	}
+	if len(second.posted) != 1 || second.posted[0].Title != "t" {
+		t.Fatalf("second posted %+v", second.posted)
+	}
+	if err := n.Remove(context.Background(), "s1"); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(first.removed, []string{"s1"}) {
+		t.Fatalf("first removed %v", first.removed)
+	}
+}
+
+func TestNotifyFallbackLeavesTheSecondAloneWhenTheFirstWorks(t *testing.T) {
+	first, second := &sink{}, &sink{}
+	n := notify.Fallback{Primary: first, Secondary: second}
+	if err := n.Notify(context.Background(), domain.Banner{Title: "t"}); err != nil {
+		t.Fatal(err)
+	}
+	if len(first.posted) != 1 || len(second.posted) != 0 {
+		t.Fatalf("first %+v second %+v", first.posted, second.posted)
+	}
+}
+
+func TestNotifyFallbackReportsBothFailures(t *testing.T) {
+	n := notify.Fallback{Primary: &failing{}, Secondary: &failing{}}
+	if err := n.Notify(context.Background(), domain.Banner{Title: "t"}); err == nil {
+		t.Fatal("no error with both backends failing")
 	}
 }

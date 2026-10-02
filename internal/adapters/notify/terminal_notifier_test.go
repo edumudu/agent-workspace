@@ -79,15 +79,29 @@ func TestNotifyOsascriptRemoveRunsNothing(t *testing.T) {
 	}
 }
 
-func TestNotifySelectPrefersTerminalNotifierOnPath(t *testing.T) {
-	found := func(name string) (string, error) {
+func TestNotifySelectPrefersTerminalNotifierFallingBackToOsascript(t *testing.T) {
+	found := func(name string) (string, error) { return "/opt/bin/" + name, nil }
+	got, ok := notify.Select(found, notify.Click{Self: "/bin/agentws", Home: "/h", FocusCmd: "ssh -T 'vps' agentws focus"}).(notify.Fallback)
+	if !ok {
+		t.Fatalf("got %#v", got)
+	}
+	tn, ok := got.Primary.(notify.TerminalNotifier)
+	if !ok || tn.Bin != "/opt/bin/terminal-notifier" || tn.Self != "/bin/agentws" || tn.Home != "/h" || tn.FocusCmd != "ssh -T 'vps' agentws focus" || tn.Run == nil {
+		t.Fatalf("primary %#v", got.Primary)
+	}
+	if o, ok := got.Secondary.(notify.Osascript); !ok || o.Run == nil {
+		t.Fatalf("secondary %#v", got.Secondary)
+	}
+}
+
+func TestNotifySelectUsesTerminalNotifierAloneWithoutOsascript(t *testing.T) {
+	onlyTN := func(name string) (string, error) {
 		if name == "terminal-notifier" {
 			return "/opt/bin/terminal-notifier", nil
 		}
 		return "", errors.New("not found")
 	}
-	got, ok := notify.Select(found, "/bin/agentws", "/h").(notify.TerminalNotifier)
-	if !ok || got.Bin != "/opt/bin/terminal-notifier" || got.Self != "/bin/agentws" || got.Home != "/h" || got.Run == nil {
+	if got, ok := notify.Select(onlyTN, notify.Click{}).(notify.TerminalNotifier); !ok || got.Bin != "/opt/bin/terminal-notifier" {
 		t.Fatalf("got %#v", got)
 	}
 }
@@ -99,7 +113,7 @@ func TestNotifySelectFallsBackToOsascript(t *testing.T) {
 		}
 		return "", errors.New("not found")
 	}
-	if got, ok := notify.Select(onlyOsascript, "/bin/agentws", "/h").(notify.Osascript); !ok || got.Run == nil {
+	if got, ok := notify.Select(onlyOsascript, notify.Click{}).(notify.Osascript); !ok || got.Run == nil {
 		t.Fatalf("got %#v", got)
 	}
 }
