@@ -85,11 +85,19 @@ func parseBridge(args []string) (bridge, error) {
 // why: ssh joins the remote command into one shell line, so the binary is quoted there;
 // keepalives notice a dead link instead of waiting on TCP for hours.
 func (b bridge) streamArgv() []string {
-	return []string{"ssh", "-T", "-o", "ServerAliveInterval=15", b.host, shellQuote(b.remoteBin) + " notify stream"}
+	return []string{"ssh", "-T", "-o", "ServerAliveInterval=15", b.host, remotePath(b.remoteBin) + " notify stream"}
+}
+
+// why: a quoted ~ is literal, so a leading ~/ stays outside the quotes for the remote shell to expand.
+func remotePath(p string) string {
+	if rest, ok := strings.CutPrefix(p, "~/"); ok {
+		return "~/" + shellQuote(rest)
+	}
+	return shellQuote(p)
 }
 
 func (b bridge) focusCmd() string {
-	return "ssh -T " + shellQuote(b.host) + " " + shellQuote(b.remoteBin) + " focus"
+	return "ssh -T " + shellQuote(b.host) + " " + remotePath(b.remoteBin) + " focus"
 }
 
 func shellQuote(s string) string {
