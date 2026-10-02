@@ -60,7 +60,7 @@ Limits of the amendment:
 
 - A daemon on a remote host (a VPS reached over ssh) cannot post banners on the user's Mac. `notify.stream` is an rpc stream: an empty Result, then one `rpc.Notice` per banner the loop lets through (after mute and coalescing, before the worker's frontmost check, with `Focused` set) and per withdrawal (`Remove`).
 - `agentws notify stream` prints those notices as JSON lines. `agentws notify bridge [--remote-bin path] <ssh host>` runs it over `ssh -T` on the Mac, posts each banner through the local backend (`notify.Relay`), drops a focused session's banner while a terminal is in front, and reconnects with a backoff of 2 s doubling to 1 min. A click runs `ssh -T <host> <remote-bin> focus <session id>` (`TerminalNotifier.FocusCmd`).
-- `notify.Select` returns `Silent` when neither `terminal-notifier` nor `osascript` is on `PATH`, so a Linux daemon logs nothing per banner.
+- `notify.Select` returns `Silent` when neither `terminal-notifier` nor `osascript` is on `PATH`, so a Linux daemon logs nothing per banner. With both, it returns `Fallback`: a banner terminal-notifier fails to post (macOS often has its notifications off after install) goes through osascript, without grouping or click, and the error, with the tool's stderr line, is logged.
 
 Limits:
 

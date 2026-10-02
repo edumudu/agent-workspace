@@ -75,7 +75,7 @@ func Run(ctx context.Context, home string) (err error) {
 	if err != nil {
 		return err
 	}
-	banners := notify.Detect(self, home)
+	banners := notify.Detect(notify.Click{Self: self, Home: home})
 	trash := wsfs.NewTrash(filepath.Join(home, "trash"), 4)
 	audit := &wsfs.AuditLog{Path: filepath.Join(home, "cleanup.log")}
 	hooks := testHooksFromEnv(os.Getenv)
