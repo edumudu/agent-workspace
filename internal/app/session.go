@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/giovaniif/agent-workspace/internal/domain"
@@ -76,6 +77,7 @@ func (s Sessions) Start(ctx context.Context, req NewSession) (Started, error) {
 		Model:   req.Model,
 		Effort:  req.Effort,
 		State:   domain.StateIdle,
+		Dir:     dir,
 	}
 	if wt != nil {
 		wt.SessionID = req.ID
@@ -91,4 +93,18 @@ func (s Sessions) End(ctx context.Context, session domain.Session) (domain.Sessi
 		}
 	}
 	return session.End(), nil
+}
+
+var ErrNotResumable = errors.New("session cannot be resumed")
+
+func (s Sessions) Resume(ctx context.Context, session domain.Session, harness HarnessAdapter, name string) (domain.Session, error) {
+	if !session.Resumable() {
+		return session, ErrNotResumable
+	}
+	spec := harness.Launch(LaunchRequest{Name: name, Dir: session.Dir, Model: session.Model, Effort: session.Effort, Resume: session.ResumeID})
+	pane, err := s.Host.Create(ctx, spec)
+	if err != nil {
+		return session, fmt.Errorf("resume %s: %w", harness.Harness(), err)
+	}
+	return session.Resumed(string(pane)), nil
 }
