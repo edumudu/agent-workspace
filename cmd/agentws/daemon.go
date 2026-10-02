@@ -103,8 +103,15 @@ func connectStatus(home string) (rpc.Status, error) {
 	return c.Status(ctx)
 }
 
+// why: a status check must not start a daemon, which would inherit the
+// checker's environment (install.sh runs it, often over a bare ssh).
 func status(home string, stdout io.Writer) error {
-	st, err := connectStatus(home)
+	c, err := rpc.Dial(rpc.SocketPath(home))
+	if err != nil {
+		return errNotRunning
+	}
+	defer func() { _ = c.Close() }()
+	st, err := c.Status(context.Background())
 	if err != nil {
 		return err
 	}

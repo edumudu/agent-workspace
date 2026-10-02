@@ -16,6 +16,7 @@ import (
 
 	"github.com/giovaniif/agent-workspace/internal/adapters/notify"
 	"github.com/giovaniif/agent-workspace/internal/domain"
+	"github.com/giovaniif/agent-workspace/internal/rpc"
 )
 
 const notifyUsage = "usage: agentws notify stream | agentws notify bridge [--remote-bin path] <ssh host>"
@@ -43,11 +44,12 @@ func runNotify(args []string, stdout, stderr io.Writer) int {
 
 func runNotifyStream(stdout, stderr io.Writer) int {
 	ctx := context.Background()
-	c, err := connectHome(ctx)
+	home, err := rpc.Home()
 	if err != nil {
 		fmt.Fprintf(stderr, "agentws notify stream: %v\n", err)
 		return 1
 	}
+	c := awaitDaemon(home, stderr)
 	defer func() { _ = c.Close() }()
 	notices, err := c.StreamNotices(ctx)
 	if err != nil {
@@ -63,6 +65,26 @@ func runNotifyStream(stdout, stderr io.Writer) int {
 	fmt.Fprintln(stderr, "agentws notify stream: daemon went away")
 	return 1
 }
+
+// why: the bridge runs this over a bare `ssh -T`; a daemon started from here
+// would launch every agent with that login-less PATH, so it waits for one.
+func awaitDaemon(home string, stderr io.Writer) *rpc.Client {
+	sock := rpc.SocketPath(home)
+	c, err := rpc.Dial(sock)
+	if err == nil {
+		return c
+	}
+	fmt.Fprintln(stderr, "agentws notify stream: waiting for the daemon")
+	for {
+		time.Sleep(awaitDaemonEvery)
+		if c, err := rpc.Dial(sock); err == nil {
+			fmt.Fprintln(stderr, "agentws notify stream: connected")
+			return c
+		}
+	}
+}
+
+const awaitDaemonEvery = 250 * time.Millisecond
 
 type bridge struct {
 	host      string
