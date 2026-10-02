@@ -332,6 +332,7 @@ type fakeHost struct {
 	typed     []string
 	failText  string
 	gates     map[app.PaneID]chan struct{}
+	held      map[app.PaneID]chan struct{}
 	distinct  bool
 	failFirst bool
 	screens   []string
@@ -356,12 +357,37 @@ func (h *fakeHost) holdPane(pane app.PaneID) (release func()) {
 	}
 	gate := make(chan struct{})
 	h.gates[pane] = gate
+	if h.held == nil {
+		h.held = map[app.PaneID]chan struct{}{}
+	}
+	h.held[pane] = make(chan struct{})
 	return func() { close(gate) }
+}
+
+// why: workers start in goroutines, so a test that needs one send queued
+// behind another must first see the earlier send block on its pane.
+func (h *fakeHost) waitHeld(t *testing.T, pane app.PaneID) {
+	t.Helper()
+	h.mu.Lock()
+	held := h.held[pane]
+	h.mu.Unlock()
+	select {
+	case <-held:
+	case <-time.After(2 * time.Second):
+		t.Fatalf("no send reached held pane %s", pane)
+	}
 }
 
 func (h *fakeHost) SendText(_ context.Context, pane app.PaneID, text string, bracketed bool) error {
 	h.mu.Lock()
 	gate := h.gates[pane]
+	if held := h.held[pane]; gate != nil && held != nil {
+		select {
+		case <-held:
+		default:
+			close(held)
+		}
+	}
 	h.mu.Unlock()
 	if gate != nil {
 		<-gate
