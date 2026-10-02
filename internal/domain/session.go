@@ -56,6 +56,8 @@ type Session struct {
 	Focused       bool
 	Muted         bool
 	WorktreeIDs   []string
+	ResumeID      string
+	Dir           string
 	Usage         Usage
 	Limits        []RateLimit
 	LimitsAt      time.Time
@@ -139,5 +141,8 @@ func (s Session) DetachWorktree(id string) Session {
 		}
 	}
 	s.WorktreeIDs = kept
+	if s.Dir == id {
+		s.Dir = ""
+	}
 	return s
 }

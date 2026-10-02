@@ -576,3 +576,87 @@ func TestNewSessionNormalizesTheWorkspacePath(t *testing.T) {
 		t.Fatalf("workspaces %+v; want one, /solo", sub.State.Workspaces)
 	}
 }
+
+func TestResumeSessionRelaunchesAnEndedSessionWithTheHarnessIDItLastReported(t *testing.T) {
+	r := startSessions(t, &memStore{}, nil)
+	ctx := context.Background()
+	var s domain.Session
+	if err := r.c.Call(ctx, rpc.MethodNewSession, rpc.NewSessionParams{Workspace: "/src/api", WorkItem: "x", Harness: "claude", Model: "opus", Effort: "high"}, &s); err != nil {
+		t.Fatal(err)
+	}
+	for _, id := range []string{"c-1", "c-2"} {
+		hook := rpc.Hook{Harness: "claude", Event: "SessionStart", Pane: s.Pane, At: time.Now(), Payload: []byte(`{"session_id":"` + id + `"}`)}
+		if err := r.c.Call(ctx, rpc.MethodHook, hook, nil); err != nil {
+			t.Fatal(err)
+		}
+	}
+	endSession(t, r, s.ID)
+	var resumed domain.Session
+	if err := r.c.Call(ctx, rpc.MethodResumeSession, rpc.SessionRef{ID: s.ID}, &resumed); err != nil {
+		t.Fatal(err)
+	}
+	last := r.host.specs[len(r.host.specs)-1]
+	if want := []string{"claude", "--resume", "c-2", "--model", "opus", "--effort", "high"}; !slices.Equal(last.Command, want) || last.Dir != s.Dir || s.Dir == "" {
+		t.Fatalf("launched %+v, want %v in %q", last, want, s.Dir)
+	}
+	if resumed.Ended || resumed.Pane != "%7" || resumed.ID != s.ID || !slices.Equal(resumed.WorktreeIDs, s.WorktreeIDs) {
+		t.Fatalf("resumed %+v", resumed)
+	}
+	st := r.state(t)
+	if len(st.Sessions) != 1 || st.Sessions[0].Ended || st.Sessions[0].Pane != "%7" {
+		t.Fatalf("state %+v", st.Sessions)
+	}
+}
+
+func TestResumeSessionRefusesALiveOrUnknownSession(t *testing.T) {
+	r := startSessions(t, &memStore{}, nil)
+	ctx := context.Background()
+	var s domain.Session
+	if err := r.c.Call(ctx, rpc.MethodNewSession, rpc.NewSessionParams{Workspace: "/src/api", WorkItem: "x", Harness: "claude"}, &s); err != nil {
+		t.Fatal(err)
+	}
+	var rerr *rpc.Error
+	if err := r.c.Call(ctx, rpc.MethodResumeSession, rpc.SessionRef{ID: s.ID}, nil); !errors.As(err, &rerr) || rerr.Code != rpc.CodeBadRequest {
+		t.Fatalf("live session: %v", err)
+	}
+	if err := r.c.Call(ctx, rpc.MethodResumeSession, rpc.SessionRef{ID: "nope"}, nil); !errors.As(err, &rerr) || rerr.Code != rpc.CodeNotFound {
+		t.Fatalf("unknown session: %v", err)
+	}
+}
+
+func TestResumeSessionLaunchesOnceWhenTwoClientsResumeTogether(t *testing.T) {
+	r := startSessions(t, &memStore{}, nil)
+	ctx := context.Background()
+	var s domain.Session
+	if err := r.c.Call(ctx, rpc.MethodNewSession, rpc.NewSessionParams{Workspace: "/src/api", WorkItem: "x", Harness: "claude"}, &s); err != nil {
+		t.Fatal(err)
+	}
+	hook := rpc.Hook{Harness: "claude", Event: "SessionStart", Pane: s.Pane, At: time.Now(), Payload: []byte(`{"session_id":"c-1"}`)}
+	if err := r.c.Call(ctx, rpc.MethodHook, hook, nil); err != nil {
+		t.Fatal(err)
+	}
+	endSession(t, r, s.ID)
+	r.host.mu.Lock()
+	before := len(r.host.specs)
+	r.host.creating, r.host.createGate = make(chan struct{}, 2), make(chan struct{})
+	r.host.mu.Unlock()
+	errs := make(chan error, 2)
+	resume := func() { errs <- dial(t, r.path).Call(ctx, rpc.MethodResumeSession, rpc.SessionRef{ID: s.ID}, nil) }
+	go resume()
+	<-r.host.creating
+	go resume()
+	time.Sleep(100 * time.Millisecond)
+	close(r.host.createGate)
+	var failed int
+	for range 2 {
+		if <-errs != nil {
+			failed++
+		}
+	}
+	r.host.mu.Lock()
+	launched := len(r.host.specs) - before
+	r.host.mu.Unlock()
+	if launched != 1 || failed != 1 {
+		t.Fatalf("launched %d panes, %d calls failed; want 1 and 1", launched, failed)
+	}
+}

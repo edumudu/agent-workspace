@@ -33,6 +33,7 @@ const (
 	MethodWorktreeAssign   = "worktree.assign"
 	MethodNewSession       = "session.new"
 	MethodEndSession       = "session.end"
+	MethodResumeSession    = "session.resume"
 	MethodSessionRename    = "session.rename"
 	MethodSessionUnpin     = "session.unpin"
 	MethodLauncherEnqueue  = "launcher.enqueue"

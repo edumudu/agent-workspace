@@ -47,6 +47,7 @@ One terminal tool for running Claude Code and Codex sessions in parallel, each i
   - Single-repo workspace: the session starts in one fresh worktree branched from `origin/main`, with the repo's setup recipe already run.
   - Orchestration root: the session starts at the root, and the agent creates worktrees in the service repos it needs.
 - Sessions survive TUI restarts, terminal crashes and SSH detach.
+- An ended session that still has a worktree can be resumed (`u`): the harness picks its conversation back up in the same dir, with the same model and effort.
 
 **Attention**
 - Notifications for waiting, permission requests and done: macOS banner, optional sound, and per-session mute (`m`). No banner for the session you are looking at while the terminal is in front, and at most one per session every 10 s. The title names the session and where it runs (`fix login · api@42-retry`); the body says what it needs (`needs permission: Bash: npm test`, `asks: Should I keep the alias?`) or what it did (the first line of its last message and how long the turn took), and says so when it hit a usage limit or an API error. With `terminal-notifier` installed, a session keeps one banner (a newer one replaces it), clicking it brings the terminal to the front on that session (`agentws focus <id>`), and it is withdrawn once the session resumes or is focused.

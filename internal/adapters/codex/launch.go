@@ -14,6 +14,7 @@ type LaunchRequest struct {
 	Model  string
 	Effort string
 	Prompt string
+	Resume string
 }
 
 func LaunchSpec(req LaunchRequest) app.PaneSpec {
@@ -22,6 +23,9 @@ func LaunchSpec(req LaunchRequest) app.PaneSpec {
 
 func launchSpec(bin string, req LaunchRequest) app.PaneSpec {
 	command := []string{bin}
+	if req.Resume != "" {
+		command = append(command, "resume")
+	}
 	if req.Model != "" {
 		command = append(command, "--model", req.Model)
 	}
@@ -31,6 +35,9 @@ func launchSpec(bin string, req LaunchRequest) app.PaneSpec {
 	if req.Prompt != "" {
 		// why: the separator keeps a prompt that starts with "-" from parsing as a flag.
 		command = append(command, "--", req.Prompt)
+	}
+	if req.Resume != "" {
+		command = append(command, req.Resume)
 	}
 	return app.PaneSpec{Name: req.Name, Dir: req.Dir, Command: command}
 }

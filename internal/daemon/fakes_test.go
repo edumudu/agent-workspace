@@ -337,6 +337,8 @@ type fakeHost struct {
 	distinct    bool
 	failFirst   bool
 	screens     []string
+	creating    chan struct{}
+	createGate  chan struct{}
 }
 
 func (h *fakeHost) Capture(context.Context, app.PaneID, int) (string, error) {
@@ -435,6 +437,10 @@ func (h *fakeHost) waitTyped(t *testing.T, n int) []string {
 }
 
 func (h *fakeHost) Create(_ context.Context, spec app.PaneSpec) (app.PaneID, error) {
+	if h.createGate != nil {
+		h.creating <- struct{}{}
+		<-h.createGate
+	}
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	if h.err != nil {

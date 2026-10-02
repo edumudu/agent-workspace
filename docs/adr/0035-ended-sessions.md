@@ -17,5 +17,5 @@ Status: accepted, 2026-09-30. Replaces the "the session and its worktrees stay u
 
 ## Limits
 
-- An ended session cannot be brought back; start a new one on the same work item, which joins its task.
+- An ended session with no worktree cannot be brought back; start a new one on the same work item, which joins its task. One with a worktree can be resumed (ADR 0042).
 - Sessions ended before this change have no `Ended` flag and stay listed until ended again.

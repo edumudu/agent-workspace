@@ -336,6 +336,9 @@ func (s *state) hook(h rpc.Hook, now time.Time) {
 	}
 	s.noteHook(session.ID, kind, h.Payload, now)
 	next, effects := session.Apply(domain.HarnessEvent{Kind: kind})
+	if id := domain.ResumeIDFromHook(h.Payload); id != "" {
+		next.ResumeID = id
+	}
 	if domain.Harness(h.Harness) == domain.HarnessCodex {
 		next = s.codexObservation(h, kind, session, next)
 	}
@@ -465,6 +468,8 @@ func (d *Daemon) dispatch(c *conn, line []byte) (*rpc.Response, bool) {
 		return d.newSession(req)
 	case rpc.MethodEndSession:
 		return d.endSession(req)
+	case rpc.MethodResumeSession:
+		return d.resumeSession(req)
 	case rpc.MethodLauncherEnqueue, rpc.MethodLauncherDrop, rpc.MethodLauncherRetarget:
 		return d.launcherMethod(req)
 	case rpc.MethodSwitch:

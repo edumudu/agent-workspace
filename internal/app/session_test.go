@@ -46,7 +46,7 @@ func TestStartSessionInASingleRepoAddsTheWorktreeRunsSetupThenLaunchesWhereGitPu
 	}
 	wantSession := domain.Session{
 		ID: "s1", TaskID: "t1", Harness: domain.HarnessCodex, Pane: "%9", Model: "m", Effort: "high",
-		State: domain.StateIdle, WorktreeIDs: []string{"/real/h/api/eng-1"},
+		State: domain.StateIdle, WorktreeIDs: []string{"/real/h/api/eng-1"}, Dir: "/real/h/api/eng-1",
 	}
 	if !reflect.DeepEqual(got.Session, wantSession) {
 		t.Fatalf("session %+v", got.Session)
@@ -69,7 +69,7 @@ func TestStartSessionAtAnOrchestrationRootCreatesNoWorktree(t *testing.T) {
 	if len(wts.added) != 0 || setups != 0 || got.Worktree != nil || got.Session.WorktreeIDs != nil {
 		t.Fatalf("added %v, setups %d, started %+v", wts.added, setups, got)
 	}
-	if len(host.created) != 1 || host.created[0].Dir != "/src/shop" || got.Session.Pane != "%9" {
+	if len(host.created) != 1 || host.created[0].Dir != "/src/shop" || got.Session.Pane != "%9" || got.Session.Dir != "/src/shop" {
 		t.Fatalf("created %+v, session %+v", host.created, got.Session)
 	}
 }
@@ -136,5 +136,44 @@ func TestEndSessionKeepsTheSessionWhenThePaneWillNotDie(t *testing.T) {
 	got, err := app.Sessions{Host: &fakeHost{killErr: boom}}.End(context.Background(), running)
 	if !errors.Is(err, boom) || !reflect.DeepEqual(got, running) {
 		t.Fatalf("session %+v, err %v", got, err)
+	}
+}
+
+func TestResumeSessionRelaunchesTheHarnessInItsDirOnANewPane(t *testing.T) {
+	host := &fakeHost{}
+	ended := domain.Session{
+		ID: "s1", TaskID: "t1", Harness: domain.HarnessCodex, Ended: true, State: domain.StateIdle,
+		Model: "m", Effort: "high", ResumeID: "r1", Dir: "/h/api/eng-1", WorktreeIDs: []string{"/h/api/eng-1"},
+	}
+	got, err := app.Sessions{Host: host}.Resume(context.Background(), ended, fakeHarness{}, "eng-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantSpec := app.PaneSpec{Name: "eng-1", Dir: "/h/api/eng-1", Command: []string{"agent", "m", "high", "", "resume r1"}}
+	if len(host.created) != 1 || !reflect.DeepEqual(host.created[0], wantSpec) {
+		t.Fatalf("created %+v", host.created)
+	}
+	if want := ended.Resumed("%9"); !reflect.DeepEqual(got, want) {
+		t.Fatalf("session %+v, want %+v", got, want)
+	}
+}
+
+func TestResumeSessionRefusesOneThatCannotBeResumed(t *testing.T) {
+	host := &fakeHost{}
+	live := domain.Session{ID: "s1", Pane: "%1", ResumeID: "r1", Dir: "/w"}
+	if _, err := (app.Sessions{Host: host}).Resume(context.Background(), live, fakeHarness{}, "n"); !errors.Is(err, app.ErrNotResumable) {
+		t.Fatalf("err %v, want ErrNotResumable", err)
+	}
+	if len(host.created) != 0 {
+		t.Fatalf("created %+v", host.created)
+	}
+}
+
+func TestResumeSessionStaysEndedWhenThePaneFails(t *testing.T) {
+	boom := errors.New("no tmux")
+	ended := domain.Session{ID: "s1", Ended: true, ResumeID: "r1", Dir: "/w"}
+	got, err := app.Sessions{Host: &fakeHost{createErr: boom}}.Resume(context.Background(), ended, fakeHarness{}, "n")
+	if !errors.Is(err, boom) || !reflect.DeepEqual(got, ended) {
+		t.Fatalf("got %+v, err %v", got, err)
 	}
 }

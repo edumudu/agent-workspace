@@ -17,6 +17,9 @@ func (a Adapter) Launch(req app.LaunchRequest) app.PaneSpec {
 		bin = "claude"
 	}
 	command := []string{bin}
+	if req.Resume != "" {
+		command = append(command, "--resume", req.Resume)
+	}
 	if req.Model != "" {
 		command = append(command, "--model", req.Model)
 	}

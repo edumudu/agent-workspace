@@ -59,3 +59,11 @@ func TestLaunchReportsAHostFailure(t *testing.T) {
 		t.Fatalf("err %v", err)
 	}
 }
+
+func TestLaunchResumesTheCodexThreadByID(t *testing.T) {
+	got := Adapter{}.Launch(app.LaunchRequest{Dir: "/w", Model: "gpt-5", Effort: "high", Resume: "t-1"})
+	want := []string{"codex", "resume", "--model", "gpt-5", "-c", `model_reasoning_effort="high"`, "t-1"}
+	if !slices.Equal(got.Command, want) {
+		t.Fatalf("command %v, want %v", got.Command, want)
+	}
+}

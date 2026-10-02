@@ -111,6 +111,7 @@ type Model struct {
 	last     string
 	help     bool
 	picker   *picker
+	resuming *resumePicker
 	frame    int
 	top      TopBarMsg
 	status   string
@@ -460,6 +461,9 @@ func (m Model) key(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	if m.picker != nil {
 		return m.pickerKey(k)
 	}
+	if m.resuming != nil {
+		return m.resumeKey(k)
+	}
 	cur := m.index(m.selected)
 	if m.ending != "" {
 		id := m.ending
@@ -499,6 +503,8 @@ func (m Model) key(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return m, m.leave()
 	case "?":
 		m.help = !m.help
+	case "u":
+		m = m.openResume()
 	case "M":
 		m = m.openPicker(domain.SwitchModel)
 	case "E":
