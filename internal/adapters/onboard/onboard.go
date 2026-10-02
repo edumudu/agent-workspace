@@ -13,6 +13,7 @@ import (
 
 	"github.com/giovaniif/agent-workspace/internal/adapters/claude"
 	"github.com/giovaniif/agent-workspace/internal/adapters/codex"
+	"github.com/giovaniif/agent-workspace/internal/adapters/omp"
 	"github.com/giovaniif/agent-workspace/internal/domain"
 )
 
@@ -29,6 +30,7 @@ type Probe struct {
 	Bin            string
 	ClaudeSettings string
 	CodexHome      string
+	OmpAgentDir    string
 	NvimConfigDir  string
 	// why: the first existing dir wins, so a release install beats a source checkout.
 	PluginDirs []string
@@ -51,6 +53,7 @@ func FromEnv(home, bin string, env func(string) string) Probe {
 		Bin:            bin,
 		ClaudeSettings: filepath.Join(claudeDir, "settings.json"),
 		CodexHome:      or(env("CODEX_HOME"), filepath.Join(user, ".codex")),
+		OmpAgentDir:    omp.AgentDir(env),
 		NvimConfigDir:  filepath.Join(or(env("XDG_CONFIG_HOME"), filepath.Join(user, ".config")), "nvim"),
 		PluginDirs: []string{
 			filepath.Join(data, "agentws", "nvim"),
@@ -70,6 +73,7 @@ func (p Probe) Onboarding(context.Context) (domain.Onboarding, error) {
 		Harnesses: map[domain.Harness]domain.HarnessSetup{
 			domain.HarnessClaude: p.claudeSetup(),
 			domain.HarnessCodex:  p.codexSetup(),
+			domain.HarnessOmp:    p.ompSetup(),
 		},
 		Nvim: p.nvimSetup(),
 	}, nil
@@ -95,6 +99,11 @@ func (p Probe) Install(_ context.Context, h domain.Harness) (domain.HarnessSetup
 		s := p.codexSetup()
 		s.Backup = res.Backup
 		return s, nil
+	case domain.HarnessOmp:
+		if _, err := omp.Setup(p.ompConfig()); err != nil {
+			return domain.HarnessSetup{}, err
+		}
+		return p.ompSetup(), nil
 	}
 	return domain.HarnessSetup{}, errors.New("no setup for harness " + string(h))
 }
@@ -130,6 +139,20 @@ func (p Probe) codexSetup() domain.HarnessSetup {
 		s.Backup = file + ".agentws-<time>.bak"
 	}
 	ok, err := codex.Installed(p.codexConfig())
+	s.Installed = ok
+	if err != nil {
+		s.Err = err.Error()
+	}
+	return s
+}
+
+func (p Probe) ompConfig() omp.SetupConfig {
+	return omp.SetupConfig{Dir: p.OmpAgentDir, Command: p.Bin}
+}
+
+func (p Probe) ompSetup() domain.HarnessSetup {
+	s := domain.HarnessSetup{File: omp.HookFile(p.OmpAgentDir)}
+	ok, err := omp.Installed(p.ompConfig())
 	s.Installed = ok
 	if err != nil {
 		s.Err = err.Error()
