@@ -27,3 +27,11 @@ func TestLaunchLeavesDefaultsToClaude(t *testing.T) {
 		t.Fatalf("command %v", got.Command)
 	}
 }
+
+func TestLaunchResumesTheClaudeSessionByID(t *testing.T) {
+	got := claude.Adapter{}.Launch(app.LaunchRequest{Dir: "/w", Model: "opus", Effort: "high", Resume: "4c98"})
+	want := []string{"claude", "--resume", "4c98", "--model", "opus", "--effort", "high"}
+	if !reflect.DeepEqual(got.Command, want) {
+		t.Fatalf("command %v, want %v", got.Command, want)
+	}
+}
