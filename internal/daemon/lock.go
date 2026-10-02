@@ -47,12 +47,15 @@ func Acquire(home string) (*Lock, error) {
 	return &Lock{file: f, home: home}, nil
 }
 
+// why: unlock before closing: a child forked while the daemon ran shares the
+// open file until it execs, and closing alone leaves the lock held for it.
 func (l *Lock) Release() error {
 	err := os.Remove(PIDPath(l.home))
 	if errors.Is(err, os.ErrNotExist) {
 		err = nil
 	}
-	return errors.Join(err, l.file.Close())
+	unlock := syscall.Flock(int(l.file.Fd()), syscall.LOCK_UN)
+	return errors.Join(err, unlock, l.file.Close())
 }
 
 func ReadPID(home string) (int, bool) {
