@@ -20,7 +20,7 @@ The client layout's left pane runs `agentws tui`, 48 columns wide; a `window-res
 - Under the top bar, one row per harness shows its quota windows (percent used, reset clock time; see ADR 0036), derived from the sessions' `Limits` by `domain.Quotas`; red below 20% left, dimmed with an age when older than 15 minutes, absent without data. See [ADR 0017](../../docs/adr/0017-usage-and-limits-bar.md).
 - Each session row lists its subagents underneath as a tree (`domain.SubagentTree`, at most 8 rows), collapsed with the worktrees by `o`.
 - Ports show on worktree rows, the session's second row and the status line. `K` asks (`y`) before killing the selected session's dev servers.
-- Other keys: `n` new session (popup via `client.popup`, ADR 0037), `enter` focus, `x` then `y` end, `m` mute, `R` rename and pin, `A` unpin, `L` launcher, `r` review, `w` worktrees and disk, `t` shell, `T` shell popup, `s` focus the shell, `e` nvim, `S` setup walkthrough. `ctrl+\` (`tmux.FocusSidebarKey`) returns to the sidebar from an agent pane ([ADR 0025](../../docs/adr/0025-focus-return-key.md)).
+- Other keys: `n` new session (popup via `client.popup`, ADR 0037), `enter` focus, `x` then `y` end, `u` resume an ended session (a picker, most recently active first), `m` mute, `R` rename and pin, `A` unpin, `L` launcher, `r` review, `w` worktrees and disk, `t` shell, `T` shell popup, `s` focus the shell, `e` nvim, `S` setup walkthrough. `ctrl+\` (`tmux.FocusSidebarKey`) returns to the sidebar from an agent pane ([ADR 0025](../../docs/adr/0025-focus-return-key.md)).
 
 ## Config
 

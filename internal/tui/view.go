@@ -196,6 +196,9 @@ func (m Model) body() ([]string, int) {
 	if m.picker != nil {
 		return m.pickerLines(), 0
 	}
+	if m.resuming != nil {
+		return m.resumeLines(), 0
+	}
 	if len(m.entries) == 0 {
 		return append([]string{
 			"",
@@ -319,6 +322,7 @@ func (m Model) helpLines() []string {
 		{"X", "clear the queue"},
 		{"S", "set up Claude, Codex and nvim"},
 		{"x", "end session"},
+		{"u", "resume ended"},
 		{"?", "close help"},
 		{"q", "leave (sessions keep running)"},
 	}
