@@ -354,3 +354,23 @@ func TestTheRowAfterAnEndedOrRemovedSessionTakesTheSelection(t *testing.T) {
 		t.Fatalf("after the last row went selected %q; want b", got)
 	}
 }
+
+func TestTheSelectionFollowsASessionFocusedFromOutside(t *testing.T) {
+	st := threeIdle()
+	m := newModel(&st, nil)
+	if m.Selected() != "a" {
+		t.Fatalf("selected %q; want a", m.Selected())
+	}
+	focused := threeIdle().Sessions[2]
+	focused.Focused = true
+	m = update(m, tui.DiffMsg(rpc.Diff{Seq: 1, Session: &focused}))
+	if m.Selected() != "c" {
+		t.Fatalf("after c was focused selected %q; want c", m.Selected())
+	}
+	m = press(m, "k")
+	changed := focused
+	changed.State = domain.StateDone
+	if got := update(m, tui.DiffMsg(rpc.Diff{Seq: 2, Session: &changed})).Selected(); got != "b" {
+		t.Fatalf("a change to the already focused c moved the selection to %q; want b", got)
+	}
+}
