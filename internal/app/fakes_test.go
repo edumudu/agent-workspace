@@ -70,7 +70,11 @@ type fakeHarness struct{}
 func (fakeHarness) Harness() domain.Harness { return domain.HarnessCodex }
 
 func (fakeHarness) Launch(req app.LaunchRequest) app.PaneSpec {
-	return app.PaneSpec{Name: req.Name, Dir: req.Dir, Command: []string{"agent", req.Model, req.Effort, req.Prompt}}
+	command := []string{"agent", req.Model, req.Effort, req.Prompt}
+	if req.Resume != "" {
+		command = append(command, "resume "+req.Resume)
+	}
+	return app.PaneSpec{Name: req.Name, Dir: req.Dir, Command: command}
 }
 
 type fakeFS struct {
