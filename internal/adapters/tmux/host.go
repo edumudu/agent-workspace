@@ -43,15 +43,15 @@ set -g pane-border-status top
 // A pane whose program takes the mouse (mouse_any_flag) gets the event as is;
 // any other pane scrolls or selects in copy-mode.
 const mouseOn = `set -g mouse on
-bind -n MouseDown1Pane select-pane -t = \;send -M
+bind -n MouseDown1Pane select-pane -t = \; send -M
 bind -n MouseDrag1Border resize-pane -M
 bind -n MouseDrag1Pane if -F '#{||:#{pane_in_mode},#{mouse_any_flag}}' 'send -M' 'copy-mode -M'
 bind -n WheelUpPane if -F '#{||:#{pane_in_mode},#{mouse_any_flag}}' 'send -M' 'copy-mode -e'
 bind -n WheelDownPane if -F '#{||:#{pane_in_mode},#{mouse_any_flag}}' 'send -M'
-bind -T copy-mode WheelUpPane select-pane \;send -X -N 5 scroll-up
-bind -T copy-mode WheelDownPane select-pane \;send -X -N 5 scroll-down
-bind -T copy-mode MouseDown1Pane select-pane \;send -X clear-selection
-bind -T copy-mode MouseDrag1Pane select-pane \;send -X begin-selection
+bind -T copy-mode WheelUpPane select-pane \; send -X -N 5 scroll-up
+bind -T copy-mode WheelDownPane select-pane \; send -X -N 5 scroll-down
+bind -T copy-mode MouseDown1Pane select-pane \; send -X clear-selection
+bind -T copy-mode MouseDrag1Pane select-pane \; send -X begin-selection
 bind -T copy-mode MouseDragEnd1Pane send -X copy-selection-and-cancel
 bind -T copy-mode q send -X cancel
 bind -T copy-mode Escape send -X cancel
