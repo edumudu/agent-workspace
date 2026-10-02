@@ -153,6 +153,9 @@ func TestModelSwitchSupersededWhileWaitingForTheSendLockIsNeverTyped(t *testing.
 			t.Fatal(err)
 		}
 		next(t, sub.Diffs)
+		if req[0] == "a" {
+			host.waitHeld(t, "%3")
+		}
 	}
 	release()
 
@@ -201,6 +204,7 @@ func TestModelSwitchWaitingBehindAnotherPaneIsHeldIfTheSessionStartsRunning(t *t
 		t.Fatal(err)
 	}
 	next(t, sub.Diffs)
+	host.waitHeld(t, "%3")
 	if _, err := c.SwitchSession(context.Background(), "b", domain.SwitchModel, "sonnet"); err != nil {
 		t.Fatal(err)
 	}
