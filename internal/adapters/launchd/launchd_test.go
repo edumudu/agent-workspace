@@ -12,10 +12,16 @@ import (
 	"github.com/giovaniif/agent-workspace/internal/adapters/launchd"
 )
 
-type launchctl struct{ calls [][]string }
+type launchctl struct {
+	calls [][]string
+	fail  map[string]bool
+}
 
 func (l *launchctl) run(_ context.Context, name string, args ...string) error {
 	l.calls = append(l.calls, append([]string{name}, args...))
+	if l.fail[args[0]] {
+		return errors.New("launchctl " + args[0] + " failed")
+	}
 	return nil
 }
 
@@ -90,7 +96,23 @@ func TestLaunchdInstallTwiceChangesNothing(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if res.Changed || len(l.calls) != 0 {
+	if want := [][]string{{"launchctl", "print", "gui/501/dev.agentws.bridge.me-vps"}}; res.Changed || !reflect.DeepEqual(l.calls, want) {
+		t.Fatalf("result %+v calls %q", res, l.calls)
+	}
+}
+
+func TestLaunchdInstallLoadsAnUnchangedAgentThatIsNotLoaded(t *testing.T) {
+	dir := t.TempDir()
+	if _, err := launchd.Install(context.Background(), agent(dir), (&launchctl{fail: map[string]bool{"bootstrap": true}}).run); err == nil {
+		t.Fatal("a failed bootstrap was not reported")
+	}
+	l := &launchctl{fail: map[string]bool{"print": true}}
+	res, err := launchd.Install(context.Background(), agent(dir), l.run)
+	if err != nil {
+		t.Fatal(err)
+	}
+	last := l.calls[len(l.calls)-1]
+	if res.Changed || last[1] != "bootstrap" {
 		t.Fatalf("result %+v calls %q", res, l.calls)
 	}
 }
@@ -140,7 +162,56 @@ func TestLaunchdRemoveUnloadsAndDeletes(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(dir, a.Label+".plist")); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("plist still there: %v", err)
 	}
-	if want := [][]string{{"launchctl", "bootout", "gui/501/" + a.Label}}; !reflect.DeepEqual(l.calls, want) {
+	want := [][]string{{"launchctl", "print", "gui/501/" + a.Label}, {"launchctl", "bootout", "gui/501/" + a.Label}}
+	if !reflect.DeepEqual(l.calls, want) {
+		t.Fatalf("calls %q", l.calls)
+	}
+}
+
+func TestLaunchdRemoveKeepsThePlistWhenALoadedAgentWillNotUnload(t *testing.T) {
+	dir := t.TempDir()
+	a := agent(dir)
+	if _, err := launchd.Install(context.Background(), a, (&launchctl{}).run); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := launchd.Remove(context.Background(), a, (&launchctl{fail: map[string]bool{"bootout": true}}).run); err == nil {
+		t.Fatal("a failed bootout was not reported")
+	}
+	if _, err := os.Stat(filepath.Join(dir, a.Label+".plist")); err != nil {
+		t.Fatalf("plist removed though the agent may still run: %v", err)
+	}
+}
+
+func TestLaunchdRemoveDeletesThePlistOfAnAgentThatIsNotLoaded(t *testing.T) {
+	dir := t.TempDir()
+	a := agent(dir)
+	if _, err := launchd.Install(context.Background(), a, (&launchctl{}).run); err != nil {
+		t.Fatal(err)
+	}
+	l := &launchctl{fail: map[string]bool{"print": true, "bootout": true}}
+	if removed, err := launchd.Remove(context.Background(), a, l.run); err != nil || !removed {
+		t.Fatalf("removed %v err %v", removed, err)
+	}
+	if want := [][]string{{"launchctl", "print", "gui/501/" + a.Label}}; !reflect.DeepEqual(l.calls, want) {
+		t.Fatalf("calls %q", l.calls)
+	}
+}
+
+func TestLaunchdRemoveStopsWhenThePlistCannotBeChecked(t *testing.T) {
+	dir := t.TempDir()
+	a := agent(dir)
+	if _, err := launchd.Install(context.Background(), a, (&launchctl{}).run); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(dir, 0); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(dir, 0o755) })
+	l := &launchctl{}
+	if _, err := launchd.Remove(context.Background(), a, l.run); err == nil {
+		t.Fatal("an unreadable agent dir was not reported")
+	}
+	if len(l.calls) != 0 {
 		t.Fatalf("calls %q", l.calls)
 	}
 }
