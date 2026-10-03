@@ -3,6 +3,10 @@
 # (fakes_test.go, *_fake_test.go), whitespace-only and comment-only changes
 # are skipped: they carry no behavior to fail on base. The "test:" title comes
 # in TDD_PR_TITLE, an env var, so it is never interpolated into a command line.
+# why: "fails on base" can't tell whether the test came first, so every
+# non-merge commit is also checked: one that changes tests may not change
+# production code too, unless its subject starts with "refactor:" or "refactor(". Markdown
+# carries no behavior, so it never counts as production code here.
 set -euo pipefail
 base="$1"
 head="$2"
@@ -34,15 +38,46 @@ case "$title" in
     ;;
 esac
 
-files=$(git diff --name-only --diff-filter=AM "$base...$head" -- '*_test.go' '*/testdata/*' |
-  grep -Ev '(^|/)(fakes|[^/]*_fake)_test\.go$' || true)
-# why: in goldens and lint-comments fixtures a comment-shaped line is expected output or linter input, so only whitespace is ignored there.
-files=$(for f in $files; do
-  case $f in
-  (*.golden | *.go.txt) git diff --quiet --ignore-all-space --ignore-blank-lines "$base...$head" -- "$f" || echo "$f" ;;
-  (*) git diff --quiet --ignore-all-space --ignore-blank-lines -I '^[[:space:]]*(//|#)' "$base...$head" -- "$f" || echo "$f" ;;
-  esac
-done)
+# why: takes a diff range such as "a...b" or "c^ c", so the PR and each of its commits use the same rules.
+# The per-commit check passes AMR so a moved and edited test still counts; the
+# base run keeps AM because it copies files onto base and can't drop a rename's source.
+changed_tests() {
+  local f fs
+  # shellcheck disable=SC2086
+  fs=$(git diff --name-only --diff-filter="${2:-AM}" $1 -- '*_test.go' '*/testdata/*' |
+    grep -Ev '(^|/)(fakes|[^/]*_fake)_test\.go$' || true)
+  # why: in goldens and lint-comments fixtures a comment-shaped line is expected output or linter input, so only whitespace is ignored there.
+  for f in $fs; do
+    case $f in
+    # shellcheck disable=SC2086
+    (*.golden | *.go.txt) git diff --quiet --ignore-all-space --ignore-blank-lines $1 -- "$f" || echo "$f" ;;
+    # shellcheck disable=SC2086
+    (*) git diff --quiet --ignore-all-space --ignore-blank-lines -I '^[[:space:]]*(//|#)' $1 -- "$f" || echo "$f" ;;
+    esac
+  done
+}
+
+mixed=0
+while IFS= read -r c; do
+  subject=$(git log -1 --format=%s "$c")
+  case "$subject" in (refactor:* | refactor\(*) continue ;; esac
+  tests=$(changed_tests "$c^ $c" AMR)
+  [ -n "$tests" ] || continue
+  prod=$(git diff-tree --no-commit-id -r --name-only -z --no-renames "$c" | while IFS= read -r -d '' f; do
+    case "$f" in (*.md) continue ;; esac
+    is_test_path "$f" || echo "$f"
+  done)
+  [ -n "$prod" ] || continue
+  echo "tdd: commit $(git log -1 --format='%h %s' "$c") changes tests and production code together:"
+  printf "  %s\n" $tests $prod
+  mixed=1
+done < <(git rev-list --no-merges --reverse "$base..$head")
+if [ "$mixed" -ne 0 ]; then
+  echo "tdd: FAIL. Commit each failing test on its own, before the commit that makes it pass."
+  exit 1
+fi
+
+files=$(changed_tests "$base...$head")
 if [ -z "$files" ]; then
   echo "tdd: no added or changed test files or testdata (port fakes, whitespace-only and comment-only changes are exempt)"
   exit 0
