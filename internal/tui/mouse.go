@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"slices"
 	"strconv"
 	"strings"
 	"unicode"
@@ -23,7 +24,10 @@ const (
 	ownDisk         = "d:"
 )
 
-const reviewWheelStep = 3
+const (
+	reviewWheelStep = 3
+	listWheelStep   = 2
+)
 
 func LoadMouse(path string) (bool, error) {
 	var cfg struct {
@@ -82,9 +86,22 @@ func (m Model) wheel(delta int) (tea.Model, tea.Cmd) {
 		p.cursor = min(max(p.cursor+delta, 0), len(p.choices)-1)
 		m.picker = &p
 	default:
-		m.choose(m.index(m.selected) + delta)
+		_, off := m.listGeometry()
+		m.scroll, m.scrolled = off+delta*listWheelStep, true
+		_, m.scroll = m.listGeometry()
 	}
 	return m, nil
+}
+
+// why: a click selects a row the person is pointing at, so that row stays put
+// even though the selected session's extra lines move to it.
+func (m *Model) selectInPlace(id string) {
+	owners, off := m.listGeometry()
+	before := slices.Index(owners, ownSession+id) - off
+	m.choose(m.index(id))
+	owners, _ = m.listGeometry()
+	m.scroll, m.scrolled = slices.Index(owners, ownSession+id)-before, true
+	_, m.scroll = m.listGeometry()
 }
 
 func (m Model) click(x, y int) (tea.Model, tea.Cmd) {
@@ -131,7 +148,7 @@ func (m Model) click(x, y int) (tea.Model, tea.Cmd) {
 func (m Model) clickOwner(owner string, x int) (tea.Model, tea.Cmd) {
 	switch {
 	case strings.HasPrefix(owner, ownSession):
-		m.choose(m.index(strings.TrimPrefix(owner, ownSession)))
+		m.selectInPlace(strings.TrimPrefix(owner, ownSession))
 		return m, m.focus()
 	case strings.HasPrefix(owner, ownPick):
 		i, _ := strconv.Atoi(strings.TrimPrefix(owner, ownPick))

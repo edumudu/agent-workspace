@@ -342,11 +342,11 @@ func TestWorktreesRemovedWorktreeLeavesTheTableAtOnce(t *testing.T) {
 func TestWorktreesRemovedByCleanupLeaveTheSidebarToo(t *testing.T) {
 	st := fixture(1, 2)
 	m := newModel(&st, nil)
-	if out := screen(m); !strings.Contains(out, "web:part-2") {
-		t.Fatalf("fixture sidebar lacks the worktree:\n%s", out)
+	if out := screen(m); !strings.Contains(out, "2 worktrees") {
+		t.Fatalf("fixture sidebar does not count both worktrees:\n%s", out)
 	}
 	m = update(m, tui.DiffMsg(rpc.Diff{Seq: 3, RemovedWorktree: "w01-1"}))
-	if out := screen(m); strings.Contains(out, "web:part-2") || !strings.Contains(out, "api:part-1") {
+	if out := screen(m); !strings.Contains(out, "1 worktree ") {
 		t.Errorf("sidebar after the removal:\n%s", out)
 	}
 }

@@ -133,21 +133,12 @@ func (m Model) mainScreen() (lines, owners []string) {
 	if need > 0 {
 		right = []piece{{s.need, fmt.Sprintf("%d need you", need)}}
 	}
-	lines = append(lines, m.line(false, []piece{{s.header, " SESSIONS"}}, right))
+	lines = append(lines, m.rule("SESSIONS", right))
 
 	body, selRow, bodyOwners := m.body()
 	footer := append(m.cardLines(), m.footer()...)
-	room := m.height - len(lines) - len(footer)
-	if room < 0 {
-		room = 0
-	}
-	off := 0
-	if selRow >= room {
-		off = selRow - room + 3
-	}
-	if off > len(body)-room {
-		off = max(0, len(body)-room)
-	}
+	room := max(m.height-len(lines)-len(footer), 0)
+	off := m.listOffset(selRow, len(body), room)
 	for len(bodyOwners) < len(body) {
 		bodyOwners = append(bodyOwners, "")
 	}
@@ -168,6 +159,27 @@ func (m Model) mainScreen() (lines, owners []string) {
 	return lines, owners
 }
 
+// why: after the wheel scrolls, the list stays where it was put until a key
+// moves the selection; otherwise it follows the selection.
+func (m Model) listOffset(selRow, rows, room int) int {
+	off := 0
+	switch {
+	case m.scrolled:
+		off = m.scroll
+	case selRow >= room:
+		off = selRow - room + 1 + min(2, max(room-1, 0))
+	}
+	return min(max(off, 0), max(0, rows-room))
+}
+
+// why: the wheel and clicks need the list's geometry without drawing it.
+func (m Model) listGeometry() (owners []string, off int) {
+	top := 1 + len(m.limitLines()) + 2
+	body, selRow, owners := m.body()
+	room := max(m.height-top-len(m.cardLines())-len(m.footer()), 0)
+	return owners, m.listOffset(selRow, len(body), room)
+}
+
 func (m Model) view(content string) tea.View {
 	v := tea.NewView(content)
 	v.AltScreen = true
@@ -179,7 +191,7 @@ func (m Model) view(content string) tea.View {
 
 func (m Model) topBar() string {
 	s := m.styles
-	left := []piece{{s.bar, "▌"}, {s.brand, "agentws"}}
+	left := []piece{{s.brand, " agentws"}}
 	for _, slot := range []struct{ name, val string }{{"claude", m.top.Claude}, {"codex", m.top.Codex}} {
 		if slot.val != "" {
 			left = append(left, piece{s.bold, "  " + slot.name + " "}, piece{s.text, slot.val})
@@ -226,7 +238,7 @@ func (m Model) body() ([]string, int, []string) {
 	for _, e := range m.entries {
 		own := ownSession + e.session.ID
 		if e.groupStart {
-			out = append(out, "", m.line(false, []piece{{s.sub, " " + taskLabel(e.task)}}, []piece{{s.sub, strings.Join(e.groupRepos, " ")}}))
+			out = append(out, "", m.line(false, m.taskHeader(e.task), []piece{{s.dim, strings.Join(e.groupRepos, " ")}}))
 			owners = append(owners, "", own)
 		}
 		sel := e.session.ID == m.selected
@@ -249,50 +261,31 @@ func (m Model) sessionLines(e entry, sel bool) []string {
 		bar = piece{s.bar, "▌"}
 	}
 	x := e.session
-	glyph := m.glyph(x)
-	tag := piece{s.blue.Bold(true), "CC"}
+	tag := piece{s.blue, "CC"}
 	if x.Harness == domain.HarnessCodex {
-		tag = piece{s.teal.Bold(true), "CX"}
+		tag = piece{s.teal, "CX"}
 	}
 	name := domain.NameFor(e.task, entryPRs(e))
 	if name == "" {
 		name = x.ID
 	}
+	right := m.muteMarker(x)
+	if label := rowPortLabel(e.ports()); label != "" {
+		right = append(right, piece{s.teal, label + " "})
+	}
 	out := []string{m.line(sel,
-		[]piece{bar, glyph, {s.text, fmt.Sprintf(" %d ", e.num)}, {s.bold, name}},
-		append(m.muteMarker(x), tag, piece{s.text, " "}))}
-
-	detail := strings.TrimSpace(x.Model + " " + x.Effort)
-	trees := "root only"
-	if n := len(x.WorktreeIDs); n > 0 {
-		trees = count(n, "worktree")
+		[]piece{bar, m.glyph(x), {s.dim, fmt.Sprintf(" %d ", e.num)}, {s.bold, name}},
+		append(right, tag, piece{s.text, " "}))}
+	if sel {
+		trees := "root only"
+		if n := len(e.worktrees); n > 0 {
+			trees = count(n, "worktree")
+		}
+		facts := slices.DeleteFunc([]string{x.Model, x.Effort, trees}, func(f string) bool { return f == "" })
+		out = append(out, m.line(sel, []piece{bar, {s.dim, "    " + strings.Join(facts, " · ")}}, m.switchMarks(x)))
 	}
-	var open []piece
-	if label := portLabel(e.ports()); label != "" {
-		open = []piece{{s.teal, label}, {s.text, " "}}
-	}
-	facts := []string{detail}
-	if x.Usage.HasContext {
-		facts = append(facts, fmt.Sprintf("ctx %d%%", x.Usage.ContextLeftPercent))
-	}
-	facts = append(facts, trees)
-	row := strings.Join(slices.DeleteFunc(facts, func(f string) bool { return f == "" }), "  ")
-	out = append(out, m.line(sel, []piece{bar, {s.sub, "    " + row}}, append(open, m.switchMarks(x)...)))
 	if m.collapsed[x.ID] {
 		return out
-	}
-	for _, w := range e.worktrees {
-		pr := piece{s.dim, "–"}
-		if w.PR != nil {
-			pr = piece{s.sub, fmt.Sprintf("#%d", w.PR.Number)}
-		}
-		right := []piece{pr, {s.text, "   "}}
-		if label := portLabel(w.Ports); label != "" {
-			right = append([]piece{{s.teal, label + " "}}, right...)
-		}
-		out = append(out, m.line(sel,
-			[]piece{bar, {s.dim, "     └ "}, {s.text, worktreeLabel(w)}},
-			right))
 	}
 	return append(out, m.subagentLines(x.ID, sel)...)
 }
@@ -324,7 +317,7 @@ func (m Model) helpLines() []string {
 		{"space", "next waiting"},
 		{"tab", "last session"},
 		{"j / k", "move"},
-		{"o", "expand / collapse worktrees"},
+		{"o", "show / hide subagents"},
 		{"m", "mute session"},
 		{"R", "rename and pin the name"},
 		{"A", "unpin (name is automatic)"},
@@ -366,25 +359,22 @@ func (m Model) footer() []string {
 	if label := portLabel(ports); label != "" {
 		counts += " · ports " + strings.ReplaceAll(label, ":", "")
 	}
-	right := []piece{{s.sub, counts + " "}}
 	left, withCounts := m.statusLeft()
-	switch {
-	case m.status != "":
+	var right []piece
+	if withCounts {
+		left = []piece{{s.dim, " " + counts}}
+		if ansi.StringWidth(counts)+16 <= m.width {
+			right = []piece{{s.bold, "␣"}, {s.dim, " next waiting "}}
+		}
+	}
+	if m.status != "" {
 		right = []piece{{s.peach, m.status + " "}}
-	case !withCounts:
-		right = nil
 	}
-	return []string{
-		m.keyRow("n", "new session", "r", "review"),
-		m.keyRow("t", "shell", "e", "nvim"),
-		m.keyRow("w", "worktrees", "␣", "next waiting"),
-		m.line(false, left, right),
+	var hints []piece
+	for _, h := range [][2]string{{"n", "new"}, {"r", "review"}, {"t", "shell"}, {"e", "nvim"}, {"?", "keys"}} {
+		hints = append(hints, piece{s.bold, " " + h[0]}, piece{s.dim, " " + h[1] + " "})
 	}
-}
-
-func (m Model) keyRow(k1, what1, k2, what2 string) string {
-	s := m.styles
-	return m.line(false, []piece{{s.bold, " " + k1}, {s.sub, fmt.Sprintf(" %-14s", what1)}, {s.bold, k2}, {s.sub, " " + what2}}, nil)
+	return []string{m.line(false, hints, nil), m.line(false, left, right)}
 }
 
 func (m Model) statusLeft() (left []piece, withCounts bool) {
@@ -397,10 +387,10 @@ func (m Model) statusLeft() (left []piece, withCounts bool) {
 	}
 	if i := m.index(m.selected); i >= 0 {
 		if label := portLabel(m.entries[i].ports()); label != "" {
-			return []piece{{s.badge, " SESSION "}, {s.teal, " " + label}, {s.sub, " · K kill"}}, false
+			return []piece{{s.teal, " " + label}, {s.dim, " · K kill"}}, false
 		}
 	}
-	return []piece{{s.badge, " SESSION "}, {s.sub, " j/k move · ? keys"}}, true
+	return nil, true
 }
 
 func taskLabel(t domain.Task) string {
@@ -419,6 +409,24 @@ func taskLabel(t domain.Task) string {
 		return title
 	}
 	return t.ID
+}
+
+func (m Model) taskHeader(t domain.Task) []piece {
+	s := m.styles
+	title := strings.TrimPrefix(taskLabel(t), t.Ref+" · ")
+	if t.Ref == "" || title == t.Ref {
+		return []piece{{s.sub, " " + title}}
+	}
+	return []piece{{s.dim, " " + t.Ref + " "}, {s.sub, title}}
+}
+
+func (m Model) rule(title string, right []piece) string {
+	s := m.styles
+	used := len(title) + 2
+	for _, p := range right {
+		used += ansi.StringWidth(p.s) + 1
+	}
+	return m.line(false, []piece{{s.dim, " " + title + " " + strings.Repeat("─", max(m.width-used-1, 0))}}, right)
 }
 
 func repoName(w domain.Worktree) string {
@@ -457,7 +465,7 @@ func (m Model) cardLines() []string {
 	s := m.styles
 	e := m.entries[i]
 	card := domain.BuildSessionCard(e.task, e.session, e.worktrees, m.events[e.session.ID])
-	out := []string{"", m.line(false, []piece{{s.header, " CARD"}}, nil)}
+	out := []string{"", m.rule("CARD", nil)}
 
 	var title []string
 	for _, part := range []string{card.Ref, card.Title} {
@@ -465,12 +473,14 @@ func (m Model) cardLines() []string {
 			title = append(title, part)
 		}
 	}
-	label := strings.Join(title, " · ")
+	label := strings.Join(title, " ")
 	if label == "" {
 		label = e.session.ID
 	}
-	out = append(out, m.line(false, []piece{{s.bold, " " + label}}, nil))
-	out = append(out, m.nameLines(cleanText(card.Name))...)
+	out = append(out, m.wrapped(" ", s.bold, label)...)
+	if name := cleanText(card.Name); name != label && name != cleanText(card.Title) {
+		out = append(out, m.nameLines(name)...)
+	}
 
 	if len(card.PRs) > 0 {
 		chips := []piece{{s.dim, " PRs "}}
@@ -534,14 +544,17 @@ func (m Model) nameLines(name string) []string {
 	if name == "" {
 		return nil
 	}
-	const lead = " name  "
+	return m.wrapped(" name  ", m.styles.text, name)
+}
+
+func (m Model) wrapped(lead string, st lipgloss.Style, text string) []string {
 	var out []string
-	for i, part := range strings.Split(ansi.Wrap(name, max(m.width-len(lead), 1), ""), "\n") {
+	for i, part := range strings.Split(ansi.Wrap(text, max(m.width-len(lead), 1), ""), "\n") {
 		prefix := strings.Repeat(" ", len(lead))
 		if i == 0 {
 			prefix = lead
 		}
-		out = append(out, m.line(false, []piece{{m.styles.dim, prefix}, {m.styles.text, part}}, nil))
+		out = append(out, m.line(false, []piece{{m.styles.dim, prefix}, {st, part}}, nil))
 	}
 	return out
 }

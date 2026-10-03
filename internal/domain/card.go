@@ -1,6 +1,9 @@
 package domain
 
-import "strings"
+import (
+	"path"
+	"strings"
+)
 
 const (
 	CardActions      = 3
@@ -55,13 +58,23 @@ func lastActions(events []SessionEvent) []string {
 		if ev.Kind != EventPreToolUse {
 			continue
 		}
-		label := ev.Tool
-		if ev.Detail != "" {
-			label += ": " + ev.Detail
-		}
-		out = append(out, label)
+		out = append(out, actionLabel(ev.Tool, ev.Detail))
 	}
 	return out
+}
+
+var fileTools = map[string]bool{"Read": true, "Write": true, "Edit": true, "MultiEdit": true, "NotebookEdit": true}
+
+func actionLabel(tool, detail string) string {
+	switch {
+	case detail == "":
+		return tool
+	case tool == "Bash":
+		return detail
+	case fileTools[tool]:
+		return tool + " " + path.Base(detail)
+	}
+	return tool + ": " + detail
 }
 
 func waitingOn(state AgentState, events []SessionEvent) string {

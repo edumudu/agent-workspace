@@ -52,7 +52,7 @@ func TestSessionCardShowsTheTaskAndItsPullRequests(t *testing.T) {
 
 func TestSessionCardListsTheLastThreeToolCallsNewestFirst(t *testing.T) {
 	card := BuildSessionCard(cardTask, Session{ID: "s1"}, nil, fixtureLog("s1"))
-	want := []string{"Bash: git status", "Bash: go test ./...", "Edit: internal/upload.go"}
+	want := []string{"git status", "go test ./...", "Edit upload.go"}
 	if !reflect.DeepEqual(card.Actions, want) {
 		t.Fatalf("actions = %q, want %q", card.Actions, want)
 	}
@@ -65,9 +65,29 @@ func TestSessionCardActionWithoutDetailIsJustTheTool(t *testing.T) {
 	}
 }
 
+func TestSessionCardActionsNameTheCommandOrTheFile(t *testing.T) {
+	tests := []struct {
+		name, tool, detail, want string
+	}{
+		{"a shell command is the command", "Bash", "gh pr create", "gh pr create"},
+		{"a file tool keeps the file name only", "Write", "/tmp/claude-1000/scratch/project/Main.dc.html", "Write Main.dc.html"},
+		{"a relative path keeps the file name only", "Read", "internal/tui/view.go", "Read view.go"},
+		{"other tools keep their detail", "Grep", "func main", "Grep: func main"},
+		{"a shell call without a command is the tool", "Bash", "", "Bash"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			log := withEvent(fixtureLog("s1"), SessionEvent{Kind: EventPreToolUse, Tool: tt.tool, Detail: tt.detail})
+			if got := BuildSessionCard(cardTask, Session{ID: "s1"}, nil, log).Actions[0]; got != tt.want {
+				t.Fatalf("action = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestSessionCardIgnoresOtherSessionsEvents(t *testing.T) {
 	log := append(fixtureLog("s1"), SessionEvent{SessionID: "other", Kind: EventPreToolUse, Tool: "Bash", Detail: "rm"})
-	if got := BuildSessionCard(cardTask, Session{ID: "s1"}, nil, log).Actions[0]; got != "Bash: git status" {
+	if got := BuildSessionCard(cardTask, Session{ID: "s1"}, nil, log).Actions[0]; got != "git status" {
 		t.Fatalf("action = %q", got)
 	}
 }

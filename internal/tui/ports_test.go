@@ -38,27 +38,11 @@ func lineWith(t *testing.T, screen, needle string) string {
 	return ""
 }
 
-func TestPortsShowOnTheWorktreeRowAndTheSessionHeader(t *testing.T) {
-	st := portsFixture()
-	m := newPortsModel(&st, &fakeKiller{})
-	out := screen(m)
-
-	if row := lineWith(t, out, "api:part-1"); !strings.Contains(row, ":8081") || strings.Contains(row, ":3000") {
-		t.Errorf("first worktree row = %q, want only :8081", row)
-	}
-	if row := lineWith(t, out, "web:part-2"); !strings.Contains(row, ":3000") || !strings.Contains(row, ":9229") {
-		t.Errorf("second worktree row = %q, want :3000 and :9229", row)
-	}
-	if header := lineWith(t, out, "ctx 64%"); !strings.Contains(header, ":3000 :8081 :9229") {
-		t.Errorf("session header = %q, want every port of the session, sorted", header)
-	}
-}
-
 func TestPortsShowOnceWhenIPv4AndIPv6ListenOnIt(t *testing.T) {
 	st := fixture(1, 1)
 	st.Worktrees[0].Ports = []domain.Port{{Port: 8081, PID: 1, PGID: 1}, {Port: 8081, PID: 2, PGID: 2}}
 	out := screen(newPortsModel(&st, &fakeKiller{}))
-	if header := lineWith(t, out, "ctx 64%"); strings.Count(header, ":8081") != 1 {
+	if header := lineWith(t, out, "session 1 change"); strings.Count(header, ":8081") != 1 {
 		t.Errorf("session header = %q, want :8081 once", header)
 	}
 }
