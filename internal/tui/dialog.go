@@ -283,7 +283,7 @@ func (m Model) listDirs() tea.Cmd {
 		return nil
 	}
 	dir := d.typed().Dir
-	if d.listing.dir == dir {
+	if d.listing.dir == dir && !d.listing.failed {
 		return nil
 	}
 	d.listing = listing{dir: dir}
