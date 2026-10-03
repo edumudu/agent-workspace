@@ -129,6 +129,18 @@ func TestTranscriptResultWhoseCallCameBeforeTheCursorIsItsOwnToolMessage(t *test
 	}
 }
 
+func TestTranscriptToolResultInANonHumanEntryStillFinishesItsCall(t *testing.T) {
+	data := strings.Join([]string{
+		`{"type":"assistant","uuid":"a1","promptId":"p1","message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_1","name":"Bash","input":{"command":"go test ./..."}}]}}`,
+		`{"type":"user","uuid":"u2","promptId":"p1","origin":{"kind":"task-notification"},"message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_1","content":"ok","is_error":false},{"type":"text","text":"not typed by the user"}]}}`,
+		``,
+	}, "\n")
+	messages, _ := claude.ParseTranscript([]byte(data), 0)
+	if len(messages) != 1 || messages[0].Tool.Status != domain.ToolDone || messages[0].Text != "ok" {
+		t.Fatalf("messages = %+v", messages)
+	}
+}
+
 func TestTranscriptToolSummaries(t *testing.T) {
 	cases := []struct {
 		name, input, want string
