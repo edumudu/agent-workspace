@@ -1,6 +1,7 @@
 package tui_test
 
 import (
+	"errors"
 	"strings"
 	"testing"
 
@@ -125,5 +126,15 @@ func TestNewSessionPathEmptiedGoesBackToTheWorkspacePicker(t *testing.T) {
 	pressCmd(m, keyEnter)
 	if got := submitted(t, c).Workspace; !strings.HasPrefix(got, "/src/") && got != "/code/shop" {
 		t.Fatalf("workspace %q", got)
+	}
+}
+
+func TestNewSessionPathRetriesAFailedListingOnTheNextEdit(t *testing.T) {
+	m, c := pathModel(t, rpc.State{})
+	c.err, c.failOn = errors.New("daemon busy"), rpc.MethodWorkspaceDirs
+	m = typePath(m, "./")
+	c.err = nil
+	if out := screen(typePath(m, "w")); !strings.Contains(out, "web/") {
+		t.Fatalf("a failed listing is never retried:\n%s", out)
 	}
 }
