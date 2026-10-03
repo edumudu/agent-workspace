@@ -98,18 +98,23 @@ GO
 }
 
 # why: compares commit $1 with commit $2 and fills two arrays: changed (test
-# files that carry a change, at their new path) and moved_from (the old path of
-# each renamed one, which the base run must remove so the two don't collide).
+# files that carry a change, at their new path) and removed (test paths gone in
+# $2: the old path of a rename, or a deleted file, which git reports instead of
+# a rename when a moved test was rewritten). The base run removes them so an
+# old copy can't collide with the new one.
 # In goldens and lint-comments fixtures a comment-shaped line is expected
 # output or linter input, so only whitespace amount is ignored there.
 changed_tests() {
   local old="$1" new="$2" status from to
   changed=()
-  moved_from=()
+  removed=()
   while IFS= read -r -d '' status; do
     IFS= read -r -d '' from
     to="$from"
-    case "$status" in (R*) IFS= read -r -d '' to ;; esac
+    case "$status" in
+    (R*) IFS= read -r -d '' to ;;
+    (D) removed+=("$from"); continue ;;
+    esac
     case "$to" in (fakes_test.go | */fakes_test.go | *_fake_test.go) continue ;; esac
     if [ "$status" != A ]; then
       case "$to" in
@@ -122,8 +127,8 @@ changed_tests() {
       esac
     fi
     changed+=("$to")
-    [ "$from" = "$to" ] || moved_from+=("$from")
-  done < <(git diff --name-status -z -M --diff-filter=AMR "$old" "$new" -- '*_test.go' '*/testdata/*')
+    [ "$from" = "$to" ] || removed+=("$from")
+  done < <(git diff --name-status -z -M --diff-filter=AMRD "$old" "$new" -- '*_test.go' '*/testdata/*')
 }
 
 mixed=0
@@ -155,7 +160,7 @@ fi
 
 git checkout --quiet --detach "$base"
 git checkout "$head" -- "${changed[@]}"
-for f in ${moved_from[@]+"${moved_from[@]}"}; do
+for f in ${removed[@]+"${removed[@]}"}; do
   rm -f "$f"
 done
 
