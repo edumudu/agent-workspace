@@ -69,12 +69,10 @@ Claude Code and Codex load an `AGENTS.md` (here also `CLAUDE.md`, a symlink to i
 
 ## Comments
 
-- **No comments by default.** Code explains itself through names and tests. A comment must state a reason a reader could not get from the code: a hidden constraint, a specific bug or external quirk it works around, or behavior that would surprise. "What" comments, docs that restate a signature (exported identifiers included) and field docs that restate a type are not allowed.
-- Every comment carries a marker: `// why: ...` for a constraint or surprising behavior, `// bug: ...` for a workaround of a concrete bug or tool quirk. This applies to doc comments, package docs, trailing comments and `/* */` blocks; in a multi-line comment only the first line needs it. Shell, YAML and Lua comments follow the same rule with `# why:` / `-- why:`.
-- Exempt: tool directives (`//go:`, `//line`, `//export`, `//nolint:` with a reason), `// TODO(#12): ...`, `// Code generated ... DO NOT EDIT.` and license headers.
-- `scripts/lint-comments` fails `make lint` on any Go comment without a marker. See ADR 0020.
-- A TODO must reference an issue: `// TODO(#12): ...`.
-- A `//nolint:` directive needs a reason after it: `//nolint:gosec // why: ...`.
+- **No comments, anywhere.** Not in Go (tests included), shell, Lua, YAML, SQL, Makefiles or e2e `.txtar` scripts. No doc comments, no `why:`, no TODOs. Code explains itself through names and tests.
+- A constraint or tool quirk the code cannot show goes into a test whose name states it, and into the commit message that introduced the workaround. Usage and design notes go in the scoped `AGENTS.md`, an ADR or the README. Open work goes in a GitHub issue.
+- Only tool directives remain: `//go:` lines, `//line`, `//export`, a bare `//nolint:<linters>` (no reason after it), `// Code generated ... DO NOT EDIT.`, a shebang, `# shellcheck` and `# yaml-language-server:` lines.
+- `scripts/lint-comments` fails `make lint` on any other comment. See ADR 0043.
 
 ## Working an issue
 
