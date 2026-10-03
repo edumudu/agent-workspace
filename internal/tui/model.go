@@ -48,6 +48,8 @@ type Options struct {
 	// why: with no command, or when the popup fails, n opens the dialog inline.
 	DialogPopup     rpc.ClientPopupParams
 	HarnessDefaults map[domain.Harness]Defaults
+	// why: a harness whose spec lists no models, such as omp, cycles these instead of a text field.
+	ModelChoices map[domain.Harness][]string
 	// why: the popup's own program: the dialog fills the screen from the start and
 	// the program ends when it closes.
 	NewSessionOnly bool

@@ -26,35 +26,93 @@ func (m Model) dialogScreen() string {
 // why: margin is how far right the dialog is drawn, which a click's column has to undo.
 func (m Model) dialogScreenLines() (lines, owners []string, margin int) {
 	f := m
-	f.width = min(m.width-4, dialogMaxWidth)
+	f.width = max(min(m.width-4, dialogMaxWidth), 1)
 	lines, keep, owners := f.dialogLines()
+	formLen := len(lines)
+	formRow, formCol := 0, 0
+	if m.dialog != nil {
+		formRow, formCol = m.dialog.menuAt, m.dialog.menuCol
+	}
 	for len(owners) < len(lines) {
 		owners = append(owners, "")
 	}
 	lines = dialogViewport(lines, keep, m.height)
 	owners = dialogViewport(owners, keep, m.height)
+	row, ok := menuScreenRow(formRow, formLen, keep, m.height)
 	margin = max((m.width-f.width)/2, 0)
+	span := margin + f.width
 	pad := strings.Repeat(" ", margin)
 	for i, l := range lines {
+		if gap := f.width - ansi.StringWidth(l); gap > 0 {
+			l += strings.Repeat(" ", gap)
+		}
 		lines[i] = pad + l
 	}
+	lead := 0
 	if len(lines) < m.height {
-		return append([]string{""}, lines...), append([]string{""}, owners...), margin
+		lead = 1
+		blank := strings.Repeat(" ", span)
+		lines = append([]string{blank}, lines...)
+		owners = append([]string{""}, owners...)
+		for len(lines) < m.height {
+			lines = append(lines, blank)
+			owners = append(owners, "")
+		}
+	}
+	if ok {
+		lines, owners = m.overlayMenu(lines, owners, row+lead, margin+formCol)
 	}
 	return lines, owners, margin
 }
 
+func dialogWindow(n, keep, height int) (start int, clipped bool) {
+	if height <= 0 || n <= height {
+		return 0, false
+	}
+	if height < 3 {
+		return n - height, true
+	}
+	room := height - 2
+	body := n - 2
+	return min(max(keep-1-room/2, 0), max(body-room, 0)), true
+}
+
 func dialogViewport[T any](lines []T, keep, height int) []T {
-	if height <= 0 || len(lines) <= height {
+	start, clipped := dialogWindow(len(lines), keep, height)
+	if !clipped {
 		return lines
 	}
 	if height < 3 {
-		return lines[len(lines)-height:]
+		return lines[start:]
 	}
-	title, body, actions := lines[0], lines[1:len(lines)-1], lines[len(lines)-1]
 	room := height - 2
-	start := min(max(keep-1-room/2, 0), len(body)-room)
+	title, body, actions := lines[0], lines[1:len(lines)-1], lines[len(lines)-1]
 	return append(append([]T{title}, body[start:start+room]...), actions)
+}
+
+func menuScreenRow(formRow, formLen, keep, height int) (int, bool) {
+	if formRow < 0 || formRow >= formLen {
+		return 0, false
+	}
+	start, clipped := dialogWindow(formLen, keep, height)
+	if !clipped {
+		return formRow, true
+	}
+	if height < 3 {
+		return formRow - start, true
+	}
+	if formRow == 0 {
+		return 0, true
+	}
+	if formRow == formLen-1 {
+		return height - 1, true
+	}
+	room := height - 2
+	body := formRow - 1
+	if body < start || body >= start+room {
+		return 0, false
+	}
+	return 1 + body - start, true
 }
 
 func (m Model) dialogLines() ([]string, int, []string) {
@@ -102,9 +160,13 @@ func (m Model) dialogLines() ([]string, int, []string) {
 	for len(owners) < len(out) {
 		owners = append(owners, "")
 	}
+	origin := len(out)
 	pick := m.pickers(&keep, len(out))
 	out = append(out, pick...)
 	owners = append(owners, m.pickerOwners(len(pick))...)
+	menuRow, menuCol := modelMenuOrigin(m.width)
+	d.menuAt = origin + menuRow + 1
+	d.menuCol = menuCol
 	out = append(out, "")
 	out = append(out, m.startsAt()...)
 	if lines := m.adviceBox(); len(lines) > 0 {
@@ -121,7 +183,13 @@ func (m Model) dialogLines() ([]string, int, []string) {
 	}
 	hint := []piece{{s.dim, " ⇥ next · ←/→ change"}}
 	buttons := []piece{{s.sub, "esc cancel"}, {s.text, "  "}, {s.badge, " ⏎ create "}, {s.text, " "}}
-	return append(out, m.line(false, hint, buttons)), keep, owners
+	out = append(out, m.line(false, hint, buttons))
+	for i, l := range out {
+		if gap := w - ansi.StringWidth(l); gap > 0 {
+			out[i] += strings.Repeat(" ", gap)
+		}
+	}
+	return out, keep, owners
 }
 
 // why: wide dialogs put the three pickers side by side, so the column picks the field.
@@ -155,14 +223,15 @@ func (m Model) box(w int, content []piece, active bool) []string {
 	if active {
 		border = m.styles.bar
 	}
-	inner := max(w-4, 1)
+	span := max(w, 4)
+	textW := span - 4
 	var used int
 	var fitted []piece
 	for _, p := range content {
 		pw := ansi.StringWidth(p.s)
-		if used+pw > inner-1 {
-			fitted = append(fitted, piece{p.st, ansi.Truncate(p.s, max(inner-1-used, 0), "…")})
-			used = inner - 1
+		if used+pw > textW {
+			fitted = append(fitted, piece{p.st, ansi.Truncate(p.s, max(textW-used, 0), "…")})
+			used = textW
 			break
 		}
 		fitted = append(fitted, p)
@@ -172,11 +241,12 @@ func (m Model) box(w int, content []piece, active bool) []string {
 	for _, p := range fitted {
 		mid += p.st.Render(p.s)
 	}
-	mid += strings.Repeat(" ", max(inner-1-used, 0)) + border.Render("│")
+	mid += strings.Repeat(" ", max(textW-used, 0)) + border.Render("│")
+	rule := span - 3
 	return []string{
-		border.Render(" ╭" + strings.Repeat("─", inner) + "╮"),
+		border.Render(" ╭" + strings.Repeat("─", rule) + "╮"),
 		mid,
-		border.Render(" ╰" + strings.Repeat("─", inner) + "╯"),
+		border.Render(" ╰" + strings.Repeat("─", rule) + "╯"),
 	}
 }
 
@@ -192,20 +262,7 @@ func (m Model) pickers(keep *int, at int) []string {
 		}
 		harness = append(harness, piece{s.text, "  "})
 	}
-	model := d.model
-	if model == "" {
-		model = defaultLabel(m.defaultModel())
-	}
-	modelValue := []piece{{s.bold, "‹ " + model + " ›"}}
-	if d.typedModel() {
-		modelValue = []piece{{s.bold, d.model}}
-		if d.field == fieldModel {
-			modelValue = append(modelValue, piece{s.text, "▏"})
-		}
-		if d.model == "" {
-			modelValue = append(modelValue, piece{s.dim, model})
-		}
-	}
+	modelValue := m.modelPieces()
 	effort := d.efforts[d.effort]
 	if effort == "" {
 		effort = defaultLabel(m.defaultEffort())
@@ -243,11 +300,164 @@ func (m Model) pickers(keep *int, at int) []string {
 }
 
 func padTo(width int, ps ...piece) []piece {
+	var out []piece
 	used := 0
 	for _, p := range ps {
-		used += ansi.StringWidth(p.s)
+		if used >= width {
+			break
+		}
+		pw := ansi.StringWidth(p.s)
+		if used+pw > width {
+			out = append(out, piece{p.st, ansi.Truncate(p.s, width-used, "…")})
+			used = width
+			break
+		}
+		out = append(out, p)
+		used += pw
 	}
-	return append(ps, piece{lipgloss.NewStyle(), strings.Repeat(" ", max(width-used, 0))})
+	if used < width {
+		out = append(out, piece{lipgloss.NewStyle(), strings.Repeat(" ", width-used)})
+	}
+	return out
+}
+
+func (m Model) modelPieces() []piece {
+	d := m.dialog
+	s := m.styles
+	if d.typing {
+		shown := d.model
+		ps := []piece{{s.bold, shown}}
+		if d.field == fieldModel {
+			ps = append(ps, piece{s.text, "▏"})
+		}
+		return ps
+	}
+	label := d.model
+	if label == "" {
+		label = defaultLabel(m.defaultModel())
+	}
+	return []piece{{s.bold, "‹ " + label + " ›"}}
+}
+
+func modelMenuOrigin(width int) (row, col int) {
+	if width < dialogColumnsFrom {
+		return 3, 1
+	}
+	return 1, (width-1)/3 + 1
+}
+
+// why: nvim opens the completion menu above the cursor when the rows below the field would run off the screen.
+func placeMenu(row, box, height int) int {
+	if box > height {
+		box = height
+	}
+	if row < 0 {
+		row = 0
+	}
+	if row+box <= height {
+		return row
+	}
+	above := row - 1 - box
+	if above >= 0 {
+		return above
+	}
+	return max(height-box, 0)
+}
+
+func (m Model) overlayMenu(lines, owners []string, row, col int) ([]string, []string) {
+	d := m.dialog
+	if d == nil || row < 0 {
+		return lines, owners
+	}
+	shown, selected := d.menuRows()
+	if len(shown) == 0 {
+		return lines, owners
+	}
+	width := 0
+	for _, l := range lines {
+		width = max(width, ansi.StringWidth(l))
+	}
+	if width == 0 {
+		width = max(m.width, 1)
+	}
+	for len(lines) < max(m.height, 0) {
+		lines = append(lines, strings.Repeat(" ", width))
+	}
+	for len(owners) < len(lines) {
+		owners = append(owners, "")
+	}
+	box := m.menuBox(shown, selected, max(width-col, 1))
+	row = placeMenu(row, len(box), len(lines))
+	mark := ownField + strconv.Itoa(int(fieldModel))
+	for i, b := range box {
+		at := row + i
+		if at < 0 || at >= len(lines) {
+			continue
+		}
+		painted := paintOver(lines[at], b, col)
+		if gap := width - ansi.StringWidth(painted); gap > 0 {
+			painted += strings.Repeat(" ", gap)
+		}
+		lines[at] = painted
+		owners[at] = mark
+	}
+	return lines, owners
+}
+
+func paintOver(line, patch string, col int) string {
+	width := ansi.StringWidth(line)
+	pw := ansi.StringWidth(patch)
+	if col > width {
+		line += strings.Repeat(" ", col-width)
+		width = col
+	}
+	left := ansi.Truncate(line, col, "")
+	right := ""
+	if end := col + pw; end < width {
+		right = ansi.Cut(line, end, width)
+	}
+	return left + patch + right
+}
+
+func (m Model) menuInner(room int) int {
+	inner := 8
+	if m.dialog != nil {
+		for _, id := range m.dialog.modelLists[m.dialog.picked()] {
+			inner = max(inner, ansi.StringWidth(id)+2)
+		}
+	}
+	return min(inner, max(room-2, 1))
+}
+
+func (m Model) menuBox(shown []string, selected, room int) []string {
+	t := m.opts.Theme
+	inner := m.menuInner(room)
+	edge := m.styles.dim
+	text := m.styles.text
+	hot := m.styles.bold.Background(lipgloss.Color(t.Selected))
+	rule := func(left, fill, right string) string {
+		return edge.Render(left + strings.Repeat(fill, inner) + right)
+	}
+	out := []string{rule("╭", "─", "╮")}
+	for i, id := range shown {
+		mark := "  "
+		body := text
+		if i == selected {
+			mark = "▸ "
+			body = hot
+		}
+		label := mark + id
+		if ansi.StringWidth(label) > inner {
+			label = ansi.Truncate(label, inner, "…")
+		}
+		label += strings.Repeat(" ", inner-ansi.StringWidth(label))
+		if i == selected {
+			out = append(out, body.Render("│"+label+"│"))
+			continue
+		}
+		out = append(out, edge.Render("│")+body.Render(label)+edge.Render("│"))
+	}
+	return append(out, rule("╰", "─", "╯"))
 }
 
 func workspaceKind(w domain.Workspace) string {
