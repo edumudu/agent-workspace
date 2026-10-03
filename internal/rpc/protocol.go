@@ -218,6 +218,7 @@ const (
 	CodeFailed             = "failed"
 	CodeLaunchFailed       = "launch_failed"
 	CodeVersionMismatch    = "version_mismatch"
+	CodeStale              = "stale"
 )
 
 func AnyBuild(method string) bool {
