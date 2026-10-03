@@ -20,7 +20,6 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-// why: bounds how much a killed process can lose.
 const FlushInterval = 50 * time.Millisecond
 
 //go:embed migrations/*.sql
@@ -77,7 +76,6 @@ func Open(path string) (*Store, error) {
 	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
 		return nil, err
 	}
-	// why: in WAL mode committed transactions survive a killed process, even with synchronous=NORMAL.
 	dsn := "file:" + path + "?_pragma=journal_mode(WAL)&_pragma=synchronous(NORMAL)&_pragma=busy_timeout(5000)"
 	db, err := sql.Open("sqlite", dsn)
 	if err != nil {
@@ -191,7 +189,6 @@ func (s *Store) DeleteWorkspace(root string) { s.enqueue(tableWorkspaces, root, 
 
 func (s *Store) DeleteWorktree(id string) { s.enqueue(tableWorktrees, id, nil) }
 
-// why: write deletes the session's stored events in the same transaction as the row.
 func (s *Store) DeleteSession(id string) {
 	s.mu.Lock()
 	kept := s.events[:0]

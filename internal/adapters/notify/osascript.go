@@ -20,7 +20,6 @@ var (
 
 type Runner func(ctx context.Context, name string, args ...string) ([]byte, error)
 
-// why: a bare "exit status 3" hides why; terminal-notifier says on stderr that notifications are off.
 func execRunner(ctx context.Context, name string, args ...string) ([]byte, error) {
 	out, err := exec.CommandContext(ctx, name, args...).Output()
 	var exit *exec.ExitError
@@ -38,7 +37,6 @@ type Osascript struct {
 
 func New() Osascript { return Osascript{Run: execRunner} }
 
-// why: title, body and sound reach AppleScript as argv, never spliced into the script, so quotes in a session name cannot break out of it.
 var bannerScript = []string{
 	"on run argv",
 	"if item 3 of argv is \"\" then",
@@ -61,13 +59,11 @@ func (o Osascript) Notify(ctx context.Context, b domain.Banner) error {
 
 const frontmostScript = `tell application "System Events" to get name of first application process whose frontmost is true`
 
-// why: System Events reports process names, which differ in case and suffix from the app's display name (ghostty, wezterm-gui).
 var terminalApps = map[string]bool{
 	"terminal": true, "iterm2": true, "ghostty": true, "wezterm": true, "wezterm-gui": true,
 	"kitty": true, "alacritty": true, "hyper": true, "warp": true,
 }
 
-// why: false when the query fails, so a banner is never suppressed on a guess.
 func (o Osascript) TerminalFrontmost(ctx context.Context) bool {
 	out, err := o.Run(ctx, "osascript", "-e", frontmostScript)
 	return err == nil && terminalApps[strings.ToLower(strings.TrimSpace(string(out)))]
@@ -96,5 +92,4 @@ func LoadSounds(path string) (map[domain.AgentState]string, error) {
 	return out, nil
 }
 
-// why: display notification posts banners that cannot be withdrawn.
 func (Osascript) Remove(context.Context, string) error { return nil }

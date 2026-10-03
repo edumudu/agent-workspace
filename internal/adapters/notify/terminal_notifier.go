@@ -13,15 +13,11 @@ import (
 
 var _ app.Notifier = TerminalNotifier{}
 
-// why: unlike osascript it can group banners per session, withdraw them and
-// run a command on click.
 type TerminalNotifier struct {
-	Run Runner
-	Bin string
-	// why: Self and Home build the click command, which runs outside the daemon's environment.
-	Self string
-	Home string
-	// why: set by a bridge, whose sessions live on another machine; the session id is appended.
+	Run      Runner
+	Bin      string
+	Self     string
+	Home     string
 	FocusCmd string
 }
 
@@ -50,8 +46,6 @@ func (n TerminalNotifier) Remove(ctx context.Context, group string) error {
 	return err
 }
 
-// why: terminal-notifier reads a message starting with [ or - as an option; a
-// leading backslash makes it literal.
 func escapeMessage(s string) string {
 	if strings.HasPrefix(s, "[") || strings.HasPrefix(s, "-") {
 		return `\` + s
@@ -63,15 +57,12 @@ func shellQuote(s string) string {
 	return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'"
 }
 
-// why: Self and Home build the default click command; FocusCmd replaces it
-// for a bridge, whose sessions live on another machine.
 type Click struct {
 	Self     string
 	Home     string
 	FocusCmd string
 }
 
-// why: chosen once at daemon start, so a banner never pays for a PATH lookup.
 func Select(lookPath func(string) (string, error), click Click) app.Notifier {
 	_, osaErr := lookPath("osascript")
 	if bin, err := lookPath("terminal-notifier"); err == nil {
@@ -89,8 +80,6 @@ func Select(lookPath func(string) (string, error), click Click) app.Notifier {
 
 func Detect(click Click) app.Notifier { return Select(exec.LookPath, click) }
 
-// why: terminal-notifier fails when macOS has its notifications turned off,
-// which a fresh install often does; osascript posts the banner instead, without grouping or click.
 type Fallback struct {
 	Primary   app.Notifier
 	Secondary app.Notifier

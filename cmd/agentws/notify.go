@@ -66,8 +66,6 @@ func runNotifyStream(stdout, stderr io.Writer) int {
 	return 1
 }
 
-// why: the bridge runs this over a bare `ssh -T`; a daemon started from here
-// would launch every agent with that login-less PATH, so it waits for one.
 func awaitDaemon(home string, stderr io.Writer) *rpc.Client {
 	sock := rpc.SocketPath(home)
 	c, err := rpc.Dial(sock)
@@ -104,13 +102,10 @@ func parseBridge(args []string) (bridge, error) {
 	return bridge{host: fs.Arg(0), remoteBin: *remote}, nil
 }
 
-// why: ssh joins the remote command into one shell line, so the binary is quoted there;
-// keepalives notice a dead link instead of waiting on TCP for hours.
 func (b bridge) streamArgv() []string {
 	return []string{"ssh", "-T", "-o", "ServerAliveInterval=15", b.host, remotePath(b.remoteBin) + " notify stream"}
 }
 
-// why: a quoted ~ is literal, so a leading ~/ stays outside the quotes for the remote shell to expand.
 func remotePath(p string) string {
 	if rest, ok := strings.CutPrefix(p, "~/"); ok {
 		return "~/" + shellQuote(rest)
@@ -129,8 +124,7 @@ func shellQuote(s string) string {
 const (
 	bridgeRetryMin = 2 * time.Second
 	bridgeRetryMax = time.Minute
-	// why: a stream that lasted this long was healthy, so the next drop retries fast again.
-	bridgeHealthy = time.Minute
+	bridgeHealthy  = time.Minute
 )
 
 func runBridge(b bridge, stderr io.Writer) int {

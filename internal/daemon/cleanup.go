@@ -12,7 +12,6 @@ import (
 
 const DefaultCleanupEvery = 10 * time.Minute
 
-// why: mu keeps two cleanup runs from racing over the same worktrees.
 type cleanupWorker struct {
 	c     *app.Cleanup
 	every time.Duration

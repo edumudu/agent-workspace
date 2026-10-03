@@ -9,7 +9,6 @@ import (
 	"github.com/giovaniif/agent-workspace/internal/domain"
 )
 
-// why: with no data it is empty: the slot is hidden, never shown as zero.
 func (m Model) limitLines() []string {
 	quotas := m.quotas()
 	now := m.opts.Now()
@@ -61,8 +60,6 @@ func (m Model) limitLine(h domain.Harness, quotas []domain.Quota, now time.Time)
 	return m.line(false, left, right), true
 }
 
-// why: claude.ai and Codex show percent used; the domain keeps percent left
-// because the warning and fallback thresholds are set in it.
 func usedPercent(q domain.Quota) int { return 100 - q.LeftPercent }
 
 func resetClock(resetsAt int64, now time.Time) string {

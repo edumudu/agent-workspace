@@ -14,10 +14,6 @@ type tok struct {
 	color string
 }
 
-// why: hunks are lexed as one text so multi-line tokens keep their color; the
-// old and new sides are interleaved, which is close enough for a diff. These
-// colors stand in for chroma's styles package, whose init parses every bundled
-// style and would cost each `agentws hook` run about 3 ms.
 type syntaxColors struct {
 	keyword, name, function, str, number, comment, operator string
 }
@@ -56,7 +52,6 @@ func highlight(syntax syntaxColors, filename string, lines []domain.DiffLine) (o
 		}
 		return p
 	}
-	// why: chroma panics on some malformed input; plain text beats a crashed TUI.
 	defer func() {
 		if recover() != nil {
 			out = plain()

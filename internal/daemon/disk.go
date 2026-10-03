@@ -27,8 +27,6 @@ type DiskDeps struct {
 	DepsStore  string
 }
 
-// why: needs WithCleanup, whose plan gives the rows. Sizes are only measured
-// by deps.Sizes' own workers, never on the loop or the asking connection.
 func WithDisk(deps DiskDeps) Option {
 	return func(d *Daemon) { d.disk = deps }
 }
@@ -96,8 +94,6 @@ func (d *Daemon) cleanupWorktree(req rpc.Request) (*rpc.Response, bool) {
 	return errorResponse(req.ID, rpc.CodeNotFound, "no worktree "+p.Path), true
 }
 
-// why: drops the worktree from state at once, so the row does not wait for
-// the next scan.
 func (d *Daemon) afterRemoval(w domain.Worktree) {
 	if d.disk.Sizes != nil {
 		d.disk.Sizes.Forget(w.Path)

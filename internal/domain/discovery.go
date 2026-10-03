@@ -26,7 +26,6 @@ func KindOfRoot(rootGit GitMarker) WorkspaceKind {
 	return WorkspaceOrchestration
 }
 
-// why: a child whose .git is a file is a worktree of some repo, not a repo.
 func ReposIn(children []Child) []Repo {
 	var repos []Repo
 	for _, c := range children {

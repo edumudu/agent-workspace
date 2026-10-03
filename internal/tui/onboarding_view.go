@@ -19,7 +19,6 @@ var stepNames = map[domain.OnboardStep]string{
 	domain.OnboardFinish: "Done",
 }
 
-// why: it is laid out like the new-session popup (ADR 0037) so both read as one app.
 func (m Model) setupScreen() string {
 	f := m
 	f.width = min(m.width-4, setupMaxWidth)
@@ -188,7 +187,6 @@ func (m Model) nvimLines() []string {
 		out = append(out, m.para(piece{s.peach, " ▌ "}, s.sub, "The install script puts them there; from a source checkout, add these lines yourself with the path to its nvim/ directory.")...)
 		out = append(out, "")
 		for _, l := range domain.NvimSnippet(n.PluginDir, n.ConfigFile) {
-			// why: no frame and no truncation, so selecting the lines copies exactly the code.
 			out = append(out, "   "+s.teal.Render(l))
 		}
 		return out
@@ -197,7 +195,6 @@ func (m Model) nvimLines() []string {
 	out = append(out, m.para(piece{s.text, " "}, s.sub, "nvim loads every file in plugin/ at startup, whatever else your config uses (init.lua, init.vim, lazy.nvim), so nothing of yours is edited.")...)
 	out = append(out, "")
 	for _, l := range strings.Split(strings.TrimSuffix(domain.NvimSetupFile(n.PluginDir), "\n"), "\n") {
-		// why: no frame and no truncation, so selecting the lines copies exactly the code.
 		out = append(out, "   "+s.teal.Render(l))
 	}
 	out = append(out, "")
@@ -239,7 +236,6 @@ func (m Model) finishLines() []string {
 	return append(out, m.para(piece{s.text, " "}, s.sub, "Open this again with S in the sidebar or agentws setup. n starts your first session.")...)
 }
 
-// why: a long path or message wraps under its bar instead of being cut off.
 func (m Model) para(bar piece, st lipgloss.Style, text string) []string {
 	room := max(m.width-ansi.StringWidth(bar.s)-1, 10)
 	var out []string

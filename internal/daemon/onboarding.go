@@ -8,7 +8,6 @@ import (
 	"github.com/giovaniif/agent-workspace/internal/rpc"
 )
 
-// why: the onboarder reads and writes config files, so its methods run on the asking connection, never on the loop.
 func WithOnboarding(o app.Onboarder) Option {
 	return func(d *Daemon) { d.onboard = o }
 }

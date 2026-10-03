@@ -16,7 +16,6 @@ import (
 	"github.com/giovaniif/agent-workspace/internal/rpc"
 )
 
-// why: follows Claude Code: $CLAUDE_CONFIG_DIR, else ~/.claude.
 func claudeSettingsPath(env func(string) string) (string, error) {
 	dir := env("CLAUDE_CONFIG_DIR")
 	if dir == "" {
@@ -62,9 +61,6 @@ func setupClaude(path, self string, remove bool, stdout io.Writer) error {
 	return nil
 }
 
-// why: the user's own status-line command, if any, gets the same input and its
-// output is printed unchanged; the daemon report never delays it by more than
-// hookTimeout. It always exits 0 so the status line keeps rendering.
 func runStatusLine(args []string, stdin io.Reader, stdout io.Writer, home, pane string) int {
 	fs := flag.NewFlagSet("statusline", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)

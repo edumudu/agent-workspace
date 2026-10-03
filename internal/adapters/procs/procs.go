@@ -24,7 +24,6 @@ type Table struct {
 	Grace time.Duration
 }
 
-// why: lsof alone would also list the sockets, but it walks every process's file descriptors and costs about 40 ms; netstat costs about 4 ms.
 func (Table) Listeners(ctx context.Context) ([]domain.Listener, error) {
 	sockets, err := run(ctx, "netstat", "-anv", "-p", "tcp")
 	if err != nil {
@@ -41,7 +40,6 @@ func (Table) Listeners(ctx context.Context) ([]domain.Listener, error) {
 	return merge(listeners, parseDetails(found)), nil
 }
 
-// bug: lsof exits 1 when a listed pid vanished, and what it did print is still good.
 func run(ctx context.Context, name string, args ...string) (string, error) {
 	out, err := exec.CommandContext(ctx, name, args...).Output()
 	var exit *exec.ExitError
@@ -51,7 +49,6 @@ func run(ctx context.Context, name string, args ...string) (string, error) {
 	return string(out), nil
 }
 
-// why: signals the whole group so a server's children go with it; refuses group 1 and below and the caller's own group.
 func (t Table) Terminate(ctx context.Context, pgid int) error {
 	if pgid <= 1 || pgid == syscall.Getpgrp() {
 		return fmt.Errorf("refusing to signal process group %d", pgid)

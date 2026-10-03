@@ -33,7 +33,6 @@ func launchSpec(bin string, req LaunchRequest) app.PaneSpec {
 		command = append(command, "-c", fmt.Sprintf("model_reasoning_effort=%q", req.Effort))
 	}
 	if req.Prompt != "" {
-		// why: the separator keeps a prompt that starts with "-" from parsing as a flag.
 		command = append(command, "--", req.Prompt)
 	}
 	if req.Resume != "" {
@@ -42,7 +41,6 @@ func launchSpec(bin string, req LaunchRequest) app.PaneSpec {
 	return app.PaneSpec{Name: req.Name, Dir: req.Dir, Command: command}
 }
 
-// why: the pane's $TMUX_PANE is how the session's hooks find their way back to it.
 func Launch(ctx context.Context, host app.TerminalHost, req LaunchRequest) (app.PaneID, error) {
 	return host.Create(ctx, LaunchSpec(req))
 }

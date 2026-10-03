@@ -1,5 +1,3 @@
-# why: each gate holds the fake agent until the previous state shows, so no
-# hook overtakes another.
 repo api
 exec agentws workspace add api
 exec agentws new --workspace api 'add a thing'

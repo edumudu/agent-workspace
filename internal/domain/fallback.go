@@ -22,11 +22,8 @@ type FallbackOffer struct {
 	Request StartRequest
 }
 
-// why: Codex accepts fewer levels; Claude's higher ones fold into high.
 var codexEfforts = map[string]string{"low": "low", "medium": "medium", "high": "high", "xhigh": "high", "max": "high"}
 
-// why: no offer when Codex has no figure or is under the threshold itself,
-// since moving from one exhausted account to another helps nobody.
 func OfferFallback(quotas []Quota, cfg FallbackConfig, req StartRequest) (FallbackOffer, bool) {
 	if req.Harness != HarnessClaude {
 		return FallbackOffer{}, false

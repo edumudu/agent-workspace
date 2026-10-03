@@ -17,7 +17,6 @@ type Onboarder interface {
 	OnboardFinish(ctx context.Context) error
 }
 
-// why: on the very first run the sidebar starts before tmux has attached a client, so the popup can fail at first.
 const (
 	setupPopupRetries = 2
 	setupPopupRetry   = 400 * time.Millisecond
@@ -86,7 +85,6 @@ type setupPopupFailedMsg struct{ tries int }
 
 type setupPopupRetryMsg struct{ tries int }
 
-// why: open says to show the walkthrough even when it was done, as S and a failed popup ask.
 func (m Model) fetchOnboarding(open bool) tea.Cmd {
 	o := m.opts.Onboard
 	return func() tea.Msg {
@@ -126,7 +124,6 @@ func (m Model) onboardMsg(msg tea.Msg) (Model, tea.Cmd) {
 		case domain.OnboardingNeeded(msg.o):
 			return m, m.openSetup(0)
 		case !msg.o.Done:
-			// why: nothing is left to set up, so the marker is written without showing anything.
 			return m, m.finishOnboarding()
 		}
 	case setupPopupFailedMsg:

@@ -22,7 +22,6 @@ func (m Model) dialogScreen() string {
 	return strings.Join(lines, "\n")
 }
 
-// why: margin is how far right the dialog is drawn, which a click's column has to undo.
 func (m Model) dialogScreenLines() (lines, owners []string, margin int) {
 	f := m
 	f.width = min(m.width-4, dialogMaxWidth)
@@ -123,7 +122,6 @@ func (m Model) dialogLines() ([]string, int, []string) {
 	return append(out, m.line(false, hint, buttons)), keep, owners
 }
 
-// why: wide dialogs put the three pickers side by side, so the column picks the field.
 func (m Model) pickerOwners(n int) []string {
 	out := make([]string, n)
 	for i := range out {
@@ -267,7 +265,6 @@ func workItemPreview(input string) string {
 	return "text · session named “" + t.Text + "”"
 }
 
-// why: uses the same plan the daemon makes.
 func (m Model) startsAt() []string {
 	s := m.styles
 	d := m.dialog

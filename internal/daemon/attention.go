@@ -15,7 +15,6 @@ import (
 )
 
 const (
-	// why: more are dropped rather than stall the loop.
 	bannerQueue   = 64
 	bannerTimeout = 5 * time.Second
 )
@@ -26,28 +25,21 @@ type queuedBanner struct {
 	gen     uint64
 }
 
-// why: decides on the loop and delivers on a worker: the notifier and the
-// frontmost check both run processes.
 type attention struct {
-	notifier app.Notifier
-	fg       app.Foreground
-	sounds   map[domain.AgentState]string
-	co       *domain.Coalescer
-	queue    chan queuedBanner
-	// why: written by client.open on a connection goroutine, read by the worker.
-	terminal atomic.Pointer[string]
-	// why: owned by the loop; only sessions with a banner up are withdrawn, so a focus costs no process otherwise.
-	posted map[string]bool
-	// why: withdrawals wait here, not in the bounded queue, so a full queue never loses one.
-	removeMu sync.Mutex
-	removals map[string]bool
-	// why: a banner still queued when its session is withdrawn has a generation at or below withdrawn, and is skipped.
+	notifier  app.Notifier
+	fg        app.Foreground
+	sounds    map[domain.AgentState]string
+	co        *domain.Coalescer
+	queue     chan queuedBanner
+	terminal  atomic.Pointer[string]
+	posted    map[string]bool
+	removeMu  sync.Mutex
+	removals  map[string]bool
 	gens      map[string]uint64
 	withdrawn map[string]uint64
 	wake      chan struct{}
 }
 
-// why: fg may be nil, which counts as the terminal never being in front.
 func WithNotifier(n app.Notifier, fg app.Foreground, sounds map[domain.AgentState]string) Option {
 	return func(d *Daemon) {
 		d.st.attn = &attention{
@@ -139,8 +131,6 @@ func (s *state) withdraw(id string) {
 	}
 }
 
-// why: bridges post banners on another machine, so they get every banner the
-// loop lets through, before the local worker's frontmost check.
 func (s *state) notice(n rpc.Notice) {
 	for c, id := range s.noticeSubs {
 		if !c.push(rpc.Response{V: rpc.Version, ID: id, Notice: &n}) {
@@ -149,8 +139,6 @@ func (s *state) notice(n rpc.Notice) {
 	}
 }
 
-// why: a banner queued after a withdrawal is newer than it, so the withdrawal must not remove it;
-// a dropped banner leaves a pending withdrawal in place, since nothing replaces the old banner.
 func (a *attention) enqueue(q queuedBanner) bool {
 	id := q.banner.Group
 	a.removeMu.Lock()
@@ -190,7 +178,6 @@ func (a *attention) removePending(ctx context.Context) {
 	}
 }
 
-// why: an attach from an unknown terminal clears the last one, so a click never raises a terminal the client left.
 func (a *attention) setTerminal(bundle string) {
 	if a != nil {
 		a.terminal.Store(&bundle)

@@ -144,7 +144,6 @@ func ticker(every time.Duration) (<-chan time.Time, func()) {
 	return t.C, t.Stop
 }
 
-// why: a repo seen for the first time is adopted: its worktrees start unassigned.
 func (d *Daemon) scanWorktrees(ctx context.Context) {
 	var dirs []string
 	if !d.query(func(s *state) {

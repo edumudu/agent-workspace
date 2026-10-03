@@ -1,8 +1,0 @@
-package fixture
-
-func count(n int) int {
-	i := 0
-	// increment i
-	i++
-	return i + n
-}

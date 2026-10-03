@@ -43,7 +43,6 @@ func Run(ctx context.Context, home string) (err error) {
 	if err != nil {
 		log.Printf("[ui] mouse ignored: %v", err)
 	}
-	// why: tests and manual validation point this at a throwaway server so the real one is untouched.
 	host := tmux.New(tmux.Config{
 		Socket:     os.Getenv("AGENTWS_TMUX_SOCKET"),
 		ConfigPath: filepath.Join(home, "tmux.conf"),
@@ -113,7 +112,6 @@ func Run(ctx context.Context, home string) (err error) {
 	d.SetClientHost(host)
 
 	sock := rpc.SocketPath(home)
-	// why: holding the lock means any socket file left here belongs to a dead daemon.
 	if err := os.Remove(sock); err != nil && !errors.Is(err, os.ErrNotExist) {
 		return err
 	}
@@ -129,8 +127,6 @@ func Run(ctx context.Context, home string) (err error) {
 	return d.Serve(ctx, ln)
 }
 
-// why: resolved symlinks make planned worktree paths compare equal to the
-// ones git reports.
 func realDir(dir string) (string, error) {
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return "", err
@@ -140,9 +136,7 @@ func realDir(dir string) (string, error) {
 
 type testHooks struct {
 	clockSkew time.Duration
-	// why: the worktree poll stays: a scan between `git worktree add` and its
-	// PostToolUse hook would see the worktree before the claim that attributes it.
-	prPoll time.Duration
+	prPoll    time.Duration
 }
 
 func testHooksFromEnv(getenv func(string) string) testHooks {

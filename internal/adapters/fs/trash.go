@@ -17,7 +17,6 @@ var (
 	_ app.CleanupAudit = (*AuditLog)(nil)
 )
 
-// why: Dir must be on the same volume as the trashed paths for the move to be instant.
 type Trash struct {
 	dir  string
 	sem  chan struct{}

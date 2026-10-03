@@ -63,7 +63,6 @@ func (Recipes) Load(repoDir string) (domain.Recipe, bool, error) {
 
 type FS struct{}
 
-// why: true for a dangling symlink too: something is at that path.
 func (FS) Exists(path string) bool {
 	_, err := os.Lstat(path)
 	return err == nil
@@ -83,7 +82,6 @@ func (FS) Symlink(target, link string) error {
 	return os.Symlink(target, link)
 }
 
-// why: `cp -c` uses APFS clonefile on macOS and reflinks elsewhere, so the copy shares blocks with src until either side changes.
 func (FS) CloneTree(ctx context.Context, src, dst string) error {
 	if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
 		return err
@@ -122,7 +120,7 @@ func (FS) FreeBytes(path string) (int64, error) {
 	if err := syscall.Statfs(path, &st); err != nil {
 		return 0, err
 	}
-	return int64(st.Bavail) * int64(st.Bsize), nil //nolint:gosec // why: block counts of a real volume fit int64.
+	return int64(st.Bavail) * int64(st.Bsize), nil //nolint:gosec
 }
 
 type Shell struct {

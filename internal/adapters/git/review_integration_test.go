@@ -163,7 +163,6 @@ func TestReviewTurnRefsStayOutOfBranchesAndGoWithTheWorktree(t *testing.T) {
 	}
 }
 
-// bug: a same-size edit in the same second as the commit leaves the index entry's stat unchanged at git's one-second granularity; only git's racy-entry check catches it, and that check needs the index file's own mtime.
 func TestReviewSeesASameSizeEditRightAfterACommit(t *testing.T) {
 	repo := reviewRepo(t)
 	put(t, filepath.Join(repo, "a.txt"), "x\n")

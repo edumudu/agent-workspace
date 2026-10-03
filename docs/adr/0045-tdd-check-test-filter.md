@@ -1,11 +1,11 @@
-# ADR 0044: tdd-check compares Go tests by token
+# ADR 0045: tdd-check compares Go tests by token
 
 Status: accepted, 2026-10-03.
 
 ## Decision
 
 - A changed `*_test.go` file counts only if its Go tokens changed. `scripts/tdd-check` builds a small `go/scanner` program at run time and compares the old and new versions with it. Whitespace and `//` and `/* */` comments are ignored; string literals are compared exactly.
-- Other files under `testdata/` use `git diff --ignore-space-change --ignore-blank-lines`, and also ignore `//` and `#` comment lines except in `*.golden` and `*.go.txt` fixtures.
+- Other files under `testdata/` use `git diff --ignore-space-change --ignore-blank-lines`, and also ignore `//` and `#` comment lines except in `*.golden` and `*.txt` fixtures.
 - Both checks list renames (`-M`). A moved and edited test counts at its new path, and the base run removes the old path before running the package's tests, so the old and new copies don't collide. It also removes every test file the PR deleted, because git reports a heavily rewritten move as a delete and an add.
 - `scripts/tddcheck` tests the script by building throwaway modules and running it the way CI does.
 

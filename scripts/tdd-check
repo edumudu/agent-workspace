@@ -1,12 +1,4 @@
 #!/usr/bin/env bash
-# why: Usage: scripts/tdd-check <base-ref> <head-ref>. Port fakes
-# (fakes_test.go, *_fake_test.go) and changes that carry no behavior (see
-# changed_tests) are skipped: they have nothing to fail on base. The "test:" title comes
-# in TDD_PR_TITLE, an env var, so it is never interpolated into a command line.
-# why: "fails on base" can't tell whether the test came first, so every
-# non-merge commit is also checked: one that changes tests may not change
-# production code too, unless its subject starts with "refactor:" or "refactor(". Markdown
-# carries no behavior, so it never counts as production code here.
 set -euo pipefail
 base="$1"
 head="$2"
@@ -41,9 +33,6 @@ esac
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 
-# why: whitespace and comments in a Go test carry no behavior, but whitespace
-# inside a string literal does, so Go files are compared token by token with
-# go/scanner rather than with git diff's whitespace and line-regex options.
 same_go_tokens() {
   if [ ! -x "$tmp/sametokens" ]; then
     mkdir -p "$tmp/sametokens.src"
@@ -97,13 +86,6 @@ GO
   "$tmp/sametokens" "$tmp/old.go" "$tmp/new.go"
 }
 
-# why: compares commit $1 with commit $2 and fills two arrays: changed (test
-# files that carry a change, at their new path) and removed (test paths gone in
-# $2: the old path of a rename, or a deleted file, which git reports instead of
-# a rename when a moved test was rewritten). The base run removes them so an
-# old copy can't collide with the new one.
-# In goldens and lint-comments fixtures a comment-shaped line is expected
-# output or linter input, so only whitespace amount is ignored there.
 changed_tests() {
   local old="$1" new="$2" status from to
   changed=()
@@ -120,7 +102,7 @@ changed_tests() {
       case "$to" in
       (*.go)
         ! same_go_tokens "$old:$from" "$new:$to" || continue ;;
-      (*.golden | *.go.txt)
+      (*.golden | *.txt)
         ! git diff --quiet --ignore-space-change --ignore-blank-lines "$old:$from" "$new:$to" || continue ;;
       (*)
         ! git diff --quiet --ignore-space-change --ignore-blank-lines -I '^[[:space:]]*(//|#)' "$old:$from" "$new:$to" || continue ;;

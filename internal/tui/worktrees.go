@@ -22,9 +22,8 @@ type Disker interface {
 }
 
 const (
-	diskCallTimeout    = 15 * time.Second
-	cleanupCallTimeout = 5 * time.Minute
-	// why: a tick is 200 ms: refetch every 2 s while a size is pending, 10 s otherwise.
+	diskCallTimeout     = 15 * time.Second
+	cleanupCallTimeout  = 5 * time.Minute
 	pendingRefetchTicks = 10
 	idleRefetchTicks    = 50
 	recentShown         = 5

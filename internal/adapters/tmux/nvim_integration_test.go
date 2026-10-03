@@ -24,7 +24,6 @@ func TestNavigationKeysPassThroughNvimAndLeaveItAtTheEdge(t *testing.T) {
 	if _, err := exec.LookPath("nvim"); err != nil {
 		t.Skip("nvim not installed")
 	}
-	// why: macOS caps Unix socket paths at 104 bytes, and t.TempDir() can exceed it.
 	dir, err := os.MkdirTemp("/tmp", "agentws-nav")
 	if err != nil {
 		t.Fatal(err)

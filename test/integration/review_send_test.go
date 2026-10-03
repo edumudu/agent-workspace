@@ -102,7 +102,6 @@ func TestReviewSendReachesARealAgentPaneAcrossARestart(t *testing.T) {
 	for _, kv := range [][2]string{{"GIT_AUTHOR_NAME", "t"}, {"GIT_AUTHOR_EMAIL", "t@example.com"}, {"GIT_COMMITTER_NAME", "t"}, {"GIT_COMMITTER_EMAIL", "t@example.com"}} {
 		t.Setenv(kv[0], kv[1])
 	}
-	// why: macOS caps Unix socket paths at 104 bytes, and t.TempDir() can exceed it.
 	tmp, err := os.MkdirTemp("/tmp", "agentws-r")
 	if err != nil {
 		t.Fatal(err)

@@ -18,7 +18,6 @@ import (
 
 func shortDir(t *testing.T) string {
 	t.Helper()
-	// why: macOS caps Unix socket paths at 104 bytes, and t.TempDir() can exceed it.
 	dir, err := os.MkdirTemp("/tmp", "agentws-rpc")
 	if err != nil {
 		t.Fatal(err)

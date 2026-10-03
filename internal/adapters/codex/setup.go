@@ -12,7 +12,6 @@ import (
 	"github.com/giovaniif/agent-workspace/internal/domain"
 )
 
-// why: marks a hook command as ours wherever the binary lives, so a moved binary is updated instead of duplicated.
 const hooksFragment = " hook --harness codex --event "
 
 var managedEvents = []string{
@@ -28,7 +27,6 @@ var managedEvents = []string{
 
 var toolEvents = map[string]bool{"PreToolUse": true, "PostToolUse": true, "PermissionRequest": true}
 
-// why: Codex keeps a hash of every hook it has been told to trust in config.toml, so a hooks.json change needs a manual trust step.
 const TrustStep = domain.CodexTrustStep
 
 type SetupConfig struct {
@@ -50,7 +48,6 @@ func Setup(cfg SetupConfig) (SetupResult, error) {
 	return file.save(cfg)
 }
 
-// why: it asks whether Setup would change nothing, so it can never disagree with what Setup does.
 func Installed(cfg SetupConfig) (bool, error) {
 	file, changed, err := merged(cfg)
 	if err != nil {
@@ -175,7 +172,6 @@ func (f *hooksFile) save(cfg SetupConfig) (SetupResult, error) {
 	if err := os.MkdirAll(cfg.Dir, 0o700); err != nil {
 		return SetupResult{}, err
 	}
-	// why: rename is atomic, so Codex never reads a half-written hooks.json.
 	tmp := f.path + ".agentws-tmp"
 	if err := os.WriteFile(tmp, out, 0o600); err != nil {
 		return SetupResult{}, err
@@ -217,7 +213,6 @@ func desiredGroup(event, command string) *object {
 	hook := newObject()
 	hook.set("type", "command")
 	hook.set("command", shellQuote(command)+hooksFragment+event)
-	// why: UserPromptSubmit can carry a reply Codex reads, so it cannot be async.
 	if event != "UserPromptSubmit" {
 		hook.set("async", true)
 	}

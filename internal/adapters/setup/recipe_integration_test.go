@@ -110,7 +110,6 @@ run = ["echo ready > ran.txt"]
 		t.Errorf("ran.txt = %q, want the run command to have executed in the worktree", got)
 	}
 
-	// why: a clone must be independent of main: writing in the worktree leaves main untouched.
 	writeFile(t, filepath.Join(worktree, "node_modules", "left-pad", "index.js"), "changed")
 	if got, _ := os.ReadFile(filepath.Join(main, "node_modules", "left-pad", "index.js")); string(got) != "module.exports = 1" {
 		t.Errorf("main's node_modules changed to %q", got)

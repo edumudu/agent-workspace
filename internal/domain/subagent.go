@@ -14,8 +14,6 @@ const (
 	SubagentStopped SubagentState = "stopped"
 )
 
-// bug: ParentID is always empty for now: Claude's hooks name the agent but
-// not who spawned it.
 type Subagent struct {
 	SessionID string
 	ID        string
@@ -49,8 +47,6 @@ func SubagentFromHook(kind HarnessEventKind, at time.Time, payload []byte) (Suba
 	return sub, true
 }
 
-// why: a stop for an agent never seen start is added as stopped, since hooks
-// can be lost.
 func TrackSubagent(subs []Subagent, seen Subagent) ([]Subagent, Subagent) {
 	for i, s := range subs {
 		if s.SessionID != seen.SessionID || s.ID != seen.ID {

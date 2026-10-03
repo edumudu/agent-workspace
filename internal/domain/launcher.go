@@ -33,8 +33,6 @@ func ParseIssueURLs(input string) (issues []Task, rejected []string) {
 	return issues, rejected
 }
 
-// why: a session that finished frees its slot even if the user prompts it
-// again later.
 func ActiveLaunched(sessions []Session, launched map[string]bool) int {
 	n := 0
 	for _, s := range sessions {
@@ -79,7 +77,6 @@ func Retarget(queue []LaunchItem, id string, req StartRequest) ([]LaunchItem, bo
 	return next, true
 }
 
-// why: a session already being created cannot be called back.
 func Drop(queue []LaunchItem, id string) ([]LaunchItem, bool) {
 	i := slices.IndexFunc(queue, func(x LaunchItem) bool { return x.ID == id })
 	if i < 0 || queue[i].Starting {
