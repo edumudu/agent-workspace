@@ -1,0 +1,6 @@
+  Which flavour do you prefer?
+
+› 1. Vanilla
+  2. Chocolate
+
+  Press enter to confirm or esc to cancel

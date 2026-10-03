@@ -272,6 +272,7 @@ const (
 	CodeVersionMismatch    = "version_mismatch"
 	CodeUnauthorized       = "unauthorized"
 	CodeRateLimited        = "rate_limited"
+	CodeStale              = "stale"
 )
 
 func AnyBuild(method string) bool {
