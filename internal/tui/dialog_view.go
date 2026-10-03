@@ -84,7 +84,7 @@ func (m Model) dialogLines() ([]string, int, []string) {
 	add(fieldWorkItem, append([]string{m.label(fieldWorkItem, "Work item")}, m.box(w, item, d.field == fieldWorkItem)...)...)
 	out = append(out, m.line(false, []piece{{s.sub, " " + workItemPreview(d.workItem)}}, nil), "")
 
-	ws := []piece{{s.dim, "none: run agentws workspace add <path>"}}
+	ws := []piece{{s.dim, "none: type a folder's path"}}
 	facts := ""
 	if len(d.spaces) > 0 {
 		space := d.spaces[d.ws]
@@ -94,7 +94,17 @@ func (m Model) dialogLines() ([]string, int, []string) {
 			facts += " · last used"
 		}
 	}
+	if d.path != "" {
+		ws = []piece{{s.text, d.path}}
+		if d.field == fieldWorkspace {
+			ws = append(ws, piece{s.bar, "▏"})
+		}
+		facts = d.typed().Path + " · " + m.folderLabel()
+	}
 	add(fieldWorkspace, append([]string{m.label(fieldWorkspace, "Workspace")}, m.box(w, ws, d.field == fieldWorkspace)...)...)
+	if d.field == fieldWorkspace {
+		add(fieldWorkspace, m.dropdown()...)
+	}
 	out = append(out, m.line(false, []piece{{s.sub, " " + facts}}, nil), "")
 
 	for len(owners) < len(out) {
@@ -118,6 +128,12 @@ func (m Model) dialogLines() ([]string, int, []string) {
 		out = append(out, m.line(false, []piece{{s.peach, " ✗ " + d.err}}, nil))
 	}
 	hint := []piece{{s.dim, " ⇥ next · ←/→ change"}}
+	switch {
+	case d.field == fieldWorkspace && d.path != "":
+		hint = []piece{{s.dim, " ↑/↓ pick · → open · ← up · ⇥ next"}}
+	case d.field == fieldWorkspace:
+		hint = []piece{{s.dim, " ⇥ next · ←/→ change · type ./ ../ ~/ for a folder"}}
+	}
 	buttons := []piece{{s.sub, "esc cancel"}, {s.text, "  "}, {s.badge, " ⏎ create "}, {s.text, " "}}
 	return append(out, m.line(false, hint, buttons)), keep, owners
 }
@@ -265,13 +281,56 @@ func workItemPreview(input string) string {
 	return "text · session named “" + t.Text + "”"
 }
 
+const dropdownRows = 6
+
+func (m Model) dropdown() []string {
+	s := m.styles
+	d := m.dialog
+	ms := d.matches()
+	start := min(max(d.pick-dropdownRows/2, 0), max(len(ms)-dropdownRows, 0))
+	var out []string
+	for i := start; i < min(start+dropdownRows, len(ms)); i++ {
+		c := ms[i]
+		row := []piece{{s.dim, "     "}, {s.text, c.Name + "/"}}
+		if i == d.pick {
+			row = []piece{{s.brand, "   ▸ "}, {s.brand, c.Name + "/"}}
+		}
+		switch c.Git {
+		case domain.GitDir:
+			row = append(row, piece{s.sub, "  repo"})
+		case domain.GitFile:
+			row = append(row, piece{s.sub, "  worktree"})
+		}
+		out = append(out, m.line(false, row, nil))
+	}
+	if more := len(ms) - start - dropdownRows; more > 0 {
+		out = append(out, m.line(false, []piece{{s.dim, fmt.Sprintf("     +%d more", more)}}, nil))
+	}
+	return out
+}
+
+func (m Model) folderLabel() string {
+	d := m.dialog
+	if space, _ := d.chosen(); space.Kind != "" {
+		return workspaceKind(space)
+	}
+	switch d.folder() {
+	case folderFound:
+		return workspaceKind(domain.Workspace{})
+	case folderMissing:
+		return "no such folder"
+	}
+	return "…"
+}
+
+// why: uses the same plan the daemon makes.
 func (m Model) startsAt() []string {
 	s := m.styles
 	d := m.dialog
-	if len(d.spaces) == 0 {
+	space, ok := d.chosen()
+	if !ok {
 		return nil
 	}
-	space := d.spaces[d.ws]
 	if space.Kind == "" {
 		bar := piece{s.dim, " ▌ "}
 		return []string{

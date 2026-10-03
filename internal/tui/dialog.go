@@ -3,6 +3,7 @@ package tui
 import (
 	"cmp"
 	"context"
+	"path/filepath"
 	"slices"
 	"sort"
 	"strings"
@@ -50,6 +51,25 @@ type dialog struct {
 	started  bool
 	seq      int
 	defaults map[domain.Harness]Defaults
+	// why: a typed path stands in for the workspace picker until it is emptied again.
+	path       string
+	base, home string
+	listing    listing
+	pick       int
+}
+
+type listing struct {
+	dir    string
+	dirs   []domain.Child
+	done   bool
+	failed bool
+}
+
+type dirsListedMsg struct {
+	seq    int
+	dir    string
+	dirs   []domain.Child
+	failed bool
 }
 
 type fallbackTrace struct {
@@ -84,6 +104,8 @@ func (m Model) openDialog() Model {
 	if dir := m.opts.LaunchDir; dir != "" {
 		d.startIn(dir)
 	}
+	d.home = m.opts.Home
+	d.base = cmp.Or(m.opts.LaunchDir, d.root(), d.home, "/")
 	m.dialog = d
 	return m
 }
@@ -145,10 +167,142 @@ func cycle(i, delta, n int) int {
 }
 
 func (d *dialog) text() *string {
-	if d.field == fieldWorkItem {
+	switch d.field {
+	case fieldWorkItem:
 		return &d.workItem
+	case fieldWorkspace:
+		return &d.path
 	}
 	return nil
+}
+
+func (d *dialog) root() string {
+	if len(d.spaces) == 0 {
+		return ""
+	}
+	return d.spaces[d.ws].Root
+}
+
+func (d *dialog) typed() domain.PathInput {
+	return domain.ParsePathInput(d.path, d.base, d.home)
+}
+
+// why: a typed path that names a known workspace starts there as that workspace.
+func (d *dialog) chosen() (domain.Workspace, bool) {
+	if d.path == "" {
+		if len(d.spaces) == 0 {
+			return domain.Workspace{}, false
+		}
+		return d.spaces[d.ws], true
+	}
+	root := d.typed().Path
+	for _, w := range d.spaces {
+		if w.Root == root && w.Kind != "" {
+			return w, true
+		}
+	}
+	return domain.Workspace{Root: root}, true
+}
+
+func (d *dialog) matches() []domain.Child {
+	in := d.typed()
+	if d.path == "" || !d.listing.done || d.listing.dir != in.Dir {
+		return nil
+	}
+	return domain.CompleteDirs(d.listing.dirs, in.Prefix)
+}
+
+type folderState int
+
+const (
+	folderPending folderState = iota
+	folderFound
+	folderMissing
+)
+
+func (d *dialog) folder() folderState {
+	in := d.typed()
+	if !d.listing.done || d.listing.dir != in.Dir {
+		return folderPending
+	}
+	if d.listing.failed {
+		return folderMissing
+	}
+	if in.Prefix == "" || in.Prefix == "." || in.Prefix == ".." {
+		return folderFound
+	}
+	for _, c := range d.listing.dirs {
+		if c.Name == in.Prefix {
+			return folderFound
+		}
+	}
+	return folderMissing
+}
+
+// why: keeps what the user typed (./, ../, ~/) and only swaps the last segment.
+func (d *dialog) open() bool {
+	ms := d.matches()
+	if len(ms) == 0 {
+		return false
+	}
+	head := d.path[:strings.LastIndex(d.path, "/")+1]
+	if d.path == "~" {
+		head = "~/"
+	}
+	d.path = head + ms[min(d.pick, len(ms)-1)].Name + "/"
+	return true
+}
+
+func (d *dialog) up() {
+	t := strings.TrimSuffix(d.path, "/")
+	cut := strings.LastIndex(t, "/")
+	seg := t[cut+1:]
+	switch {
+	case t == "":
+		d.path = "/"
+	case t == ".":
+		d.path = "../"
+	case seg == "..":
+		d.path = t + "/../"
+	case t == "~":
+		d.path = filepath.Dir(d.home) + "/"
+	case cut < 0:
+		d.path = "./"
+	default:
+		d.path = t[:cut+1]
+	}
+}
+
+// why: lists the folder the input points into once per folder, through the daemon, so the
+// dialog never reads the disk itself.
+func (m Model) listDirs() tea.Cmd {
+	d := m.dialog
+	d.pick = 0
+	c := m.opts.Calls
+	if d.path == "" || c == nil {
+		return nil
+	}
+	dir := d.typed().Dir
+	if d.listing.dir == dir {
+		return nil
+	}
+	d.listing = listing{dir: dir}
+	seq := d.seq
+	return func() tea.Msg {
+		ctx, cancel := context.WithTimeout(context.Background(), callTimeout)
+		defer cancel()
+		var out rpc.WorkspaceDirs
+		err := c.Call(ctx, rpc.MethodWorkspaceDirs, rpc.WorkspaceDirsParams{Path: dir}, &out)
+		return dirsListedMsg{seq: seq, dir: dir, dirs: out.Dirs, failed: err != nil}
+	}
+}
+
+func (m Model) gotDirs(msg dirsListedMsg) Model {
+	if m.dialog == nil || m.dialog.seq != msg.seq || m.dialog.listing.dir != msg.dir {
+		return m
+	}
+	m.own().listing = listing{dir: msg.dir, dirs: msg.dirs, done: true, failed: msg.failed}
+	return m
 }
 
 func (d *dialog) models() []string {
@@ -179,12 +333,15 @@ func (m *Model) own() *dialog {
 	return &d
 }
 
-func (m Model) dialogPaste(s string) Model {
+func (m Model) dialogPaste(s string) (Model, tea.Cmd) {
 	m.own()
 	if t := m.dialog.text(); t != nil && !m.dialog.busy {
 		*t += strings.ReplaceAll(s, "\n", " ")
 	}
-	return m
+	if m.dialog.field == fieldWorkspace {
+		return m, m.listDirs()
+	}
+	return m, nil
 }
 
 func (m Model) dialogKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
@@ -201,6 +358,11 @@ func (m Model) dialogKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	}
 	if d.busy || d.started {
 		return m, nil
+	}
+	if d.field == fieldWorkspace && d.path != "" {
+		if next, cmd, ok := m.pathKey(msg.String()); ok {
+			return next, cmd
+		}
 	}
 	switch msg.String() {
 	case "tab", "down":
@@ -223,13 +385,35 @@ func (m Model) dialogKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		if t := d.text(); t != nil && *t != "" {
 			r := []rune(*t)
 			*t = string(r[:len(r)-1])
+			return m, m.listDirs()
 		}
 	default:
 		if msg.Text != "" {
-			return m.dialogPaste(msg.Text), nil
+			return m.dialogPaste(msg.Text)
 		}
 	}
 	return m, nil
+}
+
+func (m Model) pathKey(key string) (tea.Model, tea.Cmd, bool) {
+	d := m.dialog
+	n := len(d.matches())
+	switch {
+	case key == "down" && n > 0:
+		d.pick = min(d.pick+1, n-1)
+	case key == "up" && n > 0:
+		d.pick = max(d.pick-1, 0)
+	case key == "right":
+		if d.open() {
+			return m, m.listDirs(), true
+		}
+	case key == "left":
+		d.up()
+		return m, m.listDirs(), true
+	default:
+		return m, nil, false
+	}
+	return m, nil, true
 }
 
 func (m Model) submit() tea.Cmd {
@@ -238,8 +422,10 @@ func (m Model) submit() tea.Cmd {
 	case strings.TrimSpace(d.workItem) == "":
 		d.err = "work item is empty"
 		return nil
-	case len(d.spaces) == 0:
-		d.err = "no workspace: run agentws workspace add <path>"
+	}
+	space, ok := d.chosen()
+	if !ok {
+		d.err = "no workspace: type a folder's path"
 		return nil
 	}
 	c := m.opts.Calls
@@ -250,7 +436,7 @@ func (m Model) submit() tea.Cmd {
 	d.err, d.busy = "", true
 	seq := d.seq
 	p := rpc.NewSessionParams{
-		Workspace: d.spaces[d.ws].Root,
+		Workspace: space.Root,
 		WorkItem:  strings.TrimSpace(d.workItem),
 		Harness:   harnessChoices[d.harness],
 		Model:     strings.TrimSpace(d.model),

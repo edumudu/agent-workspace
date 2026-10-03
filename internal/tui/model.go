@@ -40,12 +40,19 @@ type Options struct {
 	Disk            Disker
 	DialogPopup     rpc.ClientPopupParams
 	HarnessDefaults map[domain.Harness]Defaults
-	NewSessionOnly  bool
-	LaunchDir       string
-	Onboard         Onboarder
-	SetupOnly       bool
-	SetupPopup      rpc.ClientPopupParams
-	NoMouse         bool
+	// why: the popup's own program: the dialog fills the screen from the start and
+	// the program ends when it closes.
+	NewSessionOnly bool
+	LaunchDir      string
+	// why: what ~ means in the workspace path; the dialog may not read the environment.
+	Home string
+	// why: nil turns the first-run walkthrough and S off, as in tests that are not about it.
+	Onboard Onboarder
+	// why: the setup popup's own program, like NewSessionOnly; it ends when the walkthrough does.
+	SetupOnly  bool
+	SetupPopup rpc.ClientPopupParams
+	// why: [ui] mouse = false; the zero value keeps the mouse on.
+	NoMouse bool
 }
 
 type Caller interface {
@@ -227,7 +234,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.mouse(msg)
 	case tea.PasteMsg:
 		if m.dialog != nil {
-			return m.dialogPaste(msg.Content), nil
+			return m.dialogPaste(msg.Content)
 		}
 		if m.launching != nil {
 			return m.launcherPaste(msg.Content), nil
@@ -255,6 +262,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			in.busy, in.err = false, msg.err.Error()
 			m.launching = &in
 		}
+	case dirsListedMsg:
+		return m.gotDirs(msg), nil
 	case startFailedMsg:
 		if m.dialog == nil || m.dialog.seq != msg.seq {
 			m.status = msg.err.Error()

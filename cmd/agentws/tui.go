@@ -109,6 +109,9 @@ func tuiIn(home string, newSession, setup bool) error {
 	defer func() { _ = caller.Close() }()
 	opts := tui.Options{Theme: theme, Defaults: defaults, Fallback: fallback, NewSessionOnly: newSession, SetupOnly: setup, NoMouse: !mouse}
 	opts.HarnessDefaults = harnessDefaults()
+	if h, err := os.UserHomeDir(); err == nil {
+		opts.Home = h
+	}
 	if newSession {
 		opts.LaunchDir = launchDir()
 	} else {
