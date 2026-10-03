@@ -81,6 +81,7 @@ Claude Code and Codex load an `AGENTS.md` (here also `CLAUDE.md`, a symlink to i
 3. For each behavior: commit a failing test, then commit the code that makes it pass, then refactor.
 4. Meet every acceptance criterion. Run the commands in the issue's **Validate** section and paste their output into the PR body.
 5. Open one PR per issue that says `Closes #<n>`. Title it with a conventional prefix (`feat:`, `fix:`, `chore:`, `docs:`, `refactor:`, `test:`). Use `test:` only for a test-only change (no production code); it skips the "must fail on base" rule.
+   A PR that changes what the TUI draws shows screenshots of the new behavior in its body. Make them with `scripts/screenshot` from a neutral demo folder (never a real home or project), push them to the `pr-assets` branch under `<issue-number>/`, and embed them by their `raw.githubusercontent.com` URL (see [scripts/](scripts/AGENTS.md)).
 6. If a criterion turns out wrong or impossible, don't quietly drop it. Say so in the PR and on the issue.
 7. main is protected: merge only via PR with build, tdd and mutate green and the branch up to date with main.
 8. CodeRabbit reviews every PR and is a required check; fix or answer every finding and resolve all review threads before merging.
