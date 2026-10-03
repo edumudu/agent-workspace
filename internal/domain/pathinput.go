@@ -12,8 +12,6 @@ type PathInput struct {
 	Path   string
 }
 
-// why: Dir and Prefix are what to list and filter for completions; Path is the
-// folder the input names, relative input read from base.
 func ParsePathInput(input, base, home string) PathInput {
 	switch {
 	case input == "~":
@@ -31,7 +29,6 @@ func ParsePathInput(input, base, home string) PathInput {
 	}
 }
 
-// why: hidden folders show only once the prefix asks for them, as in a shell.
 func CompleteDirs(children []Child, prefix string) []Child {
 	lower := strings.ToLower(prefix)
 	out := []Child{}

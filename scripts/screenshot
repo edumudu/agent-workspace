@@ -1,14 +1,4 @@
 #!/usr/bin/env bash
-# why: usage: scripts/screenshot <out.png> [COLSxROWS] < steps
-# Runs a command in a throwaway tmux server against a throwaway daemon, plays
-# the steps from stdin, and renders the pane, colors included, to a PNG with
-# freeze (go install github.com/charmbracelet/freeze@latest). Steps, one a line:
-#   run <command...>   start it in the pane (default: agentws tui --new-session)
-#   type <text>        send the text literally
-#   key <tmux key>...  send keys by tmux name (Tab, Enter, Left, BSpace, ...)
-#   wait <seconds>     sleep
-#   shot <out.png>     render now; the final render goes to <out.png> from argv
-# The command runs with AGENTWS_LAUNCH_DIR set to the cwd, so ./ means this checkout.
 set -euo pipefail
 out="$1"
 size="${2:-100x32}"
@@ -16,7 +6,6 @@ root="$(cd "$(dirname "$0")/.." && pwd)"
 bin="$root/bin/agentws"
 make -C "$root" build >/dev/null
 freeze="$(command -v freeze || echo "$(go env GOPATH)/bin/freeze")"
-# why: macOS caps Unix socket paths at 104 bytes, so the home must be short.
 home="$(mktemp -d /tmp/aws-shot.XXXXXX)"
 sock="aws-shot-$$"
 export AGENTWS_HOME="$home" AGENTWS_TMUX_SOCKET="$sock-agents"
@@ -31,8 +20,6 @@ render() {
 }
 
 started=0
-# why: the pane's shell re-splits the line, so every word is quoted, and only a
-# word that is exactly agentws becomes the built binary (paths that contain it stay).
 start() {
   local words=() w
   for w in "$@"; do

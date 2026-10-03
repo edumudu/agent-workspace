@@ -323,7 +323,6 @@ func (m Model) folderLabel() string {
 	return "…"
 }
 
-// why: uses the same plan the daemon makes.
 func (m Model) startsAt() []string {
 	s := m.styles
 	d := m.dialog

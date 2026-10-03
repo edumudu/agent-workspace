@@ -36,22 +36,21 @@ var (
 )
 
 type dialog struct {
-	field    field
-	workItem string
-	model    string
-	spaces   []domain.Workspace
-	last     string
-	ws       int
-	harness  int
-	effort   int
-	efforts  []string
-	fallback *fallbackTrace
-	err      string
-	busy     bool
-	started  bool
-	seq      int
-	defaults map[domain.Harness]Defaults
-	// why: a typed path stands in for the workspace picker until it is emptied again.
+	field      field
+	workItem   string
+	model      string
+	spaces     []domain.Workspace
+	last       string
+	ws         int
+	harness    int
+	effort     int
+	efforts    []string
+	fallback   *fallbackTrace
+	err        string
+	busy       bool
+	started    bool
+	seq        int
+	defaults   map[domain.Harness]Defaults
 	path       string
 	base, home string
 	listing    listing
@@ -187,7 +186,6 @@ func (d *dialog) typed() domain.PathInput {
 	return domain.ParsePathInput(d.path, d.base, d.home)
 }
 
-// why: a typed path that names a known workspace starts there as that workspace.
 func (d *dialog) chosen() (domain.Workspace, bool) {
 	if d.path == "" {
 		if len(d.spaces) == 0 {
@@ -239,7 +237,6 @@ func (d *dialog) folder() folderState {
 	return folderMissing
 }
 
-// why: keeps what the user typed (./, ../, ~/) and only swaps the last segment.
 func (d *dialog) open() bool {
 	ms := d.matches()
 	if len(ms) == 0 {
@@ -273,8 +270,6 @@ func (d *dialog) up() {
 	}
 }
 
-// why: lists the folder the input points into once per folder, through the daemon, so the
-// dialog never reads the disk itself.
 func (m Model) listDirs() tea.Cmd {
 	d := m.dialog
 	d.pick = 0

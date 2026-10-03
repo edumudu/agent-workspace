@@ -94,7 +94,6 @@ func (d *Daemon) addWorkspace(root string) (domain.Workspace, *rpc.Error, bool) 
 	return ws, nil, true
 }
 
-// why: runs on the caller's goroutine and never touches state, so a slow disk stalls only that call.
 func (d *Daemon) workspaceDirs(req rpc.Request) *rpc.Response {
 	var p rpc.WorkspaceDirsParams
 	if err := json.Unmarshal(req.Params, &p); err != nil {

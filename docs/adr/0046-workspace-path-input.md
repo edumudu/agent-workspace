@@ -1,4 +1,4 @@
-# ADR 0043: A typed workspace path in the new-session dialog
+# ADR 0046: A typed workspace path in the new-session dialog
 
 Status: accepted, 2026-10-03. Extends [ADR 0037](0037-new-session-popup.md)'s Workspace field; `session.new` is unchanged.
 
