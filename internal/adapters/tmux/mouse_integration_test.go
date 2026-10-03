@@ -65,3 +65,28 @@ func TestMouseOffLeavesTheMouseToTheTerminal(t *testing.T) {
 		t.Fatalf("mouse = %q, want off", got)
 	}
 }
+
+func TestADaemonRestartLoadsTheNewConfigIntoARunningServer(t *testing.T) {
+	ctx := context.Background()
+	if _, err := exec.LookPath("tmux"); err != nil {
+		t.Skip("tmux not installed")
+	}
+	cfg := tmux.Config{
+		Socket:     fmt.Sprintf("agentws-test-mouse-%d-%d", os.Getpid(), time.Now().UnixNano()),
+		ConfigPath: filepath.Join(t.TempDir(), "tmux.conf"),
+		NoMouse:    true,
+	}
+	old := tmux.New(cfg)
+	t.Cleanup(func() { _ = old.Close(context.Background()) })
+	if _, err := old.OpenClient(ctx, "main", app.PaneSpec{Name: "tui", Command: []string{"sleep", "600"}}); err != nil {
+		t.Fatal(err)
+	}
+	cfg.NoMouse = false
+	restarted := tmux.New(cfg)
+	if _, err := restarted.Create(ctx, app.PaneSpec{Name: "agent", Command: []string{"sleep", "600"}}); err != nil {
+		t.Fatal(err)
+	}
+	if got, _ := restarted.ShowOption(ctx, "mouse"); got != "on" {
+		t.Fatalf("mouse = %q after the restart, want on", got)
+	}
+}
