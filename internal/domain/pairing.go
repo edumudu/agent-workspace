@@ -190,7 +190,7 @@ func PairURL(base, code string) (string, error) {
 		return "", ErrPairURL
 	}
 	base = strings.TrimSuffix(strings.TrimPrefix(base, "https://"), "/")
-	if base == "" {
+	if base == "" || strings.Contains(base, "://") || strings.Contains(base, "#") {
 		return "", ErrPairURL
 	}
 	return "https://" + base + "/#pair=" + code, nil
