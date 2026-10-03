@@ -49,7 +49,59 @@ const (
 	MethodCleanupRun       = "cleanup.run"
 	MethodDiskView         = "disk.view"
 	MethodCleanupWorktree  = "cleanup.worktree"
+	MethodPairCode         = "pair.code"
+	MethodPairRedeem       = "pair.redeem"
+	MethodDeviceCheck      = "device.check"
+	MethodDeviceList       = "device.list"
+	MethodDeviceRevoke     = "device.revoke"
 )
+
+type PairCodeParams struct {
+	Name string `json:"name,omitempty"`
+}
+
+type PairCode struct {
+	Code      string    `json:"code"`
+	ExpiresAt time.Time `json:"expires_at"`
+}
+
+type PairRedeemParams struct {
+	Code string `json:"code"`
+	Name string `json:"name,omitempty"`
+	Addr string `json:"addr"`
+}
+
+type Device struct {
+	ID        string    `json:"id"`
+	Name      string    `json:"name"`
+	CreatedAt time.Time `json:"created_at"`
+	LastSeen  time.Time `json:"last_seen"`
+}
+
+func DeviceOf(d domain.Device) Device {
+	return Device{ID: d.ID, Name: d.Name, CreatedAt: d.Created, LastSeen: d.LastSeen}
+}
+
+type PairRedeemed struct {
+	Device Device `json:"device"`
+	Token  string `json:"token"`
+}
+
+type DeviceCheckParams struct {
+	Token string `json:"token"`
+}
+
+type DeviceChecked struct {
+	Device Device `json:"device"`
+}
+
+type DeviceList struct {
+	Devices []Device `json:"devices"`
+}
+
+type DeviceRevokeParams struct {
+	ID string `json:"id"`
+}
 
 type DiskView struct {
 	Free           uint64           `json:"free"`
@@ -218,6 +270,8 @@ const (
 	CodeFailed             = "failed"
 	CodeLaunchFailed       = "launch_failed"
 	CodeVersionMismatch    = "version_mismatch"
+	CodeUnauthorized       = "unauthorized"
+	CodeRateLimited        = "rate_limited"
 )
 
 func AnyBuild(method string) bool {
@@ -334,6 +388,7 @@ type Diff struct {
 	RemovedWorkspace string                `json:"removed_workspace,omitempty"`
 	RemovedWorktree  string                `json:"removed_worktree,omitempty"`
 	RemovedSession   string                `json:"removed_session,omitempty"`
+	RevokedDevice    string                `json:"revoked_device,omitempty"`
 	Workspace        *domain.Workspace     `json:"workspace,omitempty"`
 	Task             *domain.Task          `json:"task,omitempty"`
 	Worktree         *domain.Worktree      `json:"worktree,omitempty"`
