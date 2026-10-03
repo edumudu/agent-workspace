@@ -163,3 +163,17 @@ func TestBlockCommentOnlyTestChangeIsIgnored(t *testing.T) {
 		t.Fatalf("exit %d, want 0: the test change is a comment only\n%s", code, out)
 	}
 }
+
+func TestRewrittenMoveThatPassesOnBaseFails(t *testing.T) {
+	r := newRepo(t, map[string]string{"p/a.go": src("a"), "p/a_test.go": test("TestA", "a")})
+	r.git("rm", "-q", "p/a_test.go")
+	var more strings.Builder
+	for _, n := range []string{"One", "Two", "Three", "Four", "Five", "Six"} {
+		more.WriteString("\nfunc Test" + n + "(t *testing.T) {\n\tif len(A()) != 1 {\n\t\tt.Fatal(A())\n\t}\n}\n")
+	}
+	r.commit("test: rewrite the A tests in a new file", map[string]string{"p/b_test.go": test("TestA", "a") + more.String()})
+	code, out := r.check()
+	if code != 1 || !strings.Contains(out, "pass on the base branch") {
+		t.Fatalf("exit %d, want 1 because the rewritten tests pass on base\n%s", code, out)
+	}
+}
