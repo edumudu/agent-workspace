@@ -1,0 +1,2 @@
+-- a comment
+CREATE TABLE t (a TEXT DEFAULT '--'); -- trailing

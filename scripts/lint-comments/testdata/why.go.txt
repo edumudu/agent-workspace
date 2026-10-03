@@ -1,9 +1,0 @@
-package fixture
-
-func count(n int) int {
-	i := 0
-	// why: the caller counts from one
-	i++
-	//nolint:gosec // why: fixture only
-	return i + n
-}

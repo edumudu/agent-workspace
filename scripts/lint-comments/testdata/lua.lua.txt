@@ -1,0 +1,5 @@
+local x = "a -- b"
+-- a comment
+local y = 1 -- trailing
+local z = 'c--d'
+--[[ block ]]

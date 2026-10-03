@@ -1,0 +1,8 @@
+#!/bin/sh
+# shellcheck disable=SC2086
+# a comment
+echo "a # not a comment" '# nor this' $#
+echo hi # trailing
+x=${y#prefix}
+printf '%s\n' "#{pane_id}"
+	# indented comment

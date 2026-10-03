@@ -9,25 +9,29 @@ import (
 
 func TestCheckFile(t *testing.T) {
 	tests := []struct {
+		name      string
 		fixture   string
 		wantLines []int
 	}{
-		{"bad_body.go.txt", []int{5}},
-		{"why.go.txt", nil},
-		{"directive.go.txt", []int{6}},
-		{"todo.go.txt", []int{3, 10}},
-		{"nolint_no_reason.go.txt", []int{4, 9, 13}},
-		{"unmarked.go.txt", []int{1, 6, 9, 12, 15, 18, 21, 24}},
-		{"marked.go.txt", nil},
-		{"trailing.go.txt", []int{3, 5, 8, 11}},
+		{"x.go", "comments.go.txt", []int{1, 4, 7, 10, 13, 15, 16, 20}},
+		{"x_test.go", "comments.go.txt", []int{1, 4, 7, 10, 13, 15, 16, 20}},
+		{"x.go", "directives.go.txt", []int{20}},
+		{"x.sh", "shell.sh.txt", []int{3, 5, 8}},
+		{"x.lua", "lua.lua.txt", []int{2, 3, 5}},
+		{"x.yml", "yaml.yml.txt", []int{3, 4}},
+		{"x.yaml", "yaml.yml.txt", []int{3, 4}},
+		{"x.txtar", "script.txtar.txt", []int{1}},
+		{"x.sql", "query.sql.txt", []int{1, 2}},
+		{"x.md", "shell.sh.txt", nil},
+		{"tool", "shell.sh.txt", []int{3, 5, 8}},
 	}
 	for _, tt := range tests {
-		t.Run(tt.fixture, func(t *testing.T) {
+		t.Run(tt.name+"/"+tt.fixture, func(t *testing.T) {
 			src, err := os.ReadFile(filepath.Join("testdata", tt.fixture))
 			if err != nil {
 				t.Fatal(err)
 			}
-			findings, err := checkFile(tt.fixture, src)
+			findings, err := checkFile(tt.name, src)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -44,23 +48,39 @@ func TestCheckFile(t *testing.T) {
 
 func TestRunExitCode(t *testing.T) {
 	tests := []struct {
-		fixture string
-		want    int
+		name  string
+		files map[string]string
+		want  int
 	}{
-		{"bad_body.go.txt", 1},
-		{"why.go.txt", 0},
-		{"unmarked.go.txt", 1},
-		{"marked.go.txt", 0},
+		{"clean tree", map[string]string{
+			"a.go":         "//go:build integration\n\npackage a\n",
+			"run.sh":       "#!/bin/sh\necho hi\n",
+			"data/notes":   "# a heading, not a script\n",
+			"README.md":    "# Title\n",
+			"x.golden":     "# not code\n",
+			"bin/agentws":  "\x7fELF # binary\n",
+			"vendor/v.go":  "// vendored\npackage v\n",
+			".git/hook.sh": "#!/bin/sh\n# git's own\n",
+		}, 0},
+		{"comment in a test file", map[string]string{"a_test.go": "package a\n\n// helper\nfunc h() {}\n"}, 1},
+		{"workflow under .github", map[string]string{".github/workflows/ci.yml": "on: push\n# why: a reason\n"}, 1},
+		{"script found by its shebang", map[string]string{"scripts/tool": "#!/usr/bin/env bash\n# usage: tool\n"}, 1},
+		{"recipe comment in a Makefile", map[string]string{"Makefile": "build:\n\t# compile\n\tgo build\n"}, 1},
+		{"fake binary in testdata", map[string]string{"test/testdata/bin/gh": "#!/bin/sh\n# fake gh\n"}, 1},
+		{"e2e script in testdata", map[string]string{"testdata/script/a.txtar": "# checks a\nexec true\n"}, 1},
+		{"go fixture in testdata", map[string]string{"testdata/fixture.go": "// fixture input\npackage f\n"}, 0},
 	}
 	for _, tt := range tests {
-		t.Run(tt.fixture, func(t *testing.T) {
+		t.Run(tt.name, func(t *testing.T) {
 			dir := t.TempDir()
-			src, err := os.ReadFile(filepath.Join("testdata", tt.fixture))
-			if err != nil {
-				t.Fatal(err)
-			}
-			if err := os.WriteFile(filepath.Join(dir, "f.go"), src, 0o644); err != nil {
-				t.Fatal(err)
+			for name, body := range tt.files {
+				path := filepath.Join(dir, name)
+				if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+					t.Fatal(err)
+				}
 			}
 			if got := run([]string{dir}, os.Stderr); got != tt.want {
 				t.Errorf("run exit = %d, want %d", got, tt.want)
