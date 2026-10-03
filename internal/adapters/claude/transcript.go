@@ -79,12 +79,12 @@ func (p *TranscriptParser) line(line domain.TranscriptLine) {
 }
 
 func (p *TranscriptParser) user(e transcriptEntry, base domain.Message) {
-	if e.IsMeta || e.IsCompactSummary || (e.Origin.Kind != "" && e.Origin.Kind != "human") {
-		return
-	}
+	typed := !e.IsMeta && !e.IsCompactSummary && (e.Origin.Kind == "" || e.Origin.Kind == "human")
 	var text string
 	if json.Unmarshal(e.Message.Content, &text) == nil {
-		p.userText(e.UUID, text, base)
+		if typed {
+			p.userText(e.UUID, text, base)
+		}
 		return
 	}
 	var blocks []contentBlock
@@ -100,7 +100,7 @@ func (p *TranscriptParser) user(e transcriptEntry, base domain.Message) {
 			p.toolResult(b, base)
 		}
 	}
-	if len(texts) > 0 {
+	if typed && len(texts) > 0 {
 		p.userText(e.UUID, strings.Join(texts, "\n"), base)
 	}
 }
