@@ -31,8 +31,14 @@ render() {
 }
 
 started=0
+# why: the pane's shell re-splits the line, so every word is quoted, and only a
+# word that is exactly agentws becomes the built binary (paths that contain it stay).
 start() {
-  tmux -L "$sock" send-keys -t shot "env AGENTWS_HOME=$home AGENTWS_TMUX_SOCKET=$sock-agents AGENTWS_LAUNCH_DIR=$PWD $*" Enter
+  local words=() w
+  for w in "$@"; do
+    if [ "$w" = agentws ]; then words+=("$bin"); else words+=("$w"); fi
+  done
+  tmux -L "$sock" send-keys -t shot "$(printf '%q ' env "AGENTWS_HOME=$home" "AGENTWS_TMUX_SOCKET=$sock-agents" "AGENTWS_LAUNCH_DIR=$PWD" "${words[@]}")" Enter
   started=1
   sleep 1.5
 }
@@ -45,7 +51,8 @@ while IFS= read -r line || [ -n "$line" ]; do
     start "$bin" tui --new-session
   fi
   case "$verb" in
-  run) start "${arg//agentws/$bin}" ;;
+  # shellcheck disable=SC2086
+  run) start $arg ;;
   type) tmux -L "$sock" send-keys -t shot -l "$arg"; sleep 0.5 ;;
   # shellcheck disable=SC2086
   key) tmux -L "$sock" send-keys -t shot $arg; sleep 0.5 ;;
