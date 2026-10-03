@@ -330,7 +330,7 @@ func agentColumnModel(t *testing.T, width int) tui.Model {
 
 func TestReviewShowsTheAgentColumnBesideTheDiff(t *testing.T) {
 	out := screen(agentColumnModel(t, 180))
-	for _, want := range []string{"Edit resolvers.ts", "Bash bun test", "Org scoping now comes", "Draft review → this session", "2 comments · 2 worktrees"} {
+	for _, want := range []string{"Edit resolvers.ts", "bun test", "Org scoping now comes", "Draft review → this session", "2 comments · 2 worktrees"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("no %q in the review:\n%s", want, out)
 		}

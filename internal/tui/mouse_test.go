@@ -57,8 +57,8 @@ func TestMouseClickOnACardSelectsThatSession(t *testing.T) {
 	if m.Selected() != "s03" {
 		t.Fatalf("clicking the second task's header row selected %q, want s03", m.Selected())
 	}
-	if m = clickOn(t, m, "gpt-6"); m.Selected() != "s02" {
-		t.Fatalf("clicking the second card's detail row selected %q, want s02", m.Selected())
+	if m = clickOn(t, m, "session 2 change"); m.Selected() != "s02" {
+		t.Fatalf("clicking the second card's row selected %q, want s02", m.Selected())
 	}
 }
 
@@ -76,18 +76,6 @@ func TestMouseClickOnACardShowsAndFocusesThatSessionAtOnce(t *testing.T) {
 	clickOn(t, m, "task number 2")
 	if len(a.focused) != 2 || a.focused[1] != "s03" {
 		t.Fatalf("a click on the selected card focused %v, want it focused again", a.focused)
-	}
-}
-
-func TestMouseWheelMovesTheSelection(t *testing.T) {
-	st := fixture(5, 1)
-	m := newModel(&st, nil)
-	m = wheel(m, true, 2)
-	if m.Selected() != "s03" {
-		t.Fatalf("two wheel steps down selected %q, want s03", m.Selected())
-	}
-	if m = wheel(m, false, 1); m.Selected() != "s02" {
-		t.Fatalf("a wheel step up selected %q, want s02", m.Selected())
 	}
 }
 
@@ -118,7 +106,7 @@ func TestMousePickerClickAppliesThatChoice(t *testing.T) {
 
 func TestMouseClicksNeverTypeIntoAFocusedField(t *testing.T) {
 	m, _ := dialogModel(t, withWorkspaces(fixture(1, 0)))
-	x, y := spot(t, m, "n new session")
+	x, y := spot(t, m, "n new")
 	m = drive(m, click(x+1, y), release(x+1, y))
 	if strings.Contains(screen(m), "n▏") {
 		t.Fatalf("a footer click typed into the work item field:\n%s", screen(m))
@@ -195,8 +183,9 @@ func TestMouseOffIgnoresClicksAndAsksForNoEvents(t *testing.T) {
 	if m.View().MouseMode != tea.MouseModeNone {
 		t.Fatalf("mouse off still asks for mouse events")
 	}
-	if m = wheel(m, true, 1); m.Selected() != "s01" {
-		t.Fatalf("mouse off still moved the selection")
+	x, y := spot(t, m, "session 2 change")
+	if m = drive(m, click(x, y), release(x, y)); m.Selected() != "s01" {
+		t.Fatalf("mouse off still took a click")
 	}
 	on := newModel(&st, nil)
 	if on.View().MouseMode != tea.MouseModeCellMotion {

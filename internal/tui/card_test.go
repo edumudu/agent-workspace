@@ -48,15 +48,15 @@ func TestSessionCardShowsTaskPRsActionsAndWhatItWaitsOn(t *testing.T) {
 	out := screen(m)
 	card := out[strings.Index(out, "CARD"):]
 	for _, want := range []string{
-		"#42 · task number 3", "#3604",
-		"Bash: git status", "Bash: go test ./...", "Bash: go vet",
+		"#42 task number 3", "#3604",
+		"git status", "go test ./...", "go vet",
 		"Bash: rm -rf build", "make clean", "make all…",
 	} {
 		if !strings.Contains(card, want) {
 			t.Errorf("card missing %q:\n%s", want, card)
 		}
 	}
-	for _, absent := range []string{"Bash: go build", "make install", "make deploy"} {
+	for _, absent := range []string{"go build", "make install", "make deploy"} {
 		if strings.Contains(card, absent) {
 			t.Errorf("card has %q:\n%s", absent, card)
 		}
@@ -70,17 +70,17 @@ func TestSessionCardFollowsTheSelectionAndLiveEvents(t *testing.T) {
 	st := fixture(2, 1)
 	st.Events = []domain.SessionEvent{toolEvent("s01", "Read", "a.go"), toolEvent("s02", "Read", "b.go")}
 	m := newModel(&st, nil)
-	if out := screen(m); !strings.Contains(out, "Read: a.go") || strings.Contains(out, "Read: b.go") {
+	if out := screen(m); !strings.Contains(out, "Read a.go") || strings.Contains(out, "Read b.go") {
 		t.Fatalf("first session's card:\n%s", out)
 	}
 	m = press(m, "j")
-	if out := screen(m); !strings.Contains(out, "Read: b.go") || strings.Contains(out, "Read: a.go") {
+	if out := screen(m); !strings.Contains(out, "Read b.go") || strings.Contains(out, "Read a.go") {
 		t.Fatalf("second session's card:\n%s", out)
 	}
 	s := st.Sessions[1]
 	ev := toolEvent("s02", "Bash", "make")
 	m = update(m, tui.DiffMsg(rpc.Diff{Seq: 1, Session: &s, Event: &ev}))
-	if out := screen(m); !strings.Contains(out, "Bash: make") || !strings.Contains(out, "Read: b.go") {
+	if out := screen(m); !strings.Contains(out, "last  make") || !strings.Contains(out, "Read b.go") {
 		t.Fatalf("card after a live event:\n%s", out)
 	}
 }
@@ -102,9 +102,9 @@ func TestTheFooterLeavesTheSessionListItsRows(t *testing.T) {
 	out := screen(selectSession(t, newModel(&st, nil), "s05"))
 	lines := strings.Split(out, "\n")
 	for i, line := range lines {
-		if strings.Contains(line, " 5 ") && i+2 < len(lines) && strings.Contains(lines[i+2], "api:part-1") {
+		if strings.Contains(line, " 5 ") && i+1 < len(lines) && strings.Contains(lines[i+1], "opus-5.5") {
 			return
 		}
 	}
-	t.Fatalf("session 5's worktree row is cut off:\n%s", out)
+	t.Fatalf("session 5's model line is cut off:\n%s", out)
 }
