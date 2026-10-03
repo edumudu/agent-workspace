@@ -194,6 +194,23 @@ func (c *fakeClock) Now() time.Time {
 	return c.now
 }
 
+type setClock struct {
+	mu  sync.Mutex
+	now time.Time
+}
+
+func (c *setClock) Now() time.Time {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.now
+}
+
+func (c *setClock) advance(d time.Duration) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.now = c.now.Add(d)
+}
+
 type liveGit struct{ branch atomic.Value }
 
 func (g *liveGit) Inspect(context.Context, string) (app.RepoFacts, error) {
