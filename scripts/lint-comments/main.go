@@ -271,8 +271,10 @@ func checkSQL(name string, src []byte) []finding {
 			if ch == quote {
 				quote = 0
 			}
-		case ch == '\'' || ch == '"':
+		case ch == '\'' || ch == '"' || ch == '`':
 			quote = ch
+		case ch == '[':
+			quote = ']'
 		case bytes.HasPrefix(rest, []byte("--")):
 			report()
 			for i+1 < len(src) && src[i+1] != '\n' {
