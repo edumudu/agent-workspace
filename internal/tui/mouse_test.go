@@ -61,20 +61,20 @@ func TestMouseClickOnACardSelectsThatSession(t *testing.T) {
 	}
 }
 
-func TestMouseClickOnTheSelectedCardFocusesItsPane(t *testing.T) {
+func TestMouseClickOnACardShowsAndFocusesThatSessionAtOnce(t *testing.T) {
 	st := fixture(3, 1)
-	f := &fakeFocuser{}
-	m := newModel(&st, f)
-	_, y := spot(t, m, "session 1 change")
-	m = drive(m, click(3, y), release(3, y))
-	if f.calls != 1 {
-		t.Fatalf("a click on the selected card focused %d times, want 1", f.calls)
+	a := &fakeAttender{}
+	m := newAttendModel(&st, a)
+	m = clickOn(t, m, "task number 2")
+	if m.Selected() != "s03" {
+		t.Fatalf("one click on the second task selected %q, want s03", m.Selected())
 	}
-	m = press(m, "j")
-	_, y = spot(t, m, "session 1 change")
-	drive(m, click(3, y), release(3, y))
-	if f.calls != 1 {
-		t.Fatalf("a click on another card focused its pane instead of selecting it")
+	if len(a.focused) != 1 || a.focused[0] != "s03" {
+		t.Fatalf("one click focused %v, want [s03]", a.focused)
+	}
+	clickOn(t, m, "task number 2")
+	if len(a.focused) != 2 || a.focused[1] != "s03" {
+		t.Fatalf("a click on the selected card focused %v, want it focused again", a.focused)
 	}
 }
 

@@ -74,6 +74,8 @@ type Host struct {
 
 	configOnce sync.Once
 	configErr  error
+	loadMu     sync.Mutex
+	loaded     bool
 	titlesMu   sync.Mutex
 	titlesOn   bool
 	bufferSeq  atomic.Uint64
@@ -104,6 +106,21 @@ func (h *Host) run(ctx context.Context, stdin string, args ...string) (string, e
 	if err := h.ensureConfig(); err != nil {
 		return "", err
 	}
+	h.loadConfig(ctx)
+	return h.invoke(ctx, stdin, args...)
+}
+
+func (h *Host) loadConfig(ctx context.Context) {
+	h.loadMu.Lock()
+	defer h.loadMu.Unlock()
+	if h.loaded {
+		return
+	}
+	_, _ = h.invoke(ctx, "", "source-file", h.configPath)
+	h.loaded = ctx.Err() == nil
+}
+
+func (h *Host) invoke(ctx context.Context, stdin string, args ...string) (string, error) {
 	full := append([]string{"-L", h.socket, "-f", h.configPath}, args...)
 	cmd := exec.CommandContext(ctx, "tmux", full...)
 	cmd.Env = withoutTmuxEnv(os.Environ())

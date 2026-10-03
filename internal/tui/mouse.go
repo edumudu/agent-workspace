@@ -131,11 +131,8 @@ func (m Model) click(x, y int) (tea.Model, tea.Cmd) {
 func (m Model) clickOwner(owner string, x int) (tea.Model, tea.Cmd) {
 	switch {
 	case strings.HasPrefix(owner, ownSession):
-		id := strings.TrimPrefix(owner, ownSession)
-		if id == m.selected {
-			return m, m.focus()
-		}
-		m.choose(m.index(id))
+		m.choose(m.index(strings.TrimPrefix(owner, ownSession)))
+		return m, m.focus()
 	case strings.HasPrefix(owner, ownPick):
 		i, _ := strconv.Atoi(strings.TrimPrefix(owner, ownPick))
 		return m.applyChoice(*m.picker, i)
