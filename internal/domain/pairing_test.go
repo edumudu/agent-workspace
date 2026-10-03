@@ -323,7 +323,8 @@ func TestPairURLPutsTheCodeInTheFragment(t *testing.T) {
 		{"http://box.example.ts.net", "", false},
 		{"", "", false},
 		{"https://", "", false},
-	}
+		{"box.example.ts.net/#home", "", false},
+		{"ftp://box.example.ts.net", "", false},	}
 	for _, c := range cases {
 		got, err := PairURL(c.base, "ABCD2345")
 		if (err == nil) != c.ok || got != c.want {
