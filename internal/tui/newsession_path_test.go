@@ -138,3 +138,17 @@ func TestNewSessionPathRetriesAFailedListingOnTheNextEdit(t *testing.T) {
 		t.Fatalf("a failed listing is never retried:\n%s", out)
 	}
 }
+
+func TestNewSessionPathKeepsTheNewestListingOfAFolder(t *testing.T) {
+	m, c := pathModel(t, rpc.State{})
+	next, older := m.Update(tea.PasteMsg{Content: "./"})
+	m = pressCmd(next.(tui.Model), keyLeft)
+	next, newer := m.Update(tea.PasteMsg{Content: "shop/"})
+	m = next.(tui.Model)
+	stale := older()
+	c.dirs = map[string][]domain.Child{"/code/shop": {{Name: "fresh", Path: "/code/shop/fresh"}}}
+	m = update(update(m, newer()), stale)
+	if out := screen(m); !strings.Contains(out, "fresh/") {
+		t.Fatalf("an older reply for the same folder replaced the newer one:\n%s", out)
+	}
+}
