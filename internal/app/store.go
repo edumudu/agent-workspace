@@ -12,6 +12,7 @@ type Snapshot struct {
 	Events     []domain.SessionEvent
 	Viewed     []domain.ViewedMark
 	Drafts     []domain.ReviewDraft
+	Devices    []domain.Device
 }
 
 type Store interface {
@@ -26,6 +27,8 @@ type Store interface {
 	PutViewed(domain.ViewedMark)
 	DeleteViewed(key string)
 	PutDraft(domain.ReviewDraft)
+	PutDevice(domain.Device)
+	DeleteDevice(id string)
 	Load() (Snapshot, error)
 	Flush() error
 	Close() error

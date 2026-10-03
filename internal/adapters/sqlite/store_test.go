@@ -423,3 +423,28 @@ func TestReviewASentDraftWithNoTurnStaysClosedAfterARestart(t *testing.T) {
 		t.Errorf("drafts = %+v; a draft closed with no turn must not wait for one again", snap.Drafts)
 	}
 }
+
+func TestDevicesPersistAndRevokedOnesAreDeleted(t *testing.T) {
+	s, path := openTemp(t)
+	at := time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC)
+	phone := domain.Device{ID: "a2b3c4d5", Name: "phone", TokenHash: "abc123", Created: at, LastSeen: at.Add(time.Hour)}
+	ipad := domain.Device{ID: "z9y8x7w6", Name: "ipad", TokenHash: "def456", Created: at, LastSeen: at}
+	s.PutDevice(phone)
+	s.PutDevice(ipad)
+	s = reopen(t, s, path)
+	snap, err := s.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(snap.Devices, []domain.Device{phone, ipad}) {
+		t.Fatalf("devices %+v", snap.Devices)
+	}
+	s.DeleteDevice(phone.ID)
+	snap, err = reopen(t, s, path).Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(snap.Devices, []domain.Device{ipad}) {
+		t.Fatalf("after revoke %+v", snap.Devices)
+	}
+}

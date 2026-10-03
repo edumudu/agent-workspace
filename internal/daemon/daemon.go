@@ -116,6 +116,8 @@ type state struct {
 	sends        []domain.QueuedSend
 	inFlight     map[string]sendFlight
 	pasteSend    func(session domain.Session, q domain.QueuedSend)
+	pairing      domain.Pairing
+	devices      map[string]domain.Device
 }
 
 type Daemon struct {
@@ -164,6 +166,10 @@ func New(store app.Store, pid int, opts ...Option) (*Daemon, error) {
 		awaiting:   map[string]domain.ReviewDraft{},
 		pasting:    map[string]bool{},
 		inFlight:   map[string]sendFlight{},
+		devices:    map[string]domain.Device{},
+	}
+	for _, dev := range snap.Devices {
+		st.devices[dev.ID] = dev
 	}
 	for _, dr := range snap.Drafts {
 		switch {
@@ -515,6 +521,8 @@ func (d *Daemon) dispatch(c *conn, line []byte) (*rpc.Response, bool) {
 		return d.diskView(req)
 	case rpc.MethodCleanupWorktree:
 		return d.cleanupWorktree(req)
+	case rpc.MethodPairCode, rpc.MethodPairRedeem, rpc.MethodDeviceCheck, rpc.MethodDeviceList, rpc.MethodDeviceRevoke:
+		return d.pairMethod(req)
 	default:
 		return errorResponse(req.ID, rpc.CodeUnknownMethod, "unknown method "+req.Method), true
 	}

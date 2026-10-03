@@ -93,6 +93,16 @@ Tests are named `*Cleanup*`: `go test ./internal/domain/... -run Cleanup` and `g
 
 `go test ./internal/daemon ./internal/app ./internal/domain -run 'Disk|Reclaimable|TotalSize|RemoveWorktree|CleanupWorktree|ShellToggle'`. `disk.view` returns `Cleanup.Plan` with a size per worktree (one status check per worktree, 4 at a time); `cleanup.worktree` runs `app.Cleanup.RemoveWorktree`. `AGENTWS_DEPS_STORE` names the shared deps store whose size the header shows (default: pnpm's store if present). See [ADR 0030](../../docs/adr/0030-worktrees-disk-view.md) and [internal/tui/](../tui/AGENTS.md).
 
+## Pairing and devices
+
+`go test ./internal/domain/ ./internal/daemon/ ./cmd/agentws/ -run 'Pair|Device|Remote'`. The rules are in `domain` (`Pairing`, `NewPairCode`, `CheckDeviceToken`, `RevokeDevice`, `Device.Seen`); see [ADR 0046](../../docs/adr/0046-remote-app.md).
+
+- **State.** Open codes and failed tries live in `state.pairing` on the loop, in memory only: a daemon restart voids open codes. Devices live in `state.devices` and the `devices` table, keyed by ID, with only the token's SHA-256 (`TokenHash`).
+- **`pair.code`** draws the code with `crypto/rand` on the connection goroutine, then issues it on the loop. **`pair.redeem`** draws the 32 token bytes before it enters the loop. Its `addr` is required and counted per host: the daemon strips a port, so `serve` passes the request's remote address as it is (or the client address a trusted proxy forwards). A wrong or expired code is `unauthorized`; a try over the limit is `rate_limited` and counts as no failure.
+- **`device.check`** hashes the token and compares it in constant time with every device's hash. It records `LastSeen` at most once a minute, so a store write follows at most one check a minute per device.
+- **Revocation.** `device.revoke` deletes the device and emits a diff to every subscriber with only `revoked_device` set (no `State` field carries devices). `serve` (#176) holds one `subscribe` connection, opened before it accepts requests, and closes every open stream of that device when the diff arrives, well within a second. A stream's `device.check` and a revoke are ordered on the loop: a check after the revoke fails, and a revoke after the check reaches `serve` as a diff. Device IDs are random and never reused, so `serve` may keep a set of revoked IDs to close a stream whose check answered just before the diff was read.
+- Tokens never reach a log or the disk in clear: errors never quote them, and the CLI never prints one.
+
 ## Shell and nvim
 
 `go test ./... -run Shell -tags integration` runs the shell tests (daemon against real tmux, the tmux adapter's split, popup and key pass-through); they and the nvim ones need `tmux` and `nvim`. `daemon.WithTerminals(home, editor)` turns these methods on; they need `WithHarnesses` and a client host, and answer `unknown_method` without them. See [ADR 0029](../../docs/adr/0029-shell-and-nvim.md).
