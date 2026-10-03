@@ -90,4 +90,3 @@ Claude Code and Codex load an `AGENTS.md` (here also `CLAUDE.md`, a symlink to i
 ## Repo hygiene
 
 - This repo is public. Never commit employer names, internal repo or service names, internal URLs, issue keys, tokens, or real usage data. Use generic examples such as `api`, `web`, `#42`.
-- Commits use the GitHub noreply email already set in this clone's git config.
