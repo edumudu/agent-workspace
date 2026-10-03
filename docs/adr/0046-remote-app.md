@@ -14,14 +14,14 @@ It is a feature for anyone running `agentws`, not one setup. How the phone reach
 
 - A session the phone talks to is the same tmux pane the terminal shows. The chat view reads the harness transcript; input goes into the pane. Nothing runs headless, so a session can move between the terminal and the phone at any time.
 - `Session` gains `Transcript`, the latest `transcript_path` from the harness's hooks (Claude and Codex both send it; the daemon already reads it for usage).
-- `domain.Message` is the harness-neutral chat entry: `ID`, `Turn`, `Role` (`user`, `assistant`, `tool`, `system`), `Text`, an optional `Tool` (`Name`, `Summary`, `Status`) and `At`. The Claude adapter parses its JSONL transcript and the Codex adapter its rollout file into `[]Message`. Both skip unknown entries, so a harness update degrades to missing lines, not errors. Fixtures in `testdata/` pin each format.
-- A message cursor is the byte offset of the line it came from. Paging back reads earlier lines; live updates read appended bytes.
+- `domain.Message` is the harness-neutral chat entry: `ID`, `Cursor`, `Turn`, `Role` (`user`, `assistant`, `tool`, `system`), `Text`, an optional `Tool` (`Name`, `Summary`, `Status`) and `At`. The Claude adapter parses its JSONL transcript and the Codex adapter its rollout file into `[]Message`. Both skip unknown entries, so a harness update degrades to missing lines, not errors. Fixtures in `testdata/` pin each format.
+- `Message.Cursor` is the byte offset just past the transcript line the message came from. Paging back reads earlier lines; live updates read appended bytes.
 
 ### New daemon methods
 
-- `transcript.page` (`{"session","before","limit"}` → `{"messages","before"}`) reads a page on the connection goroutine.
-- `transcript.watch` (`{"session","after"}`) streams new messages like `subscribe` streams diffs. A worker per watched session tails the file with fsnotify and stops when the last watcher leaves. Nothing reads transcripts while no client watches, and the event loop never reads them.
-- `session.send` (`{"session","text"}` → `{"queued"}`) reuses the queued-send path of `review.send`: one bracketed paste and Enter once the session is idle, done or waiting. A send to a busy session waits, and the app shows it as queued.
+- `transcript.page` (`{"session","before","limit"}` → `{"messages","before"}`) reads a page on the connection goroutine. An empty `before` asks for the newest page; the response's `before` is the start of its oldest message, to pass back for the page before it.
+- `transcript.watch` (`{"session","after"}`), with `after` the `Cursor` of the newest message the client holds, streams the messages after it like `subscribe` streams diffs. A worker per watched session tails the file with fsnotify and stops when the last watcher leaves. Nothing reads transcripts while no client watches, and the event loop never reads them.
+- `session.send` (`{"session","text"}` → `{"queued"}`) uses a text queue of its own, separate from `review.send`'s review-draft queue but dispatched by the same rule: one bracketed paste and Enter once the session is idle, done or waiting. A send to a busy session waits, and the app shows it as queued.
 - `session.interrupt` (`{"session"}`) sends Escape to the pane.
 - `session.prompt` (`{"session"}` → `{"text","choices"}`) and `session.answer` (`{"session","choice"}`) handle a permission dialog: the daemon captures the pane, the harness adapter turns the dialog into choices and maps a choice to its keys. This is tied to each harness's dialog layout and is tested against captured fixtures; a structured path through a blocking permission hook is left to a later ADR, because it cannot meet the `agentws hook` budget as it stands.
 - `session.new` gains an optional `prompt`, sent through `session.send` once the session is up.
@@ -29,7 +29,7 @@ It is a feature for anyone running `agentws`, not one setup. How the phone reach
 ### `agentws serve`
 
 - A new subcommand and a new package, `internal/serve`. Like `tui`, it talks to the daemon only through `rpc` and may import `domain` types; depguard gets a `serve` rule. It starts the daemon the same way the TUI does when none is running.
-- It listens on `--addr` (default `127.0.0.1:7420`). With `--cert` and `--key` it serves TLS itself (for example the files `tailscale cert` writes); without them it expects a reverse proxy in front. It refuses a non-loopback address without TLS unless given `--insecure-http`.
+- It listens on `--addr` (default `127.0.0.1:7420`). With `--cert` and `--key` it serves TLS itself (for example the files `tailscale cert` writes); without them it listens on loopback only, behind a reverse proxy on the same host. A device token never crosses a network in clear: plain HTTP on a non-loopback address is refused, with no override. A proxy that cannot reach loopback (one in a container) connects over TLS; `--self-signed` makes a certificate for that hop, which the proxy is set to trust.
 - `agentws setup serve [--remove]` installs it as a systemd user unit on Linux or a launchd agent on macOS, with the PATH of the shell that ran it, like `setup bridge`.
 - The HTTP API lives under `/api/v1` and is an allowlist, not a passthrough of the socket protocol:
 
@@ -53,7 +53,7 @@ It is a feature for anyone running `agentws`, not one setup. How the phone reach
 ### Pairing and devices
 
 - `agentws remote pair [--name phone]` asks the daemon for a pairing code and prints a QR code and the plain URL, `https://<public url>/#pair=<code>`. The public URL comes from `--url` or `[serve] url` in `config.toml`.
-- A code is 8 characters from an alphabet without look-alikes, valid for 5 minutes, single use, and void after 5 wrong tries across all codes. `POST /api/v1/pair` swaps it for a device token: 32 random bytes, shown once, stored only as its SHA-256 in a `devices` table with a name, created and last-seen times.
+- A code is 8 characters from an alphabet without look-alikes, valid for 5 minutes and single use. A wrong code voids nothing, so nobody can cancel a pairing by guessing; instead `pair` accepts at most 5 failed tries a minute from one address and 20 a minute in all, which keeps guessing a 40-bit code in 5 minutes out of reach. `POST /api/v1/pair` swaps it for a device token: 32 random bytes, shown once, stored only as its SHA-256 in a `devices` table with a name, created and last-seen times.
 - Every other request carries `Authorization: Bearer <token>`. A WebSocket sends the token in its first frame, since browsers cannot set headers on one, and is closed if that frame is late or wrong. The stream also checks `Origin` against the public URL.
 - `agentws remote devices` lists devices; `agentws remote revoke <id>` deletes one and closes its open streams.
 - Code expiry, attempt counting, token checks and revocation are pure rules in `domain`, table-tested.
