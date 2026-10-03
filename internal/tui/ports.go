@@ -42,6 +42,18 @@ func portLabel(ports []domain.Port) string {
 	return strings.Join(parts, " ")
 }
 
+const rowPorts = 3
+
+// why: a session row shares its 48 columns with the session name, so it shows
+// the first few ports and counts the rest; the status line lists them all.
+func rowPortLabel(ports []domain.Port) string {
+	parts := strings.Fields(portLabel(ports))
+	if len(parts) <= rowPorts {
+		return strings.Join(parts, " ")
+	}
+	return strings.Join(parts[:rowPorts], " ") + fmt.Sprintf(" +%d", len(parts)-rowPorts)
+}
+
 func groupsOf(ports []domain.Port) []int {
 	seen := map[int]bool{}
 	var groups []int
