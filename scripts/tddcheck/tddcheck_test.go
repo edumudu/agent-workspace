@@ -8,7 +8,6 @@ import (
 	"testing"
 )
 
-// why: each case builds a throwaway module with one package, p, and runs scripts/tdd-check on it the way CI does.
 type repo struct {
 	t    *testing.T
 	dir  string
@@ -63,7 +62,6 @@ func (r *repo) move(from, to string) {
 	r.git("mv", from, to)
 }
 
-// why: returns the exit code and output of scripts/tdd-check base HEAD, run with a feat: PR title.
 func (r *repo) check() (int, string) {
 	r.t.Helper()
 	script, err := filepath.Abs(filepath.Join("..", "tdd-check"))
