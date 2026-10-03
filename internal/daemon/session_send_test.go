@@ -145,6 +145,23 @@ func TestSessionSendThatFailsToPasteStaysQueued(t *testing.T) {
 	waitUntil(t, "requeued", func() bool { return reflect.DeepEqual(queuedTexts(t, env.c), []string{"flaky"}) })
 }
 
+func TestSessionSendThatFailsToPasteFreesAReviewDraftWaitingBehindIt(t *testing.T) {
+	env := startSend(t, domain.StateIdle)
+	env.host.failOn("flaky")
+	release := env.host.holdPane("%1")
+	sendText(t, env.c, "flaky")
+	env.host.waitHeld(t, "%1")
+	addComments(t, env.c, commentA)
+	if _, err := env.c.SendReview(context.Background(), "s1"); err != nil {
+		t.Fatal(err)
+	}
+	release()
+	want := pasted(domain.ReviewPrompt([]domain.ReviewComment{commentA}))
+	if typed := env.host.waitTyped(t, 2); !reflect.DeepEqual(typed, want) {
+		t.Fatalf("typed %q", typed)
+	}
+}
+
 func TestSessionSendAndAQueuedReviewDraftTakeSeparateTurns(t *testing.T) {
 	env := startSend(t, domain.StateRunning)
 	addComments(t, env.c, commentA)
