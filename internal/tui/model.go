@@ -42,6 +42,7 @@ type Options struct {
 	HarnessDefaults map[domain.Harness]Defaults
 	NewSessionOnly  bool
 	LaunchDir       string
+	Home            string
 	Onboard         Onboarder
 	SetupOnly       bool
 	SetupPopup      rpc.ClientPopupParams
@@ -227,7 +228,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.mouse(msg)
 	case tea.PasteMsg:
 		if m.dialog != nil {
-			return m.dialogPaste(msg.Content), nil
+			return m.dialogPaste(msg.Content)
 		}
 		if m.launching != nil {
 			return m.launcherPaste(msg.Content), nil
@@ -255,6 +256,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			in.busy, in.err = false, msg.err.Error()
 			m.launching = &in
 		}
+	case dirsListedMsg:
+		return m.gotDirs(msg), nil
 	case startFailedMsg:
 		if m.dialog == nil || m.dialog.seq != msg.seq {
 			m.status = msg.err.Error()

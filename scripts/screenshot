@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+set -euo pipefail
+out="$1"
+size="${2:-100x32}"
+root="$(cd "$(dirname "$0")/.." && pwd)"
+bin="$root/bin/agentws"
+make -C "$root" build >/dev/null
+freeze="$(command -v freeze || echo "$(go env GOPATH)/bin/freeze")"
+home="$(mktemp -d /tmp/aws-shot.XXXXXX)"
+sock="aws-shot-$$"
+export AGENTWS_HOME="$home" AGENTWS_TMUX_SOCKET="$sock-agents"
+trap '{ tmux -L "$sock" kill-server; "$bin" daemon stop; tmux -L "$sock-agents" kill-server; rm -rf "$home"; } >/dev/null 2>&1 || true' EXIT
+"$bin" daemon start >/dev/null
+tmux -L "$sock" -f /dev/null new-session -d -s shot -x "${size%x*}" -y "${size#*x}" -c "$PWD"
+tmux -L "$sock" set -g status off
+tmux -L "$sock" set -g default-terminal tmux-256color
+tmux -L "$sock" set -as terminal-features ',*:RGB'
+
+render() {
+  tmux -L "$sock" capture-pane -e -p -t shot | "$freeze" --language ansi --background "${SHOT_BACKGROUND:-#eff1f5}" --window=false --padding 20 --output "$1" >/dev/null
+  echo "wrote $1"
+}
+
+started=0
+start() {
+  local words=() w
+  for w in "$@"; do
+    if [ "$w" = agentws ]; then words+=("$bin"); else words+=("$w"); fi
+  done
+  tmux -L "$sock" send-keys -t shot "$(printf '%q ' env COLORTERM=truecolor "AGENTWS_HOME=$home" "AGENTWS_TMUX_SOCKET=$sock-agents" "AGENTWS_LAUNCH_DIR=$PWD" "${words[@]}")" Enter
+  started=1
+  sleep 1.5
+}
+
+while IFS= read -r line || [ -n "$line" ]; do
+  [ -n "${line//[[:space:]]/}" ] || continue
+  verb="${line%% *}"
+  arg="${line#"$verb"}"
+  arg="${arg# }"
+  if [ "$started" = 0 ] && [ "$verb" != run ]; then
+    start "$bin" tui --new-session
+  fi
+  case "$verb" in
+  run) mapfile -d '' -t words < <(printf '%s' "$arg" | xargs printf '%s\0'); start "${words[@]}" ;;
+  type) tmux -L "$sock" send-keys -t shot -l "$arg"; sleep 0.5 ;;
+  # shellcheck disable=SC2086
+  key) tmux -L "$sock" send-keys -t shot $arg; sleep 0.5 ;;
+  wait) sleep "$arg" ;;
+  shot) render "$arg" ;;
+  *) echo "screenshot: unknown step: $line" >&2; exit 2 ;;
+  esac
+done
+[ "$started" = 1 ] || start "$bin" tui --new-session
+render "$out"

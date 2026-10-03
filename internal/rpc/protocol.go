@@ -20,6 +20,7 @@ const (
 	MethodWorkspaceAdd     = "workspace.add"
 	MethodWorkspaceList    = "workspace.list"
 	MethodWorkspaceRemove  = "workspace.remove"
+	MethodWorkspaceDirs    = "workspace.dirs"
 	MethodOpenClient       = "client.open"
 	MethodFocusMain        = "client.focus_main"
 	MethodDebugSeed        = "debug.seed"
@@ -236,6 +237,14 @@ func Mismatch(daemonBuild, clientBuild string, daemonBuilt, clientBuilt int64) *
 
 type WorkspaceAddParams struct {
 	Path string `json:"path"`
+}
+
+type WorkspaceDirsParams struct {
+	Path string `json:"path"`
+}
+
+type WorkspaceDirs struct {
+	Dirs []domain.Child `json:"dirs"`
 }
 
 type WorkspaceRemoveParams struct {

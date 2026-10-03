@@ -142,7 +142,7 @@ func TestNewSessionDialogNeedsAWorkItemAndAWorkspace(t *testing.T) {
 	}
 	m, c = dialogModel(t, rpc.State{})
 	m = pressCmd(typeText(m, "x"), keyEnter)
-	if len(c.methods()) != 0 || !strings.Contains(screen(m), "workspace add") {
+	if len(c.methods()) != 0 || !strings.Contains(screen(m), "type a folder's path") {
 		t.Fatalf("no workspace: calls %v\n%s", c.methods(), screen(m))
 	}
 }

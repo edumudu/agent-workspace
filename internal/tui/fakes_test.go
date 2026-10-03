@@ -77,6 +77,7 @@ type fakeCaller struct {
 	calls  []call
 	err    error
 	failOn string
+	dirs   map[string][]domain.Child
 }
 
 func (f *fakeCaller) Call(_ context.Context, method string, params, out any) error {
@@ -85,6 +86,14 @@ func (f *fakeCaller) Call(_ context.Context, method string, params, out any) err
 	f.calls = append(f.calls, call{method, params})
 	if f.err != nil && (f.failOn == "" || f.failOn == method) {
 		return f.err
+	}
+	if method == rpc.MethodWorkspaceDirs {
+		children, ok := f.dirs[params.(rpc.WorkspaceDirsParams).Path]
+		if !ok {
+			return &rpc.Error{Code: rpc.CodeNotFound, Message: "no such directory"}
+		}
+		*out.(*rpc.WorkspaceDirs) = rpc.WorkspaceDirs{Dirs: children}
+		return nil
 	}
 	if method == rpc.MethodNewSession {
 		if s, ok := out.(*domain.Session); ok {
