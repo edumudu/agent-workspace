@@ -21,33 +21,33 @@ func (m *Model) putSubagent(sub domain.Subagent) {
 }
 
 func (m Model) subagentLines(sessionID string, sel bool) []string {
-	nodes := domain.SubagentTree(m.subagents[sessionID])
-	if len(nodes) == 0 {
-		return nil
-	}
 	s := m.styles
 	bar := piece{s.text, " "}
 	if sel {
 		bar = piece{s.bar, "▌"}
 	}
 	var out []string
-	for _, n := range nodes[:min(len(nodes), maxSubagentRows)] {
-		label := cleanText(n.Type)
-		if label == "" {
-			label = cleanText(n.ID)
+	running, done := 0, 0
+	for _, n := range domain.SubagentTree(m.subagents[sessionID]) {
+		if n.State != domain.SubagentRunning {
+			done++
+			continue
 		}
-		left := []piece{bar, {s.dim, "     " + strings.Repeat("  ", n.Depth) + "⤷ "}, {s.text, label}}
-		if n.Summary != "" {
-			left = append(left, piece{s.sub, " · " + cleanText(n.Summary)})
+		if running++; running > maxSubagentRows {
+			continue
 		}
-		glyph := piece{s.green, "✓"}
-		if n.State == domain.SubagentRunning {
-			glyph = piece{s.blue, spinner[m.frame%len(spinner)]}
+		left := []piece{bar, {s.blue, "    " + strings.Repeat("  ", n.Depth) + spinner[m.frame%len(spinner)] + " "}}
+		if label := cleanText(n.Type); label != "" {
+			left = append(left, piece{s.text, label + " "})
 		}
-		out = append(out, m.line(sel, left, []piece{glyph, {s.text, "   "}}))
+		left = append(left, piece{s.sub, cleanText(n.Summary)})
+		out = append(out, m.line(sel, left, nil))
 	}
-	if extra := len(nodes) - maxSubagentRows; extra > 0 {
-		out = append(out, m.line(sel, []piece{bar, {s.dim, fmt.Sprintf("     … %d more", extra)}}, nil))
+	if extra := running - maxSubagentRows; extra > 0 {
+		out = append(out, m.line(sel, []piece{bar, {s.dim, fmt.Sprintf("    … %d more", extra)}}, nil))
+	}
+	if sel && done > 0 {
+		out = append(out, m.line(sel, []piece{bar, {s.green, "    ✓ "}, {s.dim, count(done, "subagent") + " done"}}, nil))
 	}
 	return out
 }

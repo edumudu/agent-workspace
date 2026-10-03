@@ -106,6 +106,8 @@ type Model struct {
 	subagents  map[string][]domain.Subagent
 	entries    []entry
 	collapsed  map[string]bool
+	scroll     int
+	scrolled   bool
 
 	selected string
 	last     string
@@ -447,6 +449,7 @@ func (m *Model) choose(i int) {
 		return
 	}
 	m.last, m.selected = m.selected, id
+	m.scrolled = false
 }
 
 func (m Model) key(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
