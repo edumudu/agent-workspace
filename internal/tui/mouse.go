@@ -93,8 +93,6 @@ func (m Model) wheel(delta int) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-// why: a click selects a row the person is pointing at, so that row stays put
-// even though the selected session's extra lines move to it.
 func (m *Model) selectInPlace(id string) {
 	owners, off := m.listGeometry()
 	before := slices.Index(owners, ownSession+id) - off

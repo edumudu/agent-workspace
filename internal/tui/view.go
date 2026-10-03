@@ -159,8 +159,6 @@ func (m Model) mainScreen() (lines, owners []string) {
 	return lines, owners
 }
 
-// why: after the wheel scrolls, the list stays where it was put until a key
-// moves the selection; otherwise it follows the selection.
 func (m Model) listOffset(selRow, rows, room int) int {
 	off := 0
 	switch {
@@ -172,7 +170,6 @@ func (m Model) listOffset(selRow, rows, room int) int {
 	return min(max(off, 0), max(0, rows-room))
 }
 
-// why: the wheel and clicks need the list's geometry without drawing it.
 func (m Model) listGeometry() (owners []string, off int) {
 	top := 1 + len(m.limitLines()) + 2
 	body, selRow, owners := m.body()
