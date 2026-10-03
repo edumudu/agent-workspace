@@ -80,7 +80,8 @@ type Host struct {
 
 	configOnce sync.Once
 	configErr  error
-	loadOnce   sync.Once
+	loadMu     sync.Mutex
+	loaded     bool
 	// why: a server started with an older config lacks the title border options.
 	titlesMu  sync.Mutex
 	titlesOn  bool
@@ -112,11 +113,23 @@ func (h *Host) run(ctx context.Context, stdin string, args ...string) (string, e
 	if err := h.ensureConfig(); err != nil {
 		return "", err
 	}
-	// why: tmux reads -f only when a server starts, so a server that outlived an
-	// upgrade keeps the old config (no mouse, say) until it is sourced. A failed
-	// source leaves the server as it was; with no server yet, -f covers the next one.
-	h.loadOnce.Do(func() { _, _ = h.invoke(ctx, "", "source-file", h.configPath) })
+	h.loadConfig(ctx)
 	return h.invoke(ctx, stdin, args...)
+}
+
+// why: tmux reads -f only when a server starts, so a server that outlived an
+// upgrade keeps the old config (no mouse, say) until it is sourced. Its exit
+// status is not trusted: on a running server unbind-key -a always reports a
+// missing prefix table. With no server yet, -f covers the next one. Only a
+// canceled source is retried.
+func (h *Host) loadConfig(ctx context.Context) {
+	h.loadMu.Lock()
+	defer h.loadMu.Unlock()
+	if h.loaded {
+		return
+	}
+	_, _ = h.invoke(ctx, "", "source-file", h.configPath)
+	h.loaded = ctx.Err() == nil
 }
 
 func (h *Host) invoke(ctx context.Context, stdin string, args ...string) (string, error) {
