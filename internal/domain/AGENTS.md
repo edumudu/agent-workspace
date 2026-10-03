@@ -21,6 +21,7 @@ Pure types and rules: no IO, no imports from other `internal/*` packages. `Works
 - `OnboardSteps`, `NextOnboardStep`, `DefaultOnboardPicks`, `HarnessOffer`, `NvimOfferFor`, `OnboardingNeeded`, the `CodexTrustStep` text: the first-run walkthrough (see [ADR 0040](../../docs/adr/0040-first-run-walkthrough.md)).
 - Ports rules: `PortsByWorktree`, `KillGroups`. Disk rules: `Reclaimable`, `TotalSize`.
 - `Message`, `MessageLog`, `TranscriptLines`, `TranscriptFromHook`, `ToolSummary`, `ToolResult`, `OneLine`, `ClipText`: the harness-neutral chat model the Claude and Codex transcript parsers produce (see [internal/adapters/](../adapters/AGENTS.md) and [ADR 0046](../../docs/adr/0046-remote-app.md)).
+- Pairing ([ADR 0046](../../docs/adr/0046-remote-app.md)): `NewPairCode` (8 characters from `PairCodeAlphabet`, which drops 0, 1, O, I and L, drawn from an injected `intn`), `NormalizePairCode`, `Pairing.Issue`/`Redeem` (5-minute codes, single use; a wrong code voids nothing; 5 failed tries a minute per address and 20 in all, after which every try is refused and not counted), `NewDevice` (32 random bytes as base64url, stored as `HashDeviceToken`), `CheckDeviceToken` (constant time), `RevokeDevice`, `Device.Seen` (at most once a minute), `DeviceName`, `NewDeviceID`, `PairURL`.
 - `MergeLoginPath(current, login)`: the daemon's PATH plus the login shell's entries it lacks, current entries first (see [internal/daemon/](../daemon/AGENTS.md)).
 
 ### Discovery

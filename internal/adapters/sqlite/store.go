@@ -36,6 +36,7 @@ const (
 	tableSessions   table = "sessions"
 	tableViewed     table = "viewed"
 	tableDrafts     table = "review_drafts"
+	tableDevices    table = "devices"
 )
 
 var keyColumn = map[table]string{
@@ -45,6 +46,7 @@ var keyColumn = map[table]string{
 	tableSessions:   "id",
 	tableViewed:     "key",
 	tableDrafts:     "id",
+	tableDevices:    "id",
 }
 
 type Store struct {
@@ -207,6 +209,10 @@ func (s *Store) PutViewed(m domain.ViewedMark) { s.put(tableViewed, m.Key(), m) 
 func (s *Store) DeleteViewed(key string) { s.enqueue(tableViewed, key, nil) }
 
 func (s *Store) PutDraft(d domain.ReviewDraft) { s.put(tableDrafts, d.ID, d) }
+
+func (s *Store) PutDevice(d domain.Device) { s.put(tableDevices, d.ID, d) }
+
+func (s *Store) DeleteDevice(id string) { s.enqueue(tableDevices, id, nil) }
 
 func (s *Store) put(t table, key string, v any) {
 	data, err := json.Marshal(v)
@@ -392,6 +398,9 @@ func (s *Store) Load() (app.Snapshot, error) {
 		return snap, err
 	}
 	if snap.Drafts, err = loadAll[domain.ReviewDraft](s.db, tableDrafts); err != nil {
+		return snap, err
+	}
+	if snap.Devices, err = loadAll[domain.Device](s.db, tableDevices); err != nil {
 		return snap, err
 	}
 	snap.Events, err = loadEvents(s.db)
