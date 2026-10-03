@@ -22,7 +22,7 @@ The client layout's left pane runs `agentws tui`, 48 columns wide; a `window-res
 - Running subagents show under their session as a tree (`domain.SubagentTree`, at most 8 rows); finished ones collapse into one `✓ N subagents done` line on the selected session. `o` hides them.
 - The mouse wheel scrolls the list without moving the selection; the next key that moves the selection brings it back into view, and a click selects a row without moving it.
 - Ports show on the session row and the status line. `K` asks (`y`) before killing the selected session's dev servers.
-- The new-session dialog's Workspace field takes a typed path (`./`, `../`, `~/`, `/`) read from the launch folder (`Options.LaunchDir`, with `Options.Home` for `~`), with a dropdown of subfolders from `workspace.dirs`: `↑`/`↓` pick, `→` open, `←` up. A failed listing is retried on the next edit. See [ADR 0046](../../docs/adr/0046-workspace-path-input.md).
+- The new-session dialog's Workspace field takes a typed path (`./`, `../`, `~/`, `/`) read from the launch folder (`Options.LaunchDir`, with `Options.Home` for `~`), with a dropdown of subfolders from `workspace.dirs`: `↑`/`↓` pick, `→` open, `←` up. A failed listing is retried on the next edit. See [ADR 0047](../../docs/adr/0047-workspace-path-input.md).
 - Other keys: `n` new session (popup via `client.popup`, ADR 0037), `enter` focus, `x` then `y` end, `u` resume an ended session (a picker, most recently active first), `m` mute, `R` rename and pin, `A` unpin, `L` launcher, `r` review, `w` worktrees and disk, `t` shell, `T` shell popup, `s` focus the shell, `e` nvim, `S` setup walkthrough. `ctrl+\` (`tmux.FocusSidebarKey`) returns to the sidebar from an agent pane ([ADR 0025](../../docs/adr/0025-focus-return-key.md)).
 
 ## Config

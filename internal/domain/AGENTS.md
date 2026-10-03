@@ -24,7 +24,7 @@ Pure types and rules: no IO, no imports from other `internal/*` packages. `Works
 
 ### Discovery
 
-See [ADR 0007](../../docs/adr/0007-workspace-discovery.md). `KindOfRoot`, `ReposIn`, `SingleRepo`, `MergeRepoState`, `LastUsedWorkspace`, and for the dialog's typed path `ParsePathInput` and `CompleteDirs` ([ADR 0046](../../docs/adr/0046-workspace-path-input.md)).
+See [ADR 0007](../../docs/adr/0007-workspace-discovery.md). `KindOfRoot`, `ReposIn`, `SingleRepo`, `MergeRepoState`, `LastUsedWorkspace`, and for the dialog's typed path `ParsePathInput` and `CompleteDirs` ([ADR 0047](../../docs/adr/0047-workspace-path-input.md)).
 
 - **Kind.** `<path>/.git` a directory means `single`, with the path itself as the only repo. Anything else is an `orchestration` root: its direct children are scanned, symlinks followed, and each child with a `.git` directory is a repo. A child whose `.git` is a file is a worktree and is skipped, as is a dangling link. Nothing deeper than one level is read. Repos are sorted by name, and a symlinked repo keeps the link's name and path.
 - **Budget.** Discovery over 15 repos must finish in < 300 ms; `BenchmarkDiscovery` fails above that.
