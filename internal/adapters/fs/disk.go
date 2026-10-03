@@ -22,14 +22,12 @@ var (
 	_ app.CleanupHistory = (*AuditLog)(nil)
 )
 
-// why: one du run counts a hardlinked file once, so hardlinked dependencies are not charged twice; APFS clones are invisible to du and count in full.
 type Du struct{}
 
 func (Du) Size(ctx context.Context, path string) (int64, error) {
 	out, err := exec.CommandContext(ctx, "du", "-sk", "-P", path).Output()
 	if err != nil {
 		var exit *exec.ExitError
-		// why: du exits 1 when it could not read some entries but still prints the total of the rest.
 		if !errors.As(err, &exit) || exit.ExitCode() != 1 || len(out) == 0 {
 			return 0, fmt.Errorf("du %s: %w", path, err)
 		}

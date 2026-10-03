@@ -92,7 +92,6 @@ func printWorkspaces(w io.Writer, list rpc.WorkspaceList) {
 	}
 }
 
-// why: changed is "-" until the first refresh has read the repo.
 func changed(r domain.Repo) string {
 	switch {
 	case r.Branch == "":

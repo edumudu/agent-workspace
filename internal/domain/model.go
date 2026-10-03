@@ -51,8 +51,6 @@ const (
 	PRClosed PRState = "CLOSED"
 )
 
-// why: CheckNone also stands for a single check that neither passed nor
-// failed, such as a skipped one.
 type CheckState string
 
 const (
@@ -92,15 +90,13 @@ type Worktree struct {
 	PR          *PullRequest
 	SubtaskSlug string
 	SessionID   string
-	// why: ports are live process state, so the daemon does not persist them.
-	Ports []Port
+	Ports       []Port
 }
 
 type Usage struct {
 	ContextLeftPercent int
-	// why: so a new session does not read as 0% left.
-	HasContext       bool
-	LimitUsedPercent int
+	HasContext         bool
+	LimitUsedPercent   int
 }
 
 type RateLimit struct {

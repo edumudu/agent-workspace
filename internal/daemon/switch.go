@@ -43,8 +43,6 @@ func (d *Daemon) switchSession(req rpc.Request) (*rpc.Response, bool) {
 	return resp, ok
 }
 
-// why: a newer request may have replaced a switch, and the session may have
-// started a turn while the worker waited; those go back to the queue.
 func (d *Daemon) deliverable(sessionID string, sws []domain.Switch) []domain.Switch {
 	var deliver []domain.Switch
 	d.query(func(s *state) {
@@ -62,8 +60,6 @@ func (d *Daemon) deliverable(sessionID string, sws []domain.Switch) []domain.Swi
 	return deliver
 }
 
-// why: workers take turns, so two switches for one pane are typed in the
-// order they were dispatched.
 func (d *Daemon) sendSwitches(session domain.Session, sws []domain.Switch) {
 	if len(sws) == 0 {
 		return

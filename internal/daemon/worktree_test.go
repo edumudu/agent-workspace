@@ -32,7 +32,6 @@ func startWorktrees(t *testing.T, store *memStore, poll time.Duration, existing 
 		daemon.WithWorktrees(env.lister, env.finder),
 		daemon.WithWorktreePoll(poll, poll),
 	)
-	// why: the baseline scan adopts everything as unassigned, so tests that attribute wait for it.
 	eventually(t, env.path, 2*time.Second, "baseline scan", func(st rpc.State) bool {
 		_, ok := worktree(st, "/solo-base")
 		return ok
@@ -192,7 +191,6 @@ func TestPRBoardPollBacksOffWhileGitHubFails(t *testing.T) {
 	env.finder.fail(errors.New("rate limited"))
 	before := env.finder.callCount()
 	time.Sleep(700 * time.Millisecond)
-	// why: unpaced, 700ms at a 40ms interval would be about 17 polls.
 	if n := env.finder.callCount() - before; n > 6 {
 		t.Errorf("%d polls in 700ms while failing, want the interval to grow", n)
 	}

@@ -31,9 +31,6 @@ func (d *Daemon) sessions() app.Sessions {
 	return app.Sessions{Host: d.hs.host, Worktrees: serialAdder{mu: &d.sess.addMu, inner: d.sess.worktrees}, Setup: d.sess.setup}
 }
 
-// bug: concurrent `git worktree add` runs race on the repo's config file and
-// one fails with "unable to write upstream branch configuration". The
-// launcher starts several sessions at once.
 type serialAdder struct {
 	mu    *sync.Mutex
 	inner app.WorktreeAdder
@@ -68,9 +65,6 @@ func (d *Daemon) newSession(req rpc.Request) (*rpc.Response, bool) {
 	return result(req.ID, session), true
 }
 
-// why: git, the setup recipe and tmux all run here on the caller's goroutine (a connection's or a launcher worker's); the loop only reads and commits.
-// prompt is the agent's first message; a session someone starts gets none, only the
-// launcher, which starts sessions unattended, sends the issue.
 func (d *Daemon) startSession(p rpc.NewSessionParams, prompt string) (domain.Session, *rpc.Error, bool) {
 	adapter, ok := d.hs.adapters[domain.Harness(p.Harness)]
 	if !ok || d.hs.host == nil || d.sess.worktrees == nil {
@@ -88,7 +82,6 @@ func (d *Daemon) startSession(p rpc.NewSessionParams, prompt string) (domain.Ses
 			return domain.Session{}, nil, false
 		}
 		if !known {
-			// why: any folder can start a session; registering it is the daemon's job, not a step before the first session.
 			if _, rerr, ok := d.addWorkspace(p.Workspace); rerr != nil || !ok {
 				return domain.Session{}, rerr, ok
 			}
@@ -200,8 +193,6 @@ func (d *Daemon) endSession(req rpc.Request) (*rpc.Response, bool) {
 	return result(req.ID, ended), ok
 }
 
-// why: two clients can resume the same session at once; the lock spans the
-// read, the launch and the commit so only one pane is ever started for it.
 func (d *Daemon) resumeSession(req rpc.Request) (*rpc.Response, bool) {
 	d.sess.resumeMu.Lock()
 	defer d.sess.resumeMu.Unlock()
@@ -225,7 +216,6 @@ func (d *Daemon) resumeSession(req rpc.Request) (*rpc.Response, bool) {
 		return errorResponse(req.ID, rpc.CodeLaunchFailed, err.Error()), true
 	}
 	if !d.commit(SessionChanged{Session: resumed}) {
-		// why: the loop stopped, so nothing will ever track this pane.
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 		defer cancel()
 		_ = d.hs.host.Kill(ctx, app.PaneID(resumed.Pane))
@@ -247,7 +237,6 @@ func (d *Daemon) endAndRefill(session domain.Session) (domain.Session, bool, err
 		if cur, found := s.sessions[ended.ID]; found {
 			wasInView = cur.Focused
 			if wasInView {
-				// why: the ended session leaves the sidebar, so its row must be found before it goes.
 				next, hasNext = domain.NextInView(sorted(s.tasks), sorted(s.sessions), ended.ID)
 			}
 			ended = cur.End()
@@ -260,7 +249,6 @@ func (d *Daemon) endAndRefill(session domain.Session) (domain.Session, bool, err
 	return ended, ok, nil
 }
 
-// why: keyboard focus stays where it was: the user pressed the keys in the sidebar.
 func (d *Daemon) refillMain(next domain.Session, hasNext bool) {
 	d.clients.mu.Lock()
 	defer d.clients.mu.Unlock()
@@ -295,7 +283,6 @@ func (d *Daemon) focusSession(req rpc.Request) (*rpc.Response, bool) {
 	if !found {
 		return errorResponse(req.ID, rpc.CodeNotFound, "no session "+p.ID), true
 	}
-	// why: the pane is shown and the session marked focused under one hold of clients.mu, so slot recovery never sees one without the other.
 	d.clients.mu.Lock()
 	defer d.clients.mu.Unlock()
 	if session.Pane != "" && d.hs.host != nil {
@@ -323,7 +310,6 @@ func (d *Daemon) showInMainLocked(pane app.PaneID) error {
 	return d.clients.host.FocusSlot(ctx, d.clients.slot)
 }
 
-// why: a session that changed pane while tmux was listed is left alone.
 func (d *Daemon) reconcilePanes(ctx context.Context) {
 	var onPanes []domain.Session
 	for _, s := range d.restored {

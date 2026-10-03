@@ -36,7 +36,6 @@ type prJSON struct {
 	Blockers          []string      `json:"blockers"`
 }
 
-// why: this is the documented output of `agentws pr --json`; see ADR 0024.
 type prReport struct {
 	Session string   `json:"session"`
 	Name    string   `json:"name"`
@@ -99,8 +98,6 @@ func prCommand(session string, asJSON bool, stdout io.Writer) error {
 	return nil
 }
 
-// why: arg is a session ID, else a session name only when exactly one session
-// has it.
 func prReportFor(st rpc.State, arg string) (prReport, error) {
 	tasks := map[string]domain.Task{}
 	for _, t := range st.Tasks {

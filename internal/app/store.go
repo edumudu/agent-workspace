@@ -14,8 +14,6 @@ type Snapshot struct {
 	Drafts     []domain.ReviewDraft
 }
 
-// why: Put methods only enqueue and never block on disk; Flush waits until
-// everything enqueued so far is written.
 type Store interface {
 	PutWorkspace(domain.Workspace)
 	DeleteWorkspace(root string)

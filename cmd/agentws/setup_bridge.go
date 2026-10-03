@@ -78,7 +78,6 @@ func setupBridgeAgent(args []string, env func(string) string, self, userHome str
 	if *remote != "agentws" {
 		program = append(program, "--remote-bin", *remote)
 	}
-	// why: launchd starts agents with a bare PATH, which lacks Homebrew's terminal-notifier.
 	agentEnv := map[string]string{"AGENTWS_HOME": home}
 	if p := env("PATH"); p != "" {
 		agentEnv["PATH"] = p
@@ -94,7 +93,6 @@ func setupBridgeAgent(args []string, env func(string) string, self, userHome str
 	}, *remove, nil
 }
 
-// why: replacing characters can make two hosts alike (me@vps and me-vps), so a changed host gets a hash of the original.
 func labelSafe(host string) string {
 	slug := strings.Map(func(r rune) rune {
 		if r == '.' || r == '-' || r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' {

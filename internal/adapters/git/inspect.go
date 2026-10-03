@@ -20,7 +20,6 @@ func (Inspector) Inspect(ctx context.Context, path string) (app.RepoFacts, error
 	}
 	branch, changed := parseStatus(status)
 	facts := app.RepoFacts{Branch: branch, ChangedFiles: changed}
-	// why: a missing origin/HEAD is normal (no remote, or never fetched), not a failure.
 	if head, err := output(ctx, path, "symbolic-ref", "--short", "refs/remotes/origin/HEAD"); err == nil {
 		facts.DefaultBranch = parseDefaultBranch(string(head))
 	}
@@ -46,7 +45,6 @@ func parseStatus(out []byte) (branch string, changed int) {
 			changed++
 		case strings.HasPrefix(rec, "2 "):
 			changed++
-			// why: a rename or copy record is followed by its original path as its own NUL field.
 			i++
 		}
 	}

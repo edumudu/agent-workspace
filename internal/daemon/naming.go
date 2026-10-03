@@ -18,8 +18,6 @@ func WithTitles(r app.TitleResolver) Option {
 	return func(d *Daemon) { d.titles = r }
 }
 
-// why: the title is merged into the task as it is when the answer lands, so
-// a pin made meanwhile stays.
 func (d *Daemon) resolveTitleAsync(task domain.Task) {
 	if d.titles == nil || task.Source == domain.TaskText {
 		return

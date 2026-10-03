@@ -66,8 +66,6 @@ func RangeFor(scope ReviewScope, f RangeFacts) (DiffRange, error) {
 
 const turnPrefix = "refs/agentws/turns/"
 
-// why: worktrees of one repo share its refs, so turn refs carry the worktree
-// they snapshot.
 func WorktreeKey(path string) string {
 	sum := sha1.Sum([]byte(filepath.Clean(path)))
 	return hex.EncodeToString(sum[:6])
@@ -194,7 +192,6 @@ type FileDiff struct {
 	Hunks   []Hunk
 }
 
-// why: paths are taken from the header lines, so quoted paths stay quoted.
 func ParseDiff(out string) []FileDiff {
 	var files []FileDiff
 	var f *FileDiff
@@ -265,8 +262,6 @@ func ParseDiff(out string) []FileDiff {
 	return files
 }
 
-// why: both halves are equal unless the file was renamed, and a rename names
-// its paths again later.
 func headerPath(rest string) string {
 	if i := strings.Index(rest, " b/"); i >= 0 {
 		return rest[i+3:]
@@ -283,8 +278,6 @@ func indexBlob(line string) string {
 	return blob
 }
 
-// bug: git starts a zero-count hunk one before its first line, so the next
-// line is start+1.
 func hunkStarts(header string) (int, int) {
 	fields := strings.Fields(header)
 	if len(fields) < 3 {

@@ -1,6 +1,3 @@
-// why: usage: lint-agents [-max n] [root] keeps the root AGENTS.md small and the
-// scoped ones loadable by Claude Code (a CLAUDE.md symlink beside each), and fails
-// on relative links in them or ARCHITECTURE.md that do not resolve (ADR 0041).
 package main
 
 import (

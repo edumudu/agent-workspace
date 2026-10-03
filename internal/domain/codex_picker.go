@@ -23,10 +23,6 @@ var (
 	pickerAllModel = "all models"
 )
 
-// why: only numbered rows under a title starting with "Select " count, so a
-// numbered list in the transcript is not taken for a picker. The capture
-// includes scrollback, so a picker with Codex's `›` input prompt below it has
-// already closed.
 func ParsePicker(screen string) (Picker, bool) {
 	lines := strings.Split(screen, "\n")
 	title := -1
@@ -56,9 +52,6 @@ func ParsePicker(screen string) (Picker, bool) {
 	return p, true
 }
 
-// why: Codex asks for a model first and then its reasoning level, so an
-// effort switch re-picks the current model and a model switch keeps the
-// current effort, or the highlighted one when the new model does not offer it.
 func CodexPickerKeys(p Picker, sw Switch, model, effort string) ([]string, error) {
 	if strings.HasPrefix(p.Title, "Select Reasoning Level") {
 		if sw.Kind == SwitchEffort {
@@ -102,8 +95,6 @@ func keysTo(p Picker, want string) ([]string, error) {
 	return append(keys, "Enter"), nil
 }
 
-// bug: Codex shows display names and tags such as "(current)": "GPT-6-Luna"
-// is gpt-6-luna, "Extra high" is xhigh.
 func pickerLabel(s string) string {
 	s = strings.ToLower(pickerTag.ReplaceAllString(strings.TrimSpace(s), ""))
 	if s == "extra high" {

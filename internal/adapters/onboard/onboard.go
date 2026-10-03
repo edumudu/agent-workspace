@@ -1,4 +1,3 @@
-// why: it reads config files and looks up nvim, so the daemon calls it on a connection goroutine, never on its loop.
 package onboard
 
 import (
@@ -16,10 +15,8 @@ import (
 	"github.com/giovaniif/agent-workspace/internal/domain"
 )
 
-// why: the marker lives in AGENTWS_HOME, so a temp home in tests or make dev starts fresh.
 const doneFile = "onboarded"
 
-// why: a large nvim config tree must not stall the walkthrough; agentws is set up near the top of it.
 const maxConfigFiles = 400
 
 var mentionsPlugin = regexp.MustCompile(`require\s*\(?\s*['"]agentws['"]|agentws/nvim`)
@@ -30,12 +27,10 @@ type Probe struct {
 	ClaudeSettings string
 	CodexHome      string
 	NvimConfigDir  string
-	// why: the first existing dir wins, so a release install beats a source checkout.
-	PluginDirs []string
-	LookPath   func(string) (string, error)
+	PluginDirs     []string
+	LookPath       func(string) (string, error)
 }
 
-// why: a source checkout's nvim/ next to its bin/ is the last plugin candidate, so a make build finds it too.
 func FromEnv(home, bin string, env func(string) string) Probe {
 	user := env("HOME")
 	or := func(v, fallback string) string {
@@ -159,7 +154,6 @@ func (p Probe) configMentionsPlugin() bool {
 	seen := 0
 	found := false
 	root := p.NvimConfigDir
-	// why: WalkDir does not follow a symlinked root, and ~/.config/nvim often is one.
 	if r, err := filepath.EvalSymlinks(root); err == nil {
 		root = r
 	}

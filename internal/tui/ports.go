@@ -9,7 +9,6 @@ import (
 	"github.com/giovaniif/agent-workspace/internal/domain"
 )
 
-// why: covers the daemon's SIGTERM grace period and the SIGKILL that follows it.
 const killTimeout = 10 * time.Second
 
 type killPrompt struct {

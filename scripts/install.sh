@@ -1,7 +1,4 @@
 #!/bin/sh
-# Installs the newest agentws release (pre-releases included) into
-# $AGENTWS_INSTALL_DIR (default ~/.local/bin). Pin one with AGENTWS_VERSION=v0.1.0-alpha.1.
-# Usage: curl -fsSL https://raw.githubusercontent.com/giovaniif/agent-workspace/main/scripts/install.sh | sh
 set -eu
 
 repo=giovaniif/agent-workspace
@@ -18,8 +15,6 @@ case "$os/$arch" in
   *) echo "agentws: no build for $os/$arch" >&2; exit 1 ;;
 esac
 
-# AGENTWS_DOWNLOAD_BASE serves the archives from elsewhere, such as a local
-# goreleaser --snapshot dist/, to try the script without a release.
 tag=${AGENTWS_VERSION:-}
 if [ -z "$tag" ] && [ -n "${AGENTWS_DOWNLOAD_BASE:-}" ]; then
   tag=snapshot

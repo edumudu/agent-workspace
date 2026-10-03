@@ -10,25 +10,22 @@ import (
 	"github.com/giovaniif/agent-workspace/internal/domain"
 )
 
-// why: the daemon rejects any other version with CodeUnsupportedVersion.
 const Version = 1
 
 const (
-	MethodStatus          = "status"
-	MethodSubscribe       = "subscribe"
-	MethodNotifyStream    = "notify.stream"
-	MethodHook            = "hook"
-	MethodWorkspaceAdd    = "workspace.add"
-	MethodWorkspaceList   = "workspace.list"
-	MethodWorkspaceRemove = "workspace.remove"
-	MethodOpenClient      = "client.open"
-	MethodFocusMain       = "client.focus_main"
-	MethodDebugSeed       = "debug.seed"
-	MethodStatusLine      = "statusline"
-	MethodLaunch          = "session.launch"
-	MethodSessionMute     = "session.mute"
-	// why: focus also clears the unread marker and blurs the session that was in
-	// view; with a client layout open it swaps the session's pane into the main slot.
+	MethodStatus           = "status"
+	MethodSubscribe        = "subscribe"
+	MethodNotifyStream     = "notify.stream"
+	MethodHook             = "hook"
+	MethodWorkspaceAdd     = "workspace.add"
+	MethodWorkspaceList    = "workspace.list"
+	MethodWorkspaceRemove  = "workspace.remove"
+	MethodOpenClient       = "client.open"
+	MethodFocusMain        = "client.focus_main"
+	MethodDebugSeed        = "debug.seed"
+	MethodStatusLine       = "statusline"
+	MethodLaunch           = "session.launch"
+	MethodSessionMute      = "session.mute"
 	MethodSessionFocus     = "session.focus"
 	MethodWorktreeAssign   = "worktree.assign"
 	MethodNewSession       = "session.new"
@@ -49,15 +46,13 @@ const (
 	MethodClientDetach     = "client.detach"
 	MethodCleanupPlan      = "cleanup.plan"
 	MethodCleanupRun       = "cleanup.run"
-	// why: disk.view never waits for du: sizes not measured yet are domain.SizePending.
-	MethodDiskView        = "disk.view"
-	MethodCleanupWorktree = "cleanup.worktree"
+	MethodDiskView         = "disk.view"
+	MethodCleanupWorktree  = "cleanup.worktree"
 )
 
 type DiskView struct {
-	Free  uint64 `json:"free"`
-	Total uint64 `json:"total"`
-	// why: 0 means automatic cleanup is off.
+	Free           uint64           `json:"free"`
+	Total          uint64           `json:"total"`
 	AutoCleanEvery time.Duration    `json:"auto_clean_every"`
 	DepsStore      *DepsStore       `json:"deps_store,omitempty"`
 	Rows           []domain.DiskRow `json:"rows"`
@@ -77,8 +72,6 @@ type RecentCleanup struct {
 	Outcome string               `json:"outcome"`
 }
 
-// why: with Backup, a dirty or detached worktree is backed up and then removed;
-// without it, only one cleanup would remove anyway goes.
 type CleanupWorktreeParams struct {
 	Path   string `json:"path"`
 	Backup bool   `json:"backup,omitempty"`
@@ -90,13 +83,11 @@ type ReviewParams struct {
 	Worktree string             `json:"worktree,omitempty"`
 }
 
-// why: marks may be stale; domain.IsViewed tells which still apply.
 type Review struct {
 	Scope     domain.ReviewScope      `json:"scope"`
 	Worktrees []domain.WorktreeReview `json:"worktrees"`
 	Viewed    []domain.ViewedMark     `json:"viewed"`
-	// why: the draft has no ID before the first comment.
-	Draft domain.ReviewDraft `json:"draft"`
+	Draft     domain.ReviewDraft      `json:"draft"`
 }
 
 type ReviewSendParams struct {
@@ -125,7 +116,6 @@ type ClientPopupParams struct {
 	Env     map[string]string `json:"env,omitempty"`
 }
 
-// why: the daemon kills only groups that serve a port it lists on some worktree.
 type PortsKillParams struct {
 	PGIDs []int `json:"pgids"`
 }
@@ -134,7 +124,6 @@ type PortsKilled struct {
 	Killed []int `json:"killed"`
 }
 
-// why: Outcome is empty in a plan.
 type CleanupItem struct {
 	Path    string               `json:"path"`
 	Branch  string               `json:"branch,omitempty"`
@@ -148,7 +137,6 @@ type SessionMuteParams struct {
 	Muted bool   `json:"muted"`
 }
 
-// why: the name goes on the task, so every session on that task shares it.
 type SessionRenameParams struct {
 	ID   string `json:"id"`
 	Name string `json:"name"`
@@ -158,7 +146,6 @@ type SessionFocusParams struct {
 	ID string `json:"id"`
 }
 
-// why: an empty Workspace means the last used one.
 type NewSessionParams struct {
 	Workspace string `json:"workspace,omitempty"`
 	WorkItem  string `json:"work_item"`
@@ -167,7 +154,6 @@ type NewSessionParams struct {
 	Effort    string `json:"effort,omitempty"`
 }
 
-// why: Input is split on whitespace; an empty Workspace means the last used one.
 type LauncherEnqueueParams struct {
 	Workspace string `json:"workspace,omitempty"`
 	Input     string `json:"input"`
@@ -176,7 +162,6 @@ type LauncherEnqueueParams struct {
 	Effort    string `json:"effort,omitempty"`
 }
 
-// why: an issue already queued or running is in neither list.
 type LauncherEnqueued struct {
 	Queued   []string `json:"queued"`
 	Rejected []string `json:"rejected"`
@@ -234,14 +219,10 @@ const (
 	CodeVersionMismatch    = "version_mismatch"
 )
 
-// why: status and stop must reach a stale daemon, and hooks may come from another install's
-// binary that shares this AGENTWS_HOME.
 func AnyBuild(method string) bool {
 	return method == MethodStatus || method == MethodHook || method == MethodStatusLine
 }
 
-// why: the older side is the one to restart. Built times are Unix seconds;
-// zero means unknown.
 func Mismatch(daemonBuild, clientBuild string, daemonBuilt, clientBuilt int64) *Error {
 	fix := "restart the daemon: run `agentws daemon stop`; the next command starts the new one"
 	if clientBuilt != 0 && daemonBuilt > clientBuilt {
@@ -253,8 +234,6 @@ func Mismatch(daemonBuild, clientBuild string, daemonBuilt, clientBuilt int64) *
 	return &Error{Code: CodeVersionMismatch, Message: fmt.Sprintf("daemon runs agentws %s but this client is %s; %s", daemonBuild, clientBuild, fix)}
 }
 
-// why: Path must be absolute. Adding a known root again refreshes it and marks
-// it last used.
 type WorkspaceAddParams struct {
 	Path string `json:"path"`
 }
@@ -269,11 +248,10 @@ type WorkspaceList struct {
 }
 
 type OpenClientParams struct {
-	Command []string          `json:"command"`
-	Env     map[string]string `json:"env,omitempty"`
-	Dir     string            `json:"dir,omitempty"`
-	// why: the bundle id of the terminal the client attaches from, which a banner click brings to the front.
-	Terminal string `json:"terminal,omitempty"`
+	Command  []string          `json:"command"`
+	Env      map[string]string `json:"env,omitempty"`
+	Dir      string            `json:"dir,omitempty"`
+	Terminal string            `json:"terminal,omitempty"`
 }
 
 type OpenClient struct {
@@ -286,25 +264,20 @@ type DebugSeedParams struct {
 	Codex bool `json:"codex,omitempty"`
 }
 
-// why: an empty Session unassigns the worktree.
 type WorktreeAssignParams struct {
 	ID      string `json:"id"`
 	Session string `json:"session"`
 }
 
 type Request struct {
-	V      int             `json:"v"`
-	ID     uint64          `json:"id"`
-	Method string          `json:"method"`
-	Params json.RawMessage `json:"params,omitempty"`
-	// why: BuiltAt is the executable's Unix mtime, which tells the older side.
-	// Raw hook lines leave both out.
-	Build   string `json:"build,omitempty"`
-	BuiltAt int64  `json:"built_at,omitempty"`
+	V       int             `json:"v"`
+	ID      uint64          `json:"id"`
+	Method  string          `json:"method"`
+	Params  json.RawMessage `json:"params,omitempty"`
+	Build   string          `json:"build,omitempty"`
+	BuiltAt int64           `json:"built_at,omitempty"`
 }
 
-// why: a subscribe request gets one Response carrying the State as Result, then
-// one per change carrying Diff.
 type Response struct {
 	V      int             `json:"v"`
 	ID     uint64          `json:"id"`
@@ -315,9 +288,6 @@ type Response struct {
 	Build  string          `json:"build,omitempty"`
 }
 
-// why: a notify.stream request gets an empty Result, then one Response per
-// banner posted or withdrawn. Exactly one of Banner and Remove is set; Focused
-// lets a bridge drop the banner while its own terminal is in front.
 type Notice struct {
 	Banner  *domain.Banner `json:"banner,omitempty"`
 	Remove  string         `json:"remove,omitempty"`
@@ -338,7 +308,6 @@ type Status struct {
 	Worktrees int       `json:"worktrees"`
 }
 
-// why: the diffs that follow a State start at Seq+1.
 type State struct {
 	Seq        uint64                `json:"seq"`
 	Workspaces []domain.Workspace    `json:"workspaces"`
@@ -351,30 +320,20 @@ type State struct {
 	Drafts     []domain.ReviewDraft  `json:"drafts"`
 }
 
-// why: Diff is one change: exactly one field besides Seq is set, except that a hook
-// sets Session and Event together. Every field but the Removed ones and Event
-// replaces the entity with the same key; RemovedWorkspace is the root of a
-// workspace to drop, RemovedWorktree the ID of a worktree, RemovedSession the
-// ID of a session, and Event is
-// appended to its session's events. A subagent change is a diff of its own,
-// replacing the subagent with the same session and ID. Queue replaces the
-// whole launcher queue.
 type Diff struct {
-	Seq              uint64               `json:"seq"`
-	RemovedWorkspace string               `json:"removed_workspace,omitempty"`
-	RemovedWorktree  string               `json:"removed_worktree,omitempty"`
-	RemovedSession   string               `json:"removed_session,omitempty"`
-	Workspace        *domain.Workspace    `json:"workspace,omitempty"`
-	Task             *domain.Task         `json:"task,omitempty"`
-	Worktree         *domain.Worktree     `json:"worktree,omitempty"`
-	Session          *domain.Session      `json:"session,omitempty"`
-	Event            *domain.SessionEvent `json:"event,omitempty"`
-	Subagent         *domain.Subagent     `json:"subagent,omitempty"`
-	Queue            *[]domain.LaunchItem `json:"queue,omitempty"`
-	// why: a sent draft no longer counts. Comment is set with it when a comment was
-	// just added.
-	Draft   *domain.ReviewDraft   `json:"draft,omitempty"`
-	Comment *domain.ReviewComment `json:"comment,omitempty"`
+	Seq              uint64                `json:"seq"`
+	RemovedWorkspace string                `json:"removed_workspace,omitempty"`
+	RemovedWorktree  string                `json:"removed_worktree,omitempty"`
+	RemovedSession   string                `json:"removed_session,omitempty"`
+	Workspace        *domain.Workspace     `json:"workspace,omitempty"`
+	Task             *domain.Task          `json:"task,omitempty"`
+	Worktree         *domain.Worktree      `json:"worktree,omitempty"`
+	Session          *domain.Session       `json:"session,omitempty"`
+	Event            *domain.SessionEvent  `json:"event,omitempty"`
+	Subagent         *domain.Subagent      `json:"subagent,omitempty"`
+	Queue            *[]domain.LaunchItem  `json:"queue,omitempty"`
+	Draft            *domain.ReviewDraft   `json:"draft,omitempty"`
+	Comment          *domain.ReviewComment `json:"comment,omitempty"`
 }
 
 func Home() (string, error) {

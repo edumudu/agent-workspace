@@ -15,8 +15,6 @@ import (
 	"github.com/giovaniif/agent-workspace/internal/domain"
 )
 
-// why: rows carry an owner so a click maps back to what is drawn there; hit-testing
-// runs only on a click, so rendering pays nothing for it (ADR 0041).
 const (
 	ownSession      = "s:"
 	ownPick         = "p:"
@@ -27,7 +25,6 @@ const (
 
 const reviewWheelStep = 3
 
-// why: [ui] mouse is opt-out, so a missing file or key leaves the mouse on.
 func LoadMouse(path string) (bool, error) {
 	var cfg struct {
 		UI struct {
@@ -122,7 +119,6 @@ func (m Model) click(x, y int) (tea.Model, tea.Cmd) {
 	}
 	plain := ansi.Strip(lines[y])
 	if m.help && !m.rv.open && !m.dk.open {
-		// why: help pads each key into a column, so the whole row names one key.
 		x = len([]rune(plain)) - len([]rune(strings.TrimLeft(plain, " ")))
 	}
 	k, ok := hintAt(plain, x)
@@ -156,9 +152,6 @@ func (m Model) clickOwner(owner string, x int) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-// why: the bottom block holds each screen's key hints and buttons; elsewhere only
-// help rows and button rows (they name esc) are hints, so a click on an agent's
-// text never fires a key.
 func (m Model) hintRow(lines []string, y int) bool {
 	if m.help && !m.rv.open && !m.dk.open {
 		return true
@@ -194,7 +187,6 @@ var namedKeys = map[string]tea.KeyPressMsg{
 	"↓":     {Code: tea.KeyDown},
 }
 
-// why: a hint is "<key> <what it does>"; hints are split by two spaces or " · ".
 func hintAt(line string, x int) (tea.KeyPressMsg, bool) {
 	cells := []rune(strings.ReplaceAll(line, " · ", "   "))
 	if x < 0 || x >= len(cells) || cells[x] == ' ' && gapAt(cells, x) {
@@ -272,8 +264,6 @@ func keyFor(token string) (tea.KeyPressMsg, bool) {
 	return tea.KeyPressMsg{Code: r[0], Text: token}, true
 }
 
-// why: the review is laid out in fixed bands (see reviewView), so a click is
-// placed by arithmetic rather than by owners.
 func (m Model) reviewClick(x, y int) (Model, tea.Cmd, bool) {
 	if m.rv.typing {
 		return m, nil, false

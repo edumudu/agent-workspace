@@ -7,7 +7,6 @@ import (
 	"time"
 )
 
-// why: Worktree is a path so the agent edits the right checkout.
 type ReviewComment struct {
 	ID       string   `json:"id,omitempty"`
 	Worktree string   `json:"worktree"`
@@ -45,7 +44,6 @@ func CommentOn(worktree, path string, lines []DiffLine, body string) ReviewComme
 
 const promptLead = "Review comments on your changes. Each one names the worktree, file and lines it is about; make the edit in that worktree.\n"
 
-// why: its exact text is pinned by testdata/review_prompt.golden.
 func ReviewPrompt(comments []ReviewComment) string {
 	var b strings.Builder
 	b.WriteString(promptLead)
@@ -138,7 +136,6 @@ func (d ReviewDraft) Queue() ReviewDraft {
 	return d
 }
 
-// why: a paste into a running agent would land in its tool run.
 func (d ReviewDraft) Dispatch(s Session, now time.Time) (ReviewDraft, string, bool) {
 	if d.Status != DraftQueued || !s.AcceptsSwitch() {
 		return d, "", false

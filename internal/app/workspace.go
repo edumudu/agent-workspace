@@ -21,7 +21,6 @@ type RepoFacts struct {
 	ChangedFiles  int
 }
 
-// why: it runs git, so it is only for workers.
 type RepoInspector interface {
 	Inspect(ctx context.Context, path string) (RepoFacts, error)
 }

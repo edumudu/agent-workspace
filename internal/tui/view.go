@@ -117,7 +117,6 @@ func (m Model) View() tea.View {
 	return m.view(strings.Join(lines, "\n"))
 }
 
-// why: owners names what each row shows, so a click can be mapped back to it.
 func (m Model) mainScreen() (lines, owners []string) {
 	s := m.styles
 	lines = append(lines, m.topBar())
@@ -388,8 +387,6 @@ func (m Model) keyRow(k1, what1, k2, what2 string) string {
 	return m.line(false, []piece{{s.bold, " " + k1}, {s.sub, fmt.Sprintf(" %-14s", what1)}, {s.bold, k2}, {s.sub, " " + what2}}, nil)
 }
 
-// why: ports and the kill prompt need the room the counts would take, so they
-// leave the counts out.
 func (m Model) statusLeft() (left []piece, withCounts bool) {
 	s := m.styles
 	if m.renaming != nil {
@@ -428,7 +425,6 @@ func repoName(w domain.Worktree) string {
 	if w.Repo == "" {
 		return ""
 	}
-	// why: Repo is the main checkout's path; its last element is the name people use.
 	return filepath.Base(w.Repo)
 }
 
@@ -550,9 +546,6 @@ func (m Model) nameLines(name string) []string {
 	return out
 }
 
-// why: the URL comes from GitHub, so anything with a control character or a
-// scheme other than http(s) is left as text rather than risk breaking out of
-// the OSC 8 sequence.
 func link(url, text string) string {
 	if !strings.HasPrefix(url, "https://") && !strings.HasPrefix(url, "http://") {
 		return text
@@ -565,8 +558,6 @@ func link(url, text string) string {
 	return ansi.SetHyperlink(url) + text + ansi.ResetHyperlink()
 }
 
-// why: drops escape sequences and control characters an agent put in its
-// text, so they cannot repaint the terminal.
 func cleanText(s string) string {
 	s = strings.ReplaceAll(ansi.Strip(s), "\t", "    ")
 	return strings.Map(func(r rune) rune {

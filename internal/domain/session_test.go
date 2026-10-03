@@ -29,8 +29,6 @@ var markUnread = Effect{Kind: EffectMarkUnread}
 
 var doneEffects = []Effect{notify(StateDone), markUnread}
 
-// why: hooks can arrive out of order, so tool, permission and waiting events
-// seen while idle or done must not revive the session.
 var expected = map[AgentState]map[HarnessEventKind]transition{
 	StateIdle: {
 		EventSessionStart:      {StateIdle, nil},

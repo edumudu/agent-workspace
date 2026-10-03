@@ -175,7 +175,6 @@ func TestSetupFinishOrEscRecordsCompletionAndQuits(t *testing.T) {
 	}
 }
 
-// why: the last command is returned so a test can see whether the program ends.
 func runUntilQuit(m tui.Model, cmd tea.Cmd) tea.Cmd {
 	for cmd != nil {
 		msg := cmd()

@@ -25,7 +25,6 @@ const query = `query($id: String!) { issue(id: $id) { title } }`
 
 const maxResponse = 1 << 20
 
-// why: HTTP defaults to a client that does not follow redirects, so the token is never forwarded anywhere else.
 type Client struct {
 	Token    string
 	Endpoint string

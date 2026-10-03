@@ -1,6 +1,3 @@
-// why: one goroutine, the loop, owns the state: adapters Post events to it,
-// and connections send it queries. Nothing in the loop touches disk or runs
-// commands; the store only enqueues writes.
 package daemon
 
 import (
@@ -20,7 +17,6 @@ import (
 	"github.com/giovaniif/agent-workspace/internal/version"
 )
 
-// why: a connection further behind is dropped rather than stall the loop.
 const outBuffer = 1024
 
 type Event interface {
@@ -32,8 +28,6 @@ type TaskChanged struct{ Task domain.Task }
 type WorktreeChanged struct{ Worktree domain.Worktree }
 type SessionChanged struct{ Session domain.Session }
 
-// why: published as one diff so a subscriber never sees the session change
-// without the hook event that caused it.
 type SessionHooked struct {
 	Session domain.Session
 	Event   domain.SessionEvent
@@ -93,30 +87,26 @@ func (e SessionHooked) apply(s *state) rpc.Diff {
 }
 
 type state struct {
-	store      app.Store
-	seq        uint64
-	workspaces map[string]domain.Workspace
-	tasks      map[string]domain.Task
-	worktrees  map[string]domain.Worktree
-	sessions   map[string]domain.Session
-	events     map[string][]domain.SessionEvent
-	subagents  []domain.Subagent
-	subs       map[*conn]uint64
-	noticeSubs map[*conn]uint64
-	usage      map[string]*usageJob
-	attn       *attention
-	// why: set by New; state cannot reach the Daemon that owns it.
+	store        app.Store
+	seq          uint64
+	workspaces   map[string]domain.Workspace
+	tasks        map[string]domain.Task
+	worktrees    map[string]domain.Worktree
+	sessions     map[string]domain.Session
+	events       map[string][]domain.SessionEvent
+	subagents    []domain.Subagent
+	subs         map[*conn]uint64
+	noticeSubs   map[*conn]uint64
+	usage        map[string]*usageJob
+	attn         *attention
 	requestUsage func(sessionID, path string, force bool)
 	sendSwitches func(session domain.Session, sws []domain.Switch)
 	hints        worktreeHints
 	listeners    []domain.Listener
-	// why: must not block.
-	requestTurn func(session string, dirs []string, sent *domain.ReviewDraft) bool
-	viewed      map[string]domain.ViewedMark
-	// why: neither queue nor launched is persisted.
-	queue    []domain.LaunchItem
-	launched map[string]bool
-	// why: must not block.
+	requestTurn  func(session string, dirs []string, sent *domain.ReviewDraft) bool
+	viewed       map[string]domain.ViewedMark
+	queue        []domain.LaunchItem
+	launched     map[string]bool
 	kickLauncher func()
 	scopes       map[string]domain.ReviewScope
 	drafts       map[string]domain.ReviewDraft
@@ -192,7 +182,6 @@ func New(store app.Store, pid int, opts ...Option) (*Daemon, error) {
 		st.worktrees[w.ID] = w
 	}
 	for _, x := range snap.Sessions {
-		// why: nobody is looking at a session across a daemon restart, and a stale flag would hide its banners.
 		st.sessions[x.ID] = x.Blur()
 	}
 	for _, ev := range snap.Events {
@@ -380,7 +369,6 @@ func (s *state) trackSubagents(sessionID string, kind domain.HarnessEventKind, a
 	}
 }
 
-// why: returns once e has taken effect, so a query issued afterwards sees it.
 func (d *Daemon) commit(e Event) bool {
 	return d.query(func(s *state) { s.emit(e) })
 }
@@ -407,7 +395,6 @@ func (d *Daemon) handle(c *conn) {
 	}
 }
 
-// why: a nil response means the loop already replied, as subscribe does.
 func (d *Daemon) dispatch(c *conn, line []byte) (*rpc.Response, bool) {
 	var req rpc.Request
 	if err := json.Unmarshal(line, &req); err != nil {
@@ -613,7 +600,6 @@ func (c *conn) write() {
 	}
 }
 
-// why: the rollout has the effort and usage the hook lacks.
 func (s *state) codexObservation(h rpc.Hook, kind domain.HarnessEventKind, before, next domain.Session) domain.Session {
 	obs, err := codex.ParseHook(h.Event, h.Payload)
 	if err != nil {

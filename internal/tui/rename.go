@@ -79,7 +79,6 @@ func (m Model) renameLeft() []piece {
 	room := max(m.width-ansi.StringWidth(badge)-ansi.StringWidth(" ▏"), 1)
 	full := m.renaming.text
 	text := full
-	// why: TruncateLeft keeps a wide character that straddles the cut, so it can leave one cell too many.
 	for cut := ansi.StringWidth(full) - room; ansi.StringWidth(text) > room; cut++ {
 		text = ansi.TruncateLeft(full, cut, "")
 	}

@@ -20,8 +20,6 @@ type harnesses struct {
 	sendMu   sync.Mutex
 }
 
-// why: host.Create runs tmux, so launches run on the connection goroutine,
-// never the loop.
 func WithHarnesses(host app.TerminalHost, adapters ...app.HarnessAdapter) Option {
 	return func(d *Daemon) {
 		d.hs.host = host

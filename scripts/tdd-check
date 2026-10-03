@@ -1,8 +1,4 @@
 #!/usr/bin/env bash
-# why: Usage: scripts/tdd-check <base-ref> <head-ref>. Port fakes
-# (fakes_test.go, *_fake_test.go), whitespace-only and comment-only changes
-# are skipped: they carry no behavior to fail on base. The "test:" title comes
-# in TDD_PR_TITLE, an env var, so it is never interpolated into a command line.
 set -euo pipefail
 base="$1"
 head="$2"
@@ -36,7 +32,6 @@ esac
 
 files=$(git diff --name-only --diff-filter=AM "$base...$head" -- '*_test.go' '*/testdata/*' |
   grep -Ev '(^|/)(fakes|[^/]*_fake)_test\.go$' || true)
-# why: in goldens and lint-comments fixtures a comment-shaped line is expected output or linter input, so only whitespace is ignored there.
 files=$(for f in $files; do
   case $f in
   (*.golden | *.go.txt) git diff --quiet --ignore-all-space --ignore-blank-lines "$base...$head" -- "$f" || echo "$f" ;;

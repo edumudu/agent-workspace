@@ -1,9 +1,3 @@
-// why: release and dev builds stamp it with
-//
-//	go build -ldflags "-X github.com/giovaniif/agent-workspace/internal/version.Version=v1.2.3 -X github.com/giovaniif/agent-workspace/internal/version.Commit=abc123"
-//
-// The daemon and its clients compare String on every request and refuse to
-// talk across builds.
 package version
 
 import (
@@ -36,6 +30,4 @@ var builtAt = sync.OnceValue(func() time.Time {
 	return info.ModTime()
 })
 
-// why: the executable's mtime tells which side of a mismatch is older. Zero
-// when it cannot be read.
 func BuiltAt() time.Time { return builtAt() }

@@ -15,8 +15,6 @@ var ErrAlreadyRunning = errors.New("already running")
 func LockPath(home string) string { return filepath.Join(home, "agentws.lock") }
 func PIDPath(home string) string  { return filepath.Join(home, "agentws.pid") }
 
-// why: the kernel drops the flock when the process dies, so a killed daemon
-// never leaves a stale lock.
 type Lock struct {
 	file *os.File
 	home string
@@ -47,8 +45,6 @@ func Acquire(home string) (*Lock, error) {
 	return &Lock{file: f, home: home}, nil
 }
 
-// why: unlock before closing: a child forked while the daemon ran shares the
-// open file until it execs, and closing alone leaves the lock held for it.
 func (l *Lock) Release() error {
 	err := os.Remove(PIDPath(l.home))
 	if errors.Is(err, os.ErrNotExist) {

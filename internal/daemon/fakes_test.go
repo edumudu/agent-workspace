@@ -367,8 +367,6 @@ func (h *fakeHost) holdPane(pane app.PaneID) (release func()) {
 	return func() { close(gate) }
 }
 
-// why: workers start in goroutines, so a test that needs one send queued
-// behind another must first see the earlier send block on its pane.
 func (h *fakeHost) waitHeld(t *testing.T, pane app.PaneID) {
 	t.Helper()
 	h.mu.Lock()

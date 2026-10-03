@@ -126,7 +126,6 @@ func TestSwitchingAgentsKeepsTheShellBelow(t *testing.T) {
 	}
 }
 
-// why: a pane of a second tmux server gives the dedicated server a client with a real tty.
 func outerTerminal(t *testing.T, h *tmux.Host, slot app.Slot) func(args ...string) string {
 	t.Helper()
 	socket := "agentws-outer-" + strings.ReplaceAll(t.Name(), "/", "-") + "-" + time.Now().Format("150405.000")

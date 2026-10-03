@@ -20,7 +20,6 @@ func (Review) Stage(ctx context.Context, dir, patch string) error {
 	return apply(ctx, dir, patch, "--cached")
 }
 
-// why: the patch is saved before it is applied, so a reverted hunk can be recovered.
 func (Review) Revert(ctx context.Context, dir, patch string) error {
 	if err := apply(ctx, dir, patch, "-R", "--check"); err != nil {
 		return err
@@ -40,7 +39,6 @@ func (Review) Revert(ctx context.Context, dir, patch string) error {
 	return apply(ctx, dir, patch, "-R")
 }
 
-// why: these make git pick a repo, work tree or index other than the one -C names; a daemon started from a git hook or alias can inherit them.
 var locationVars = []string{"GIT_DIR=", "GIT_WORK_TREE=", "GIT_INDEX_FILE=", "GIT_COMMON_DIR=", "GIT_OBJECT_DIRECTORY=", "GIT_NAMESPACE="}
 
 func isolated(env []string) []string {

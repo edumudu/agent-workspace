@@ -1,5 +1,3 @@
-# why: the agent must receive exactly the documented prompt
-# (internal/domain/testdata/review_prompt.golden).
 repo api
 exec agentws workspace add api
 exec agentws new --workspace api 'write two files'

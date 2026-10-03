@@ -8,7 +8,6 @@ import (
 	"github.com/giovaniif/agent-workspace/internal/domain"
 )
 
-// why: macOS netstat puts the state in column 6, the local address as `host.port` in column 4 and `name:pid` in column 11.
 func parseNetstat(out string) []domain.Listener {
 	var listeners []domain.Listener
 	for _, line := range strings.Split(out, "\n") {

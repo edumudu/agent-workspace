@@ -24,12 +24,11 @@ func ClaudeNotification(notificationType string) (HarnessEventKind, bool) {
 }
 
 var codexHooks = map[string]HarnessEventKind{
-	"SessionStart":     EventSessionStart,
-	"UserPromptSubmit": EventUserPromptSubmit,
-	"PreToolUse":       EventPreToolUse,
-	"PostToolUse":      EventPostToolUse,
-	"Stop":             EventStop,
-	// why: Codex fires Interrupt instead of Stop when the user aborts a turn.
+	"SessionStart":      EventSessionStart,
+	"UserPromptSubmit":  EventUserPromptSubmit,
+	"PreToolUse":        EventPreToolUse,
+	"PostToolUse":       EventPostToolUse,
+	"Stop":              EventStop,
 	"Interrupt":         EventStop,
 	"PermissionRequest": EventPermissionRequest,
 	"SessionEnd":        EventSessionEnd,

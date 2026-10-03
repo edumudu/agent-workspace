@@ -1,6 +1,5 @@
 //go:build integration
 
-// why: gh is a fake script, so nothing reaches GitHub.
 package integration
 
 import (
@@ -66,7 +65,6 @@ func start(t *testing.T, poll, prPoll time.Duration) env {
 	t.Setenv("GIT_COMMITTER_NAME", "t")
 	t.Setenv("GIT_COMMITTER_EMAIL", "t@example.com")
 
-	// why: git reports resolved paths, and macOS temp dirs sit behind the /var symlink.
 	tmp, err := filepath.EvalSymlinks(t.TempDir())
 	if err != nil {
 		t.Fatal(err)
@@ -83,7 +81,6 @@ func start(t *testing.T, poll, prPoll time.Duration) env {
 	if err := os.WriteFile(gh, []byte(script), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	// why: macOS scans a new executable on its first run, which takes seconds and would otherwise land in a timed PR poll.
 	if out, err := exec.Command(gh).CombinedOutput(); err != nil {
 		t.Fatalf("fake gh: %v\n%s", err, out)
 	}
@@ -106,7 +103,6 @@ func start(t *testing.T, poll, prPoll time.Duration) env {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// why: macOS caps Unix socket paths at 104 bytes, and t.TempDir() can exceed it.
 	sockDir, err := os.MkdirTemp("/tmp", "agentws-i")
 	if err != nil {
 		t.Fatal(err)

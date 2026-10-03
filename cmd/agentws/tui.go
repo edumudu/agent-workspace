@@ -23,8 +23,6 @@ func connect(ctx context.Context, home string) (*rpc.Client, error) {
 	return rpc.Connect(ctx, rpc.SocketPath(home), func() error { return spawn(home) })
 }
 
-// why: replaces this process with the tmux client (exec), creating the layout
-// on the first run.
 func attach(stderr io.Writer) int {
 	home, err := rpc.Home()
 	if err == nil {
@@ -55,7 +53,6 @@ func attachIn(home string) error {
 	}
 	env := make([]string, 0, len(os.Environ()))
 	for _, kv := range os.Environ() {
-		// why: inside another tmux, attach refuses to nest unless TMUX is unset.
 		if len(kv) < 5 || kv[:5] != "TMUX=" {
 			env = append(env, kv)
 		}
@@ -81,7 +78,6 @@ func runTUI(args []string, stderr io.Writer) int {
 	return 0
 }
 
-// why: newSession and setup run the new-session dialog or the walkthrough alone, as the popups n and S open.
 func tuiIn(home string, newSession, setup bool) error {
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGTERM)
 	defer cancel()
@@ -114,10 +110,8 @@ func tuiIn(home string, newSession, setup bool) error {
 	opts := tui.Options{Theme: theme, Defaults: defaults, Fallback: fallback, NewSessionOnly: newSession, SetupOnly: setup, NoMouse: !mouse}
 	opts.HarnessDefaults = harnessDefaults()
 	if newSession {
-		// why: the daemon opens the popup where agentws was launched, so this is the folder to start in.
 		opts.LaunchDir = launchDir()
 	} else {
-		// why: the inline dialog, used when the popup cannot open, starts in the same folder.
 		opts.LaunchDir = os.Getenv("AGENTWS_LAUNCH_DIR")
 	}
 	if self, err := os.Executable(); err == nil && !newSession && !setup {
@@ -161,8 +155,6 @@ func runDebugSeed(args []string, stdout, stderr io.Writer) int {
 	return 0
 }
 
-// why: lets the dialog name what each harness starts with when given no model
-// or effort. A file that cannot be read leaves that harness unnamed.
 func harnessDefaults() map[domain.Harness]tui.Defaults {
 	out := map[domain.Harness]tui.Defaults{}
 	if path, err := claudeSettingsPath(os.Getenv); err == nil {

@@ -26,39 +26,26 @@ type Killer interface {
 }
 
 type Options struct {
-	Theme Theme
-	Now   func() time.Time
-	// why: zero turns the ticker off.
-	Tick  time.Duration
-	Focus Focuser
-	// why: nil turns off m and the seen marker on enter.
-	Attend Attender
-	// why: nil turns off K.
-	Kill     Killer
-	Defaults map[domain.Harness]Defaults
-	Fallback domain.FallbackConfig
-	// why: nil turns off n and x.
-	Calls Caller
-	// why: nil turns M and E off.
-	Switch Switcher
-	// why: nil turns off r.
-	Review Reviewer
-	// why: nil turns off w.
-	Disk Disker
-	// why: with no command, or when the popup fails, n opens the dialog inline.
+	Theme           Theme
+	Now             func() time.Time
+	Tick            time.Duration
+	Focus           Focuser
+	Attend          Attender
+	Kill            Killer
+	Defaults        map[domain.Harness]Defaults
+	Fallback        domain.FallbackConfig
+	Calls           Caller
+	Switch          Switcher
+	Review          Reviewer
+	Disk            Disker
 	DialogPopup     rpc.ClientPopupParams
 	HarnessDefaults map[domain.Harness]Defaults
-	// why: the popup's own program: the dialog fills the screen from the start and
-	// the program ends when it closes.
-	NewSessionOnly bool
-	LaunchDir      string
-	// why: nil turns the first-run walkthrough and S off, as in tests that are not about it.
-	Onboard Onboarder
-	// why: the setup popup's own program, like NewSessionOnly; it ends when the walkthrough does.
-	SetupOnly  bool
-	SetupPopup rpc.ClientPopupParams
-	// why: [ui] mouse = false; the zero value keeps the mouse on.
-	NoMouse bool
+	NewSessionOnly  bool
+	LaunchDir       string
+	Onboard         Onboarder
+	SetupOnly       bool
+	SetupPopup      rpc.ClientPopupParams
+	NoMouse         bool
 }
 
 type Caller interface {
@@ -71,7 +58,6 @@ type DiffMsg rpc.Diff
 
 type TickMsg struct{}
 
-// why: an empty field hides its slot.
 type TopBarMsg struct {
 	Claude string
 	Codex  string
@@ -249,7 +235,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	case sessionStartedMsg:
 		if m.opts.NewSessionOnly {
-			// why: the popup draws only the dialog, so it stays up until the program ends or shows why it cannot.
 			return m, m.showNewAndQuit(msg.session.ID)
 		}
 		if m.dialog != nil && m.dialog.seq == msg.seq {
@@ -346,8 +331,6 @@ func (m *Model) apply(d rpc.Diff) {
 		delete(m.events, d.RemovedSession)
 		delete(m.subagents, d.RemovedSession)
 	case d.Session != nil:
-		// why: a banner click or agentws focus shows a session without the sidebar, so the selection follows it;
-		// only the change to focused counts, so later updates to that session never undo j/k.
 		if d.Session.Focused && !m.sessions[d.Session.ID].Focused {
 			m.pending = d.Session.ID
 		}
@@ -409,7 +392,6 @@ func (m *Model) rebuild() {
 	if m.index(m.selected) < 0 {
 		m.selected = ""
 		if len(m.entries) > 0 {
-			// why: the daemon shows the next row once the one in view ends, so the selection follows it there.
 			m.selected = m.entries[min(max(was, 0), len(m.entries)-1)].session.ID
 		}
 	}

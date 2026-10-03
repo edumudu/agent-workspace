@@ -20,11 +20,9 @@ const (
 	placeholder   = "tail -f /dev/null"
 	emptyState    = `printf 'No session in view.\n\nPress n to start one.\n'; exec tail -f /dev/null`
 
-	// why: Claude Code and Codex leave ctrl+backslash unbound.
 	FocusSidebarKey = `C-\`
 )
 
-// why: q/h keeps a # in the title from being read as a style or a format.
 const titleFormat = "#{?@agentws_title, #{q/h:@agentws_title} ,}"
 
 const configContents = `set -g status off
@@ -39,9 +37,6 @@ set -g pane-border-status top
 ` + "set -g pane-border-format \"" + titleFormat + "\"\n" + `bind -n M-t if -F '#{m:agentws-popup-*,#{session_name}}' 'detach-client' 'send-keys M-t'
 `
 
-// why: unbind-key -a drops tmux's own mouse bindings, so they are spelled out.
-// A pane whose program takes the mouse (mouse_any_flag) gets the event as is;
-// any other pane scrolls or selects in copy-mode.
 const mouseOn = `set -g mouse on
 bind -n MouseDown1Pane select-pane -t = \; send -M
 bind -n MouseDrag1Border resize-pane -M
@@ -69,8 +64,7 @@ func config(noMouse bool) string {
 type Config struct {
 	Socket     string
 	ConfigPath string
-	// why: [ui] mouse = false leaves clicks and the wheel to the terminal.
-	NoMouse bool
+	NoMouse    bool
 }
 
 type Host struct {
@@ -80,10 +74,9 @@ type Host struct {
 
 	configOnce sync.Once
 	configErr  error
-	// why: a server started with an older config lacks the title border options.
-	titlesMu  sync.Mutex
-	titlesOn  bool
-	bufferSeq atomic.Uint64
+	titlesMu   sync.Mutex
+	titlesOn   bool
+	bufferSeq  atomic.Uint64
 }
 
 func New(cfg Config) *Host {

@@ -324,8 +324,6 @@ func TestLoadThemeOverridesLatteFromConfig(t *testing.T) {
 	}
 }
 
-// why: guards the 16 ms keypress-to-frame budget: one Update for a key plus
-// the View it produces, with 10 sessions and 30 worktrees.
 func BenchmarkKeypressToFrame(b *testing.B) {
 	st := fixture(10, 3)
 	m := newModel(&st, nil)

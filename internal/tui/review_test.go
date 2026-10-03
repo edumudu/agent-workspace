@@ -276,8 +276,6 @@ func TestGoldenReview(t *testing.T) {
 	golden.RequireEqual(t, screen(m))
 }
 
-// why: guards the 16 ms frame budget while scrolling a 50-file, 3,000-line
-// review.
 func BenchmarkReviewScroll(b *testing.B) {
 	st := fixture(1, 1)
 	var diff strings.Builder

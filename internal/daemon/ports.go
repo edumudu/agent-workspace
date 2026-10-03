@@ -44,8 +44,6 @@ func (d *Daemon) watchPorts(ctx context.Context) {
 	}
 }
 
-// why: skips the read while no worktree exists, so an idle daemon does not
-// run lsof every few seconds. A failed read keeps the ports already shown.
 func (d *Daemon) refreshPorts(ctx context.Context) {
 	hasWorktrees := false
 	if !d.query(func(s *state) { hasWorktrees = len(s.worktrees) > 0 }) || !hasWorktrees {
