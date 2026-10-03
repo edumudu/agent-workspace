@@ -265,3 +265,22 @@ func waitFor(t *testing.T, cond func() bool) {
 		time.Sleep(5 * time.Millisecond)
 	}
 }
+
+func TestWorkspaceDirsListsSubfoldersWithoutAddingTheFolder(t *testing.T) {
+	c, _ := startWorkspaces(t, &memStore{})
+	ctx := context.Background()
+	dirs, err := c.WorkspaceDirs(ctx, "/shop")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(dirs.Dirs, shop.children["/shop"]) {
+		t.Errorf("dirs = %+v", dirs)
+	}
+	if list, err := c.WorkspaceList(ctx); err != nil || len(list.Workspaces) != 0 {
+		t.Errorf("listing a folder registered it: %+v, %v", list, err)
+	}
+	var rerr *rpc.Error
+	if _, err := c.WorkspaceDirs(ctx, "relative"); !errors.As(err, &rerr) || rerr.Code != rpc.CodeBadRequest {
+		t.Errorf("relative path: %v", err)
+	}
+}
