@@ -96,7 +96,7 @@ One terminal tool for running Claude Code and Codex sessions in parallel, each i
 ## P2
 
 - Native macOS client.
-- Phone notifications.
+- A phone app: a PWA served by `agentws serve` that lists sessions, chats with them, starts new ones and gets push notifications, over whatever network path the user picks (see ADR 0046).
 - Comparing two agents' attempts at the same task side by side.
 - Attaching to a remote daemon over SSH.
 
