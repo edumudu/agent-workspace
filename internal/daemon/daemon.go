@@ -471,6 +471,10 @@ func (d *Daemon) dispatch(c *conn, line []byte) (*rpc.Response, bool) {
 		return d.launcherMethod(req)
 	case rpc.MethodSessionSend, rpc.MethodSessionUnsend, rpc.MethodSessionInterrupt:
 		return d.sessionInput(req)
+	case rpc.MethodSessionPrompt:
+		return d.sessionPrompt(req)
+	case rpc.MethodSessionAnswer:
+		return d.sessionAnswer(req)
 	case rpc.MethodSwitch:
 		return d.switchSession(req)
 	case rpc.MethodSessionRename, rpc.MethodSessionUnpin:

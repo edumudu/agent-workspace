@@ -1,0 +1,16 @@
+› create an empty notes.txt
+
+• I'll create the file.
+
+
+  Would you like to run the following command?
+
+  Reason: the file does not exist yet
+
+  $ touch notes.txt
+
+› 1. Yes, proceed (y)
+  2. Yes, and don't ask again for commands that start with `touch` (p)
+  3. No, and tell Codex what to do differently (esc)
+
+  Press enter to confirm or esc to cancel
