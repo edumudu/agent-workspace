@@ -204,5 +204,6 @@ func (s *state) sendFailed(q domain.QueuedSend) {
 	delete(s.inFlight, q.Session)
 	if session, found := s.sessions[q.Session]; found && !session.Ended {
 		s.emit(SendsChanged{Sends: domain.RequeueSend(s.sends, q)})
+		s.dispatchDraft(session)
 	}
 }
