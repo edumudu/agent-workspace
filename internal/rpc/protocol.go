@@ -13,19 +13,22 @@ import (
 const Version = 1
 
 const (
-	MethodStatus           = "status"
-	MethodSubscribe        = "subscribe"
-	MethodNotifyStream     = "notify.stream"
-	MethodHook             = "hook"
-	MethodWorkspaceAdd     = "workspace.add"
-	MethodWorkspaceList    = "workspace.list"
-	MethodWorkspaceRemove  = "workspace.remove"
-	MethodOpenClient       = "client.open"
-	MethodFocusMain        = "client.focus_main"
-	MethodDebugSeed        = "debug.seed"
-	MethodStatusLine       = "statusline"
-	MethodLaunch           = "session.launch"
-	MethodSessionMute      = "session.mute"
+	MethodStatus          = "status"
+	MethodSubscribe       = "subscribe"
+	MethodNotifyStream    = "notify.stream"
+	MethodHook            = "hook"
+	MethodWorkspaceAdd    = "workspace.add"
+	MethodWorkspaceList   = "workspace.list"
+	MethodWorkspaceRemove = "workspace.remove"
+	MethodWorkspaceDirs   = "workspace.dirs"
+	MethodOpenClient      = "client.open"
+	MethodFocusMain       = "client.focus_main"
+	MethodDebugSeed       = "debug.seed"
+	MethodStatusLine      = "statusline"
+	MethodLaunch          = "session.launch"
+	MethodSessionMute     = "session.mute"
+	// why: focus also clears the unread marker and blurs the session that was in
+	// view; with a client layout open it swaps the session's pane into the main slot.
 	MethodSessionFocus     = "session.focus"
 	MethodWorktreeAssign   = "worktree.assign"
 	MethodNewSession       = "session.new"
@@ -236,6 +239,14 @@ func Mismatch(daemonBuild, clientBuild string, daemonBuilt, clientBuilt int64) *
 
 type WorkspaceAddParams struct {
 	Path string `json:"path"`
+}
+
+type WorkspaceDirsParams struct {
+	Path string `json:"path"`
+}
+
+type WorkspaceDirs struct {
+	Dirs []domain.Child `json:"dirs"`
 }
 
 type WorkspaceRemoveParams struct {

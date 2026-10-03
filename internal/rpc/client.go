@@ -117,6 +117,12 @@ func (c *Client) WorkspaceAdd(ctx context.Context, path string) (domain.Workspac
 	return ws, err
 }
 
+func (c *Client) WorkspaceDirs(ctx context.Context, path string) (WorkspaceDirs, error) {
+	var dirs WorkspaceDirs
+	err := c.Call(ctx, MethodWorkspaceDirs, WorkspaceDirsParams{Path: path}, &dirs)
+	return dirs, err
+}
+
 func (c *Client) WorkspaceList(ctx context.Context) (WorkspaceList, error) {
 	var list WorkspaceList
 	err := c.Call(ctx, MethodWorkspaceList, nil, &list)

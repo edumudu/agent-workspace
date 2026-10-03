@@ -53,6 +53,8 @@ func (d *Daemon) workspaceMethod(req rpc.Request) (resp *rpc.Response, ok, handl
 		resp, ok = d.workspaceAdd(req)
 	case rpc.MethodWorkspaceRemove:
 		resp, ok = d.workspaceRemove(req)
+	case rpc.MethodWorkspaceDirs:
+		resp, ok = d.workspaceDirs(req), true
 	default:
 		resp, ok = d.workspaceList(req)
 	}
@@ -90,6 +92,25 @@ func (d *Daemon) addWorkspace(root string) (domain.Workspace, *rpc.Error, bool) 
 	go d.refreshWorkspace(root)
 	d.st.hints.wake()
 	return ws, nil, true
+}
+
+// why: runs on the caller's goroutine and never touches state, so a slow disk stalls only that call.
+func (d *Daemon) workspaceDirs(req rpc.Request) *rpc.Response {
+	var p rpc.WorkspaceDirsParams
+	if err := json.Unmarshal(req.Params, &p); err != nil {
+		return errorResponse(req.ID, rpc.CodeBadRequest, "params must be {\"path\": string}")
+	}
+	if !filepath.IsAbs(p.Path) {
+		return errorResponse(req.ID, rpc.CodeBadRequest, "path must be absolute: "+p.Path)
+	}
+	children, err := d.ws.fs.Children(filepath.Clean(p.Path))
+	if err != nil {
+		return errorResponse(req.ID, rpc.CodeNotFound, err.Error())
+	}
+	if children == nil {
+		children = []domain.Child{}
+	}
+	return result(req.ID, rpc.WorkspaceDirs{Dirs: children})
 }
 
 func (d *Daemon) workspaceRemove(req rpc.Request) (*rpc.Response, bool) {
