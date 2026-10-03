@@ -6,3 +6,6 @@ echo hi # trailing
 x=${y#prefix}
 printf '%s\n' "#{pane_id}"
 	# indented comment
+echo $'it\'s # inside'
+true;# after a semicolon
+echo a|# after a pipe

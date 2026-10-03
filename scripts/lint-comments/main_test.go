@@ -16,14 +16,16 @@ func TestCheckFile(t *testing.T) {
 		{"x.go", "comments.go.txt", []int{1, 4, 7, 10, 13, 15, 16, 20}},
 		{"x_test.go", "comments.go.txt", []int{1, 4, 7, 10, 13, 15, 16, 20}},
 		{"x.go", "directives.go.txt", []int{20}},
-		{"x.sh", "shell.sh.txt", []int{3, 5, 8}},
+		{"x.sh", "shell.sh.txt", []int{3, 5, 8, 10, 11}},
 		{"x.lua", "lua.lua.txt", []int{2, 3, 5}},
 		{"x.yml", "yaml.yml.txt", []int{3, 4}},
 		{"x.yaml", "yaml.yml.txt", []int{3, 4}},
 		{"x.txtar", "script.txtar.txt", []int{1}},
-		{"x.sql", "query.sql.txt", []int{1, 2}},
+		{"x.sql", "query.sql.txt", []int{1, 2, 4, 5}},
 		{"x.md", "shell.sh.txt", nil},
-		{"tool", "shell.sh.txt", []int{3, 5, 8}},
+		{"tool", "shell.sh.txt", []int{3, 5, 8, 10, 11}},
+		{"Makefile", "makefile.mk.txt", []int{1, 2, 6}},
+		{"x.mk", "makefile.mk.txt", []int{1, 2, 6}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name+"/"+tt.fixture, func(t *testing.T) {
