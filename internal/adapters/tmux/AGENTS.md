@@ -4,7 +4,7 @@ The only code that runs tmux; only `internal/daemon` may import it. See [ADR 000
 
 - It drives a dedicated server (`tmux -L agentws`, or `AGENTWS_TMUX_SOCKET`) with its own config, never the user's server. Panes are parked in their own windows and `swap-pane` puts one in the client's main slot.
 - Keys: `ctrl+\` (`FocusSidebarKey`) moves focus from an agent pane to the sidebar, bound on the `agentws` server only ([ADR 0025](../../../docs/adr/0025-focus-return-key.md)). The config binds `M-t` (closes the shell popup); `C-h/j/k/l` are not bound so they reach every pane (the nvim plugin navigates at nvim's edge).
-- tmux reads `-f` only when a server starts, so the first command a `Host` runs is `source-file` of the freshly written config: a server that outlived an upgrade picks up new settings (the mouse, say) on the next daemon start.
+- tmux reads `-f` only when a server starts, so the first command a `Host` runs is `source-file` of the freshly written config: a server that outlived an upgrade picks up new settings (the mouse, say) on the next daemon start. Its exit status is ignored, because on a running server `unbind-key -a` always reports a missing prefix table. With no server yet, `-f` covers the next one. Only a canceled `source-file` is retried.
 - Pane title strips are set through `SetTitle` ([ADR 0038](../../../docs/adr/0038-pane-title-strips.md)).
 - Tests are `-tags integration` against real tmux, each with a unique socket. `go test ./... -run Shell -tags integration` covers the split, popup and key pass-through.
 
