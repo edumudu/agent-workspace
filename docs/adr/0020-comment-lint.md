@@ -1,6 +1,6 @@
 # ADR 0020: Comments are denied unless marked with a reason
 
-Status: superseded by [ADR 0043](0043-no-comments.md) on 2026-10-03. Was accepted 2026-09-30; revised 2026-10-01 (#124) to deny by default.
+Status: superseded by [ADR 0044](0044-no-comments.md) on 2026-10-03. Was accepted 2026-09-30; revised 2026-10-01 (#124) to deny by default.
 
 ## Decision
 

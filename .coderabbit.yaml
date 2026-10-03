@@ -16,12 +16,12 @@ reviews:
         Enforce AGENTS.md: layer rules (domain has no IO and no internal imports; app depends only on domain;
         tui talks only to rpc), no exec/disk/network on hot paths (hook, TUI render, daemon loop),
         shell out to git/gh/tmux instead of Go libraries, cleanup never destroys user work.
-        No comments at all (AGENTS.md, ADR 0043): flag every added comment and request its removal. Only tool
+        No comments at all (AGENTS.md, ADR 0044): flag every added comment and request its removal. Only tool
         directives are allowed (//go:, //line, //export, a bare //nolint:, generated-code headers).
         Focus on correctness bugs; skip style nits that gofmt or golangci-lint already cover.
     - path: "{scripts/**,**/*.sh,**/*.yml,**/*.yaml,**/*.lua,**/*.txtar,**/*.py,Makefile}"
       instructions: >-
-        No comments at all (AGENTS.md, ADR 0043): flag every added comment and request its removal.
+        No comments at all (AGENTS.md, ADR 0044): flag every added comment and request its removal.
         Only shebangs, shellcheck directives and yaml-language-server lines are allowed.
     - path: "**/*_test.go"
       instructions: >-

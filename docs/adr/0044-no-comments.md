@@ -1,4 +1,4 @@
-# ADR 0043: No comments
+# ADR 0044: No comments
 
 Status: accepted, 2026-10-03. Supersedes [ADR 0020](0020-comment-lint.md).
 

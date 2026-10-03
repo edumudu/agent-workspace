@@ -19,7 +19,7 @@ type finding struct {
 	line int
 }
 
-const bannedMsg = "comments are banned; delete it (ADR 0043)"
+const bannedMsg = "comments are banned; delete it (ADR 0044)"
 
 func (f finding) String() string { return fmt.Sprintf("%s:%d: %s", f.file, f.line, bannedMsg) }
 
