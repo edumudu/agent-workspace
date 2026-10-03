@@ -29,7 +29,6 @@ type hookPayload struct {
 	TranscriptPath string `json:"transcript_path"`
 }
 
-// why: a payload that is not valid JSON still yields the event: the name alone is enough to move the state.
 func ParseHook(name string, stdin []byte) (Observation, error) {
 	kind, ok := domain.HookEvent(domain.HarnessCodex, name)
 	if !ok {

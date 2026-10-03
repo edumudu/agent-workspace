@@ -6,7 +6,6 @@ import (
 	"time"
 )
 
-// why: Claude starts a new id on /clear, so the newest hook's id is the one to resume.
 func ResumeIDFromHook(payload []byte) string {
 	var p struct {
 		SessionID string `json:"session_id"`
@@ -21,7 +20,6 @@ func ResumeIDFromHook(payload []byte) string {
 	return p.ThreadID
 }
 
-// why: both harnesses look transcripts up by id, and Claude only within the dir it ran in.
 func (s Session) Resumable() bool {
 	return s.Ended && s.ResumeID != "" && s.Dir != ""
 }

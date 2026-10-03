@@ -1,0 +1,6 @@
+# a comment
+exec agentws version
+stdout 'v1 # x'
+-- f.sh --
+#!/bin/sh
+# file content is data

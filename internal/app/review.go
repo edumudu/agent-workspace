@@ -7,8 +7,6 @@ import (
 	"github.com/giovaniif/agent-workspace/internal/domain"
 )
 
-// why: the working tree hash covers tracked and untracked files and never
-// touches the real index.
 type ReviewGit interface {
 	WorkingTree(ctx context.Context, dir string) (string, error)
 	PointRef(ctx context.Context, dir, ref, tree string) error
@@ -36,8 +34,6 @@ func SnapshotTurn(ctx context.Context, g ReviewGit, session, dir string) (string
 	return ref, g.DeleteRefs(ctx, dir, domain.OlderTurns(refs, session, dir, n+1))
 }
 
-// why: repoDir is any checkout of the same repo, since the worktree itself
-// may be gone.
 func DropTurns(ctx context.Context, g ReviewGit, repoDir, worktree string) error {
 	refs, err := g.TurnRefs(ctx, repoDir)
 	if err != nil {

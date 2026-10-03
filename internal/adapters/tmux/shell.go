@@ -22,7 +22,6 @@ const ShellHeight = "35%"
 const popupSessionPrefix = "agentws-popup-"
 
 func (h *Host) BelowPane(ctx context.Context, slot app.Slot) app.PaneID {
-	// why: display-message falls back to another pane when the index does not exist, so list the panes instead.
 	out, err := h.run(ctx, "", "list-panes", "-t", string(slot), "-F", "#{pane_index} #{pane_id}")
 	if err != nil {
 		return ""
@@ -45,7 +44,6 @@ func (h *Host) ShowBelow(ctx context.Context, pane app.PaneID, slot app.Slot) er
 			return err
 		}
 	}
-	// why: -d keeps focus where it was, so the sidebar keys still work after t.
 	_, err := h.run(ctx, "", "join-pane", "-d", "-v", "-l", ShellHeight, "-s", string(pane), "-t", string(slot)+"."+slotPaneIndex)
 	return err
 }
@@ -68,7 +66,6 @@ func (h *Host) HideBelow(ctx context.Context, slot app.Slot) error {
 	return err
 }
 
-// why: the popup is a second client on a grouped session showing the pane's window, so the pane keeps running after the popup closes.
 func (h *Host) Popup(ctx context.Context, pane app.PaneID) error {
 	window, err := h.parkedWindow(ctx, pane)
 	if err != nil {
@@ -85,7 +82,6 @@ func (h *Host) Popup(ctx context.Context, pane app.PaneID) error {
 		`\;`, "select-window", "-t", window,
 		`\;`, "set-option", "destroy-unattached", "on",
 	}, " ")
-	// why: display-popup returns only when the popup closes, and the daemon must not wait for a person.
 	cmd := exec.Command("tmux", "-L", h.socket, "-f", h.configPath, "display-popup", "-c", client, "-E", "-w", "80%", "-h", "80%", inner)
 	cmd.Env = withoutTmuxEnv(os.Environ())
 	if err := cmd.Start(); err != nil {
@@ -95,7 +91,6 @@ func (h *Host) Popup(ctx context.Context, pane app.PaneID) error {
 	return nil
 }
 
-// why: tmux refuses a popup larger than the client.
 const (
 	popupMaxWidth  = 100
 	popupMaxHeight = 32
@@ -131,7 +126,6 @@ func (h *Host) PopupCommand(ctx context.Context, spec app.PaneSpec) error {
 	for i, a := range spec.Command {
 		quoted[i] = shellQuote(a)
 	}
-	// why: display-popup returns only when the popup closes, and the daemon must not wait for a person.
 	cmd := exec.Command("tmux", append(args, strings.Join(quoted, " "))...)
 	cmd.Env = withoutTmuxEnv(os.Environ())
 	var stderr bytes.Buffer
@@ -141,7 +135,6 @@ func (h *Host) PopupCommand(ctx context.Context, spec app.PaneSpec) error {
 	}
 	done := make(chan error, 1)
 	go func() { done <- cmd.Wait() }()
-	// why: tmux refuses a popup at once (a client gone since the size query); one still up after the grace was shown.
 	select {
 	case err := <-done:
 		if err != nil {

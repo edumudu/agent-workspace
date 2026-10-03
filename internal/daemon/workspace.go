@@ -135,7 +135,6 @@ func (d *Daemon) refreshWorkspace(root string) {
 		if !found {
 			return
 		}
-		// why: the workspace may have been re-added while git ran, so carry the facts onto its current repo list.
 		merged := cur
 		merged.Repos = domain.MergeRepoState(fresh.Repos, cur.Repos)
 		if !reflect.DeepEqual(merged, cur) {

@@ -5,14 +5,9 @@ import (
 	"io/fs"
 	"sync"
 
-	. "github.com/alecthomas/chroma/v2" //nolint:staticcheck // why: the Go rules below are chroma's, kept close to their source.
+	. "github.com/alecthomas/chroma/v2" //nolint:staticcheck
 )
 
-// why: the syntax/*.xml lexers are copied from chroma (MIT, see syntax/COPYING).
-// chroma's own lexers package builds all ~280 lexers in its init, which
-// would cost every `agentws hook` run several milliseconds, so the review
-// builds this smaller set on first use instead.
-//
 //go:embed syntax/*.xml
 var lexerFiles embed.FS
 
@@ -36,7 +31,7 @@ func matchLexer(filename string) Lexer {
 	return lexerRegistry.Match(filename)
 }
 
-//nolint:govet // why: chroma rule tables are positional, as in its own lexers.
+//nolint:govet
 func goRules() Rules {
 	return Rules{
 		"root": {

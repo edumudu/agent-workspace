@@ -14,8 +14,6 @@ func WithSlotWatch(every time.Duration) Option {
 	return func(d *Daemon) { d.clients.watchEvery = every }
 }
 
-// why: covers an agent that exits by itself: tmux drops its pane, so the
-// slot is gone without session.end.
 func (d *Daemon) watchMainSlot(ctx context.Context) {
 	tick, stop := ticker(d.clients.watchEvery)
 	defer stop()
@@ -36,7 +34,6 @@ func (d *Daemon) refillLostSlot(ctx context.Context) {
 	if host == nil || slot == "" {
 		return
 	}
-	// why: read before the pane check, so a session that takes the slot during it is not taken for the one that lost it.
 	inView, found, ok := d.sessionInView()
 	if !ok || host.SlotHasPane(ctx, slot) {
 		return
@@ -51,10 +48,6 @@ func (d *Daemon) refillLostSlot(ctx context.Context) {
 	_, _, _ = d.endAndRefill(inView)
 }
 
-// why: holds clients.mu, which focusSession holds from showing a pane until it marks the session focused,
-// so a session focused meanwhile is seen and never covered. An editor or shell shown in the slot leaves
-// it empty when it quits, while the agent it replaced is still alive. Returns false only when the agent's
-// pane is gone and the session should end.
 func (d *Daemon) restoreLiveAgent(ctx context.Context, inView domain.Session, slot app.Slot) bool {
 	d.clients.mu.Lock()
 	defer d.clients.mu.Unlock()

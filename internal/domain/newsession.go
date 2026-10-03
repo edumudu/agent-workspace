@@ -20,7 +20,6 @@ const (
 	slugMax   = 40
 )
 
-// why: a URL that fits neither shape is kept as text, never rejected.
 func ParseWorkItem(input string) Task {
 	input = strings.TrimSpace(input)
 	text := Task{Source: TaskText, Text: input}
@@ -113,8 +112,6 @@ func PlanSessionStart(ws Workspace, slug, worktreeHome string, taken []string) S
 	return SessionPlan{Dir: wt.Path, Worktree: wt}
 }
 
-// why: the session leaves its pane so a later pane with the same ID is not
-// mistaken for it.
 func (s Session) End() Session {
 	s.State = StateIdle
 	s.Ended = true

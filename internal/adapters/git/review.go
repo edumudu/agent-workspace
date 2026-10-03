@@ -16,7 +16,6 @@ var _ app.ReviewGit = Review{}
 
 type Review struct{}
 
-// why: starting from the real index keeps git's stat cache, so only changed files are hashed.
 func (Review) WorkingTree(ctx context.Context, dir string) (string, error) {
 	gitDir, err := output(ctx, dir, "rev-parse", "--absolute-git-dir")
 	if err != nil {
@@ -38,7 +37,6 @@ func (Review) WorkingTree(ctx context.Context, dir string) (string, error) {
 	return strings.TrimSpace(string(tree)), err
 }
 
-// why: a missing src (a repo with nothing staged yet) leaves dst empty, which git reads as an empty index.
 func copyInto(dst *os.File, src string) error {
 	in, err := os.Open(src)
 	if errors.Is(err, os.ErrNotExist) {
@@ -58,12 +56,10 @@ func copyInto(dst *os.File, src string) error {
 	if err = errors.Join(err, dst.Close()); err != nil {
 		return err
 	}
-	// why: git re-hashes entries not older than the index file (its racy-git check); a fresh mtime would hide same-size edits made in the second of the last commit.
 	return os.Chtimes(dst.Name(), info.ModTime(), info.ModTime())
 }
 
 func (Review) PointRef(ctx context.Context, dir, ref, tree string) error {
-	// why: a snapshot commit needs an identity, and the user may have none configured.
 	env := []string{
 		"GIT_AUTHOR_NAME=agentws", "GIT_AUTHOR_EMAIL=agentws@localhost",
 		"GIT_COMMITTER_NAME=agentws", "GIT_COMMITTER_EMAIL=agentws@localhost",
@@ -108,7 +104,6 @@ func (Review) MergeBase(ctx context.Context, dir, rev string) (string, error) {
 	return strings.TrimSpace(string(out)), err
 }
 
-// why: pins every option a user's config could change about the output ParseDiff reads.
 func (Review) Diff(ctx context.Context, dir, from, tree string) (string, error) {
 	out, err := output(ctx, dir, "diff", "--no-color", "--no-ext-diff", "--no-textconv",
 		"--find-renames", "--full-index", "--src-prefix=a/", "--dst-prefix=b/", "--no-relative", from, tree, "--")

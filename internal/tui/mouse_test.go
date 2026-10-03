@@ -13,7 +13,6 @@ import (
 	"github.com/giovaniif/agent-workspace/internal/tui"
 )
 
-// why: finds where text is drawn, the way a person aims the pointer at it.
 func spot(t testing.TB, m tui.Model, text string) (int, int) {
 	t.Helper()
 	for y, line := range strings.Split(screen(m), "\n") {

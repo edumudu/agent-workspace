@@ -7,7 +7,6 @@ import (
 	"fmt"
 )
 
-// why: keeps key order, so a merge into the user's settings file moves nothing the user wrote.
 type object struct {
 	members []member
 }
@@ -155,7 +154,6 @@ func (o *object) array(key string) ([]json.RawMessage, error) {
 	return out, nil
 }
 
-// why: <, > and & stay unescaped because they appear in shell commands.
 func marshal(v any) (json.RawMessage, error) {
 	var buf bytes.Buffer
 	enc := json.NewEncoder(&buf)

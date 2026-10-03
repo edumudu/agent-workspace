@@ -41,15 +41,12 @@ type reviewFile struct {
 	split   []diffRow
 }
 
-// why: file is -1 for a worktree heading.
 type treeRow struct {
 	wt   domain.Worktree
 	err  string
 	file int
 }
 
-// why: parsed, highlighted and laid out in the command that fetched it, so View
-// never lexes.
 type prepared struct {
 	files []reviewFile
 	tree  []treeRow
@@ -78,10 +75,9 @@ type reviewState struct {
 	cur    int
 	scroll int
 
-	line    int
-	mark    int
-	marking bool
-	// why: a press on a diff line, so motion until release extends the range.
+	line     int
+	mark     int
+	marking  bool
 	dragging bool
 	typing   bool
 	text     string
@@ -164,8 +160,6 @@ func layout(r layouter, open bool) tea.Cmd {
 	}
 }
 
-// why: the answer carries the seq it was asked with, and one that is no longer
-// current is dropped.
 func (m *Model) fetchReview() tea.Cmd {
 	m.rv.seq++
 	m.rv.loading = true

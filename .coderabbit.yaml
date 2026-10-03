@@ -16,17 +16,13 @@ reviews:
         Enforce AGENTS.md: layer rules (domain has no IO and no internal imports; app depends only on domain;
         tui talks only to rpc), no exec/disk/network on hot paths (hook, TUI render, daemon loop),
         shell out to git/gh/tmux instead of Go libraries, cleanup never destroys user work.
-        Comments are denied by default (AGENTS.md, ADR 0020): flag every added or kept comment that does not state
-        a reason a reader could not get from the code (a hidden constraint, a specific bug or tool quirk, or surprising
-        behavior) and request its removal. That includes restating doc comments on exported identifiers, field docs,
-        "what" comments and `// why:` / `// bug:` lines that only narrate the next line; a marker without a real reason
-        still gets flagged.
+        No comments at all (AGENTS.md, ADR 0044): flag every added comment and request its removal. Only tool
+        directives are allowed (//go:, //line, //export, a bare //nolint:, generated-code headers).
         Focus on correctness bugs; skip style nits that gofmt or golangci-lint already cover.
     - path: "{scripts/**,**/*.sh,**/*.yml,**/*.yaml,**/*.lua,**/*.txtar,**/*.py,Makefile}"
       instructions: >-
-        Comments are denied by default (AGENTS.md, ADR 0020): flag any added or kept comment that is not marked
-        `# why:` / `-- why:` (or `bug:`) with a reason the code cannot show, and request its removal.
-        Shebangs, shellcheck directives and usage headers marked `why: usage:` are fine.
+        No comments at all (AGENTS.md, ADR 0044): flag every added comment and request its removal.
+        Only shebangs, shellcheck directives and yaml-language-server lines are allowed.
     - path: "**/*_test.go"
       instructions: >-
         Tests go through public behavior with in-memory fakes, not mocks. Flag tests that test getters,

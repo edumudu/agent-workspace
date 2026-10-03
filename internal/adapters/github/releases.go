@@ -12,11 +12,8 @@ import (
 	"github.com/giovaniif/agent-workspace/internal/domain"
 )
 
-// why: /releases/latest skips pre-releases, and every alpha is one.
 const ReleasesURL = "https://api.github.com/repos/giovaniif/agent-workspace/releases?per_page=10"
 
-// why: the answer is cached in CachePath for TTL (a day when zero) so the
-// network is hit rarely; only `agentws version` calls it, never a hot path.
 type ReleaseChecker struct {
 	URL       string
 	CachePath string

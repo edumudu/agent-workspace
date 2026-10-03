@@ -46,7 +46,6 @@ func (m Model) toggleNvim() tea.Cmd {
 	return m.callDaemon(rpc.MethodNvimToggle, rpc.NvimParams{Session: m.selected, Worktree: m.reviewWorktree()})
 }
 
-// why: closes the review first so nvim gets the room the review took.
 func (m Model) openInNvim() (tea.Model, tea.Cmd) {
 	f, ok := m.rv.current()
 	if !ok || m.opts.Calls == nil {
@@ -65,8 +64,6 @@ func (m Model) openInNvim() (tea.Model, tea.Cmd) {
 	}
 }
 
-// why: the first row at or below the cursor that has a new-side number, so a
-// deleted line opens the line after it.
 func (m Model) topLine(f reviewFile) int {
 	rows := m.rv.rows(f)
 	for i := max(m.rv.line, 0); i < len(rows); i++ {
@@ -111,8 +108,6 @@ func (m Model) focusShell() tea.Cmd {
 	return m.callDaemon(rpc.MethodShellFocus, rpc.ShellParams{Session: m.selected, Worktree: m.reviewWorktree()})
 }
 
-// why: the layout keeps running for the next agentws; with no layout to leave,
-// it quits.
 func (m Model) leave() tea.Cmd {
 	c := m.opts.Calls
 	if c == nil {
@@ -127,7 +122,6 @@ func (m Model) leave() tea.Cmd {
 		case errors.As(err, &rerr) && rerr.Code == rpc.CodeNotFound:
 			return tea.QuitMsg{}
 		case err != nil:
-			// why: the terminal may still be attached, or already detached; a sidebar that quits cannot come back.
 			return errMsg{err}
 		}
 		return nil

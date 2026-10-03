@@ -1,0 +1,21 @@
+// Package fixture is documented.
+package fixture
+
+// Kind is a kind.
+type Kind int
+
+// why: a reason
+func a() {}
+
+// bug: a tool quirk
+func b() {}
+
+// TODO(#12): rename this
+func c() int {
+	x := 1 // trailing
+	/* block */
+	return x
+}
+
+// Copyright 2026 someone
+var _ = "// not a comment"

@@ -11,10 +11,8 @@ import (
 )
 
 type Defaults struct {
-	Model  string `toml:"model"`
-	Effort string `toml:"effort"`
-	// why: keyed by short model name ("opus-5.5"), for when a harness sets effort
-	// per model rather than once.
+	Model         string            `toml:"model"`
+	Effort        string            `toml:"effort"`
 	EffortByModel map[string]string `toml:"-"`
 }
 

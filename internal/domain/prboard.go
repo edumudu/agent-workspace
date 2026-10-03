@@ -42,8 +42,6 @@ func BotCommentsSince(comments []PRComment, since time.Time) int {
 	return n
 }
 
-// why: GitHub reporting mergeability as unknown is not a blocker, since it
-// settles on the next poll.
 func (p PullRequest) Blockers() []string {
 	if p.State != PROpen {
 		return nil
@@ -83,7 +81,6 @@ const (
 	maxBackoffScale = 10
 )
 
-// why: backoff wins over fast polling so a rate-limited daemon stays quiet.
 func NextPRPoll(base time.Duration, checksRunning bool, failures int) time.Duration {
 	if failures > 0 {
 		wait := base

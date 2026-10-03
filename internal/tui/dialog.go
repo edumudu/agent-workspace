@@ -14,7 +14,6 @@ import (
 	"github.com/giovaniif/agent-workspace/internal/rpc"
 )
 
-// why: covers the setup recipe, which may install dependencies.
 const startTimeout = 15 * time.Minute
 
 const callTimeout = 5 * time.Second
@@ -44,14 +43,11 @@ type dialog struct {
 	ws       int
 	harness  int
 	effort   int
-	// why: holds any mapped effort a fallback brought that the picker lacks.
-	efforts []string
-	// why: remembers the Claude start a fallback replaced, so going back restores it.
+	efforts  []string
 	fallback *fallbackTrace
 	err      string
 	busy     bool
 	started  bool
-	// why: tells this dialog's start reply from one sent by a dialog closed earlier.
 	seq      int
 	defaults map[domain.Harness]Defaults
 }
@@ -105,8 +101,6 @@ func effortIndex(choices []string, effort string) int {
 	return max(slices.Index(choices, effort), 0)
 }
 
-// why: model and effort carry over only if the user left them at the previous
-// harness's defaults.
 func (d *dialog) cycleHarness(delta int) {
 	prev := d.defaults[domain.Harness(harnessChoices[d.harness])]
 	d.harness = cycle(d.harness, delta, len(harnessChoices))
@@ -129,8 +123,6 @@ func (d *dialog) cycleHarness(delta int) {
 	}
 }
 
-// why: an effort the picker does not list is added to it so it survives to
-// submission.
 func (d *dialog) takeFallback(req domain.StartRequest) {
 	trace := &fallbackTrace{fromModel: d.model, fromEffort: d.effort}
 	d.harness = slices.Index(harnessChoices, string(req.Harness))
@@ -181,7 +173,6 @@ func (d *dialog) change(delta int) {
 	}
 }
 
-// why: a copy, so an earlier Model value never changes with it.
 func (m *Model) own() *dialog {
 	d := *m.dialog
 	m.dialog = &d
@@ -205,7 +196,6 @@ func (m Model) dialogKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		if m.opts.NewSessionOnly {
 			return m, tea.Quit
 		}
-		// why: a start already sent keeps going; its reply still selects and shows the session.
 		m.dialog = nil
 		return m, nil
 	}
@@ -296,8 +286,6 @@ func (m Model) showNew(id string) tea.Cmd {
 	return m.call(rpc.MethodSessionFocus, rpc.SessionFocusParams{ID: id})
 }
 
-// why: ends the popup's program only once the new session is in view, so
-// closing the popup never races the focus call.
 func (m Model) showNewAndQuit(id string) tea.Cmd {
 	show := m.showNew(id)
 	return func() tea.Msg {
@@ -310,12 +298,10 @@ func (m Model) showNewAndQuit(id string) tea.Cmd {
 	}
 }
 
-// why: keeps the popup open instead of closing on an error no one sees.
 type showFailedMsg struct{ err error }
 
 type popupFailedMsg struct{}
 
-// why: if the daemon cannot run the popup, the dialog opens inline instead.
 func (m Model) openPopup() tea.Cmd {
 	c, p := m.opts.Calls, m.opts.DialogPopup
 	return func() tea.Msg {

@@ -27,7 +27,6 @@ type cleanupRig struct {
 	cleanup   *app.Cleanup
 }
 
-// why: the clock runs past CleanupGrace so fresh worktrees count as idle.
 func newCleanupRig(t *testing.T) cleanupRig {
 	t.Helper()
 	for _, bin := range []string{"git", "lsof", "tar"} {
@@ -243,7 +242,6 @@ func TestCleanupExecFiftyGigabyteWorktreesReturnWithinTenSeconds(t *testing.T) {
 		if err := os.MkdirAll(filepath.Join(w.Path, "node_modules"), 0o755); err != nil {
 			t.Fatal(err)
 		}
-		// why: a sparse 1 GB file costs no disk, and the trash move is a rename whatever the size.
 		f, err := os.Create(filepath.Join(w.Path, "node_modules", "big.bin"))
 		if err != nil {
 			t.Fatal(err)

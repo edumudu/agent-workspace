@@ -196,7 +196,6 @@ func TestPRBoardFinderSkipsReposWithoutARemoteAndCachesTheOnesItFound(t *testing
 			t.Error("a repo with no remote has no PRs")
 		}
 	}
-	// why: a failed lookup is retried, so a remote added later is picked up.
 	if resolved != 4 {
 		t.Errorf("resolved %d remotes over 3 polls, want 4 (api once, local every poll)", resolved)
 	}

@@ -1,0 +1,6 @@
+VAR = a#b
+X = "quoted # still a comment in make"
+Y = a\#b
+build:
+	echo "a # b" '#{x}' a#b
+	go build;# c

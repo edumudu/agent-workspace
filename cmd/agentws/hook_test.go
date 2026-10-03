@@ -19,7 +19,6 @@ import (
 
 func shortHome(t *testing.T) string {
 	t.Helper()
-	// why: macOS caps Unix socket paths at 104 bytes, and t.TempDir() can exceed it.
 	dir, err := os.MkdirTemp("/tmp", "agentws-h")
 	if err != nil {
 		t.Fatal(err)
@@ -156,9 +155,6 @@ func TestUserPromptSubmitFallsBackToNoOutputAfter50ms(t *testing.T) {
 	fakeDaemon(t, home, func(rpc.Request) *rpc.Response { return nil })
 	start := time.Now()
 	code, out := hook(home, "UserPromptSubmit", `{"prompt":"p"}`)
-	// why: the fake holds the connection for a second, so finishing well inside
-	// it proves the hook's own deadline ended the wait; a tighter wall-clock
-	// bound only measured how busy the machine was.
 	if took := time.Since(start); took < hookTimeout || took > 500*time.Millisecond {
 		t.Fatalf("took %v", took)
 	}

@@ -14,8 +14,6 @@ import (
 	"github.com/giovaniif/agent-workspace/internal/version"
 )
 
-// why: a daemon that names no build predates the handshake, so it cannot have
-// checked ours.
 func checkBuild(method string, resp Response) error {
 	if resp.Build == "" && resp.Error == nil && !AnyBuild(method) {
 		return Mismatch("", version.String(), 0, builtAtUnix())
@@ -37,8 +35,6 @@ const retryInterval = 25 * time.Millisecond
 
 var ErrClosed = errors.New("rpc: connection closed")
 
-// why: calls share one connection and a subscription's diffs are read on it
-// too, so give a slow consumer its own Client.
 type Client struct {
 	conn net.Conn
 
@@ -93,7 +89,6 @@ func (c *Client) Close() error {
 	return c.conn.Close()
 }
 
-// why: a daemon error comes back as *Error.
 func (c *Client) Call(ctx context.Context, method string, params, out any) error {
 	id, ch, err := c.send(method, params)
 	if err != nil {
@@ -132,7 +127,6 @@ func (c *Client) WorktreeAssign(ctx context.Context, id, session string) error {
 	return c.Call(ctx, MethodWorktreeAssign, WorktreeAssignParams{ID: id, Session: session}, nil)
 }
 
-// why: fails with not_found when none of the groups serves a listed port.
 func (c *Client) KillPorts(ctx context.Context, pgids []int) ([]int, error) {
 	var out PortsKilled
 	err := c.Call(ctx, MethodPortsKill, PortsKillParams{PGIDs: pgids}, &out)
@@ -366,7 +360,6 @@ func (c *Client) read() {
 		if err := json.Unmarshal(sc.Bytes(), &resp); err != nil {
 			return
 		}
-		// why: sending under the lock keeps forget from closing ch mid-send.
 		c.mu.Lock()
 		if ch := c.pending[resp.ID]; ch != nil {
 			ch <- resp

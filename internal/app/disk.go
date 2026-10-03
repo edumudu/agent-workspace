@@ -6,8 +6,6 @@ import (
 	"time"
 )
 
-// why: Size runs external commands, so callers keep it off the event loop and
-// off render paths.
 type Sizer interface {
 	Size(ctx context.Context, path string) (int64, error)
 }
@@ -25,13 +23,9 @@ type sizeEntry struct {
 	known      bool
 	measuredAt time.Time
 	inflight   bool
-	// why: Forget came while this was being measured, so the result may predate
-	// the change.
-	forgotten bool
+	forgotten  bool
 }
 
-// why: Get never waits for a measurement; it starts a background one, at
-// most workers at a time.
 type DiskSizes struct {
 	sizer Sizer
 	ttl   time.Duration

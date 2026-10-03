@@ -10,8 +10,7 @@ import (
 
 const (
 	usageTailBytes = 512 << 10
-	// why: a turn can fire dozens of tool-use hooks a second.
-	usageThrottle = 2 * time.Second
+	usageThrottle  = 2 * time.Second
 )
 
 type usageJob struct {
@@ -72,7 +71,6 @@ func withSnapshot(s domain.Session, snap codex.Snapshot) domain.Session {
 		limits := snap.RateLimits()
 		at := snap.LimitsAt
 		if at.IsZero() {
-			// why: a rollout without timestamps must not look freshly reported on every read.
 			at = time.Now()
 			if reflect.DeepEqual(limits, s.Limits) && !s.LimitsAt.IsZero() {
 				at = s.LimitsAt

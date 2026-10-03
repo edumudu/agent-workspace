@@ -56,9 +56,6 @@ func foreground(home string) error {
 	return daemon.Run(ctx, home)
 }
 
-// why: tmux gives a new pane the PATH of the client that ran new-window, the
-// daemon, and whatever started the daemon (a bare ssh, launchd, systemd) may
-// lack the user's own dirs, so a harness in ~/.local/bin would not be found.
 func adoptLoginPath(ctx context.Context) {
 	ctx, cancel := context.WithTimeout(ctx, loginPathWithin)
 	defer cancel()
@@ -72,7 +69,6 @@ func adoptLoginPath(ctx context.Context) {
 	}
 }
 
-// why: well under rpc.StartTimeout, which a client waits for a new daemon's socket.
 const loginPathWithin = time.Second
 
 func spawn(home string) error {
@@ -126,8 +122,6 @@ func connectStatus(home string) (rpc.Status, error) {
 	return c.Status(ctx)
 }
 
-// why: a status check must not start a daemon, which would inherit the
-// checker's environment (install.sh runs it, often over a bare ssh).
 func status(home string, stdout io.Writer) error {
 	c, err := rpc.Dial(rpc.SocketPath(home))
 	if err != nil {

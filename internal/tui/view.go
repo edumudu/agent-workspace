@@ -117,7 +117,6 @@ func (m Model) View() tea.View {
 	return m.view(strings.Join(lines, "\n"))
 }
 
-// why: owners names what each row shows, so a click can be mapped back to it.
 func (m Model) mainScreen() (lines, owners []string) {
 	s := m.styles
 	lines = append(lines, m.topBar())
@@ -160,8 +159,6 @@ func (m Model) mainScreen() (lines, owners []string) {
 	return lines, owners
 }
 
-// why: after the wheel scrolls, the list stays where it was put until a key
-// moves the selection; otherwise it follows the selection.
 func (m Model) listOffset(selRow, rows, room int) int {
 	off := 0
 	switch {
@@ -173,7 +170,6 @@ func (m Model) listOffset(selRow, rows, room int) int {
 	return min(max(off, 0), max(0, rows-room))
 }
 
-// why: the wheel and clicks need the list's geometry without drawing it.
 func (m Model) listGeometry() (owners []string, off int) {
 	top := 1 + len(m.limitLines()) + 2
 	body, selRow, owners := m.body()
@@ -378,8 +374,6 @@ func (m Model) footer() []string {
 	return []string{m.line(false, hints, nil), m.line(false, left, right)}
 }
 
-// why: ports and the kill prompt need the room the counts would take, so they
-// leave the counts out.
 func (m Model) statusLeft() (left []piece, withCounts bool) {
 	s := m.styles
 	if m.renaming != nil {
@@ -436,7 +430,6 @@ func repoName(w domain.Worktree) string {
 	if w.Repo == "" {
 		return ""
 	}
-	// why: Repo is the main checkout's path; its last element is the name people use.
 	return filepath.Base(w.Repo)
 }
 
@@ -563,9 +556,6 @@ func (m Model) wrapped(lead string, st lipgloss.Style, text string) []string {
 	return out
 }
 
-// why: the URL comes from GitHub, so anything with a control character or a
-// scheme other than http(s) is left as text rather than risk breaking out of
-// the OSC 8 sequence.
 func link(url, text string) string {
 	if !strings.HasPrefix(url, "https://") && !strings.HasPrefix(url, "http://") {
 		return text
@@ -578,8 +568,6 @@ func link(url, text string) string {
 	return ansi.SetHyperlink(url) + text + ansi.ResetHyperlink()
 }
 
-// why: drops escape sequences and control characters an agent put in its
-// text, so they cannot repaint the terminal.
 func cleanText(s string) string {
 	s = strings.ReplaceAll(ansi.Strip(s), "\t", "    ")
 	return strings.Map(func(r rune) rune {

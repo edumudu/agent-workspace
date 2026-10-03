@@ -7,4 +7,3 @@ The Lua plugin. It talks to the daemon only through `agentws` CLI calls; the dae
 - **Tests.** `TestNvimPluginSpecs` (`test/integration`) runs `test/spec.lua` with `nvim --clean` and throwaway XDG dirs: never point plugin tests at `~/.config/nvim`. The nvim-only tests skip without `nvim`; CI installs it.
 - **By hand.** Use a temporary `AGENTWS_HOME`, `AGENTWS_TMUX_SOCKET` and `XDG_CONFIG_HOME` whose `nvim/init.lua` prepends `nvim/` to the runtimepath and calls `require('agentws').setup({})`.
 - **Releases** ship `nvim/lua` and `nvim/plugin`; `scripts/install.sh` copies them under `$XDG_DATA_HOME/agentws/nvim`, and `agentws setup nvim` points the user's config at them (see [internal/adapters/onboard/](../internal/adapters/onboard/AGENTS.md)).
-- Lua comments follow the comment rule with `-- why:`.

@@ -22,7 +22,6 @@ type WorktreeGitFacts struct {
 type CleanupGit interface {
 	CleanupFacts(ctx context.Context, w domain.Worktree) (WorktreeGitFacts, error)
 	Backup(ctx context.Context, w domain.Worktree, dir string) error
-	// why: must never move an existing branch.
 	CreateBranch(ctx context.Context, w domain.Worktree, name string) (string, error)
 	Prune(ctx context.Context, repo string) error
 }
@@ -59,8 +58,6 @@ type CleanupResult struct {
 	Outcome  string
 }
 
-// why: it remembers which states it backed up, so a dirty worktree is not
-// backed up on every run.
 type Cleanup struct {
 	git        CleanupGit
 	procs      WorktreeHolders
@@ -161,8 +158,6 @@ func (c *Cleanup) recheck(ctx context.Context, planned []plannedWorktree, holder
 	return stale
 }
 
-// why: git is asked again right before the move, so a write that landed
-// after planning keeps the worktree.
 func (c *Cleanup) stillRemovable(ctx context.Context, p plannedWorktree, act SessionActivity) string {
 	w := p.decision.Worktree
 	g, err := c.git.CleanupFacts(ctx, w)
@@ -197,7 +192,6 @@ func (c *Cleanup) Execute(ctx context.Context, wts []domain.Worktree, activity f
 			removals = append(removals, p.decision.Worktree.Path)
 		}
 	}
-	// why: a shell or editor may have entered a worktree while facts were gathered.
 	var holders map[string][]string
 	var procErr error
 	if len(removals) > 0 {
@@ -245,8 +239,6 @@ func (c *Cleanup) Execute(ctx context.Context, wts []domain.Worktree, activity f
 	return results
 }
 
-// why: with withBackup, removal still stops if the backup fails, someone
-// entered the worktree, or it changed after the backup was taken.
 func (c *Cleanup) RemoveWorktree(ctx context.Context, w domain.Worktree, activity func(domain.Worktree) SessionActivity, withBackup bool) CleanupResult {
 	p := c.plan(ctx, []domain.Worktree{w}, activity)[0]
 	switch p.decision.Action {
@@ -279,7 +271,6 @@ func (c *Cleanup) backupThenRemove(ctx context.Context, p plannedWorktree, activ
 
 func (c *Cleanup) removeAfterBackup(ctx context.Context, p plannedWorktree, activity func(domain.Worktree) SessionActivity) string {
 	w := p.decision.Worktree
-	// why: a shell or editor may have entered the worktree while the backup ran.
 	holders, err := c.procs.Holders(ctx, []string{w.Path})
 	switch {
 	case err != nil:

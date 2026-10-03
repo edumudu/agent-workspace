@@ -27,7 +27,6 @@ type Finder struct {
 
 type repoRef struct{ owner, name string }
 
-// why: GitHub rejects queries past 500k nodes.
 const prsPerRepo = 50
 
 func (f *Finder) PRs(ctx context.Context, dirs []string) (map[string][]domain.PullRequest, error) {
@@ -69,7 +68,6 @@ func (f *Finder) PRs(ctx context.Context, dirs []string) (map[string][]domain.Pu
 		}
 		return nil, parseErr
 	}
-	// why: gh exits non-zero when GraphQL reports any error, even when other repos resolved.
 	out := map[string][]domain.PullRequest{}
 	for i, dir := range resolved {
 		if prs, ok := byAlias[aliases[i]]; ok {
@@ -152,7 +150,6 @@ const boardFragment = `
       }
     }`
 
-// why: owner and name travel as variables, never spliced into the query text.
 func boardQuery(refs []repoRef) (query string, vars []string) {
 	var decls, body strings.Builder
 	for i, r := range refs {

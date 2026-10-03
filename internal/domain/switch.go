@@ -54,8 +54,6 @@ func (s Session) RequestSwitch(kind SwitchKind, value string) Session {
 	return s
 }
 
-// why: typing into a running agent, or into a permission prompt, would land
-// in the wrong place.
 func (s Session) Dispatch(now time.Time) (Session, []Switch) {
 	if !s.AcceptsSwitch() {
 		return s, nil
@@ -97,10 +95,6 @@ func (s Session) SwitchFailed(failed []Switch) Session {
 	return s
 }
 
-// why: a report that shows the old value keeps the switch, so a later report
-// showing the new value still clears it. A report stamped before the switch
-// was sent cannot show it yet: Codex's rollout only has the new values once a
-// turn starts after the switch.
 func (s Session) confirmSwitches(r StatusReport) Session {
 	if len(s.Switches) == 0 {
 		return s
@@ -132,8 +126,6 @@ func (s Session) confirmSwitches(r StatusReport) Session {
 	return s
 }
 
-// bug: Claude reports "Opus 4.7" or "opus-5.5" for the alias "opus", while
-// "gpt-5" must not match "gpt-5-codex".
 func switchShows(sw Switch, reported string) bool {
 	want, got := strings.ToLower(sw.Value), strings.ToLower(reported)
 	if sw.Kind == SwitchEffort {

@@ -42,7 +42,6 @@ func (h *Host) pinSidebar(ctx context.Context, slot app.Slot, width string) erro
 	if _, err := h.run(ctx, "", "resize-pane", "-t", target, "-x", width); err != nil {
 		return err
 	}
-	// why: tmux spreads a window resize over both panes; the hook puts the sidebar back to its width.
 	_, err := h.run(ctx, "", "set-hook", "-w", "-t", string(slot), "window-resized", "resize-pane -t "+target+" -x "+width)
 	return err
 }
@@ -80,7 +79,6 @@ func (h *Host) swapIntoSlot(ctx context.Context, pane app.PaneID, slot app.Slot)
 	return err
 }
 
-// why: an unreadable window counts as having a pane, so a tmux hiccup never triggers a refill.
 func (h *Host) SlotHasPane(ctx context.Context, slot app.Slot) bool {
 	count, err := h.paneCount(ctx, slot)
 	return err != nil || count > 1

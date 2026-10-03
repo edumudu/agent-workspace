@@ -25,8 +25,6 @@ type terminals struct {
 	nvims  map[string]app.PaneID
 }
 
-// why: shell and nvim panes get home as AGENTWS_HOME so the `agentws` they
-// run reaches this daemon.
 func WithTerminals(home string, editor app.Editor) Option {
 	return func(d *Daemon) {
 		d.term.home, d.term.editor = home, editor
@@ -192,7 +190,6 @@ func (d *Daemon) toggleShell(ctx context.Context, session domain.Session, target
 	return out, err
 }
 
-// why: without nvim the pane would die at once and leave an empty slot, so the user gets a reason instead.
 var errNoNvim = errors.New("nvim is not on PATH: install Neovim to use e and o (brew install neovim on macOS, or your package manager), then press S to add the plugin")
 
 func (d *Daemon) nvimSocket(session string) string {
@@ -218,7 +215,6 @@ func (d *Daemon) nvimPane(ctx context.Context, session domain.Session, dir, file
 	if err := os.MkdirAll(filepath.Dir(sock), 0o700); err != nil {
 		return "", false, err
 	}
-	// why: a socket left by an nvim that died would make the new one fail to listen.
 	_ = os.Remove(sock)
 	pane, err = d.hs.host.Create(ctx, spec)
 	if err != nil {
@@ -337,7 +333,6 @@ func (s *state) commentTarget(p rpc.CommentParams) (domain.Worktree, string, boo
 	}
 	for _, w := range owned {
 		if w.ID == p.Worktree && p.Path != "" && !filepath.IsAbs(p.Path) {
-			// why: only the chosen worktree may resolve the path, or ../sibling/file would land in another one.
 			return domain.ResolveCommentFile(p.Session, []domain.Worktree{w}, filepath.Join(w.Path, p.Path))
 		}
 	}

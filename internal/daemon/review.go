@@ -12,8 +12,6 @@ import (
 	"github.com/giovaniif/agent-workspace/internal/rpc"
 )
 
-// why: one past it is dropped rather than block the loop, and its last-turn
-// review falls back to the previous snapshot.
 const turnQueue = 64
 
 const reviewTimeout = 10 * time.Second
@@ -57,7 +55,6 @@ func (d *Daemon) snapshotTurns(ctx context.Context) {
 			refs := []string{}
 			for _, dir := range job.dirs {
 				jctx, cancel := context.WithTimeout(ctx, reviewTimeout)
-				// why: a dir git cannot read (an orchestration root, a worktree just removed) has nothing to snapshot.
 				if ref, err := app.SnapshotTurn(jctx, d.rv.git, job.session, dir); err == nil {
 					refs = append(refs, ref)
 				}
@@ -164,7 +161,6 @@ func (d *Daemon) dispatchReview(req rpc.Request) (*rpc.Response, bool) {
 	return result(req.ID, out), ok
 }
 
-// why: so callers that do not choose a scope, such as nvim, see what the TUI shows.
 func (s *state) reviewScope(session string, asked domain.ReviewScope) domain.ReviewScope {
 	if asked == "" {
 		asked = s.scopes[session]

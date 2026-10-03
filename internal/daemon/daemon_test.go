@@ -23,7 +23,6 @@ import (
 
 func shortDir(t *testing.T) string {
 	t.Helper()
-	// why: macOS caps Unix socket paths at 104 bytes, and t.TempDir() can exceed it.
 	dir, err := os.MkdirTemp("/tmp", "agentws-d")
 	if err != nil {
 		t.Fatal(err)
@@ -354,8 +353,6 @@ func TestOnlyOneDaemonHoldsTheLock(t *testing.T) {
 	_ = again.Release()
 }
 
-// why: rpc.Connect hides an early Run error behind its 2 s start timeout;
-// Run is in-process here, so wait until it serves or say why it returned.
 func waitServing(t *testing.T, home string, done <-chan error) *rpc.Client {
 	t.Helper()
 	for {

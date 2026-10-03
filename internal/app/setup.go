@@ -49,7 +49,6 @@ type SetupReport struct {
 	DiskUsed int64
 }
 
-// why: it never overwrites a path that already exists in the worktree.
 func (s WorktreeSetup) Run(ctx context.Context, worktree string) (SetupReport, error) {
 	main, err := s.Git.MainCheckout(ctx, worktree)
 	if err != nil {
@@ -71,7 +70,6 @@ func (s WorktreeSetup) Run(ctx context.Context, worktree string) (SetupReport, e
 
 	run := &setupRun{s: s, ctx: ctx, main: main, worktree: worktree}
 	started := s.Now()
-	// why: a volume we cannot stat only loses the disk figure, it must not fail the setup.
 	freeBefore, _ := s.FS.FreeBytes(worktree)
 	err = run.apply(recipe)
 	freeAfter, _ := s.FS.FreeBytes(worktree)

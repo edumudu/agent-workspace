@@ -27,7 +27,6 @@ func (a Adapter) Launch(req app.LaunchRequest) app.PaneSpec {
 		command = append(command, "--effort", req.Effort)
 	}
 	if req.Prompt != "" {
-		// why: the separator keeps a prompt that starts with "-" from parsing as a flag.
 		command = append(command, "--", req.Prompt)
 	}
 	return app.PaneSpec{Name: req.Name, Dir: req.Dir, Command: command}

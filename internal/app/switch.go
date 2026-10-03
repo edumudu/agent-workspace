@@ -9,12 +9,9 @@ import (
 	"github.com/giovaniif/agent-workspace/internal/domain"
 )
 
-// why: the harness must take the whole paste before it sees Enter.
 const PasteSettle = 150 * time.Millisecond
 
 const (
-	// why: covers the quick model popup, the "All models" list, the reasoning
-	// level popup and one spare.
 	codexPickerSteps = 4
 	codexPickerPolls = 20
 	codexPickerLines = 40
@@ -50,9 +47,6 @@ func SendSwitches(ctx context.Context, host TerminalHost, s domain.Session, sws 
 	return nil
 }
 
-// bug: tmux returns before Codex redraws and a stale screen would steer the
-// next keys into the wrong popup, so it waits for the picker to change. Anything
-// it cannot place closes the picker with Escape, so no half-made choice stays open.
 func walkCodexPicker(ctx context.Context, host TerminalHost, pane PaneID, s domain.Session, sw domain.Switch, settle time.Duration) error {
 	var last *domain.Picker
 	for range codexPickerSteps {
@@ -100,7 +94,6 @@ func nextPicker(ctx context.Context, host TerminalHost, pane PaneID, last *domai
 	return domain.Picker{}, false, errors.New("the Codex picker did not redraw")
 }
 
-// why: its own context, because the caller's may be the one that ran out.
 func escape(host TerminalHost, pane PaneID) error {
 	ctx, cancel := context.WithTimeout(context.Background(), escapeTimeout)
 	defer cancel()

@@ -17,7 +17,6 @@ type Port struct {
 	Command string
 }
 
-// why: a listener seen twice (IPv4 and IPv6) counts once.
 func PortsByWorktree(worktrees []Worktree, listeners []Listener) map[string][]Port {
 	out := map[string][]Port{}
 	for _, l := range listeners {
@@ -59,8 +58,6 @@ func containsPort(ports []Port, p Port) bool {
 	return false
 }
 
-// why: groups 1 and below and the caller's own are refused, so a stale or
-// forged request cannot take down init or the daemon.
 func KillGroups(worktrees []Worktree, requested []int, self int) []int {
 	served := map[int]bool{}
 	for _, w := range worktrees {

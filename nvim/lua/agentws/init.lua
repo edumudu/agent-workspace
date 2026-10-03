@@ -25,8 +25,6 @@ local function fail(msg)
   say(msg, vim.log.levels.ERROR)
 end
 
--- why: the CLI answers in milliseconds from a local socket, and waiting keeps
--- the command's result in order with what the user does next.
 local function run(args)
   local cmd = { M.config.bin }
   vim.list_extend(cmd, args)
@@ -154,8 +152,6 @@ function M.comment(line1, line2, body)
   end)
 end
 
--- why: at nvim's edge it asks tmux for the neighbouring pane, unless the pane
--- is at tmux's edge too, so focus never wraps around.
 function M.navigate(dir)
   local nav = navigation[dir]
   local before = vim.api.nvim_get_current_win()

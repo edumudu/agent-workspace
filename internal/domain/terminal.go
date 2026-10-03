@@ -13,8 +13,6 @@ type ShellTarget struct {
 	Label string
 }
 
-// why: a wanted worktree the session does not own is refused rather than
-// replaced by another.
 func ChooseShell(session string, worktrees []Worktree, wanted, cwd string) (ShellTarget, bool) {
 	var owned []Worktree
 	for _, w := range worktrees {
@@ -34,8 +32,6 @@ func ChooseShell(session string, worktrees []Worktree, wanted, cwd string) (Shel
 	return ShellTarget{Key: session + "/root", Dir: cwd, Label: "root"}, true
 }
 
-// why: the path goes in as a quoted string through fnameescape, so no
-// character in it is read as a command.
 func NvimOpenExpr(path string, line int) string {
 	line = max(line, 1)
 	return fmt.Sprintf("execute('edit +%d ' . fnameescape('%s'))", line, strings.ReplaceAll(path, "'", "''"))

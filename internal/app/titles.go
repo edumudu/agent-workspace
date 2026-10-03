@@ -7,8 +7,6 @@ import (
 	"github.com/giovaniif/agent-workspace/internal/domain"
 )
 
-// why: it calls out to the network or a CLI, so it runs on workers, never on
-// the daemon loop.
 type TitleResolver interface {
 	Title(ctx context.Context, task domain.Task) (string, error)
 }

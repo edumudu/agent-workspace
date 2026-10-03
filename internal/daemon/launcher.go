@@ -44,7 +44,6 @@ func LoadMaxParallel(path string) (int, error) {
 	return cfg.Launcher.MaxParallel, nil
 }
 
-// why: [ui] mouse is opt-out, so a missing file or key keeps the tmux mouse on.
 func LoadNoMouse(path string) (bool, error) {
 	var cfg struct {
 		UI struct {
@@ -134,7 +133,6 @@ func (d *Daemon) startQueued(item domain.LaunchItem) {
 	d.kickLauncher()
 }
 
-// why: a failed item does not count, so enqueuing its issue again retries it.
 func (s *state) launcherHas(ref string) bool {
 	for _, i := range s.queue {
 		if i.Ref == ref && i.Err == "" {

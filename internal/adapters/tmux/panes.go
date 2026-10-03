@@ -112,7 +112,6 @@ func (h *Host) SetTitle(ctx context.Context, pane app.PaneID, title string) erro
 	return err
 }
 
-// why: tmux reads the config only when a server starts, and one may have started before these options were in it.
 func (h *Host) turnTitlesOn(ctx context.Context) error {
 	h.titlesMu.Lock()
 	defer h.titlesMu.Unlock()

@@ -2,8 +2,6 @@ package domain
 
 import "strings"
 
-// why: entries already on PATH keep their order and win, so an explicit PATH
-// (test fakes, a pinned toolchain) is never shadowed by the login shell's.
 func MergeLoginPath(current, login string) string {
 	seen := map[string]bool{}
 	for _, dir := range strings.Split(current, ":") {
