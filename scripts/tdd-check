@@ -30,34 +30,103 @@ case "$title" in
     ;;
 esac
 
+tmp=$(mktemp -d)
+trap 'rm -rf "$tmp"' EXIT
+
+same_go_tokens() {
+  if [ ! -x "$tmp/sametokens" ]; then
+    mkdir -p "$tmp/sametokens.src"
+    printf 'module sametokens\n\ngo 1.22\n' >"$tmp/sametokens.src/go.mod"
+    cat >"$tmp/sametokens.src/main.go" <<'GO'
+package main
+
+import (
+	"go/scanner"
+	"go/token"
+	"os"
+	"slices"
+)
+
+func tokens(path string) []string {
+	src, err := os.ReadFile(path)
+	if err != nil {
+		os.Exit(2)
+	}
+	file := token.NewFileSet().AddFile(path, -1, len(src))
+	var s scanner.Scanner
+	bad := false
+	s.Init(file, src, func(token.Position, string) { bad = true }, 0)
+	var out []string
+	for {
+		_, tok, lit := s.Scan()
+		if tok == token.EOF {
+			break
+		}
+		if tok == token.SEMICOLON {
+			lit = ""
+		}
+		out = append(out, tok.String()+" "+lit)
+	}
+	if bad {
+		os.Exit(1)
+	}
+	return out
+}
+
+func main() {
+	if !slices.Equal(tokens(os.Args[1]), tokens(os.Args[2])) {
+		os.Exit(1)
+	}
+}
+GO
+    (cd "$tmp/sametokens.src" && GOWORK=off GOFLAGS= go build -o "$tmp/sametokens" .)
+  fi
+  git show "$1" >"$tmp/old.go"
+  git show "$2" >"$tmp/new.go"
+  "$tmp/sametokens" "$tmp/old.go" "$tmp/new.go"
+}
+
 changed_tests() {
-  local f fs
-  # shellcheck disable=SC2086
-  fs=$(git diff --name-only --diff-filter="${2:-AM}" $1 -- '*_test.go' '*/testdata/*' |
-    grep -Ev '(^|/)(fakes|[^/]*_fake)_test\.go$' || true)
-  for f in $fs; do
-    case $f in
-    # shellcheck disable=SC2086
-    (*.golden | *.txt) git diff --quiet --ignore-all-space --ignore-blank-lines $1 -- "$f" || echo "$f" ;;
-    # shellcheck disable=SC2086
-    (*) git diff --quiet --ignore-all-space --ignore-blank-lines -I '^[[:space:]]*(//|#)' $1 -- "$f" || echo "$f" ;;
+  local old="$1" new="$2" status from to
+  changed=()
+  removed=()
+  while IFS= read -r -d '' status; do
+    IFS= read -r -d '' from
+    to="$from"
+    case "$status" in
+    (R*) IFS= read -r -d '' to ;;
+    (D) removed+=("$from"); continue ;;
     esac
-  done
+    case "$to" in (fakes_test.go | */fakes_test.go | *_fake_test.go) continue ;; esac
+    if [ "$status" != A ]; then
+      case "$to" in
+      (*.go)
+        ! same_go_tokens "$old:$from" "$new:$to" || continue ;;
+      (*.golden | *.txt)
+        ! git diff --quiet --ignore-space-change --ignore-blank-lines "$old:$from" "$new:$to" || continue ;;
+      (*)
+        ! git diff --quiet --ignore-space-change --ignore-blank-lines -I '^[[:space:]]*(//|#)' "$old:$from" "$new:$to" || continue ;;
+      esac
+    fi
+    changed+=("$to")
+    [ "$from" = "$to" ] || removed+=("$from")
+  done < <(git diff --name-status -z -M --diff-filter=AMRD "$old" "$new" -- '*_test.go' '*/testdata/*')
 }
 
 mixed=0
 while IFS= read -r c; do
   subject=$(git log -1 --format=%s "$c")
   case "$subject" in (refactor:* | refactor\(*) continue ;; esac
-  tests=$(changed_tests "$c^ $c" AMR)
-  [ -n "$tests" ] || continue
+  changed_tests "$c^" "$c"
+  [ ${#changed[@]} -gt 0 ] || continue
   prod=$(git diff-tree --no-commit-id -r --name-only -z --no-renames "$c" | while IFS= read -r -d '' f; do
     case "$f" in (*.md) continue ;; esac
     is_test_path "$f" || echo "$f"
   done)
   [ -n "$prod" ] || continue
   echo "tdd: commit $(git log -1 --format='%h %s' "$c") changes tests and production code together:"
-  printf "  %s\n" $tests $prod
+  # shellcheck disable=SC2086
+  printf "  %s\n" "${changed[@]}" $prod
   mixed=1
 done < <(git rev-list --no-merges --reverse "$base..$head")
 if [ "$mixed" -ne 0 ]; then
@@ -65,17 +134,19 @@ if [ "$mixed" -ne 0 ]; then
   exit 1
 fi
 
-files=$(changed_tests "$base...$head")
-if [ -z "$files" ]; then
+changed_tests "$(git merge-base "$base" "$head")" "$head"
+if [ ${#changed[@]} -eq 0 ]; then
   echo "tdd: no added or changed test files or testdata (port fakes, whitespace-only and comment-only changes are exempt)"
   exit 0
 fi
 
 git checkout --quiet --detach "$base"
-# shellcheck disable=SC2086
-git checkout "$head" -- $files
+git checkout "$head" -- "${changed[@]}"
+for f in ${removed[@]+"${removed[@]}"}; do
+  rm -f "$f"
+done
 
-pkgs=$(for f in $files; do
+pkgs=$(for f in "${changed[@]}"; do
   case "$f" in
     (*/testdata/*) echo "./${f%%/testdata/*}" ;;
     (*) echo "./$(dirname "$f")" ;;
