@@ -59,7 +59,7 @@ func (d *Daemon) sendReview(req rpc.Request) (*rpc.Response, bool) {
 
 func (s *state) dispatchDraft(session domain.Session) (domain.ReviewDraft, bool) {
 	draft, ok := s.drafts[session.ID]
-	if !ok || s.sendDraft == nil || s.pasting[session.ID] {
+	if !ok || s.sendDraft == nil || s.pasting[session.ID] || s.sendInFlight(session.ID) {
 		return draft, false
 	}
 	sent, prompt, ok := draft.Dispatch(session, time.Now())
