@@ -54,10 +54,12 @@ type dialog struct {
 	path       string
 	base, home string
 	listing    listing
+	listings   int
 	pick       int
 }
 
 type listing struct {
+	req    int
 	dir    string
 	dirs   []domain.Child
 	done   bool
@@ -66,6 +68,7 @@ type listing struct {
 
 type dirsListedMsg struct {
 	seq    int
+	req    int
 	dir    string
 	dirs   []domain.Child
 	failed bool
@@ -281,22 +284,23 @@ func (m Model) listDirs() tea.Cmd {
 	if d.listing.dir == dir && !d.listing.failed {
 		return nil
 	}
-	d.listing = listing{dir: dir}
-	seq := d.seq
+	d.listings++
+	d.listing = listing{req: d.listings, dir: dir}
+	seq, req := d.seq, d.listings
 	return func() tea.Msg {
 		ctx, cancel := context.WithTimeout(context.Background(), callTimeout)
 		defer cancel()
 		var out rpc.WorkspaceDirs
 		err := c.Call(ctx, rpc.MethodWorkspaceDirs, rpc.WorkspaceDirsParams{Path: dir}, &out)
-		return dirsListedMsg{seq: seq, dir: dir, dirs: out.Dirs, failed: err != nil}
+		return dirsListedMsg{seq: seq, req: req, dir: dir, dirs: out.Dirs, failed: err != nil}
 	}
 }
 
 func (m Model) gotDirs(msg dirsListedMsg) Model {
-	if m.dialog == nil || m.dialog.seq != msg.seq || m.dialog.listing.dir != msg.dir {
+	if m.dialog == nil || m.dialog.seq != msg.seq || m.dialog.listing.req != msg.req {
 		return m
 	}
-	m.own().listing = listing{dir: msg.dir, dirs: msg.dirs, done: true, failed: msg.failed}
+	m.own().listing = listing{req: msg.req, dir: msg.dir, dirs: msg.dirs, done: true, failed: msg.failed}
 	return m
 }
 
