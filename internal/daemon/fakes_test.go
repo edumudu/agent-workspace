@@ -108,6 +108,36 @@ func (s *memStore) PutDraft(d domain.ReviewDraft) {
 	s.snap.Drafts = append(s.snap.Drafts, d)
 }
 
+func (s *memStore) PutDevice(d domain.Device) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for i, x := range s.snap.Devices {
+		if x.ID == d.ID {
+			s.snap.Devices[i] = d
+			return
+		}
+	}
+	s.snap.Devices = append(s.snap.Devices, d)
+}
+
+func (s *memStore) DeleteDevice(id string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	kept := s.snap.Devices[:0]
+	for _, d := range s.snap.Devices {
+		if d.ID != id {
+			kept = append(kept, d)
+		}
+	}
+	s.snap.Devices = kept
+}
+
+func (s *memStore) devices() []domain.Device {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return append([]domain.Device(nil), s.snap.Devices...)
+}
+
 func (s *memStore) drafts() []domain.ReviewDraft {
 	s.mu.Lock()
 	defer s.mu.Unlock()
