@@ -5,7 +5,7 @@ Status: accepted, 2026-10-03.
 ## Decision
 
 - `scripts/tdd-check` walks every non-merge commit in `base..head`. A commit fails the job if it adds or changes a test file and also changes production code.
-- A test file is one the PR-wide check counts: a `*_test.go` file or a file under a `testdata/` dir, minus port fakes (ADR 0009) and minus whitespace-only or comment-only changes. In `*.golden` and `*.go.txt` fixtures only whitespace-only changes are ignored, since comment-shaped lines there are data. Per commit, a test that was moved and edited also counts. Production code is any file outside `*_test.go`, `testdata/` and `test/`, except Markdown.
+- A test file is one the PR-wide check counts: a `*_test.go` file or a file under a `testdata/` dir, minus port fakes (ADR 0009) and minus changes that carry no behavior, such as whitespace and comments (ADR 0044 defines them). A test that was moved and edited also counts. Production code is any file outside `*_test.go`, `testdata/` and `test/`, except Markdown.
 - A commit whose subject starts with `refactor:` or `refactor(` is exempt: renames and moves have to change both sides to keep compiling, and change no behavior.
 - The commit check runs before the "tests fail on base" check, and both must pass.
 
