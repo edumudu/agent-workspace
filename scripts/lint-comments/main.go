@@ -1,9 +1,7 @@
-// why: usage: lint-comments [dir...] fails on any comment that does not open
-// with a "why:" or "bug:" marker, an issue-linked to-do, or a generated-code or license
-// header, and on tool directives without a reason (AGENTS.md, ADR 0020).
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"go/parser"
 	"go/token"
@@ -19,16 +17,11 @@ import (
 type finding struct {
 	file string
 	line int
-	msg  string
 }
 
-func (f finding) String() string { return fmt.Sprintf("%s:%d: %s", f.file, f.line, f.msg) }
+const bannedMsg = "comments are banned; delete it (ADR 0043)"
 
-var (
-	todoPattern      = regexp.MustCompile(`\bTODO\b`)
-	todoIssuePattern = regexp.MustCompile(`\bTODO\(#\d+\)`)
-	nolintWithReason = regexp.MustCompile(`^//nolint:\S+\s+// (why|bug): \S`)
-)
+func (f finding) String() string { return fmt.Sprintf("%s:%d: %s", f.file, f.line, bannedMsg) }
 
 func main() {
 	roots := os.Args[1:]
@@ -45,13 +38,17 @@ func run(roots []string, out io.Writer) int {
 			if err != nil {
 				return err
 			}
+			rel, err := filepath.Rel(root, path)
+			if err != nil {
+				return err
+			}
 			if d.IsDir() {
-				if path != root && skipDir(d.Name()) {
+				if rel != "." && skipDir(rel, d.Name()) {
 					return filepath.SkipDir
 				}
 				return nil
 			}
-			if !strings.HasSuffix(path, ".go") {
+			if strings.HasSuffix(path, ".go") && inTestdata(rel) {
 				return nil
 			}
 			src, err := os.ReadFile(path)
@@ -79,58 +76,144 @@ func run(roots []string, out io.Writer) int {
 	return 0
 }
 
-func skipDir(name string) bool {
-	return name == "testdata" || name == "vendor" || strings.HasPrefix(name, ".") || strings.HasPrefix(name, "_")
+func skipDir(rel, name string) bool {
+	if strings.HasPrefix(name, ".") && name != ".github" {
+		return true
+	}
+	if name == "vendor" || name == "node_modules" || strings.HasPrefix(name, "_") {
+		return true
+	}
+	return rel == "bin" || rel == "dist"
+}
+
+func inTestdata(rel string) bool {
+	return slices.Contains(strings.Split(filepath.ToSlash(rel), "/"), "testdata")
+}
+
+type language int
+
+const (
+	other language = iota
+	golang
+	shell
+	makefile
+	yaml
+	txtar
+	lua
+	sql
+)
+
+func languageOf(name string, src []byte) language {
+	base := filepath.Base(name)
+	switch filepath.Ext(base) {
+	case ".go":
+		return golang
+	case ".sh", ".bash":
+		return shell
+	case ".yml", ".yaml":
+		return yaml
+	case ".txtar":
+		return txtar
+	case ".lua":
+		return lua
+	case ".sql":
+		return sql
+	case ".mk":
+		return makefile
+	case "":
+		if base == "Makefile" {
+			return makefile
+		}
+		first, _, _ := bytes.Cut(src, []byte("\n"))
+		if bytes.HasPrefix(first, []byte("#!")) && bytes.Contains(first, []byte("sh")) {
+			return shell
+		}
+	}
+	return other
+}
+
+func checkFile(name string, src []byte) ([]finding, error) {
+	switch languageOf(name, src) {
+	case golang:
+		return checkGo(name, src)
+	case shell:
+		return checkLines(name, src, "#", true, shellDirective, nil), nil
+	case makefile:
+		return checkLines(name, src, "#", true, nil, nil), nil
+	case yaml:
+		return checkLines(name, src, "#", true, yamlDirective, nil), nil
+	case txtar:
+		return checkLines(name, src, "#", true, nil, txtarFileHeader), nil
+	case lua, sql:
+		return checkLines(name, src, "--", false, nil, nil), nil
+	}
+	return nil, nil
 }
 
 var (
-	markedPattern    = regexp.MustCompile(`^(//|/\*) (why|bug): \S`)
-	todoMarker       = regexp.MustCompile(`^// TODO\(#\d+\)`)
+	goDirective      = regexp.MustCompile(`^//(go:\S|line |export |nolint:\S+$)`)
 	generatedPattern = regexp.MustCompile(`^// Code generated .* DO NOT EDIT\.$`)
-	licensePattern   = regexp.MustCompile(`^// (Copyright|SPDX-License-Identifier:)`)
-	directivePattern = regexp.MustCompile(`^//(go:|line |export |nolint:)`)
+	shellDirective   = regexp.MustCompile(`^(#!|\s*# shellcheck )`)
+	yamlDirective    = regexp.MustCompile(`^\s*# yaml-language-server:`)
+	txtarFileHeader  = regexp.MustCompile(`^-- \S.* --$`)
 )
 
-const unmarkedMsg = "comment must start with \"// why: \" or \"// bug: \" (a reason the code cannot show), or be a tool directive; otherwise delete it"
-
-func checkFile(name string, src []byte) ([]finding, error) {
+func checkGo(name string, src []byte) ([]finding, error) {
 	fset := token.NewFileSet()
 	file, err := parser.ParseFile(fset, name, src, parser.ParseComments)
 	if err != nil {
 		return nil, err
 	}
 	var findings []finding
-	checkTODO := func(line int, text string) {
-		if todoPattern.MatchString(text) && !todoIssuePattern.MatchString(text) {
-			findings = append(findings, finding{name, line, "TODO must reference an issue: TODO(#<n>)"})
-		}
-	}
 	for _, group := range file.Comments {
-		needsMarker := true
 		for _, c := range group.List {
-			line := fset.Position(c.Pos()).Line
-			if directivePattern.MatchString(c.Text) {
-				if strings.HasPrefix(c.Text, "//nolint:") && !nolintWithReason.MatchString(c.Text) {
-					findings = append(findings, finding{name, line, "//nolint: needs a reason: //nolint:x // why: ..."})
-				}
-				checkTODO(line, c.Text)
-				needsMarker = true
+			if goDirective.MatchString(c.Text) || generatedPattern.MatchString(c.Text) {
 				continue
 			}
-			if needsMarker && !marked(c.Text) {
-				findings = append(findings, finding{name, line, unmarkedMsg})
-				needsMarker = false
-				continue
-			}
-			needsMarker = false
-			checkTODO(line, c.Text)
+			findings = append(findings, finding{name, fset.PositionFor(c.Pos(), false).Line})
 		}
 	}
-	slices.SortStableFunc(findings, func(a, b finding) int { return a.line - b.line })
 	return findings, nil
 }
 
-func marked(text string) bool {
-	return markedPattern.MatchString(text) || todoMarker.MatchString(text) ||
-		generatedPattern.MatchString(text) || licensePattern.MatchString(text)
+func checkLines(name string, src []byte, marker string, needsSpaceBefore bool, directive, stop *regexp.Regexp) []finding {
+	var findings []finding
+	for i, line := range strings.Split(string(src), "\n") {
+		if stop != nil && stop.MatchString(line) {
+			break
+		}
+		if directive != nil && directive.MatchString(line) {
+			continue
+		}
+		if hasComment(line, marker, needsSpaceBefore) {
+			findings = append(findings, finding{name, i + 1})
+		}
+	}
+	return findings
+}
+
+func hasComment(line, marker string, needsSpaceBefore bool) bool {
+	var quote byte
+	for i := 0; i < len(line); i++ {
+		ch := line[i]
+		switch {
+		case quote == '\'':
+			if ch == '\'' {
+				quote = 0
+			}
+		case ch == '\\':
+			i++
+		case quote == '"':
+			if ch == '"' {
+				quote = 0
+			}
+		case ch == '\'' || ch == '"':
+			quote = ch
+		case strings.HasPrefix(line[i:], marker):
+			if !needsSpaceBefore || i == 0 || line[i-1] == ' ' || line[i-1] == '\t' {
+				return true
+			}
+		}
+	}
+	return false
 }
