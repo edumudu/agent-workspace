@@ -121,3 +121,25 @@ func TestTranscriptWatchOfAMissingDirectoryFails(t *testing.T) {
 		t.Fatal("watch of a missing directory succeeded")
 	}
 }
+
+func TestTranscriptWatchFollowsAFileReplacedByRename(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "s.jsonl")
+	appendTo(t, path, "a\n")
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	ch, err := fs.Transcripts{}.Watch(ctx, path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Rename(path, path+".old"); err != nil {
+		t.Fatal(err)
+	}
+	appendTo(t, path, "b\n")
+	notified(t, ch, "replace")
+	time.Sleep(50 * time.Millisecond)
+	for len(ch) > 0 {
+		<-ch
+	}
+	appendTo(t, path, "c\n")
+	notified(t, ch, "append to the replacement")
+}

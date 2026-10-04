@@ -296,3 +296,21 @@ func TestTranscriptWatchFromACursorPastTheEndIsABadRequest(t *testing.T) {
 	}
 	waitFor(t, func() bool { _, _, active := files.counts(); return active == 0 })
 }
+
+func TestTranscriptWatchersGetAResetWhenTheFileShrinks(t *testing.T) {
+	files := newMemTranscripts()
+	files.write(transcriptA, userLine("u1", "hello")+assistantLine("a1", "hi"))
+	d, path := startTranscripts(t, files)
+	c := dial(t, path)
+	addSession(t, d, c, "a", transcriptA)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	w, err := c.WatchTranscript(ctx, "a", 0)
+	if err != nil || len(w.Messages) != 2 {
+		t.Fatalf("watch: %v %v", msgIDs(w.Messages), err)
+	}
+	files.replace(transcriptA, userLine("v1", "again"))
+	if ev := nextEvent(t, w.Events); !ev.Reset || !reflect.DeepEqual(msgIDs(ev.Messages), []string{"v1"}) {
+		t.Fatalf("event %+v", ev)
+	}
+}

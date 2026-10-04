@@ -79,3 +79,10 @@ func (m *memTranscripts) Watch(ctx context.Context, path string) (<-chan struct{
 	}()
 	return ch, nil
 }
+
+func (m *memTranscripts) replace(path, s string) {
+	m.mu.Lock()
+	m.files[path] = nil
+	m.mu.Unlock()
+	m.write(path, s)
+}

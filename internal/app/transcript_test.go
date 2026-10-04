@@ -273,3 +273,24 @@ func TestTranscriptTailSinceStopsAtWhatTheTailHasRead(t *testing.T) {
 		t.Fatalf("read %v %v", ids(msgs), err)
 	}
 }
+
+func TestTranscriptTailStartsOverWhenTheFileShrinks(t *testing.T) {
+	files := newMemFiles(transcriptPath, "u p1 hi\na a1 there\n")
+	tail, err := transcripts(files, 0, 0).Tail(domain.HarnessClaude, transcriptPath, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tail.Read(); err != nil {
+		t.Fatal(err)
+	}
+	files.files[transcriptPath] = []byte("u q1 new\n")
+	msgs, err := tail.Read()
+	if err != nil || !reflect.DeepEqual(ids(msgs), []string{"q1"}) || !tail.Restarted() {
+		t.Fatalf("after shrinking: %v restarted %v err %v", ids(msgs), tail.Restarted(), err)
+	}
+	files.append(transcriptPath, "a b1 more\n")
+	msgs, err = tail.Read()
+	if err != nil || !reflect.DeepEqual(ids(msgs), []string{"b1"}) || tail.Restarted() {
+		t.Fatalf("next read: %v restarted %v err %v", ids(msgs), tail.Restarted(), err)
+	}
+}
