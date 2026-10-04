@@ -991,3 +991,63 @@ button.danger {
   background: var(--red);
   color: var(--on-accent);
 }
+
+.permission {
+  margin: 12px 0 4px;
+  padding: 14px;
+  background: var(--mantle);
+  border: 1px solid var(--surface);
+  border-left: 4px solid var(--peach);
+  border-radius: var(--radius);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.permission h2 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.permission p {
+  margin: 0;
+}
+
+.permission-gone {
+  border-left-color: var(--overlay);
+  color: var(--subtext);
+}
+
+.permission-text,
+.permission-raw {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 13px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 40vh;
+  overflow-y: auto;
+}
+
+.permission-choices {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.permission-choice {
+  min-height: 44px;
+  padding: 10px 14px;
+  text-align: left;
+  font-size: 15px;
+  background: var(--blue);
+  color: var(--on-accent);
+}
+
+.permission-choice:disabled {
+  opacity: 0.6;
+}
+
+.composer textarea:disabled {
+  opacity: 0.6;
+}

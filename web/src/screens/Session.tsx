@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import Markdown from "react-markdown";
-import { ApiError, interrupt, messagesPage, sendMessage, unsend, type Authed } from "../api";
+import { ApiError, answerPrompt, getPrompt, interrupt, messagesPage, sendMessage, unsend, type Authed, type Prompt } from "../api";
 import { timeInState } from "../sessions";
 import type { Message, QueuedSend, Session, StreamClient, StreamSnapshot, StreamStatus } from "../stream";
 import { emptyTranscript, newestCursor, toolRow, withFrame, withPage, type Transcript } from "../transcript";
@@ -271,6 +271,131 @@ function Chat({ id, client, api, status, children }: { id: string; client: Strea
   );
 }
 
+type Phase =
+  | { kind: "idle" }
+  | { kind: "loading" }
+  | { kind: "ready"; prompt: Prompt }
+  | { kind: "unparsed"; raw: string }
+  | { kind: "answering"; prompt: Prompt; choice: string }
+  | { kind: "answered"; label: string }
+  | { kind: "gone" }
+  | { kind: "failed"; message: string };
+
+function PermissionCard({ api, session }: { api: Authed; session: Session }) {
+  const asking = session.State === "permission" && !session.Ended;
+  const [phase, setPhase] = useState<Phase>({ kind: "idle" });
+  const [attempt, setAttempt] = useState(0);
+  const [error, setError] = useState("");
+  const { fetch, token } = api;
+  const id = session.ID;
+
+  useEffect(() => {
+    if (!asking) {
+      setPhase((p) => (p.kind === "ready" || p.kind === "unparsed" || p.kind === "answering" ? { kind: "gone" } : p.kind === "loading" || p.kind === "failed" ? { kind: "idle" } : p));
+      return;
+    }
+    let alive = true;
+    setPhase({ kind: "loading" });
+    setError("");
+    getPrompt({ fetch, token }, id).then(
+      (prompt) => {
+        if (!alive) {
+          return;
+        }
+        setPhase(prompt.choices.length === 0 && prompt.raw ? { kind: "unparsed", raw: prompt.raw } : { kind: "ready", prompt });
+      },
+      (err: unknown) => {
+        if (alive) {
+          setPhase(err instanceof ApiError && err.code === "not_found" ? { kind: "gone" } : { kind: "failed", message: errorText(err) });
+        }
+      },
+    );
+    return () => {
+      alive = false;
+    };
+  }, [fetch, token, id, asking, session.since, attempt]);
+
+  const choose = async (prompt: Prompt, choice: string) => {
+    setPhase({ kind: "answering", prompt, choice });
+    setError("");
+    try {
+      await answerPrompt({ fetch, token }, id, choice);
+      setPhase({ kind: "answered", label: prompt.choices.find((c) => c.id === choice)?.label ?? choice });
+    } catch (err) {
+      if (err instanceof ApiError && (err.code === "stale" || err.code === "not_found")) {
+        setPhase({ kind: "gone" });
+      } else {
+        setError(errorText(err));
+        setPhase({ kind: "ready", prompt });
+      }
+    }
+  };
+
+  if (phase.kind === "idle") {
+    return null;
+  }
+  if (phase.kind === "loading") {
+    return (
+      <section className="permission" aria-label="Permission request" role="status">
+        Loading the permission request…
+      </section>
+    );
+  }
+  if (phase.kind === "failed") {
+    return (
+      <section className="permission error" aria-label="Permission request">
+        <span>{"Couldn’t load the prompt: " + phase.message}</span>
+        <button type="button" className="retry" onClick={() => setAttempt((n) => n + 1)}>
+          Retry
+        </button>
+      </section>
+    );
+  }
+  if (phase.kind === "gone") {
+    return (
+      <section className="permission permission-gone" aria-label="Permission request">
+        <p>This prompt is gone. It was already answered, probably in the terminal, so nothing was sent.</p>
+      </section>
+    );
+  }
+  if (phase.kind === "answered") {
+    return (
+      <section className="permission permission-gone" aria-label="Permission request">
+        <p>{"Answered: " + phase.label}</p>
+      </section>
+    );
+  }
+  if (phase.kind === "unparsed") {
+    return (
+      <section className="permission" aria-label="Permission request">
+        <h2>Couldn’t read this dialog</h2>
+        <p className="muted">Answer it in the terminal. This is what the pane shows:</p>
+        <pre className="permission-raw">{phase.raw}</pre>
+      </section>
+    );
+  }
+  const prompt = phase.prompt;
+  const answering = phase.kind === "answering";
+  return (
+    <section className="permission" aria-label="Permission request">
+      <h2>Permission needed</h2>
+      <pre className="permission-text">{prompt.text}</pre>
+      {error ? (
+        <p className="error" role="alert">
+          {error}
+        </p>
+      ) : null}
+      <div className="permission-choices">
+        {prompt.choices.map((c) => (
+          <button key={c.id} type="button" className="permission-choice" disabled={answering} onClick={() => void choose(prompt, c.id)}>
+            {c.label}
+          </button>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function Queued({ sends, onEdit, onDrop }: { sends: QueuedSend[]; onEdit: (s: QueuedSend) => void; onDrop: (s: QueuedSend) => void }) {
   if (sends.length === 0) {
     return null;
@@ -294,6 +419,7 @@ function Queued({ sends, onEdit, onDrop }: { sends: QueuedSend[]; onEdit: (s: Qu
 }
 
 function Composer({ session, api, sends }: { session: Session; api: Authed; sends: QueuedSend[] }) {
+  const locked = session.State === "permission" && !session.Ended;
   const [draft, setDraft] = useState("");
   const [posting, setPosting] = useState(false);
   const [error, setError] = useState("");
@@ -338,8 +464,8 @@ function Composer({ session, api, sends }: { session: Session; api: Authed; send
         </p>
       ) : null}
       <form onSubmit={(ev) => void submit(ev)}>
-        <textarea aria-label="Message" rows={1} value={draft} placeholder={busy(session) ? "Queue a message" : "Message"} onChange={(ev) => setDraft(ev.target.value)} />
-        <button type="submit" disabled={blank || posting}>
+        <textarea aria-label="Message" rows={1} value={draft} disabled={locked} placeholder={locked ? "Answer the permission request first" : busy(session) ? "Queue a message" : "Message"} onChange={(ev) => setDraft(ev.target.value)} />
+        <button type="submit" disabled={blank || posting || locked}>
           {busy(session) ? "Queue" : "Send"}
         </button>
       </form>
@@ -420,7 +546,9 @@ export function SessionScreen({
       <Header session={session} now={now} onInterrupt={() => setConfirming(true)} />
       <Connection snapshot={snapshot} now={now} onRetry={onRetry} />
       <main className="chat-main">
-        <Chat id={id} client={client} api={api} status={snapshot.status} />
+        <Chat id={id} client={client} api={api} status={snapshot.status}>
+          <PermissionCard api={api} session={session} />
+        </Chat>
       </main>
       <Composer session={session} api={api} sends={sends} />
       {confirming ? <ConfirmInterrupt api={api} session={id} onClose={() => setConfirming(false)} /> : null}

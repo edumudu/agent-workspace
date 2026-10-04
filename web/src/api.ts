@@ -122,6 +122,25 @@ export async function interrupt(a: Authed, session: string): Promise<void> {
   await authedRequest<unknown>(a, sessionPath(session, "/interrupt"), "POST");
 }
 
+export type PromptChoice = {
+  id: string;
+  label: string;
+};
+
+export type Prompt = {
+  text: string;
+  choices: PromptChoice[];
+  raw?: string;
+};
+
+export function getPrompt(a: Authed, session: string): Promise<Prompt> {
+  return authedRequest<Prompt>(a, sessionPath(session, "/prompt"));
+}
+
+export async function answerPrompt(a: Authed, session: string, choice: string): Promise<void> {
+  await authedRequest<unknown>(a, sessionPath(session, "/answer"), "POST", { choice });
+}
+
 export type PushKey = {
   public_key: string;
 };
