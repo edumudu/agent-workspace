@@ -3,6 +3,7 @@ import { pushKey, pushSubscribe, pushUnsubscribe, type Fetch, type PushSubscript
 export type PushEnv = {
   supported: boolean;
   permission: () => NotificationPermission;
+  subscribed: () => Promise<boolean>;
   requestPermission: () => Promise<NotificationPermission>;
   subscribe: (applicationServerKey: Uint8Array) => Promise<PushSubscriptionBody>;
   unsubscribe: () => Promise<void>;
@@ -11,6 +12,7 @@ export type PushEnv = {
 export const noPush: PushEnv = {
   supported: false,
   permission: () => "denied",
+  subscribed: async () => false,
   requestPermission: async () => "denied",
   subscribe: () => Promise.reject(new Error("this browser has no push")),
   unsubscribe: async () => undefined,
@@ -40,8 +42,12 @@ export async function enablePush(push: PushEnv, fetchFn: Fetch, token: string): 
   return "on";
 }
 
-export async function disablePush(push: PushEnv, fetchFn: Fetch, token: string): Promise<void> {
-  await Promise.allSettled([pushUnsubscribe(fetchFn, token), push.unsubscribe()]);
+export async function disablePush(push: PushEnv, fetchFn: Fetch, token: string): Promise<string | null> {
+  const [, browser] = await Promise.allSettled([pushUnsubscribe(fetchFn, token), push.unsubscribe()]);
+  if (browser.status === "fulfilled") {
+    return null;
+  }
+  return browser.reason instanceof Error ? browser.reason.message : String(browser.reason);
 }
 
 function sameKey(a: ArrayBuffer | null | undefined, b: Uint8Array): boolean {
@@ -60,6 +66,10 @@ export function browserPush(win: Window & typeof globalThis): PushEnv {
   return {
     supported,
     permission: () => win.Notification.permission,
+    subscribed: async () => {
+      const registration = await win.navigator.serviceWorker.getRegistration();
+      return (await registration?.pushManager.getSubscription()) != null;
+    },
     requestPermission: () => win.Notification.requestPermission(),
     subscribe: async (key) => {
       const registration = await win.navigator.serviceWorker.ready;
