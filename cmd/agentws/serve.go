@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -93,10 +94,14 @@ func serveIn(ctx context.Context, home string, f serveFlags, stdout, stderr io.W
 	if err := srv.Start(ctx); err != nil {
 		return fmt.Errorf("subscribe to the daemon: %w", err)
 	}
-	return serve.Listen(ctx, f.opts, srv.Handler(nil), func(url string) {
+	return serve.Listen(ctx, f.opts, serveHandler(srv), func(url string) {
 		fmt.Fprintf(stdout, "agentws serve: listening on %s\n", url)
 		if f.opts.SelfSigned {
 			fmt.Fprintf(stdout, "agentws serve: self-signed certificate %s; set your proxy to trust it\n", filepath.Join(f.opts.CertDir, "cert.pem"))
 		}
 	})
+}
+
+func serveHandler(srv *serve.Server) http.Handler {
+	return srv.Handler(serve.Static(serve.Dist()))
 }
