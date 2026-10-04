@@ -7,7 +7,9 @@ import (
 
 func TestStateSinceIsWhenTheReplayedEventsLastChangedTheState(t *testing.T) {
 	at := func(m int) time.Time { return bannerT0.Add(time.Duration(m) * time.Minute) }
-	ev := func(m int, kind HarnessEventKind) SessionEvent { return SessionEvent{SessionID: "a", At: at(m), Kind: kind} }
+	ev := func(m int, kind HarnessEventKind) SessionEvent {
+		return SessionEvent{SessionID: "a", At: at(m), Kind: kind}
+	}
 	cases := []struct {
 		name   string
 		state  AgentState
