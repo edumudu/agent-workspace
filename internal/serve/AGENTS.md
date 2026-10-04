@@ -29,6 +29,9 @@ Every response is JSON with `Cache-Control: no-store`. An error is `{"error":{"c
 | `POST /api/v1/sessions/{id}/resume` | yes | `session.resume` | → the resumed `Session` |
 | `POST /api/v1/sessions/{id}/mute` | yes | `session.mute` | `{"muted":bool}` (required) → `{}` |
 | `POST /api/v1/sessions/{id}/rename` | yes | `session.rename` | `{"name"}` → `{}` |
+| `POST /api/v1/sessions/{id}/messages` | yes | `session.send` | `{"text"}` (not blank) → `{"id","queued"}`; a queued send shows in the stream's `sends` until it is pasted |
+| `DELETE /api/v1/sessions/{id}/sends/{send}` | yes | `session.unsend` | → `{}`; `not_found` once the send has gone out (it left `sends`) |
+| `POST /api/v1/sessions/{id}/interrupt` | yes | `session.interrupt` | → `{}` |
 
 - Auth is `Authorization: Bearer <token>`, checked with `device.check` on the request's own connection before the method runs, and then against the set of revoked device IDs.
 - `pair` passes the caller's address as `addr`: `RemoteAddr`, or the last `X-Forwarded-For` entry (else `X-Real-IP`) when the peer is a loopback or private address, which is where a proxy in front of serve sits. A forged header from a direct client is ignored.
