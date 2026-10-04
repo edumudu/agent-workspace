@@ -1,6 +1,7 @@
 package omp
 
 import (
+	"context"
 	"errors"
 	"os"
 	"os/exec"
@@ -260,5 +261,113 @@ func TestHookFileSendsTheEventsUnderBun(t *testing.T) {
 	}
 	if !slices.Equal(lines, want) {
 		t.Errorf("sent:\n%s\nwant:\n%s", strings.Join(lines, "\n"), strings.Join(want, "\n"))
+	}
+}
+
+func TestParseCatalogUsesSelectors(t *testing.T) {
+	got, err := ParseCatalog([]byte(`{"models":[
+		{"selector":"openai-codex/gpt-5.5","id":"gpt-5.5"},
+		{"selector":"","id":"skip"},
+		{"id":"no-selector"},
+		{"selector":"opencode-go/deepseek"},
+		{"selector":"openai-codex/gpt-5.5"}
+	]}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []string{"openai-codex/gpt-5.5", "opencode-go/deepseek"}
+	if !slices.Equal(got, want) {
+		t.Fatalf("catalog %q, want %q", got, want)
+	}
+}
+
+func TestFetchCatalogReadsOmpModelsJSON(t *testing.T) {
+	bin := filepath.Join(t.TempDir(), "omp")
+	script := "#!/bin/sh\nprintf '%s\\n' '{\"models\":[{\"selector\":\"prov/b\"},{\"selector\":\"prov/a\"}]}'\n"
+	if err := os.WriteFile(bin, []byte(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	got, err := FetchCatalog(context.Background(), bin)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []string{"prov/a", "prov/b"}
+	if !slices.Equal(got, want) {
+		t.Fatalf("catalog %q, want %q", got, want)
+	}
+}
+
+func TestLoadCachedReplacesAFreshFileWhenTheCallerWaits(t *testing.T) {
+	dir := t.TempDir()
+	cache := filepath.Join(dir, "omp-models.json")
+	if err := os.WriteFile(cache, []byte(`["amazon-bedrock/old"]`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	bin := filepath.Join(dir, "omp")
+	script := "#!/bin/sh\nprintf '%s\\n' '{\"models\":[{\"selector\":\"cursor/new\"}]}'\n"
+	if err := os.WriteFile(bin, []byte(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	got := LoadCached(context.Background(), cache, bin, 24*time.Hour, true)
+	want := []string{"cursor/new"}
+	if !slices.Equal(got, want) {
+		t.Fatalf("catalog %q, want %q", got, want)
+	}
+	body, err := os.ReadFile(cache)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(body) != `["cursor/new"]` {
+		t.Fatalf("cache %s", body)
+	}
+}
+
+func TestLoadCachedUsesAFreshFileWithoutRunningOmp(t *testing.T) {
+	dir := t.TempDir()
+	cache := filepath.Join(dir, "omp-models.json")
+	if err := os.WriteFile(cache, []byte(`["prov/a","prov/b"]`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	ran := filepath.Join(dir, "ran")
+	bin := filepath.Join(dir, "omp")
+	script := "#!/bin/sh\ntouch \"" + ran + "\"\nexit 1\n"
+	if err := os.WriteFile(bin, []byte(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	got := LoadCached(context.Background(), cache, bin, time.Hour, false)
+	if !slices.Equal(got, []string{"prov/a", "prov/b"}) {
+		t.Fatalf("catalog %q", got)
+	}
+	if _, err := os.Stat(ran); !os.IsNotExist(err) {
+		t.Fatal("fresh cache still ran omp")
+	}
+}
+
+func TestLoadCachedRefreshesAStaleFileWhenBlocked(t *testing.T) {
+	dir := t.TempDir()
+	cache := filepath.Join(dir, "omp-models.json")
+	if err := os.WriteFile(cache, []byte(`["old/model"]`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	past := time.Now().Add(-48 * time.Hour)
+	if err := os.Chtimes(cache, past, past); err != nil {
+		t.Fatal(err)
+	}
+	bin := filepath.Join(dir, "omp")
+	script := "#!/bin/sh\nprintf '%s\\n' '{\"models\":[{\"selector\":\"prov/b\"},{\"selector\":\"prov/a\"}]}'\n"
+	if err := os.WriteFile(bin, []byte(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	got := LoadCached(context.Background(), cache, bin, time.Hour, true)
+	want := []string{"prov/a", "prov/b"}
+	if !slices.Equal(got, want) {
+		t.Fatalf("catalog %q, want %q", got, want)
+	}
+	body, err := os.ReadFile(cache)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(body) != `["prov/a","prov/b"]` {
+		t.Fatalf("cache %s", body)
 	}
 }
