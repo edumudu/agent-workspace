@@ -281,3 +281,40 @@ func TestServeStreamReleasesItsDaemonConnectionWhenTheClientLeaves(t *testing.T)
 		time.Sleep(10 * time.Millisecond)
 	}
 }
+
+func dropSubscriptions(f *fakeDaemon) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for conn := range f.subs {
+		for _, ch := range f.subs[conn] {
+			close(ch)
+		}
+		delete(f.subs, conn)
+	}
+}
+
+func TestServeStreamClosesOnARevocationWhileTheRevocationWatcherReconnects(t *testing.T) {
+	f := newFakeDaemon()
+	f.devices[goodToken] = phone
+	_, ts := startServer(t, f, serve.Config{URL: publicURL})
+	dropSubscriptions(f)
+	c := openStream(t, ts, goodToken)
+	next(t, c)
+	f.broadcast(rpc.Diff{Seq: 60, RevokedDevice: phone.ID})
+	if code, reason := closedWith(t, c, 500*time.Millisecond); code != serve.CloseUnauthorized {
+		t.Fatalf("closed with %d %q", code, reason)
+	}
+}
+
+func TestServeStreamSubscribesBeforeItChecksTheToken(t *testing.T) {
+	f := newFakeDaemon()
+	f.devices[goodToken] = phone
+	_, ts := startServer(t, f, serve.Config{URL: publicURL})
+	before := len(f.methods())
+	c := openStream(t, ts, goodToken)
+	next(t, c)
+	got := f.methods()[before:]
+	if len(got) < 2 || got[0] != rpc.MethodSubscribe || got[1] != rpc.MethodDeviceCheck {
+		t.Fatalf("stream calls %v, want subscribe then device.check, so a revoke between them still reaches the stream", got)
+	}
+}
