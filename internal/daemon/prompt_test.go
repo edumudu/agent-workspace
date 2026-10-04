@@ -93,7 +93,7 @@ func TestSessionPromptIDChangesWithTheDialog(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	other, _ := promptSetup(t, domain.HarnessClaude, domain.StatePermission, strings.Replace(claudeDialog, "touch notes.txt", "rm -rf build", 1))
+	other, _ := promptSetup(t, domain.HarnessClaude, domain.StatePermission, strings.ReplaceAll(claudeDialog, "touch notes.txt", "rm -rf build"))
 	b, err := other.SessionPrompt(context.Background(), "a")
 	if err != nil {
 		t.Fatal(err)
@@ -236,7 +236,7 @@ func TestSessionAnswerForAPromptThatIsNoLongerTheOneShowingIsStaleAndSendsNothin
 }
 
 func TestSessionAnswerForTheShowingPromptPressesTheKeys(t *testing.T) {
-	c, host := promptSetup(t, domain.HarnessClaude, domain.StatePermission, claudeDialog)
+	c, host := promptSetup(t, domain.HarnessClaude, domain.StatePermission, claudeDialog, claudeDialog)
 	shown, err := c.SessionPrompt(context.Background(), "a")
 	if err != nil {
 		t.Fatal(err)
