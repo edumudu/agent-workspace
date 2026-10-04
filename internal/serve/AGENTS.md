@@ -29,11 +29,15 @@ Every response is JSON with `Cache-Control: no-store`. An error is `{"error":{"c
 | `POST /api/v1/sessions/{id}/resume` | yes | `session.resume` | → the resumed `Session` |
 | `POST /api/v1/sessions/{id}/mute` | yes | `session.mute` | `{"muted":bool}` (required) → `{}` |
 | `POST /api/v1/sessions/{id}/rename` | yes | `session.rename` | `{"name"}` → `{}` |
+| `GET /api/v1/push/key` | yes | `push.key` | → `{"public_key"}`, the VAPID public key (base64url), for `pushManager.subscribe` |
+| `POST /api/v1/push/subscribe` | yes | `push.subscribe` | the browser's `PushSubscription.toJSON()` (`{"endpoint","keys":{"p256dh","auth"}}`) → `{}`; stored with the calling device |
 
 - Auth is `Authorization: Bearer <token>`, checked with `device.check` on the request's own connection before the method runs, and then against the set of revoked device IDs.
 - `pair` passes the caller's address as `addr`: `RemoteAddr`, or the last `X-Forwarded-For` entry (else `X-Real-IP`) when the peer is a loopback or private address, which is where a proxy in front of serve sits. A forged header from a direct client is ignored.
 - Domain structs (`Workspace`, `Session`, ...) encode with their Go field names, as in the socket protocol; the goldens pin them. A `Message` is `rpc.Message`: `{"id","cursor","turn","role","text","tool":{"name","summary","status"},"at"}`; keep messages by `id` and replace by `id` (see [internal/rpc/](../rpc/AGENTS.md)).
 - Bodies are capped at 64 KiB.
+- A route reads the device that made the request with `deviceOf(r)` (set by the auth check); `push/subscribe` passes its ID to the daemon.
+- Push is sent by the daemon, not by serve: serve only forwards the key and the subscription. See "Web Push" in [internal/daemon/](../daemon/AGENTS.md).
 
 ### Adding an endpoint
 

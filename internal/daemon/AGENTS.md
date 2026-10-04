@@ -113,6 +113,15 @@ Tests are named `*Cleanup*`: `go test ./internal/domain/... -run Cleanup` and `g
 - **Revocation.** `device.revoke` deletes the device and emits a diff to every subscriber with only `revoked_device` set (no `State` field carries devices). `serve` (#176) holds one `subscribe` connection, opened before it accepts requests, and closes every open stream of that device when the diff arrives, well within a second. A stream's `device.check` and a revoke are ordered on the loop: a check after the revoke fails, and a revoke after the check reaches `serve` as a diff. Device IDs are random and never reused, so `serve` may keep a set of revoked IDs to close a stream whose check answered just before the diff was read.
 - Tokens never reach a log or the disk in clear: errors never quote them, and the CLI never prints one.
 
+## Web Push
+
+`go test ./internal/domain/ ./internal/app/ ./internal/adapters/webpush/ ./internal/adapters/sqlite/ ./internal/daemon/ ./internal/serve/ -run Push`. `WithPush(app.PushProvider)` turns on `push.key`, `push.subscribe` and the push worker; `Run` passes `webpush.New($AGENTWS_HOME/vapid, nil)`. See [ADR 0046](../../docs/adr/0046-remote-app.md).
+
+- **Keys.** The adapter keeps the VAPID pair as JSON in `$AGENTWS_HOME/vapid` (mode 600), created on the first `push.key` or send. A file it cannot read is an error and is left alone; move it away to get a new pair (every device must then enable notifications again).
+- **Subscriptions** live on the device (`Device.Push`, in the `devices` table's JSON), one per device: `push.subscribe` replaces the device's own and takes the endpoint off any other device that had it (the same phone paired again). `device.revoke` deletes the device and so its subscription.
+- **What is sent.** `announce` hands every banner that passes mute and the coalescer (the same ones `notify.stream` carries, ADR 0016) to a bounded queue as `domain.PushFor(banner)`: `{"title","body","url","tag"}`, with the title falling back to `agentws` and the body to the state word, so no push is silent; `url` is `/#/sessions/<id>` and `tag` the session ID. The terminal-in-front check does not apply: the phone is usually away from the terminal. A withdrawn banner is not withdrawn on the phone.
+- **Worker.** One goroutine reads the queue, takes the current subscriptions from the loop at send time (so a device revoked after the banner gets nothing), and calls `app.SendPush` with a 20 s cap. A 404 or 410 from the push service is `app.ErrPushGone`; the worker then clears that endpoint from its device and stores it. Other failures are logged (by host, never the endpoint URL) and not retried. A full queue drops the push.
+
 ## Shell and nvim
 
 `go test ./... -run Shell -tags integration` runs the shell tests (daemon against real tmux, the tmux adapter's split, popup and key pass-through); they and the nvim ones need `tmux` and `nvim`. `daemon.WithTerminals(home, editor)` turns these methods on; they need `WithHarnesses` and a client host, and answer `unknown_method` without them. See [ADR 0029](../../docs/adr/0029-shell-and-nvim.md).
