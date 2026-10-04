@@ -8,8 +8,8 @@ function deps(served: string | null, reported: string, log: string[]): BuildDeps
     install: async (build) => {
       log.push("install " + build);
     },
-    reload: () => {
-      log.push("reload");
+    reload: (build) => {
+      log.push("reload " + build);
     },
   };
 }
@@ -30,7 +30,17 @@ describe("checkBuild", () => {
   it("reloads an app open on an old build once the new worker is installed", async () => {
     const log: string[] = [];
     await expect(checkBuild(deps("v1", "v2", log))).resolves.toMatchObject({ result: "reloading" });
-    expect(log).toEqual(["install v2", "reload"]);
+    expect(log).toEqual(["install v2", "reload v2"]);
+  });
+
+  it("does not reload when the new worker fails to take over", async () => {
+    const log: string[] = [];
+    const d = deps("v1", "v2", log);
+    d.install = async () => {
+      throw new Error("the worker for v2 did not activate");
+    };
+    await expect(checkBuild(d)).rejects.toThrow("did not activate");
+    expect(log).toEqual([]);
   });
 
   it("does not reload when the server cannot be reached", async () => {
