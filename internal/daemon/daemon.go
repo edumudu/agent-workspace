@@ -113,6 +113,10 @@ type state struct {
 	awaiting        map[string]domain.ReviewDraft
 	pasting         map[string]bool
 	sendDraft       func(session domain.Session, draft domain.ReviewDraft, prompt string)
+	sends           []domain.QueuedSend
+	inFlight        map[string]sendFlight
+	booting         map[string]bool
+	pasteSend       func(session domain.Session, q domain.QueuedSend)
 	pairing         domain.Pairing
 	devices         map[string]domain.Device
 	transcriptMoved func(sessionID, path string, gone bool)
@@ -164,6 +168,8 @@ func New(store app.Store, pid int, opts ...Option) (*Daemon, error) {
 		drafts:     map[string]domain.ReviewDraft{},
 		awaiting:   map[string]domain.ReviewDraft{},
 		pasting:    map[string]bool{},
+		inFlight:   map[string]sendFlight{},
+		booting:    map[string]bool{},
 		devices:    map[string]domain.Device{},
 	}
 	for _, dev := range snap.Devices {
@@ -213,6 +219,7 @@ func New(store app.Store, pid int, opts ...Option) (*Daemon, error) {
 	st.requestUsage = func(sessionID, path string, force bool) { d.requestUsage(st, sessionID, path, force) }
 	st.sendSwitches = d.sendSwitches
 	st.sendDraft = d.sendDraft
+	st.pasteSend = d.pasteSend
 	for _, o := range opts {
 		o(d)
 	}
@@ -337,6 +344,9 @@ func (s *state) emit(e Event) {
 			delete(s.subs, c)
 		}
 	}
+	if changed, ok := e.(SessionChanged); ok && changed.Session.Ended {
+		s.dropSends(changed.Session.ID)
+	}
 }
 
 func (s *state) hook(h rpc.Hook, now time.Time) {
@@ -373,7 +383,12 @@ func (s *state) hook(h rpc.Hook, now time.Time) {
 	}
 	s.announce(next, effects)
 	s.sendSwitches(next, toSend)
+	if kind == domain.EventSessionStart || kind == domain.EventUserPromptSubmit {
+		delete(s.booting, session.ID)
+	}
+	s.settleSend(session.ID)
 	s.dispatchDraft(next)
+	s.dispatchSend(next)
 	if kind == domain.EventUserPromptSubmit {
 		s.promptSubmitted(session.ID)
 	}
@@ -490,6 +505,8 @@ func (d *Daemon) dispatch(c *conn, line []byte) (*rpc.Response, bool) {
 		return d.resumeSession(req)
 	case rpc.MethodLauncherEnqueue, rpc.MethodLauncherDrop, rpc.MethodLauncherRetarget:
 		return d.launcherMethod(req)
+	case rpc.MethodSessionSend, rpc.MethodSessionUnsend, rpc.MethodSessionInterrupt:
+		return d.sessionInput(req)
 	case rpc.MethodSessionPrompt:
 		return d.sessionPrompt(req)
 	case rpc.MethodSessionAnswer:
@@ -554,6 +571,7 @@ func (s *state) snapshot() rpc.State {
 		Subagents:  append([]domain.Subagent{}, s.subagents...),
 		Queue:      append([]domain.LaunchItem{}, s.queue...),
 		Drafts:     s.draftList(),
+		Sends:      append([]domain.QueuedSend{}, s.sends...),
 	}
 }
 
