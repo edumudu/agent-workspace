@@ -1,0 +1,26 @@
+{
+  "ID": "s9",
+  "TaskID": "t9",
+  "Harness": "codex",
+  "Pane": "",
+  "Model": "",
+  "Effort": "",
+  "State": "running",
+  "Ended": false,
+  "Unread": false,
+  "Focused": false,
+  "Muted": false,
+  "WorktreeIDs": null,
+  "ResumeID": "",
+  "Transcript": "",
+  "Dir": "",
+  "Usage": {
+    "ContextLeftPercent": 0,
+    "HasContext": false,
+    "LimitUsedPercent": 0
+  },
+  "Limits": null,
+  "LimitsAt": "0001-01-01T00:00:00Z",
+  "Switches": null,
+  "SwitchWarning": false
+}
