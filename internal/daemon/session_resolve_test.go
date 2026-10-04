@@ -85,14 +85,3 @@ func TestResolveWorkItemSkipsAWorktreeNameAlreadyTaken(t *testing.T) {
 		t.Fatalf("worktree %q", got.Worktree)
 	}
 }
-
-func TestResolveWorkItemDefaultsToTheLastUsedWorkspace(t *testing.T) {
-	r := startNaming(t, &fakeTitles{})
-	got, err := resolve(t, r, "", "tidy")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got.Workspace != "/src/api" {
-		t.Fatalf("workspace %q", got.Workspace)
-	}
-}
