@@ -276,8 +276,6 @@ func TestGoldenReview(t *testing.T) {
 	golden.RequireEqual(t, screen(m))
 }
 
-// why: guards the 16 ms frame budget while scrolling a 50-file, 3,000-line
-// review.
 func BenchmarkReviewScroll(b *testing.B) {
 	st := fixture(1, 1)
 	var diff strings.Builder
@@ -330,7 +328,7 @@ func agentColumnModel(t *testing.T, width int) tui.Model {
 
 func TestReviewShowsTheAgentColumnBesideTheDiff(t *testing.T) {
 	out := screen(agentColumnModel(t, 180))
-	for _, want := range []string{"Edit resolvers.ts", "Bash bun test", "Org scoping now comes", "Draft review → this session", "2 comments · 2 worktrees"} {
+	for _, want := range []string{"Edit resolvers.ts", "bun test", "Org scoping now comes", "Draft review → this session", "2 comments · 2 worktrees"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("no %q in the review:\n%s", want, out)
 		}

@@ -45,7 +45,7 @@ func TestRoundTripsEveryDomainType(t *testing.T) {
 	task := domain.Task{ID: "t1", Source: domain.TaskLinear, Ref: "#42", Text: "fix login", IssueTitle: "Login fails", PinnedName: "login"}
 	wt := domain.Worktree{ID: "w1", Repo: "api", Path: "/wt/api-42", Branch: "42-login", PR: &domain.PullRequest{Number: 7, Title: "fix login", URL: "https://example.com/pr/7"}, SubtaskSlug: "api"}
 	wtNoPR := domain.Worktree{ID: "w2", Repo: "web", Path: "/wt/web-42", Branch: "42-web"}
-	sess := domain.Session{ID: "s1", TaskID: "t1", Harness: domain.HarnessCodex, Model: "m", Effort: "high", State: domain.StatePermission, Unread: true, Focused: true, Muted: true, WorktreeIDs: []string{"w1", "w2"}, Usage: domain.Usage{ContextLeftPercent: 40, LimitUsedPercent: 12}}
+	sess := domain.Session{ID: "s1", TaskID: "t1", Harness: domain.HarnessCodex, Model: "m", Effort: "high", Transcript: "/home/dev/.codex/sessions/rollout-1.jsonl", State: domain.StatePermission, Unread: true, Focused: true, Muted: true, WorktreeIDs: []string{"w1", "w2"}, Usage: domain.Usage{ContextLeftPercent: 40, LimitUsedPercent: 12}}
 
 	s.PutWorkspace(ws)
 	s.PutTask(task)
@@ -421,5 +421,30 @@ func TestReviewASentDraftWithNoTurnStaysClosedAfterARestart(t *testing.T) {
 	}
 	if len(snap.Drafts) != 1 || snap.Drafts[0].AwaitsTurn() {
 		t.Errorf("drafts = %+v; a draft closed with no turn must not wait for one again", snap.Drafts)
+	}
+}
+
+func TestDevicesPersistAndRevokedOnesAreDeleted(t *testing.T) {
+	s, path := openTemp(t)
+	at := time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC)
+	phone := domain.Device{ID: "a2b3c4d5", Name: "phone", TokenHash: "abc123", Created: at, LastSeen: at.Add(time.Hour)}
+	ipad := domain.Device{ID: "z9y8x7w6", Name: "ipad", TokenHash: "def456", Created: at, LastSeen: at}
+	s.PutDevice(phone)
+	s.PutDevice(ipad)
+	s = reopen(t, s, path)
+	snap, err := s.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(snap.Devices, []domain.Device{phone, ipad}) {
+		t.Fatalf("devices %+v", snap.Devices)
+	}
+	s.DeleteDevice(phone.ID)
+	snap, err = reopen(t, s, path).Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(snap.Devices, []domain.Device{ipad}) {
+		t.Fatalf("after revoke %+v", snap.Devices)
 	}
 }

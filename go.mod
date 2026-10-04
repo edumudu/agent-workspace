@@ -12,6 +12,7 @@ require (
 	github.com/charmbracelet/x/exp/teatest/v2 v2.0.0-20260927004216-9c77d672503d
 	github.com/rogpeppe/go-internal v1.16.0
 	modernc.org/sqlite v1.60.1
+	rsc.io/qr v0.2.0
 )
 
 require (

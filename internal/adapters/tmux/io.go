@@ -9,7 +9,6 @@ import (
 	"github.com/giovaniif/agent-workspace/internal/app"
 )
 
-// why: a tmux buffer makes the text one paste, not keystrokes; without bracketedPaste, newlines become carriage returns, as Enter would send.
 func (h *Host) SendText(ctx context.Context, pane app.PaneID, text string, bracketedPaste bool) error {
 	buffer := fmt.Sprintf("agentws-%d-%d", os.Getpid(), h.bufferSeq.Add(1))
 	if _, err := h.run(ctx, text, "load-buffer", "-b", buffer, "-"); err != nil {

@@ -17,8 +17,6 @@ type PRFinder interface {
 	PRs(ctx context.Context, repos []string) (map[string][]domain.PullRequest, error)
 }
 
-// why: a dir git cannot read is skipped, so its repo's worktrees are never
-// taken as removed.
 func ScanWorktrees(ctx context.Context, lister WorktreeLister, dirs []string) []domain.RepoListing {
 	listings := make([]*domain.RepoListing, len(dirs))
 	var wg sync.WaitGroup

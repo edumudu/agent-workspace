@@ -1,0 +1,6 @@
+# yaml-language-server: $schema=https://example.com/schema.json
+a: "b # c"
+# a comment
+d: e # trailing
+f: g#h
+run: echo '#x'

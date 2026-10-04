@@ -17,8 +17,6 @@ type seg struct {
 	bold bool
 }
 
-// why: caches one style per color pair, so a frame of highlighted code builds
-// no styles.
 type painter struct {
 	theme  Theme
 	styles map[[2]string]lipgloss.Style
@@ -119,7 +117,6 @@ func (m Model) reviewView() string {
 		for i := range right {
 			right[i] = agent[i] + sep + right[i]
 		}
-		// why: the key hints run under the agent column too, so a narrower review cuts none of them.
 		footerWidth += w + 1
 	}
 	right = append(right, m.reviewFooter(footerWidth))
@@ -255,7 +252,6 @@ func (m Model) scopeChips() (labels []string, active int) {
 	return labels, active
 }
 
-// why: ids[0] is "" for all worktrees, matching labels[0].
 func (m Model) worktreeChips() (labels, ids []string, active int) {
 	labels, ids = []string{"all"}, []string{""}
 	for _, e := range m.entries {
@@ -321,7 +317,6 @@ func statusColor(t Theme, s domain.FileStatus) string {
 	return t.Peach
 }
 
-// why: the second slice holds the file index each row shows, or -1.
 func (m Model) treeLines(width, height int) ([]string, []int) {
 	t := m.opts.Theme
 	p := m.paint

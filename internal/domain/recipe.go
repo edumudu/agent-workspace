@@ -22,7 +22,6 @@ type Recipe struct {
 	Deps DepsMode
 }
 
-// why: so a recipe cannot write or read outside the checkout.
 func (r Recipe) Validate() error {
 	for _, p := range r.Copy {
 		if err := checkRecipePath(p); err != nil {
@@ -104,8 +103,6 @@ const (
 	reasonNoLockfile = "no known lockfile in the worktree, nothing to install from"
 )
 
-// why: a clone is only safe when the worktree's lockfile is the one main was
-// installed from, so any difference falls back to a real install.
 func PlanDeps(mode DepsMode, in DepsInput) DepsPlan {
 	switch mode {
 	case DepsInstall:

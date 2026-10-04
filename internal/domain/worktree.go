@@ -118,8 +118,6 @@ func namedBy(path, branch string, claims []WorktreeClaim) string {
 	return id
 }
 
-// why: a scan that runs while `git worktree add` does sees the worktree
-// before the PostToolUse hook that claims it.
 func ReclaimWorktrees(known []Worktree, claims []WorktreeClaim, now time.Time) []Worktree {
 	var recent []WorktreeClaim
 	for _, c := range claims {

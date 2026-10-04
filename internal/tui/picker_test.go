@@ -120,10 +120,14 @@ func TestModelSwitchSidebarShowsPendingAndWarning(t *testing.T) {
 	st := fixture(2, 0)
 	st.Sessions[0].Switches = []domain.Switch{{Kind: domain.SwitchModel, Value: "sonnet"}}
 	st.Sessions[1].SwitchWarning = true
-	out := screen(switchModel(&st, &fakeSwitcher{}))
+	m := switchModel(&st, &fakeSwitcher{})
+	out := screen(m)
 	var pending, warned bool
 	for _, line := range strings.Split(out, "\n") {
 		pending = pending || strings.Contains(line, "opus-5.5") && strings.Contains(line, "→ sonnet")
+	}
+	out = screen(press(m, "j"))
+	for _, line := range strings.Split(out, "\n") {
 		warned = warned || strings.Contains(line, "gpt-6") && strings.Contains(line, "!")
 	}
 	if !pending || !warned {

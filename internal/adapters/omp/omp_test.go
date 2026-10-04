@@ -229,8 +229,6 @@ await new Promise(r => setTimeout(r, 300));
 console.log(calls.map(c => c[0]).join(","));
 `
 
-// why: proves the generated file loads and sends what the daemon reads; it
-// needs bun, which omp itself runs on.
 func TestHookFileSendsTheEventsUnderBun(t *testing.T) {
 	bun, err := exec.LookPath("bun")
 	if err != nil {

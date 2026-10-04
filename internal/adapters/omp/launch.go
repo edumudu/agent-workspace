@@ -16,7 +16,6 @@ func (a Adapter) Launch(req app.LaunchRequest) app.PaneSpec {
 	if a.Binary == "" {
 		command[0] = "omp"
 	}
-	// why: a bare --resume opens omp's session picker instead of a session.
 	if req.Resume != "" {
 		command = append(command, "--resume", req.Resume)
 	}
@@ -27,7 +26,6 @@ func (a Adapter) Launch(req app.LaunchRequest) app.PaneSpec {
 		command = append(command, "--thinking", req.Effort)
 	}
 	if req.Prompt != "" {
-		// why: the separator keeps a prompt that starts with "-" from parsing as a flag.
 		command = append(command, "--", req.Prompt)
 	}
 	return app.PaneSpec{Name: req.Name, Dir: req.Dir, Command: command}

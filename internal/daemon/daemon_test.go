@@ -23,7 +23,6 @@ import (
 
 func shortDir(t *testing.T) string {
 	t.Helper()
-	// why: macOS caps Unix socket paths at 104 bytes, and t.TempDir() can exceed it.
 	dir, err := os.MkdirTemp("/tmp", "agentws-d")
 	if err != nil {
 		t.Fatal(err)
@@ -354,8 +353,6 @@ func TestOnlyOneDaemonHoldsTheLock(t *testing.T) {
 	_ = again.Release()
 }
 
-// why: rpc.Connect hides an early Run error behind its 2 s start timeout;
-// Run is in-process here, so wait until it serves or say why it returned.
 func waitServing(t *testing.T, home string, done <-chan error) *rpc.Client {
 	t.Helper()
 	for {
@@ -437,6 +434,32 @@ func TestCodexHookReportsModelAtOnceAndEffortAndUsageFromTheRollout(t *testing.T
 	if second.Session == nil || second.Session.State != domain.StateDone || second.Session.Effort != "medium" ||
 		second.Session.Usage != (domain.Usage{ContextLeftPercent: 56, HasContext: true, LimitUsedPercent: 41}) {
 		t.Fatalf("second diff %+v", second.Session)
+	}
+}
+
+func TestHookTranscriptPathSetsTheSessionTranscriptAndALaterOneReplacesIt(t *testing.T) {
+	d, path := start(t, &memStore{})
+	c := dial(t, path)
+	ctx := context.Background()
+	sub, err := c.Subscribe(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	d.Post(daemon.SessionChanged{Session: domain.Session{ID: "a", Harness: domain.HarnessClaude, Pane: "%3", State: domain.StateIdle}})
+	next(t, sub.Diffs)
+	for _, step := range []struct{ event, payload, want string }{
+		{"SessionStart", `{"session_id":"s1","transcript_path":"/home/dev/.claude/projects/api/s1.jsonl"}`, "/home/dev/.claude/projects/api/s1.jsonl"},
+		{"UserPromptSubmit", `{"session_id":"s1"}`, "/home/dev/.claude/projects/api/s1.jsonl"},
+		{"SessionStart", `{"session_id":"s2","transcript_path":"/home/dev/.claude/projects/api/s2.jsonl"}`, "/home/dev/.claude/projects/api/s2.jsonl"},
+	} {
+		hook := rpc.Hook{Harness: "claude", Event: step.event, Pane: "%3", At: time.Now(), Payload: json.RawMessage(step.payload)}
+		if err := c.Call(ctx, rpc.MethodHook, hook, nil); err != nil {
+			t.Fatal(err)
+		}
+		diff := next(t, sub.Diffs)
+		if diff.Session == nil || diff.Session.Transcript != step.want {
+			t.Fatalf("after %s: diff %+v, want transcript %q", step.event, diff.Session, step.want)
+		}
 	}
 }
 

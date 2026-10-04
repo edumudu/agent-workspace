@@ -15,7 +15,6 @@ import (
 
 var binDir string
 
-// why: bounds every poll in the scripts; waits never sleep a fixed time.
 const waitWithin = 15 * time.Second
 
 func TestMain(m *testing.M) {
@@ -60,12 +59,10 @@ func setup(env *testscript.Env, fakes string) error {
 	env.Setenv("AGENTWS_E2E_FAKES", fakes)
 	env.Setenv("AGENTWS_E2E_BARE_PATH", barePath())
 	env.Setenv("PATH", binDir+sep+fakes+sep+env.Getenv("PATH"))
-	// why: macOS caps Unix socket paths at 104 bytes, so the home that holds agentws.sock must be short.
 	tmp, err := os.MkdirTemp("", "aws")
 	if err != nil {
 		return err
 	}
-	// why: git and the daemon report resolved paths, and macOS temp dirs sit behind the /var symlink.
 	home, err := filepath.EvalSymlinks(tmp)
 	if err != nil {
 		return err
@@ -100,7 +97,6 @@ func setup(env *testscript.Env, fakes string) error {
 		stop.Env = append(os.Environ(), "AGENTWS_HOME="+home)
 		_ = stop.Run()
 		_ = exec.Command("tmux", "-L", socket, "kill-server").Run()
-		// why: kill-server leaves the socket file behind.
 		dir := os.Getenv("TMUX_TMPDIR")
 		if dir == "" {
 			dir = "/tmp"
@@ -111,10 +107,6 @@ func setup(env *testscript.Env, fakes string) error {
 	return nil
 }
 
-// why: usage: eventually <regexp> <command> [args...] runs the command until
-// its stdout matches, failing after waitWithin; `! eventually` runs it until its
-// stdout no longer matches. The last run's stdout stays for the commands that
-// follow.
 func eventually(ts *testscript.TestScript, neg bool, args []string) {
 	if len(args) < 2 {
 		ts.Fatalf("usage: [!] eventually <regexp> <command> [args...]")
@@ -139,8 +131,6 @@ func eventually(ts *testscript.TestScript, neg bool, args []string) {
 	}
 }
 
-// why: usage: capture <var> <regexp> sets var to the regexp's first group in
-// the last stdout.
 func capture(ts *testscript.TestScript, neg bool, args []string) {
 	if neg || len(args) != 2 {
 		ts.Fatalf("usage: capture <var> <regexp>")
@@ -154,9 +144,6 @@ func capture(ts *testscript.TestScript, neg bool, args []string) {
 	ts.Setenv(args[0], m[1])
 }
 
-// why: usage: repo <name> makes $WORK/<name>, a clone of a local bare origin
-// whose origin URL then points at github.com/o/<name>, so the gh adapter can
-// name it while origin/main stays a local ref.
 func repo(ts *testscript.TestScript, neg bool, args []string) {
 	if neg || len(args) != 1 {
 		ts.Fatalf("usage: repo <name>")
@@ -182,8 +169,6 @@ func repo(ts *testscript.TestScript, neg bool, args []string) {
 	}
 }
 
-// why: a PATH with agentws and only what git and tmux need, standing in for
-// the bare one a daemon gets over a non-interactive ssh.
 func barePath() string {
 	dirs := []string{binDir}
 	for _, tool := range []string{"git", "tmux"} {
@@ -195,8 +180,6 @@ func barePath() string {
 	return strings.Join(dirs, string(os.PathListSeparator))
 }
 
-// why: [barepath] is false when a real claude or codex sits on the bare PATH,
-// since a script would then launch it instead of the fake.
 func condition(cond string) (bool, error) {
 	if cond != "barepath" {
 		return false, fmt.Errorf("unknown condition %q", cond)

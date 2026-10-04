@@ -22,10 +22,9 @@ type picker struct {
 	kind      domain.SwitchKind
 	choices   []string
 	cursor    int
-	// why: a harness with no model list takes the id typed here instead.
-	typed bool
-	text  string
-	query string
+	typed     bool
+	text      string
+	query     string
 }
 
 func (m Model) openPicker(kind domain.SwitchKind) Model {

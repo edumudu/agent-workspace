@@ -27,8 +27,6 @@ func (q Quota) Age(now time.Time) time.Duration { return max(now.Sub(q.ReportedA
 
 func (q Quota) Stale(now time.Time) bool { return q.Age(now) > StaleQuotaAfter }
 
-// why: accounts are shared by every session of a harness, so the newest
-// report is the best guess.
 func Quotas(sessions []Session) []Quota {
 	type key struct {
 		harness Harness
@@ -67,8 +65,6 @@ func Quotas(sessions []Session) []Quota {
 	return out
 }
 
-// why: a window whose reset has passed is over, and Claude Code stops
-// reporting it then too.
 func Current(quotas []Quota, now time.Time) []Quota {
 	out := make([]Quota, 0, len(quotas))
 	for _, q := range quotas {

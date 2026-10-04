@@ -6,8 +6,6 @@ import (
 	"time"
 )
 
-// why: a worktree an agent just created from the default branch must not be
-// taken as merged.
 const CleanupGrace = 4 * time.Hour
 
 type CleanupAction string
@@ -25,8 +23,7 @@ type CleanupFacts struct {
 	Holders      []string
 	SessionLive  bool
 	LastActivity time.Time
-	// why: a non-empty Unknown keeps the worktree.
-	Unknown string
+	Unknown      string
 }
 
 type CleanupDecision struct {
@@ -36,9 +33,6 @@ type CleanupDecision struct {
 	BackupBranch string
 }
 
-// why: anything in use, live or recent is kept before merge state is even
-// looked at; a merged but dirty worktree, or a detached one with commits of
-// its own, is backed up and left for the user.
 func PlanCleanup(w Worktree, f CleanupFacts, now time.Time) CleanupDecision {
 	d := CleanupDecision{Worktree: w, Action: CleanupKeep}
 	prMerged := w.PR != nil && w.PR.State == PRMerged

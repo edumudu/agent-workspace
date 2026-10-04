@@ -27,7 +27,6 @@ func (Worktrees) CleanupFacts(ctx context.Context, w domain.Worktree) (app.Workt
 	branch, changed := parseStatus(status)
 	h := sha256.New()
 	h.Write(status)
-	// why: status alone stays the same across a second edit of an already modified file.
 	if changed > 0 {
 		diff, err := output(ctx, w.Path, "diff", "HEAD", "--binary")
 		if err != nil {
@@ -59,7 +58,6 @@ func defaultBranch(ctx context.Context, dir string) (string, bool) {
 	return "", false
 }
 
-// why: the index and HEAD files move on every checkout, commit and add.
 func modifiedAt(ctx context.Context, dir string) time.Time {
 	out, err := output(ctx, dir, "rev-parse", "--absolute-git-dir")
 	if err != nil {
@@ -93,7 +91,6 @@ func (Worktrees) Backup(ctx context.Context, w domain.Worktree, dir string) erro
 	if len(untracked) > 0 {
 		tar := exec.CommandContext(ctx, "tar", "-cf", filepath.Join(dir, "untracked.tar"), "--null", "-T", "-")
 		tar.Dir = w.Path
-		// why: macOS tar otherwise adds ._ AppleDouble entries for extended attributes.
 		tar.Env = append(os.Environ(), "COPYFILE_DISABLE=1")
 		tar.Stdin = bytes.NewReader(untracked)
 		if out, err := tar.CombinedOutput(); err != nil {
@@ -108,7 +105,6 @@ func (Worktrees) Backup(ctx context.Context, w domain.Worktree, dir string) erro
 	return os.WriteFile(filepath.Join(dir, "status.txt"), append([]byte(head), status...), 0o600)
 }
 
-// why: `git branch` without -f refuses to move a branch that exists.
 func (Worktrees) CreateBranch(ctx context.Context, w domain.Worktree, name string) (string, error) {
 	for i := 1; i <= 100; i++ {
 		try := name

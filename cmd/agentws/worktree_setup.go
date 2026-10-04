@@ -14,8 +14,6 @@ import (
 
 const worktreeSetupUsage = "usage: agentws setup-worktree <path>"
 
-// why: runs in-process, not through the daemon: copies and installs are slow
-// work that belongs to no hot path.
 func runSetupWorktree(args []string, stdout, stderr io.Writer) int {
 	if len(args) != 1 {
 		fmt.Fprintln(stderr, worktreeSetupUsage)
@@ -45,8 +43,6 @@ func runSetupWorktree(args []string, stdout, stderr io.Writer) int {
 	return 0
 }
 
-// why: symlinks are resolved so the path compares equal to the real paths git
-// reports.
 func resolveDir(path string) (string, error) {
 	abs, err := filepath.Abs(path)
 	if err != nil {

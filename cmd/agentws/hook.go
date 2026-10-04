@@ -16,12 +16,8 @@ import (
 	"github.com/giovaniif/agent-workspace/internal/rpc"
 )
 
-// why: the agent waits on the hook, so a slow or dead daemon must never hold
-// it longer than this.
 const hookTimeout = 50 * time.Millisecond
 
-// why: always exits 0, since a failing hook would surface as an error in the
-// agent. Failures go to home/hook.log instead.
 func runHook(args []string, stdin io.Reader, stdout io.Writer, home, pane string) int {
 	if err := hook1(args, stdin, stdout, home, pane); err != nil {
 		logHook(home, err)

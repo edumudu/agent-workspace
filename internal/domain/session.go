@@ -57,6 +57,7 @@ type Session struct {
 	Muted         bool
 	WorktreeIDs   []string
 	ResumeID      string
+	Transcript    string
 	Dir           string
 	Usage         Usage
 	Limits        []RateLimit
@@ -65,8 +66,6 @@ type Session struct {
 	SwitchWarning bool
 }
 
-// why: hooks arrive out of order, so events that no longer fit the current
-// state, such as a PreToolUse delivered after Stop, are ignored.
 func (s Session) Apply(ev HarnessEvent) (Session, []Effect) {
 	switch ev.Kind {
 	case EventSessionStart, EventSessionEnd:

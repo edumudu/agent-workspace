@@ -1,0 +1,184 @@
+[
+  {
+    "ID": "00000000-0000-4000-8000-000000000001",
+    "Cursor": 984,
+    "Turn": "a0000000-0000-4000-8000-000000000001",
+    "Role": "user",
+    "Text": "fix the failing login test in api for #42",
+    "Tool": null,
+    "At": "2026-09-29T10:00:01.053Z"
+  },
+  {
+    "ID": "00000000-0000-4000-8000-000000000004",
+    "Cursor": 2983,
+    "Turn": "a0000000-0000-4000-8000-000000000001",
+    "Role": "assistant",
+    "Text": "Let me read the test first.",
+    "Tool": null,
+    "At": "2026-09-29T10:00:04.212Z"
+  },
+  {
+    "ID": "toolu_read",
+    "Cursor": 3784,
+    "Turn": "a0000000-0000-4000-8000-000000000001",
+    "Role": "tool",
+    "Text": "1\tpackage auth\n2\n3\tfunc TestLogin(t *testing.T) {",
+    "Tool": {
+      "Name": "Read",
+      "Summary": "Read internal/auth/login_test.go",
+      "Status": "done"
+    },
+    "At": "2026-09-29T10:00:05.265Z"
+  },
+  {
+    "ID": "toolu_edit",
+    "Cursor": 5369,
+    "Turn": "a0000000-0000-4000-8000-000000000001",
+    "Role": "tool",
+    "Text": "The file /work/api/internal/auth/login.go has been updated successfully.",
+    "Tool": {
+      "Name": "Edit",
+      "Summary": "Edit internal/auth/login.go",
+      "Status": "done"
+    },
+    "At": "2026-09-29T10:00:07.371Z"
+  },
+  {
+    "ID": "toolu_test1",
+    "Cursor": 6920,
+    "Turn": "a0000000-0000-4000-8000-000000000001",
+    "Role": "tool",
+    "Text": "Exit code 1\n--- FAIL: TestSession (0.00s)\nFAIL",
+    "Tool": {
+      "Name": "Bash",
+      "Summary": "Bash go test ./...",
+      "Status": "failed"
+    },
+    "At": "2026-09-29T10:00:09.477Z"
+  },
+  {
+    "ID": "toolu_test2",
+    "Cursor": 8448,
+    "Turn": "a0000000-0000-4000-8000-000000000001",
+    "Role": "tool",
+    "Text": "ok  \tapi/internal/auth\t0.012s",
+    "Tool": {
+      "Name": "Bash",
+      "Summary": "Bash go test ./internal/auth/",
+      "Status": "done"
+    },
+    "At": "2026-09-29T10:00:11.583Z"
+  },
+  {
+    "ID": "00000000-0000-4000-8000-000000000013",
+    "Cursor": 9901,
+    "Turn": "a0000000-0000-4000-8000-000000000001",
+    "Role": "assistant",
+    "Text": "The login test passes now. `TestSession` fails on main too, so I left it.",
+    "Tool": null,
+    "At": "2026-09-29T10:00:13.689Z"
+  },
+  {
+    "ID": "00000000-0000-4000-8000-000000000017",
+    "Cursor": 11900,
+    "Turn": "a0000000-0000-4000-8000-000000000001",
+    "Role": "system",
+    "Text": "/model",
+    "Tool": null,
+    "At": "2026-09-29T10:00:17.901Z"
+  },
+  {
+    "ID": "00000000-0000-4000-8000-000000000018",
+    "Cursor": 12381,
+    "Turn": "a0000000-0000-4000-8000-000000000001",
+    "Role": "system",
+    "Text": "Kept model as Opus 5",
+    "Tool": null,
+    "At": "2026-09-29T10:00:18.954Z"
+  },
+  {
+    "ID": "00000000-0000-4000-8000-000000000019",
+    "Cursor": 12827,
+    "Turn": "a0000000-0000-4000-8000-000000000001",
+    "Role": "system",
+    "Text": "Unknown command: /doctr. Did you mean /doctor?",
+    "Tool": null,
+    "At": "2026-09-29T10:00:19.007Z"
+  },
+  {
+    "ID": "00000000-0000-4000-8000-000000000020",
+    "Cursor": 13522,
+    "Turn": "a0000000-0000-4000-8000-000000000002",
+    "Role": "user",
+    "Text": "now check the web build",
+    "Tool": null,
+    "At": "2026-09-29T10:00:20.06Z"
+  },
+  {
+    "ID": "toolu_grep",
+    "Cursor": 14798,
+    "Turn": "a0000000-0000-4000-8000-000000000002",
+    "Role": "tool",
+    "Text": "The user doesn't want to proceed with this tool use. The tool use was rejected.",
+    "Tool": {
+      "Name": "Grep",
+      "Summary": "Grep buildWeb",
+      "Status": "failed"
+    },
+    "At": "2026-09-29T10:00:22.166Z"
+  },
+  {
+    "ID": "00000000-0000-4000-8000-000000000024",
+    "Cursor": 15908,
+    "Turn": "a0000000-0000-4000-8000-000000000002",
+    "Role": "system",
+    "Text": "Interrupted",
+    "Tool": null,
+    "At": "2026-09-29T10:00:24.272Z"
+  },
+  {
+    "ID": "00000000-0000-4000-8000-000000000026",
+    "Cursor": 17101,
+    "Turn": "a0000000-0000-4000-8000-000000000004",
+    "Role": "user",
+    "Text": "! git status",
+    "Tool": null,
+    "At": "2026-09-29T10:00:26.378Z"
+  },
+  {
+    "ID": "00000000-0000-4000-8000-000000000027",
+    "Cursor": 17538,
+    "Turn": "a0000000-0000-4000-8000-000000000004",
+    "Role": "system",
+    "Text": "On branch 42-login",
+    "Tool": null,
+    "At": "2026-09-29T10:00:27.431Z"
+  },
+  {
+    "ID": "00000000-0000-4000-8000-000000000029",
+    "Cursor": 18548,
+    "Turn": "a0000000-0000-4000-8000-000000000004",
+    "Role": "system",
+    "Text": "Conversation compacted",
+    "Tool": null,
+    "At": "2026-09-29T10:00:29.537Z"
+  },
+  {
+    "ID": "00000000-0000-4000-8000-000000000031",
+    "Cursor": 19759,
+    "Turn": "a0000000-0000-4000-8000-000000000004",
+    "Role": "assistant",
+    "Text": "Ready.",
+    "Tool": null,
+    "At": "2026-09-29T10:00:31.643Z"
+  },
+  {
+    "ID": "00000000-0000-4000-8000-000000000031:1",
+    "Cursor": 19759,
+    "Turn": "a0000000-0000-4000-8000-000000000004",
+    "Role": "assistant",
+    "Text": "What next?",
+    "Tool": null,
+    "At": "2026-09-29T10:00:31.643Z"
+  }
+]

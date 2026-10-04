@@ -1,5 +1,3 @@
-# why: omp names its own hooks; turn_end ends one model round, not the turn,
-# so only session_stop finishes it. Each gate holds the fake until the state shows.
 repo api
 exec agentws workspace add api
 exec agentws new --workspace api --harness omp --model sonnet 'add a thing'

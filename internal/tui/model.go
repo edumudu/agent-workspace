@@ -26,43 +26,29 @@ type Killer interface {
 }
 
 type Options struct {
-	Theme Theme
-	Now   func() time.Time
-	// why: zero turns the ticker off.
-	Tick  time.Duration
-	Focus Focuser
-	// why: nil turns off m and the seen marker on enter.
-	Attend Attender
-	// why: nil turns off K.
-	Kill     Killer
-	Defaults map[domain.Harness]Defaults
-	Fallback domain.FallbackConfig
-	// why: nil turns off n and x.
-	Calls Caller
-	// why: nil turns M and E off.
-	Switch Switcher
-	// why: nil turns off r.
-	Review Reviewer
-	// why: nil turns off w.
-	Disk Disker
-	// why: with no command, or when the popup fails, n opens the dialog inline.
+	Theme           Theme
+	Now             func() time.Time
+	Tick            time.Duration
+	Focus           Focuser
+	Attend          Attender
+	Kill            Killer
+	Defaults        map[domain.Harness]Defaults
+	Fallback        domain.FallbackConfig
+	Calls           Caller
+	Switch          Switcher
+	Review          Reviewer
+	Disk            Disker
 	DialogPopup     rpc.ClientPopupParams
 	HarnessDefaults map[domain.Harness]Defaults
-	// why: a harness whose spec lists no models, such as omp, cycles and completes from this catalog.
-	ModelChoices map[domain.Harness][]string
-	// why: the catalog is read from disk first; this replaces it after omp models returns, so the first frame does not wait.
-	RefreshModels tea.Cmd
-	// why: the popup's own program: the dialog fills the screen from the start and
-	// the program ends when it closes.
-	NewSessionOnly bool
-	LaunchDir      string
-	// why: nil turns the first-run walkthrough and S off, as in tests that are not about it.
-	Onboard Onboarder
-	// why: the setup popup's own program, like NewSessionOnly; it ends when the walkthrough does.
-	SetupOnly  bool
-	SetupPopup rpc.ClientPopupParams
-	// why: [ui] mouse = false; the zero value keeps the mouse on.
-	NoMouse bool
+	ModelChoices    map[domain.Harness][]string
+	RefreshModels   tea.Cmd
+	NewSessionOnly  bool
+	LaunchDir       string
+	Home            string
+	Onboard         Onboarder
+	SetupOnly       bool
+	SetupPopup      rpc.ClientPopupParams
+	NoMouse         bool
 }
 
 type Caller interface {
@@ -79,7 +65,6 @@ type ModelsMsg struct {
 	Choices map[domain.Harness][]string
 }
 
-// why: an empty field hides its slot.
 type TopBarMsg struct {
 	Claude string
 	Codex  string
@@ -114,6 +99,8 @@ type Model struct {
 	subagents  map[string][]domain.Subagent
 	entries    []entry
 	collapsed  map[string]bool
+	scroll     int
+	scrolled   bool
 
 	selected string
 	last     string
@@ -271,7 +258,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.mouse(msg)
 	case tea.PasteMsg:
 		if m.dialog != nil {
-			return m.dialogPaste(msg.Content), nil
+			return m.dialogPaste(msg.Content)
 		}
 		if m.launching != nil {
 			return m.launcherPaste(msg.Content), nil
@@ -281,7 +268,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	case sessionStartedMsg:
 		if m.opts.NewSessionOnly {
-			// why: the popup draws only the dialog, so it stays up until the program ends or shows why it cannot.
 			return m, m.showNewAndQuit(msg.session.ID)
 		}
 		if m.dialog != nil && m.dialog.seq == msg.seq {
@@ -300,6 +286,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			in.busy, in.err = false, msg.err.Error()
 			m.launching = &in
 		}
+	case dirsListedMsg:
+		return m.gotDirs(msg), nil
 	case startFailedMsg:
 		if m.dialog == nil || m.dialog.seq != msg.seq {
 			m.status = msg.err.Error()
@@ -378,8 +366,6 @@ func (m *Model) apply(d rpc.Diff) {
 		delete(m.events, d.RemovedSession)
 		delete(m.subagents, d.RemovedSession)
 	case d.Session != nil:
-		// why: a banner click or agentws focus shows a session without the sidebar, so the selection follows it;
-		// only the change to focused counts, so later updates to that session never undo j/k.
 		if d.Session.Focused && !m.sessions[d.Session.ID].Focused {
 			m.pending = d.Session.ID
 		}
@@ -441,7 +427,6 @@ func (m *Model) rebuild() {
 	if m.index(m.selected) < 0 {
 		m.selected = ""
 		if len(m.entries) > 0 {
-			// why: the daemon shows the next row once the one in view ends, so the selection follows it there.
 			m.selected = m.entries[min(max(was, 0), len(m.entries)-1)].session.ID
 		}
 	}
@@ -479,6 +464,7 @@ func (m *Model) choose(i int) {
 		return
 	}
 	m.last, m.selected = m.selected, id
+	m.scrolled = false
 }
 
 func (m Model) key(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {

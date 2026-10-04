@@ -13,11 +13,10 @@ import (
 const CoalesceWindow = 10 * time.Second
 
 type Banner struct {
-	Title string
-	Body  string
-	State AgentState
-	Sound string
-	// why: one banner per group is kept, so a session's newer banner replaces its older one.
+	Title    string
+	Body     string
+	State    AgentState
+	Sound    string
 	Group    string
 	Terminal string
 }
@@ -34,7 +33,6 @@ var bannerBody = map[AgentState]string{
 	StateDone:       "done",
 }
 
-// why: Events may hold every session's recent events; only Session's own count.
 type BannerInput struct {
 	Session   Session
 	Name      string
@@ -167,7 +165,6 @@ func elapsed(events []SessionEvent, now time.Time) string {
 	return strings.TrimSuffix(d.Truncate(time.Minute).String(), "0s")
 }
 
-// why: the suffix (elapsed time) survives the cut, so a long message never hides how long the turn took.
 func bannerLine(prefix, text, suffix string) string {
 	text = maskSecrets(firstLine(strings.TrimSpace(text)))
 	if text == "" {
@@ -177,7 +174,6 @@ func bannerLine(prefix, text, suffix string) string {
 	return prefix + cutRunes(text, room) + suffix
 }
 
-// why: compiled on first use, since package init runs on every hook.
 var secretPatterns = sync.OnceValue(func() [4]*regexp.Regexp {
 	return [4]*regexp.Regexp{
 		regexp.MustCompile(`(?i)\b([a-z0-9_]*(?:token|secret|password|passwd|api[_-]?key)[a-z0-9_]*)(\s*[=:]\s*)(?:"[^"]*"|'[^']*'|\S+)`),

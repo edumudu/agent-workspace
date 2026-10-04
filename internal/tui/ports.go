@@ -9,7 +9,6 @@ import (
 	"github.com/giovaniif/agent-workspace/internal/domain"
 )
 
-// why: covers the daemon's SIGTERM grace period and the SIGKILL that follows it.
 const killTimeout = 10 * time.Second
 
 type killPrompt struct {
@@ -40,6 +39,16 @@ func portLabel(ports []domain.Port) string {
 		parts[i] = fmt.Sprintf(":%d", n)
 	}
 	return strings.Join(parts, " ")
+}
+
+const rowPorts = 3
+
+func rowPortLabel(ports []domain.Port) string {
+	parts := strings.Fields(portLabel(ports))
+	if len(parts) <= rowPorts {
+		return strings.Join(parts, " ")
+	}
+	return strings.Join(parts[:rowPorts], " ") + fmt.Sprintf(" +%d", len(parts)-rowPorts)
 }
 
 func groupsOf(ports []domain.Port) []int {

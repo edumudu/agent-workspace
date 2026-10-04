@@ -1,6 +1,3 @@
-// why: one goroutine, the loop, owns the state: adapters Post events to it,
-// and connections send it queries. Nothing in the loop touches disk or runs
-// commands; the store only enqueues writes.
 package daemon
 
 import (
@@ -20,7 +17,6 @@ import (
 	"github.com/giovaniif/agent-workspace/internal/version"
 )
 
-// why: a connection further behind is dropped rather than stall the loop.
 const outBuffer = 1024
 
 type Event interface {
@@ -32,8 +28,6 @@ type TaskChanged struct{ Task domain.Task }
 type WorktreeChanged struct{ Worktree domain.Worktree }
 type SessionChanged struct{ Session domain.Session }
 
-// why: published as one diff so a subscriber never sees the session change
-// without the hook event that caused it.
 type SessionHooked struct {
 	Session domain.Session
 	Event   domain.SessionEvent
@@ -93,36 +87,38 @@ func (e SessionHooked) apply(s *state) rpc.Diff {
 }
 
 type state struct {
-	store      app.Store
-	seq        uint64
-	workspaces map[string]domain.Workspace
-	tasks      map[string]domain.Task
-	worktrees  map[string]domain.Worktree
-	sessions   map[string]domain.Session
-	events     map[string][]domain.SessionEvent
-	subagents  []domain.Subagent
-	subs       map[*conn]uint64
-	noticeSubs map[*conn]uint64
-	usage      map[string]*usageJob
-	attn       *attention
-	// why: set by New; state cannot reach the Daemon that owns it.
+	store        app.Store
+	seq          uint64
+	workspaces   map[string]domain.Workspace
+	tasks        map[string]domain.Task
+	worktrees    map[string]domain.Worktree
+	sessions     map[string]domain.Session
+	events       map[string][]domain.SessionEvent
+	subagents    []domain.Subagent
+	subs         map[*conn]uint64
+	noticeSubs   map[*conn]uint64
+	usage        map[string]*usageJob
+	attn         *attention
 	requestUsage func(sessionID, path string, force bool)
 	sendSwitches func(session domain.Session, sws []domain.Switch)
 	hints        worktreeHints
 	listeners    []domain.Listener
-	// why: must not block.
-	requestTurn func(session string, dirs []string, sent *domain.ReviewDraft) bool
-	viewed      map[string]domain.ViewedMark
-	// why: neither queue nor launched is persisted.
-	queue    []domain.LaunchItem
-	launched map[string]bool
-	// why: must not block.
+	requestTurn  func(session string, dirs []string, sent *domain.ReviewDraft) bool
+	viewed       map[string]domain.ViewedMark
+	queue        []domain.LaunchItem
+	launched     map[string]bool
 	kickLauncher func()
 	scopes       map[string]domain.ReviewScope
 	drafts       map[string]domain.ReviewDraft
 	awaiting     map[string]domain.ReviewDraft
 	pasting      map[string]bool
 	sendDraft    func(session domain.Session, draft domain.ReviewDraft, prompt string)
+	sends        []domain.QueuedSend
+	inFlight     map[string]sendFlight
+	booting      map[string]bool
+	pasteSend    func(session domain.Session, q domain.QueuedSend)
+	pairing      domain.Pairing
+	devices      map[string]domain.Device
 }
 
 type Daemon struct {
@@ -170,6 +166,12 @@ func New(store app.Store, pid int, opts ...Option) (*Daemon, error) {
 		drafts:     map[string]domain.ReviewDraft{},
 		awaiting:   map[string]domain.ReviewDraft{},
 		pasting:    map[string]bool{},
+		inFlight:   map[string]sendFlight{},
+		booting:    map[string]bool{},
+		devices:    map[string]domain.Device{},
+	}
+	for _, dev := range snap.Devices {
+		st.devices[dev.ID] = dev
 	}
 	for _, dr := range snap.Drafts {
 		switch {
@@ -192,7 +194,6 @@ func New(store app.Store, pid int, opts ...Option) (*Daemon, error) {
 		st.worktrees[w.ID] = w
 	}
 	for _, x := range snap.Sessions {
-		// why: nobody is looking at a session across a daemon restart, and a stale flag would hide its banners.
 		st.sessions[x.ID] = x.Blur()
 	}
 	for _, ev := range snap.Events {
@@ -216,6 +217,7 @@ func New(store app.Store, pid int, opts ...Option) (*Daemon, error) {
 	st.requestUsage = func(sessionID, path string, force bool) { d.requestUsage(st, sessionID, path, force) }
 	st.sendSwitches = d.sendSwitches
 	st.sendDraft = d.sendDraft
+	st.pasteSend = d.pasteSend
 	for _, o := range opts {
 		o(d)
 	}
@@ -323,6 +325,9 @@ func (s *state) emit(e Event) {
 			delete(s.subs, c)
 		}
 	}
+	if changed, ok := e.(SessionChanged); ok && changed.Session.Ended {
+		s.dropSends(changed.Session.ID)
+	}
 }
 
 func (s *state) hook(h rpc.Hook, now time.Time) {
@@ -338,6 +343,9 @@ func (s *state) hook(h rpc.Hook, now time.Time) {
 	next, effects := session.Apply(domain.HarnessEvent{Kind: kind})
 	if id := domain.ResumeIDFromHook(h.Payload); id != "" {
 		next.ResumeID = id
+	}
+	if p := domain.TranscriptFromHook(h.Payload); p != "" {
+		next.Transcript = p
 	}
 	at := h.At
 	if at.IsZero() {
@@ -359,7 +367,12 @@ func (s *state) hook(h rpc.Hook, now time.Time) {
 	}
 	s.announce(next, effects)
 	s.sendSwitches(next, toSend)
+	if kind == domain.EventSessionStart || kind == domain.EventUserPromptSubmit {
+		delete(s.booting, session.ID)
+	}
+	s.settleSend(session.ID)
 	s.dispatchDraft(next)
+	s.dispatchSend(next)
 	if kind == domain.EventUserPromptSubmit {
 		s.promptSubmitted(session.ID)
 	}
@@ -383,7 +396,6 @@ func (s *state) trackSubagents(sessionID string, kind domain.HarnessEventKind, a
 	}
 }
 
-// why: returns once e has taken effect, so a query issued afterwards sees it.
 func (d *Daemon) commit(e Event) bool {
 	return d.query(func(s *state) { s.emit(e) })
 }
@@ -410,7 +422,6 @@ func (d *Daemon) handle(c *conn) {
 	}
 }
 
-// why: a nil response means the loop already replied, as subscribe does.
 func (d *Daemon) dispatch(c *conn, line []byte) (*rpc.Response, bool) {
 	var req rpc.Request
 	if err := json.Unmarshal(line, &req); err != nil {
@@ -475,11 +486,17 @@ func (d *Daemon) dispatch(c *conn, line []byte) (*rpc.Response, bool) {
 		return d.resumeSession(req)
 	case rpc.MethodLauncherEnqueue, rpc.MethodLauncherDrop, rpc.MethodLauncherRetarget:
 		return d.launcherMethod(req)
+	case rpc.MethodSessionSend, rpc.MethodSessionUnsend, rpc.MethodSessionInterrupt:
+		return d.sessionInput(req)
+	case rpc.MethodSessionPrompt:
+		return d.sessionPrompt(req)
+	case rpc.MethodSessionAnswer:
+		return d.sessionAnswer(req)
 	case rpc.MethodSwitch:
 		return d.switchSession(req)
 	case rpc.MethodSessionRename, rpc.MethodSessionUnpin:
 		return d.pinName(req)
-	case rpc.MethodWorkspaceAdd, rpc.MethodWorkspaceList, rpc.MethodWorkspaceRemove:
+	case rpc.MethodWorkspaceAdd, rpc.MethodWorkspaceList, rpc.MethodWorkspaceRemove, rpc.MethodWorkspaceDirs:
 		if resp, ok, handled := d.workspaceMethod(req); handled {
 			return resp, ok
 		}
@@ -515,6 +532,8 @@ func (d *Daemon) dispatch(c *conn, line []byte) (*rpc.Response, bool) {
 		return d.diskView(req)
 	case rpc.MethodCleanupWorktree:
 		return d.cleanupWorktree(req)
+	case rpc.MethodPairCode, rpc.MethodPairRedeem, rpc.MethodDeviceCheck, rpc.MethodDeviceList, rpc.MethodDeviceRevoke:
+		return d.pairMethod(req)
 	default:
 		return errorResponse(req.ID, rpc.CodeUnknownMethod, "unknown method "+req.Method), true
 	}
@@ -531,6 +550,7 @@ func (s *state) snapshot() rpc.State {
 		Subagents:  append([]domain.Subagent{}, s.subagents...),
 		Queue:      append([]domain.LaunchItem{}, s.queue...),
 		Drafts:     s.draftList(),
+		Sends:      append([]domain.QueuedSend{}, s.sends...),
 	}
 }
 
@@ -616,8 +636,6 @@ func (c *conn) write() {
 	}
 }
 
-// why: omp's hook file sends the live model and thinking level, the only
-// report that can confirm a switch; its session file is never read.
 func ompReport(payload []byte, at time.Time) domain.StatusReport {
 	var p struct {
 		Model  string `json:"model"`
@@ -627,7 +645,6 @@ func ompReport(payload []byte, at time.Time) domain.StatusReport {
 	return domain.StatusReport{Model: p.Model, Effort: p.Effort, At: at}
 }
 
-// why: the rollout has the effort and usage the hook lacks.
 func (s *state) codexObservation(h rpc.Hook, kind domain.HarnessEventKind, before, next domain.Session) domain.Session {
 	obs, err := codex.ParseHook(h.Event, h.Payload)
 	if err != nil {

@@ -30,7 +30,6 @@ type statusInput struct {
 	} `json:"rate_limits"`
 }
 
-// why: every key under rate_limits is a window, so per-model windows such as seven_day_opus come through without a code change.
 func ParseStatus(b []byte) (domain.StatusReport, error) {
 	var in statusInput
 	if err := json.Unmarshal(b, &in); err != nil {
@@ -56,7 +55,6 @@ func ParseStatus(b []byte) (domain.StatusReport, error) {
 
 func percent(p float64) int { return int(math.Round(p)) }
 
-// why: matches how Codex ids read: "claude-opus-5-5" is "opus-5.5"; a date suffix and a context tag such as "[1m]" are dropped.
 func shortModel(id, display string) string {
 	id, _, _ = strings.Cut(id, "[")
 	id = strings.TrimPrefix(id, "claude-")
@@ -144,7 +142,6 @@ func unsafeInShell(r rune) bool {
 	return !safe
 }
 
-// why: not a general shell parser; it only reverses shellQuote.
 func unquote(s string) string {
 	if len(s) < 2 || s[0] != '\'' || s[len(s)-1] != '\'' {
 		return s

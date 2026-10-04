@@ -59,7 +59,6 @@ func Setup(cfg SetupConfig) (SetupResult, error) {
 	return SetupResult{Changed: true, File: file}, nil
 }
 
-// why: it asks whether Setup would change nothing, so it can never disagree with what Setup does.
 func Installed(cfg SetupConfig) (bool, error) {
 	file := HookFile(cfg.Dir)
 	current, exists, err := readOwned(file)
@@ -101,7 +100,6 @@ func readOwned(file string) ([]byte, bool, error) {
 	return b, err == nil, err
 }
 
-// why: omp loads every file in hooks/post at startup, so it must never see a half-written one.
 func writeAtomic(file string, content []byte) error {
 	dir := filepath.Dir(file)
 	if err := os.MkdirAll(dir, 0o755); err != nil {

@@ -17,7 +17,6 @@ const newUsage = "usage: agentws new [--workspace path] [--harness claude|codex|
 
 var errNoWorkItem = errors.New("no work item")
 
-// why: an empty workspace means the last used one.
 func parseNewArgs(args []string, stderr io.Writer) (rpc.NewSessionParams, error) {
 	fs := flag.NewFlagSet("new", flag.ContinueOnError)
 	fs.SetOutput(stderr)

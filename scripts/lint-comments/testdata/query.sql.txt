@@ -1,0 +1,7 @@
+-- a comment
+CREATE TABLE t (a TEXT DEFAULT '--'); -- trailing
+SELECT '/* string */', "/* identifier */", 'it''s -- quoted';
+/* block comment */
+SELECT 1 /* inline
+spanning */;
+SELECT `a--b`, [a/*b*/] FROM t;

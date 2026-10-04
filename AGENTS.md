@@ -59,7 +59,7 @@ Claude Code and Codex load an `AGENTS.md` (here also `CLAUDE.md`, a symlink to i
 ## Tests: TDD, enforced by CI
 
 - **Test first, always:** write the failing test, see it fail, then write the code. Never add a test after the behavior already exists.
-- **Commit order proves it:** the test commit comes before the implementation commit. CI's `tdd` job runs the PR's new and changed tests against the base branch. They must fail there (a compile error counts as failing). A PR whose new tests pass on base fails the check. The check is per package: if any package with an added or changed `*_test.go` passes on base, the job fails, so keep test-only refactors in their own PR.
+- **Commit order proves it:** the test commit comes before the implementation commit. CI's `tdd` job fails a PR with any non-merge commit that changes both tests and production code (`refactor:` and `refactor(scope):` commits and Markdown files are exempt; see ADR 0043). It also runs the PR's new and changed tests against the base branch. They must fail there (a compile error counts as failing). A PR whose new tests pass on base fails the check. The check is per package: if any package with an added or changed `*_test.go` passes on base, the job fails, so keep test-only refactors in their own PR.
 - **Test-only PRs titled `test:` are exempt:** deflakes and test refactors pass the `tdd` job when the title starts with `test:` and every changed file is a `*_test.go` file, under a `testdata/` dir, or under `test/`. If such a PR also touches any other file, the exemption is off, the job lists those files, and the normal rule applies. CI passes the title in `TDD_PR_TITLE`. See ADR 0033.
 - **Protect the core concepts:** the domain state machine, naming, cleanup decisions, discovery, review scopes and the prompt format. Test through public behavior: inputs and outputs, not internals.
 - **No useless tests:** no tests of getters, constructors, framework code or mocks calling mocks. CI runs mutation testing (`gremlins`) on `internal/domain` and `internal/app`; the mutation score must stay ≥ 80%. A test that kills no mutants gets deleted.
@@ -69,12 +69,10 @@ Claude Code and Codex load an `AGENTS.md` (here also `CLAUDE.md`, a symlink to i
 
 ## Comments
 
-- **No comments by default.** Code explains itself through names and tests. A comment must state a reason a reader could not get from the code: a hidden constraint, a specific bug or external quirk it works around, or behavior that would surprise. "What" comments, docs that restate a signature (exported identifiers included) and field docs that restate a type are not allowed.
-- Every comment carries a marker: `// why: ...` for a constraint or surprising behavior, `// bug: ...` for a workaround of a concrete bug or tool quirk. This applies to doc comments, package docs, trailing comments and `/* */` blocks; in a multi-line comment only the first line needs it. Shell, YAML and Lua comments follow the same rule with `# why:` / `-- why:`.
-- Exempt: tool directives (`//go:`, `//line`, `//export`, `//nolint:` with a reason), `// TODO(#12): ...`, `// Code generated ... DO NOT EDIT.` and license headers.
-- `scripts/lint-comments` fails `make lint` on any Go comment without a marker. See ADR 0020.
-- A TODO must reference an issue: `// TODO(#12): ...`.
-- A `//nolint:` directive needs a reason after it: `//nolint:gosec // why: ...`.
+- **No comments, anywhere.** Not in Go (tests included), shell, Lua, YAML, SQL, Makefiles or e2e `.txtar` scripts. No doc comments, no `why:`, no TODOs. Code explains itself through names and tests.
+- A constraint or tool quirk the code cannot show goes into a test whose name states it, and into the commit message that introduced the workaround. Usage and design notes go in the scoped `AGENTS.md`, an ADR or the README. Open work goes in a GitHub issue.
+- Only tool directives remain: `//go:` lines, `//line`, `//export`, a bare `//nolint:<linters>` (no reason after it), `// Code generated ... DO NOT EDIT.`, a shebang, `# shellcheck` and `# yaml-language-server:` lines.
+- `scripts/lint-comments` fails `make lint` on any other comment. See ADR 0044.
 
 ## Working an issue
 
@@ -83,6 +81,7 @@ Claude Code and Codex load an `AGENTS.md` (here also `CLAUDE.md`, a symlink to i
 3. For each behavior: commit a failing test, then commit the code that makes it pass, then refactor.
 4. Meet every acceptance criterion. Run the commands in the issue's **Validate** section and paste their output into the PR body.
 5. Open one PR per issue that says `Closes #<n>`. Title it with a conventional prefix (`feat:`, `fix:`, `chore:`, `docs:`, `refactor:`, `test:`). Use `test:` only for a test-only change (no production code); it skips the "must fail on base" rule.
+   A PR that changes what the TUI draws shows screenshots of the new behavior in its body. Make them with `scripts/screenshot` from a neutral demo folder (never a real home or project), push them to the `pr-assets` branch under `<issue-number>/`, and embed them by their `raw.githubusercontent.com` URL (see [scripts/](scripts/AGENTS.md)).
 6. If a criterion turns out wrong or impossible, don't quietly drop it. Say so in the PR and on the issue.
 7. main is protected: merge only via PR with build, tdd and mutate green and the branch up to date with main.
 8. CodeRabbit reviews every PR and is a required check; fix or answer every finding and resolve all review threads before merging.
@@ -90,4 +89,3 @@ Claude Code and Codex load an `AGENTS.md` (here also `CLAUDE.md`, a symlink to i
 ## Repo hygiene
 
 - This repo is public. Never commit employer names, internal repo or service names, internal URLs, issue keys, tokens, or real usage data. Use generic examples such as `api`, `web`, `#42`.
-- Commits use the GitHub noreply email already set in this clone's git config.

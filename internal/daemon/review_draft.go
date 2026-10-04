@@ -59,7 +59,7 @@ func (d *Daemon) sendReview(req rpc.Request) (*rpc.Response, bool) {
 
 func (s *state) dispatchDraft(session domain.Session) (domain.ReviewDraft, bool) {
 	draft, ok := s.drafts[session.ID]
-	if !ok || s.sendDraft == nil || s.pasting[session.ID] {
+	if !ok || s.sendDraft == nil || s.pasting[session.ID] || s.sendInFlight(session.ID) {
 		return draft, false
 	}
 	sent, prompt, ok := draft.Dispatch(session, time.Now())
@@ -70,13 +70,10 @@ func (s *state) dispatchDraft(session domain.Session) (domain.ReviewDraft, bool)
 	s.awaiting[session.ID] = sent
 	s.pasting[session.ID] = true
 	s.emit(DraftChanged{Draft: sent})
-	// why: the store keeps it queued until the paste lands, so a daemon stopped in between sends it after the restart.
 	s.sendDraft(session, sent, prompt)
 	return sent, true
 }
 
-// why: if the session started a turn meanwhile, or the paste fails, the
-// draft goes back to the queue.
 func (d *Daemon) sendDraft(session domain.Session, draft domain.ReviewDraft, prompt string) {
 	go func() {
 		d.hs.sendMu.Lock()

@@ -90,13 +90,13 @@ One terminal tool for running Claude Code, Codex, and Oh My Pi (`omp`) sessions 
 - A subagent tree per session under its sidebar row, from the harness's subagent hooks. Claude only today; stop and steer controls are not offered because neither harness exposes them per subagent (see ADR 0019).
 - A Linear launcher: `L` takes one or more issue URLs and starts a worktree and session for each, up to `[launcher] max_parallel` (default 3) at once; the rest queue and start as sessions finish. See ADR 0031.
 - When Claude quota is low, offer to start queued work in Codex.
-- Mouse: click a card to select it and again to jump to its pane, click key hints and buttons, pick from lists, open review files, place the review cursor or drag a range, and scroll with the wheel. In tmux, click focuses a pane, dragging a border resizes, and the wheel scrolls agent history. Shift-drag (Option in some macOS terminals) keeps the terminal's own selection; `[ui] mouse = false` turns it all off (see ADR 0042).
+- Mouse: click a card to select it and jump to its pane, click key hints and buttons, pick from lists, open review files, place the review cursor or drag a range, and scroll with the wheel. In tmux, click focuses a pane, dragging a border resizes, and the wheel scrolls agent history. Shift-drag (Option in some macOS terminals) keeps the terminal's own selection; `[ui] mouse = false` turns it all off (see ADR 0042).
 - A first-run walkthrough: pick Claude, Codex or both, see each one's hook state and install it with a backup, follow Codex's trust step, and get the nvim snippet for the installed plugin. `S` or `agentws setup` reopens it (see ADR 0040).
 
 ## P2
 
 - Native macOS client.
-- Phone notifications.
+- A phone app: a PWA served by `agentws serve` that lists sessions, chats with them, starts new ones and gets push notifications, over whatever network path the user picks (see ADR 0046).
 - Comparing two agents' attempts at the same task side by side.
 - Attaching to a remote daemon over SSH.
 

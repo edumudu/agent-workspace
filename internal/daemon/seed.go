@@ -28,7 +28,6 @@ func seedLimits(h domain.Harness, now time.Time) []domain.RateLimit {
 	}
 }
 
-// why: IDs are prefixed "seed-" so a second seed replaces the first.
 func seed(n int, codex bool) []Event {
 	var events []Event
 	now := time.Now()

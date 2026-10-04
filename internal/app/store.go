@@ -12,10 +12,9 @@ type Snapshot struct {
 	Events     []domain.SessionEvent
 	Viewed     []domain.ViewedMark
 	Drafts     []domain.ReviewDraft
+	Devices    []domain.Device
 }
 
-// why: Put methods only enqueue and never block on disk; Flush waits until
-// everything enqueued so far is written.
 type Store interface {
 	PutWorkspace(domain.Workspace)
 	DeleteWorkspace(root string)
@@ -28,6 +27,8 @@ type Store interface {
 	PutViewed(domain.ViewedMark)
 	DeleteViewed(key string)
 	PutDraft(domain.ReviewDraft)
+	PutDevice(domain.Device)
+	DeleteDevice(id string)
 	Load() (Snapshot, error)
 	Flush() error
 	Close() error

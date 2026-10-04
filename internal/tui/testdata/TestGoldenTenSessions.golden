@@ -1,40 +1,40 @@
-▌agentws                                   21:42
+ agentws                                   21:42
 
- SESSIONS                             4 need you
+ SESSIONS ──────────────────────────  4 need you
 
- #40 · task number 1               api web infra
+ #40 task number 1                 api web infra
 ▌◐ 1 session 1 change                        CC 
-▌    opus-5.5 high  ctx 64%  3 worktrees        
-▌     └ api:part-1                      #3600   
-▌     └ web:part-2                          –   
-▌     └ infra:part-3                        –   
+▌    opus-5.5 · high · 3 worktrees              
  ○ 2 session 2 change                        CX 
-     gpt-6 med  ctx 63%  3 worktrees            
-      └ api:part-1                      #3601   
-      └ web:part-2                          –   
-      └ infra:part-3                        –   
 
- #41 · task number 2               api web infra
+ #41 task number 2                 api web infra
  ✳ 3 session 3 change                        CC 
-     opus-5.5 high  ctx 62%  3 worktrees        
-      └ api:part-1                      #3602   
-      └ web:part-2                          –   
-      └ infra:part-3                        –   
  ● 4 session 4 change                        CX 
-     gpt-6 med  ctx 61%  3 worktrees            
-      └ api:part-1                      #3603   
-      └ web:part-2                          –   
-      └ infra:part-3                        –   
 
- #42 · task number 3               api web infra
+ #42 task number 3                 api web infra
  ✳ 5 session 5 change                        CC 
-     opus-5.5 high  ctx 60%  3 worktrees        
+ ◐ 6 session 6 change                        CX 
 
- CARD                                           
- #40 · task number 1                            
+ #43 task number 4                 api web infra
+ ✳ 7 session 8 change                        CX 
+ ○ 8 session 7 change                        CC 
+
+ #44 task number 5                 api web infra
+ ✳ 9 session 10 change                       CX 
+ ● 10 session 9 change                       CC 
+
+
+
+
+
+
+
+
+
+
+ CARD ───────────────────────────────────────── 
+ #40 task number 1                              
  name  session 1 change                         
  PRs #3600                                      
- n new session   r review                       
- t shell         e nvim                         
- w worktrees     ␣ next waiting                 
- SESSION  j/k move … 10 sessions · 30 worktrees 
+ n new  r review  t shell  e nvim  ? keys       
+ 10 sessions · 30 worktrees      ␣ next waiting 

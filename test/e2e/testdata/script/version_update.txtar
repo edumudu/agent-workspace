@@ -1,4 +1,3 @@
-# A cached newer release (checked in the future, so always fresh) needs no network.
 env AGENTWS_NO_UPDATE_CHECK=
 mkdir $AGENTWS_HOME
 cp release.json $AGENTWS_HOME/release.json

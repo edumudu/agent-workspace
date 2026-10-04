@@ -22,8 +22,6 @@ import (
 
 const serverEnv = "AGENTWS_PORTS_SERVER"
 
-// why: lets the test binary act as a dev server: it listens on a free port,
-// starts a child in the same process group, and waits.
 func TestMain(m *testing.M) {
 	if os.Getenv(serverEnv) == "" {
 		os.Exit(m.Run())
@@ -81,7 +79,6 @@ func portsOn(st rpc.State, path string) []domain.Port {
 	return w.Ports
 }
 
-// why: the 5 s ports poll plus one refresh and the state round trip.
 const refreshBudget = 6 * time.Second
 
 func TestPortsServerInAWorktreeShowsUpMappedToIt(t *testing.T) {

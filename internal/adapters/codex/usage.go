@@ -15,7 +15,6 @@ import (
 const (
 	UnknownPercent = -1
 
-	// why: Codex leaves this fixed system prompt out when it works out the context it shows the user.
 	promptBaselineTokens = 12000
 )
 
@@ -46,7 +45,6 @@ func (s Snapshot) RateLimits() []domain.RateLimit {
 	return out
 }
 
-// why: the highest window is the one that blocks the session first.
 func (s Snapshot) Usage() domain.Usage {
 	var highest float64
 	for _, w := range s.Limits {
@@ -103,7 +101,6 @@ type rateWindow struct {
 	ResetsAt      int64   `json:"resets_at"`
 }
 
-// why: lines that do not parse, such as one cut short by a tail read, are skipped.
 func ReadSnapshot(r io.Reader) (Snapshot, error) {
 	snap := Snapshot{ContextLeftPercent: UnknownPercent}
 	sc := bufio.NewScanner(r)
@@ -159,7 +156,6 @@ func (s *Snapshot) applyTokenCount(ev eventMsg, at time.Time) {
 	}
 }
 
-// why: reading only the tail keeps a days-old session's multi-megabyte rollout cheap to poll.
 func ReadSnapshotFile(path string, maxBytes int64) (Snapshot, error) {
 	f, err := os.Open(path)
 	if err != nil {
@@ -178,7 +174,6 @@ func ReadSnapshotFile(path string, maxBytes int64) (Snapshot, error) {
 		if err != nil {
 			return Snapshot{}, err
 		}
-		// why: the seek lands mid-line, so the first partial line is dropped.
 		if i := bytes.IndexByte(tail, '\n'); i >= 0 {
 			tail = tail[i+1:]
 		}

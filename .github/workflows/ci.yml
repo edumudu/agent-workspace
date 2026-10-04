@@ -20,9 +20,7 @@ jobs:
       - run: make build
       - run: ./bin/agentws version
       - run: make lint
-      # why: shared macOS runners start processes about 3x slower than a dev Mac; the real budget is checked locally.
       - run: BUDGET_SCALE=2 scripts/bench-hook.sh ./bin/agentws
-      # why: the e2e suite in ./test/e2e runs a real tmux server.
       - run: brew list tmux >/dev/null 2>&1 || brew install tmux
       - run: brew list neovim >/dev/null 2>&1 || brew install neovim
       - run: go test ./...
@@ -39,7 +37,6 @@ jobs:
       - uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
-      # why: tdd-check runs the integration tests; without tmux or nvim they skip, and a skipped test passes on base.
       - run: brew list tmux >/dev/null 2>&1 || brew install tmux
       - run: brew list neovim >/dev/null 2>&1 || brew install neovim
       - run: cp scripts/tdd-check "$RUNNER_TEMP/" && "$RUNNER_TEMP/tdd-check" "origin/${{ github.base_ref }}" "${{ github.event.pull_request.head.sha }}"

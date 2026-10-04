@@ -12,7 +12,6 @@ import (
 
 const titleEvery = 250 * time.Millisecond
 
-// why: copied off the loop's state so the worker never shares it.
 type titleInput struct {
 	session domain.Session
 	cwd     string
@@ -69,7 +68,6 @@ func (d *Daemon) paneTitles(ctx context.Context) {
 				continue
 			}
 			if d.hs.host.SetTitle(ctx, pane, title) != nil {
-				// why: an unchanged state skips the next tick, so a failed set must force one.
 				stale = true
 				continue
 			}

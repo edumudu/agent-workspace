@@ -1,0 +1,20 @@
+────────────────────────────────────────────────────────────────────────────────
+ Bash command
+
+   touch notes.txt
+   Create an empty notes.txt file
+
+ Do you want to proceed?
+ ❯ 1. Yes
+   2. Yes, and don't ask again for touch commands in /tmp/project
+   3. No, and tell Claude what to do differently (esc)
+
+● Bash(touch notes.txt)
+  ⎿  Done
+
+● Created notes.txt.
+
+────────────────────────────────────────────────────────────────────────────────
+>
+────────────────────────────────────────────────────────────────────────────────
+  ? for shortcuts

@@ -6,8 +6,6 @@ import (
 	"testing"
 )
 
-// why: a child forked while the daemon runs shares the lock's open file
-// until it execs, the way this dup does; a restart must not wait on it.
 func TestReleaseFreesTheLockEvenWhileAForkedChildStillHoldsItsFile(t *testing.T) {
 	home, err := os.MkdirTemp("/tmp", "agentws-l")
 	if err != nil {

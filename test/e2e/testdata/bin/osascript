@@ -1,7 +1,4 @@
 #!/bin/sh
-# why: usage: fake osascript so the suite never posts a real macOS banner. Each
-# call appends its argv, tab separated, as one line of $AGENTWS_E2E/osascript.log.
-# It prints nothing, so the frontmost check never finds a terminal in front.
 for arg in "$@"; do
 	printf '%s\t' "$arg"
 done >>"$AGENTWS_E2E/osascript.log"

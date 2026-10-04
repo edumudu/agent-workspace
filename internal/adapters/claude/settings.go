@@ -21,13 +21,11 @@ func BackupPath(settings string) string { return settings + ".agentws-backup" }
 
 func HookCommand(bin, event string) string { return shellQuote(bin) + hookMarker + event }
 
-// why: agentws entries from an earlier Setup, with any binary path, are replaced, so running it again gives the same bytes.
 func Setup(path, bin string) error {
 	p, err := plan(path, bin)
 	if err != nil {
 		return err
 	}
-	// why: a file that already holds agentws entries is not the user's original, so it is no backup.
 	if p.exists && bytes.Equal(p.before, p.stripped) {
 		if _, err := os.Stat(BackupPath(path)); errors.Is(err, os.ErrNotExist) {
 			if err := writeFile(BackupPath(path), p.original); err != nil {
@@ -41,7 +39,6 @@ func Setup(path, bin string) error {
 	return writeFile(path, p.out)
 }
 
-// why: it asks whether Setup would change nothing, so it can never disagree with what Setup does.
 func Installed(path, bin string) (bool, error) {
 	p, err := plan(path, bin)
 	if err != nil {
@@ -82,7 +79,6 @@ func plan(path, bin string) (setupPlan, error) {
 	return p, err
 }
 
-// why: when nothing else changed since Setup, the file gets back its original bytes; otherwise the user's later edits stay.
 func Remove(path string) error {
 	current, err := os.ReadFile(path)
 	if errors.Is(err, os.ErrNotExist) {

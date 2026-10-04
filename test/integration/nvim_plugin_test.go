@@ -22,8 +22,6 @@ func pluginDir(t *testing.T) string {
 	return dir
 }
 
-// why: a throwaway config, data, state and cache dir, so the user's nvim setup
-// is never read or written.
 func TestNvimPluginSpecs(t *testing.T) {
 	plugin := pluginDir(t)
 	if _, err := exec.LookPath("nvim"); err != nil {

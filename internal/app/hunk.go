@@ -29,7 +29,6 @@ func ApplyHunk(ctx context.Context, g HunkGit, dir string, f domain.FileDiff, h 
 	return g.Revert(ctx, dir, patch)
 }
 
-// why: one bracketed paste, so its newlines do not submit it early.
 func SendPrompt(ctx context.Context, host TerminalHost, pane PaneID, prompt string, settle time.Duration) error {
 	if err := host.SendText(ctx, pane, prompt, true); err != nil {
 		return err

@@ -7,10 +7,8 @@ import (
 const summaryWords = 4
 
 var (
-	// why: leading politeness and request framing say nothing about the work.
 	fillerWords = wordSet("please", "can", "could", "would", "you", "i", "we", "let's", "lets",
 		"need", "want", "to", "help", "me", "hey", "hi", "just", "so", "also", "kindly")
-	// why: a summary cut mid-phrase should not end on a connective.
 	danglingWords = wordSet("the", "a", "an", "to", "of", "and", "or", "for", "in", "on", "with", "at", "by", "from", "when", "that", "is")
 )
 

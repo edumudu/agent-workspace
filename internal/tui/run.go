@@ -11,12 +11,8 @@ import (
 
 const TickInterval = 200 * time.Millisecond
 
-// why: at 60 a keypress can wait up to 16 ms for the next frame on its own, so
-// the renderer runs at its 120 maximum.
 const FPS = 120
 
-// why: diffs are read on a second connection so a slow frame never delays
-// FocusMain.
 func Run(ctx context.Context, subscriber, caller *rpc.Client, opts Options) error {
 	sub, err := subscriber.Subscribe(ctx)
 	if err != nil {

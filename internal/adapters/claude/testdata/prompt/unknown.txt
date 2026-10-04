@@ -1,0 +1,8 @@
+────────────────────────────────────────────────────────────────────────────────
+ Some future dialog
+
+ Which flavour do you prefer?
+ ❯ 1. Vanilla
+   2. Chocolate
+
+ Esc to cancel

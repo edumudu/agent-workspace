@@ -10,7 +10,6 @@ import (
 	"time"
 )
 
-// why: `omp models` is slow, so a caller that does not wait returns the file. A caller that waits always asks again, because providers change while the file is still young.
 func LoadCached(ctx context.Context, path, binary string, maxAge time.Duration, block bool) []string {
 	ids, _ := readCatalogFile(path, maxAge)
 	if !block {

@@ -11,7 +11,6 @@ const (
 	OwnedUnchanged OwnedPlan = iota
 	OwnedWrite
 	OwnedDelete
-	// why: a file at our path without our marker is the user's, so it is never written or deleted.
 	OwnedConflict
 )
 

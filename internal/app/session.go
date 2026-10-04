@@ -12,8 +12,6 @@ type WorktreeAdder interface {
 	AddWorktree(ctx context.Context, repo, path, branch, base string) (AddedWorktree, error)
 }
 
-// why: paths are as git reports them, symlinks resolved, so the worktree gets
-// the same ID and repo that worktree detection gives it.
 type AddedWorktree struct {
 	Main string
 	Path string
@@ -21,8 +19,6 @@ type AddedWorktree struct {
 
 type SetupFunc func(ctx context.Context, worktree string) error
 
-// why: every Sessions method runs git or tmux, so it is for connection
-// goroutines and workers, never the daemon loop.
 type Sessions struct {
 	Host      TerminalHost
 	Worktrees WorktreeAdder
@@ -45,9 +41,6 @@ type Started struct {
 	Worktree *domain.Worktree
 }
 
-// why: a worktree already added stays on disk, since it may hold the setup's
-// work and cleanup owns removal; it comes back unowned beside the error so
-// the caller can record it and a retry plans a fresh path.
 func (s Sessions) Start(ctx context.Context, req NewSession) (Started, error) {
 	var wt *domain.Worktree
 	dir := req.Plan.Dir

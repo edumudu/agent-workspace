@@ -9,7 +9,6 @@ import (
 	"github.com/giovaniif/agent-workspace/internal/rpc"
 )
 
-// why: a banner click runs this, so it goes through the daemon, which alone drives tmux.
 func runFocus(args []string, stderr io.Writer) int {
 	if len(args) != 1 {
 		fmt.Fprintln(stderr, "usage: agentws focus <session id>")

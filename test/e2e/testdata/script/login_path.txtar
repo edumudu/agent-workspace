@@ -1,5 +1,3 @@
-# why: a daemon started over a bare ssh has no ~/.local/bin and the like; it
-# takes them from the login shell, so the agent pane still finds the harness.
 [!barepath] skip 'a real claude or codex is on the bare PATH'
 env HOME=$WORK/home
 env SHELL=/bin/sh

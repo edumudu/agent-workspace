@@ -18,7 +18,6 @@ func (Table) Holders(ctx context.Context, paths []string) (map[string][]string, 
 	out, err := exec.CommandContext(ctx, "lsof", "-n", "-P", "-w", "-d", "cwd", "-F", "pcn").Output()
 	if err != nil {
 		var exit *exec.ExitError
-		// why: lsof exits 1 when it could not read some processes, such as other users', yet still lists the rest.
 		if !errors.As(err, &exit) || exit.ExitCode() != 1 || len(out) == 0 {
 			return nil, fmt.Errorf("lsof: %w", err)
 		}

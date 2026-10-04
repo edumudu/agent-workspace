@@ -1,16 +1,8 @@
 #!/usr/bin/env bash
-# why: usage: [BUDGET_SCALE=2] scripts/bench-hook.sh [path/to/agentws]
-# Times 200 runs of `agentws hook` with the daemon up and down and prints
-# p50/p95. Fails if p95 is over budget: 20 ms up, 60 ms down.
-# BUDGET_SCALE multiplies both budgets, for slow shared CI runners.
-# Each side gets 20 discarded warmup runs, then three rounds of 200; the
-# lowest round p95 is judged, since a noisy neighbour only ever adds time
-# and one bad burst should not fail a build whose hook is still fast.
 set -euo pipefail
 bin="${1:-./bin/agentws}"
 [ -x "$bin" ] || make build >/dev/null
 bin="$(cd "$(dirname "$bin")" && pwd)/$(basename "$bin")"
-# why: macOS caps Unix socket paths at 104 bytes, so the home must be short.
 home="$(mktemp -d /tmp/aws-bench.XXXXXX)"
 export AGENTWS_HOME="$home" TMUX_PANE="%0"
 trap '"$bin" daemon stop >/dev/null 2>&1 || true; rm -rf "$home"' EXIT

@@ -5,10 +5,7 @@ type SwitchForm int
 const (
 	SwitchNone SwitchForm = iota
 	SwitchSlash
-	// why: Codex's /model takes no argument; it opens a picker that is walked by keys.
 	SwitchPicker
-	// why: omp's /model drops its argument and opens a picker, while /switch
-	// takes a model id or model:level.
 	SwitchOmpSwitch
 )
 
@@ -18,9 +15,7 @@ type HarnessSpec struct {
 	Tag     string
 	Hooks   map[string]HarnessEventKind
 	Switch  SwitchForm
-	// why: nil means the harness takes any model id, typed rather than picked.
-	Models []string
-	// why: each harness confirms a different set, so one shared list would send omp a level it rejects.
+	Models  []string
 	Efforts []string
 }
 
@@ -53,12 +48,11 @@ var harnessTable = []HarnessSpec{
 		Models:  []string{"gpt-6.1-sol", "gpt-6-astra", "gpt-6-sol", "gpt-6-luna", "gpt-5.5"},
 		Efforts: []string{"low", "medium", "high", "xhigh", "max"},
 		Hooks: map[string]HarnessEventKind{
-			"SessionStart":     EventSessionStart,
-			"UserPromptSubmit": EventUserPromptSubmit,
-			"PreToolUse":       EventPreToolUse,
-			"PostToolUse":      EventPostToolUse,
-			"Stop":             EventStop,
-			// why: Codex fires Interrupt instead of Stop when the user aborts a turn.
+			"SessionStart":      EventSessionStart,
+			"UserPromptSubmit":  EventUserPromptSubmit,
+			"PreToolUse":        EventPreToolUse,
+			"PostToolUse":       EventPostToolUse,
+			"Stop":              EventStop,
 			"Interrupt":         EventStop,
 			"PermissionRequest": EventPermissionRequest,
 			"SessionEnd":        EventSessionEnd,
@@ -70,9 +64,6 @@ var harnessTable = []HarnessSpec{
 		Tag:     "OM",
 		Switch:  SwitchOmpSwitch,
 		Efforts: []string{"off", "minimal", "low", "medium", "high", "xhigh"},
-		// why: agent_end carries willContinue and turn_end is one model round, so
-		// neither means done; session_switch would idle the pane on a fork. An
-		// approval is not an event: the tool_call after it sets running.
 		Hooks: map[string]HarnessEventKind{
 			"session_start":           EventSessionStart,
 			"agent_start":             EventUserPromptSubmit,

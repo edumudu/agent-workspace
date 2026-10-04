@@ -13,7 +13,6 @@ type HarnessSetup struct {
 	Err       string `json:"err,omitempty"`
 }
 
-// why: PluginFound tells a plugin dir the snippet can point at from one a source build lacks.
 type NvimSetup struct {
 	OnPath      bool   `json:"on_path"`
 	Configured  bool   `json:"configured"`
@@ -22,7 +21,6 @@ type NvimSetup struct {
 	PluginFound bool   `json:"plugin_found"`
 }
 
-// why: an existing user who set up a harness, and has no nvim left to configure, must not get the walkthrough after upgrading.
 func OnboardingNeeded(o Onboarding) bool {
 	if o.Done {
 		return false
@@ -34,7 +32,6 @@ func OnboardingNeeded(o Onboarding) bool {
 
 const nvimSetupMarker = "-- agentws: written by agentws setup nvim; agentws setup nvim --remove deletes this file."
 
-// why: nvim sources every config's plugin/ dir whatever the setup (init.vim, lazy.nvim, kickstart), so a file of its own needs no edit to the user's files.
 func NvimSetupFile(pluginDir string) string {
 	return strings.Join([]string{
 		nvimSetupMarker,
@@ -45,7 +42,6 @@ func NvimSetupFile(pluginDir string) string {
 	}, "\n") + "\n"
 }
 
-// why: remove deletes only a file agentws wrote, never one the user put at the same path.
 func IsNvimSetupFile(content string) bool { return strings.HasPrefix(content, nvimSetupMarker) }
 
 func luaQuote(s string) string { return strings.NewReplacer(`\`, `\\`, `'`, `\'`).Replace(s) }
@@ -56,7 +52,6 @@ type Onboarding struct {
 	Nvim      NvimSetup                `json:"nvim"`
 }
 
-// why: a daemon from before omp sends claude and codex as their own keys.
 func (o *Onboarding) UnmarshalJSON(b []byte) error {
 	type plain Onboarding
 	var wire struct {
@@ -97,7 +92,6 @@ func (s OnboardStep) Harness() (Harness, bool) {
 	return "", false
 }
 
-// why: Codex keeps a hash of every hook it was told to trust, so new hooks stay off until the user trusts them.
 const CodexTrustStep = "Codex runs a hook only after you trust it. Start codex and accept the review prompt for the new agentws hooks, or open /hooks and trust them there."
 
 func OnboardSteps(picked []Harness) []OnboardStep {
@@ -110,7 +104,6 @@ func OnboardSteps(picked []Harness) []OnboardStep {
 	return append(steps, OnboardNvim, OnboardFinish)
 }
 
-// why: a step not in steps goes to finish, so a stale step never loops.
 func NextOnboardStep(steps []OnboardStep, cur OnboardStep) OnboardStep {
 	for i, s := range steps {
 		if s == cur && i+1 < len(steps) {
@@ -142,7 +135,6 @@ type SetupOffer int
 const (
 	OfferInstall SetupOffer = iota
 	OfferInstalled
-	// why: a config agentws cannot read gets no install offer, so it is never overwritten.
 	OfferBroken
 )
 
@@ -162,7 +154,6 @@ const (
 	NvimMissing NvimOffer = iota
 	NvimReady
 	NvimShowSnippet
-	// why: a build that did not come from a release archive has no plugin files.
 	NvimNoPlugin
 )
 
@@ -178,7 +169,6 @@ func NvimOfferFor(n NvimSetup) NvimOffer {
 	return NvimNoPlugin
 }
 
-// why: an init.vim cannot hold lua directly, so it gets a heredoc.
 func NvimSnippet(pluginDir, configFile string) []string {
 	quoted := luaQuote(pluginDir)
 	lua := []string{

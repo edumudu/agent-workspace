@@ -268,20 +268,6 @@ func TestQuestionMarkTogglesHelp(t *testing.T) {
 	}
 }
 
-func TestSessionRowsExpandToTheirWorktrees(t *testing.T) {
-	st := fixture(1, 3)
-	m := newModel(&st, nil)
-	out := screen(m)
-	for _, want := range []string{"api:part-1", "#3600", "web:part-2", "infra:part-3", "3 worktrees"} {
-		if !strings.Contains(out, want) {
-			t.Fatalf("missing %q in\n%s", want, out)
-		}
-	}
-	if out := screen(press(m, "o")); strings.Contains(out, "web:part-2") {
-		t.Fatalf("o did not collapse the worktrees:\n%s", out)
-	}
-}
-
 func TestEmptyTopBarSlotsAreHidden(t *testing.T) {
 	out := screen(newModel(nil, nil))
 	top := strings.SplitN(out, "\n", 2)[0]
@@ -324,8 +310,6 @@ func TestLoadThemeOverridesLatteFromConfig(t *testing.T) {
 	}
 }
 
-// why: guards the 16 ms keypress-to-frame budget: one Update for a key plus
-// the View it produces, with 10 sessions and 30 worktrees.
 func BenchmarkKeypressToFrame(b *testing.B) {
 	st := fixture(10, 3)
 	m := newModel(&st, nil)
@@ -419,22 +403,10 @@ func TestHelpListsTheReviewKey(t *testing.T) {
 	t.Fatalf("help has no line for r:\n%s", out)
 }
 
-func TestASessionShowsNoContextFigureBeforeItsFirstReport(t *testing.T) {
-	st := rpc.State{Sessions: []domain.Session{{ID: "s1", Harness: domain.HarnessClaude, Model: "opus", Effort: "high"}}}
-	out := screen(newModel(&st, nil))
-	if strings.Contains(out, "ctx") || !strings.Contains(out, "opus high") {
-		t.Fatalf("want the started model and no ctx before a report:\n%s", out)
-	}
-	st.Sessions[0].Usage = domain.Usage{ContextLeftPercent: 0, HasContext: true}
-	if out := screen(newModel(&st, nil)); !strings.Contains(out, "ctx 0%") {
-		t.Fatalf("a reported 0%% is not shown:\n%s", out)
-	}
-}
-
 func TestFooterListsTheMockupKeys(t *testing.T) {
 	st := fixture(1, 0)
 	out := screen(newModel(&st, nil))
-	for _, want := range []string{"n new session", "r review", "t shell", "e nvim", "w worktrees", "␣ next waiting"} {
+	for _, want := range []string{"n new", "r review", "t shell", "e nvim", "? keys", "␣ next waiting"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("footer has no %q:\n%s", want, out)
 		}

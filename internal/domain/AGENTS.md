@@ -19,12 +19,15 @@ Pure types and rules: no IO, no imports from other `internal/*` packages. `Works
 - `ParseWorkItem`, `PlanSessionStart`, `NextInView`, `AgentTitle`, `DrainLauncher`, `Sidebar`, `BuildSessionCard`, `SubagentTree`: session start, end, title strips, launcher and sidebar rules (see [internal/daemon/](../daemon/AGENTS.md) and [internal/tui/](../tui/AGENTS.md)).
 - `Recipe.Validate`, `PlanDeps`, `InstallCommand`: setup recipes (see [internal/adapters/setup/](../adapters/setup/AGENTS.md)).
 - `OnboardSteps`, `NextOnboardStep`, `DefaultOnboardPicks`, `HarnessOffer`, `NvimOfferFor`, `OnboardingNeeded`, the `CodexTrustStep` text: the first-run walkthrough (see [ADR 0040](../../docs/adr/0040-first-run-walkthrough.md)).
+- `SendableText`, `NextSend`, `Unsend`, `DropSends`, `RequeueSend`: the `session.send` queue (see [internal/daemon/](../daemon/AGENTS.md)).
 - Ports rules: `PortsByWorktree`, `KillGroups`. Disk rules: `Reclaimable`, `TotalSize`.
+- `Message`, `MessageLog`, `TranscriptLines`, `TranscriptFromHook`, `ToolSummary`, `ToolResult`, `OneLine`, `ClipText`: the harness-neutral chat model the Claude and Codex transcript parsers produce (see [internal/adapters/](../adapters/AGENTS.md) and [ADR 0046](../../docs/adr/0046-remote-app.md)).
+- Pairing ([ADR 0046](../../docs/adr/0046-remote-app.md)): `NewPairCode` (8 characters from `PairCodeAlphabet`, which drops 0, 1, O, I and L, drawn from an injected `intn`), `NormalizePairCode`, `Pairing.Issue`/`Redeem` (5-minute codes, single use; a wrong code voids nothing; 5 failed tries a minute per address and 20 in all, after which every try is refused and not counted), `NewDevice` (32 random bytes as base64url, stored as `HashDeviceToken`), `CheckDeviceToken` (constant time), `RevokeDevice`, `Device.Seen` (at most once a minute), `DeviceName`, `NewDeviceID`, `PairURL`.
 - `MergeLoginPath(current, login)`: the daemon's PATH plus the login shell's entries it lacks, current entries first (see [internal/daemon/](../daemon/AGENTS.md)).
 
 ### Discovery
 
-See [ADR 0007](../../docs/adr/0007-workspace-discovery.md). `KindOfRoot`, `ReposIn`, `SingleRepo`, `MergeRepoState`, `LastUsedWorkspace`.
+See [ADR 0007](../../docs/adr/0007-workspace-discovery.md). `KindOfRoot`, `ReposIn`, `SingleRepo`, `MergeRepoState`, `LastUsedWorkspace`, and for the dialog's typed path `ParsePathInput` and `CompleteDirs` ([ADR 0047](../../docs/adr/0047-workspace-path-input.md)).
 
 - **Kind.** `<path>/.git` a directory means `single`, with the path itself as the only repo. Anything else is an `orchestration` root: its direct children are scanned, symlinks followed, and each child with a `.git` directory is a repo. A child whose `.git` is a file is a worktree and is skipped, as is a dangling link. Nothing deeper than one level is read. Repos are sorted by name, and a symlinked repo keeps the link's name and path.
 - **Budget.** Discovery over 15 repos must finish in < 300 ms; `BenchmarkDiscovery` fails above that.

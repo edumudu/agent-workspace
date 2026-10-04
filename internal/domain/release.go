@@ -5,8 +5,6 @@ import (
 	"strings"
 )
 
-// why: a version that does not parse (a dev build, `git describe` output
-// with commits past a tag) never offers an upgrade.
 func NewerRelease(current, latest string) bool {
 	cur, ok := parseSemver(current)
 	if !ok {
@@ -19,7 +17,6 @@ func NewerRelease(current, latest string) bool {
 	return compareSemver(lat, cur) > 0
 }
 
-// why: GitHub lists releases by date, not version; with no semver tag the first one stands.
 func HighestRelease(tags []string) string {
 	var best string
 	var bestVer semver
@@ -62,7 +59,6 @@ func parseSemver(s string) (semver, bool) {
 	}
 	if hasPre {
 		v.pre = strings.Split(pre, ".")
-		// why: `git describe` appends "-<n>-g<sha>", which is not a release.
 		for _, id := range v.pre {
 			if id == "" || strings.Contains(id, "-") {
 				return semver{}, false

@@ -33,22 +33,19 @@ const clientName = "main"
 const clientTimeout = 5 * time.Second
 
 type clients struct {
-	mu   sync.Mutex
-	host ClientHost
-	slot app.Slot
-	dir  string
-	// why: zero disables watchMainSlot.
+	mu         sync.Mutex
+	host       ClientHost
+	slot       app.Slot
+	dir        string
 	watchEvery time.Duration
 }
 
-// why: call it before Serve.
 func (d *Daemon) SetClientHost(h ClientHost) {
 	d.clients.mu.Lock()
 	defer d.clients.mu.Unlock()
 	d.clients.host = h
 }
 
-// why: these calls run tmux, so they stay on the connection goroutine and never enter the loop.
 func (d *Daemon) dispatchClient(req rpc.Request) *rpc.Response {
 	d.clients.mu.Lock()
 	defer d.clients.mu.Unlock()

@@ -14,7 +14,6 @@ import (
 	"github.com/giovaniif/agent-workspace/internal/rpc"
 )
 
-// why: the release check never fails the command; being offline is normal.
 func runVersion(current, commit string, latest func(context.Context) (string, error), w io.Writer) int {
 	fmt.Fprintf(w, "agentws %s (commit %s)\n", current, commit)
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
@@ -29,7 +28,6 @@ func runVersion(current, commit string, latest func(context.Context) (string, er
 
 var errUpdateCheckOff = errors.New("update check off")
 
-// why: AGENTWS_NO_UPDATE_CHECK keeps tests and offline users off the network.
 func latestRelease(ctx context.Context) (string, error) {
 	if os.Getenv("AGENTWS_NO_UPDATE_CHECK") != "" {
 		return "", errUpdateCheckOff

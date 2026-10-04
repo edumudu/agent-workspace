@@ -3,6 +3,7 @@ package tui
 import (
 	"cmp"
 	"context"
+	"path/filepath"
 	"slices"
 	"sort"
 	"strings"
@@ -14,7 +15,6 @@ import (
 	"github.com/giovaniif/agent-workspace/internal/rpc"
 )
 
-// why: covers the setup recipe, which may install dependencies.
 const startTimeout = 15 * time.Minute
 
 const callTimeout = 5 * time.Second
@@ -45,33 +45,49 @@ func catalogNames() []string {
 }
 
 type dialog struct {
-	field    field
-	workItem string
-	model    string
-	spaces   []domain.Workspace
-	last     string
-	ws       int
-	harness  int
-	effort   int
-	// why: holds any mapped effort a fallback brought that the picker lacks.
-	efforts []string
-	// why: remembers the Claude start a fallback replaced, so going back restores it.
-	fallback *fallbackTrace
-	err      string
-	busy     bool
-	started  bool
-	// why: tells this dialog's start reply from one sent by a dialog closed earlier.
-	seq        int
-	defaults   map[domain.Harness]Defaults
-	modelLists map[domain.Harness][]string
-	// why: ←/→ keep cycling, so a typed omp query remembers the cycled value and ctrl-e can undo a match.
-	typing  bool
-	menu    bool
-	query   string
-	saved   string
-	suggest int
-	// why: the menu is painted on the finished screen, after the form has been scrolled and centered.
+	field           field
+	workItem        string
+	model           string
+	spaces          []domain.Workspace
+	last            string
+	ws              int
+	harness         int
+	effort          int
+	efforts         []string
+	fallback        *fallbackTrace
+	err             string
+	busy            bool
+	started         bool
+	seq             int
+	defaults        map[domain.Harness]Defaults
+	modelLists      map[domain.Harness][]string
+	typing          bool
+	menu            bool
+	query           string
+	saved           string
+	suggest         int
 	menuAt, menuCol int
+	path            string
+	base, home      string
+	listing         listing
+	listings        int
+	pick            int
+}
+
+type listing struct {
+	req    int
+	dir    string
+	dirs   []domain.Child
+	done   bool
+	failed bool
+}
+
+type dirsListedMsg struct {
+	seq    int
+	req    int
+	dir    string
+	dirs   []domain.Child
+	failed bool
 }
 
 type fallbackTrace struct {
@@ -105,6 +121,8 @@ func (m Model) openDialog() Model {
 	if dir := m.opts.LaunchDir; dir != "" {
 		d.startIn(dir)
 	}
+	d.home = m.opts.Home
+	d.base = cmp.Or(m.opts.LaunchDir, d.root(), d.home, "/")
 	m.dialog = d
 	return m
 }
@@ -122,8 +140,6 @@ func effortIndex(choices []string, effort string) int {
 	return max(slices.Index(choices, effort), 0)
 }
 
-// why: model and effort carry over only if the user left them at the previous
-// harness's defaults.
 func (d *dialog) cycleHarness(delta int) {
 	prev := d.defaults[domain.Harness(harnessChoices[d.harness])]
 	keep := ""
@@ -156,8 +172,6 @@ func (d *dialog) cycleHarness(delta int) {
 	d.endTyping()
 }
 
-// why: an effort the picker does not list is added to it so it survives to
-// submission.
 func (d *dialog) takeFallback(req domain.StartRequest) {
 	from := ""
 	if d.effort >= 0 && d.effort < len(d.efforts) {
@@ -188,11 +202,15 @@ func cycle(i, delta, n int) int {
 }
 
 func (d *dialog) text() *string {
-	switch {
-	case d.field == fieldWorkItem:
+	switch d.field {
+	case fieldWorkItem:
 		return &d.workItem
-	case d.field == fieldModel && d.typing:
-		return &d.model
+	case fieldWorkspace:
+		return &d.path
+	case fieldModel:
+		if d.typing {
+			return &d.model
+		}
 	}
 	return nil
 }
@@ -201,7 +219,6 @@ func (d *dialog) picked() domain.Harness {
 	return domain.Harness(harnessChoices[d.harness])
 }
 
-// why: omp has no fixed alias list, so the same model control takes typed text there only.
 func (d *dialog) modelTypes() bool {
 	return domain.Spec(d.picked()).Models == nil
 }
@@ -216,6 +233,132 @@ func (d *dialog) modelChoices() []string {
 		out = append(out, d.model)
 	}
 	return out
+}
+
+func (d *dialog) root() string {
+	if len(d.spaces) == 0 {
+		return ""
+	}
+	return d.spaces[d.ws].Root
+}
+
+func (d *dialog) typed() domain.PathInput {
+	return domain.ParsePathInput(d.path, d.base, d.home)
+}
+
+func (d *dialog) chosen() (domain.Workspace, bool) {
+	if d.path == "" {
+		if len(d.spaces) == 0 {
+			return domain.Workspace{}, false
+		}
+		return d.spaces[d.ws], true
+	}
+	root := d.typed().Path
+	for _, w := range d.spaces {
+		if w.Root == root && w.Kind != "" {
+			return w, true
+		}
+	}
+	return domain.Workspace{Root: root}, true
+}
+
+func (d *dialog) matches() []domain.Child {
+	in := d.typed()
+	if d.path == "" || !d.listing.done || d.listing.dir != in.Dir {
+		return nil
+	}
+	return domain.CompleteDirs(d.listing.dirs, in.Prefix)
+}
+
+type folderState int
+
+const (
+	folderPending folderState = iota
+	folderFound
+	folderMissing
+)
+
+func (d *dialog) folder() folderState {
+	in := d.typed()
+	if !d.listing.done || d.listing.dir != in.Dir {
+		return folderPending
+	}
+	if d.listing.failed {
+		return folderMissing
+	}
+	if in.Prefix == "" || in.Prefix == "." || in.Prefix == ".." {
+		return folderFound
+	}
+	for _, c := range d.listing.dirs {
+		if c.Name == in.Prefix {
+			return folderFound
+		}
+	}
+	return folderMissing
+}
+
+func (d *dialog) open() bool {
+	ms := d.matches()
+	if len(ms) == 0 {
+		return false
+	}
+	head := d.path[:strings.LastIndex(d.path, "/")+1]
+	if d.path == "~" {
+		head = "~/"
+	}
+	d.path = head + ms[min(d.pick, len(ms)-1)].Name + "/"
+	return true
+}
+
+func (d *dialog) up() {
+	t := strings.TrimSuffix(d.path, "/")
+	cut := strings.LastIndex(t, "/")
+	seg := t[cut+1:]
+	switch {
+	case t == "":
+		d.path = "/"
+	case t == ".":
+		d.path = "../"
+	case seg == "..":
+		d.path = t + "/../"
+	case t == "~":
+		d.path = filepath.Dir(d.home) + "/"
+	case cut < 0:
+		d.path = "./"
+	default:
+		d.path = t[:cut+1]
+	}
+}
+
+func (m Model) listDirs() tea.Cmd {
+	d := m.dialog
+	d.pick = 0
+	c := m.opts.Calls
+	if d.path == "" || c == nil {
+		return nil
+	}
+	dir := d.typed().Dir
+	if d.listing.dir == dir && !d.listing.failed {
+		return nil
+	}
+	d.listings++
+	d.listing = listing{req: d.listings, dir: dir}
+	seq, req := d.seq, d.listings
+	return func() tea.Msg {
+		ctx, cancel := context.WithTimeout(context.Background(), callTimeout)
+		defer cancel()
+		var out rpc.WorkspaceDirs
+		err := c.Call(ctx, rpc.MethodWorkspaceDirs, rpc.WorkspaceDirsParams{Path: dir}, &out)
+		return dirsListedMsg{seq: seq, req: req, dir: dir, dirs: out.Dirs, failed: err != nil}
+	}
+}
+
+func (m Model) gotDirs(msg dirsListedMsg) Model {
+	if m.dialog == nil || m.dialog.seq != msg.seq || m.dialog.listing.req != msg.req {
+		return m
+	}
+	m.own().listing = listing{req: msg.req, dir: msg.dir, dirs: msg.dirs, done: true, failed: msg.failed}
+	return m
 }
 
 const completionLimit = 6
@@ -377,27 +520,29 @@ func (d *dialog) change(delta int) {
 	}
 }
 
-// why: a copy, so an earlier Model value never changes with it.
 func (m *Model) own() *dialog {
 	d := *m.dialog
 	m.dialog = &d
 	return &d
 }
 
-func (m Model) dialogPaste(s string) Model {
+func (m Model) dialogPaste(s string) (Model, tea.Cmd) {
 	d := m.own()
 	if d.busy {
-		return m
+		return m, nil
 	}
 	s = strings.ReplaceAll(s, "\n", " ")
 	if d.field == fieldModel && d.modelTypes() {
 		d.typeModel(s)
-		return m
+		return m, nil
 	}
 	if t := d.text(); t != nil {
 		*t += s
 	}
-	return m
+	if m.dialog.field == fieldWorkspace {
+		return m, m.listDirs()
+	}
+	return m, nil
 }
 
 func (m Model) dialogKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
@@ -409,12 +554,16 @@ func (m Model) dialogKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		if m.opts.NewSessionOnly {
 			return m, tea.Quit
 		}
-		// why: a start already sent keeps going; its reply still selects and shows the session.
 		m.dialog = nil
 		return m, nil
 	}
 	if d.busy || d.started {
 		return m, nil
+	}
+	if d.field == fieldWorkspace && d.path != "" {
+		if next, cmd, ok := m.pathKey(msg.String()); ok {
+			return next, cmd
+		}
 	}
 	switch msg.String() {
 	case "ctrl+n":
@@ -451,13 +600,35 @@ func (m Model) dialogKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		if t := d.text(); t != nil && *t != "" {
 			r := []rune(*t)
 			*t = string(r[:len(r)-1])
+			return m, m.listDirs()
 		}
 	default:
 		if msg.Text != "" {
-			return m.dialogPaste(msg.Text), nil
+			return m.dialogPaste(msg.Text)
 		}
 	}
 	return m, nil
+}
+
+func (m Model) pathKey(key string) (tea.Model, tea.Cmd, bool) {
+	d := m.dialog
+	n := len(d.matches())
+	switch {
+	case key == "down" && n > 0:
+		d.pick = min(d.pick+1, n-1)
+	case key == "up" && n > 0:
+		d.pick = max(d.pick-1, 0)
+	case key == "right":
+		if d.open() {
+			return m, m.listDirs(), true
+		}
+	case key == "left":
+		d.up()
+		return m, m.listDirs(), true
+	default:
+		return m, nil, false
+	}
+	return m, nil, true
 }
 
 func (m Model) submit() tea.Cmd {
@@ -469,8 +640,10 @@ func (m Model) submit() tea.Cmd {
 	case strings.TrimSpace(d.workItem) == "":
 		d.err = "work item is empty"
 		return nil
-	case len(d.spaces) == 0:
-		d.err = "no workspace: run agentws workspace add <path>"
+	}
+	space, ok := d.chosen()
+	if !ok {
+		d.err = "no workspace: type a folder's path"
 		return nil
 	}
 	c := m.opts.Calls
@@ -481,7 +654,7 @@ func (m Model) submit() tea.Cmd {
 	d.err, d.busy = "", true
 	seq := d.seq
 	p := rpc.NewSessionParams{
-		Workspace: d.spaces[d.ws].Root,
+		Workspace: space.Root,
 		WorkItem:  strings.TrimSpace(d.workItem),
 		Harness:   harnessChoices[d.harness],
 		Model:     strings.TrimSpace(d.model),
@@ -517,8 +690,6 @@ func (m Model) showNew(id string) tea.Cmd {
 	return m.call(rpc.MethodSessionFocus, rpc.SessionFocusParams{ID: id})
 }
 
-// why: ends the popup's program only once the new session is in view, so
-// closing the popup never races the focus call.
 func (m Model) showNewAndQuit(id string) tea.Cmd {
 	show := m.showNew(id)
 	return func() tea.Msg {
@@ -531,12 +702,10 @@ func (m Model) showNewAndQuit(id string) tea.Cmd {
 	}
 }
 
-// why: keeps the popup open instead of closing on an error no one sees.
 type showFailedMsg struct{ err error }
 
 type popupFailedMsg struct{}
 
-// why: if the daemon cannot run the popup, the dialog opens inline instead.
 func (m Model) openPopup() tea.Cmd {
 	c, p := m.opts.Calls, m.opts.DialogPopup
 	return func() tea.Msg {

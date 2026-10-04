@@ -42,14 +42,12 @@ func (a Agent) path() string    { return filepath.Join(a.Dir, a.Label+".plist") 
 func (a Agent) domain() string  { return "gui/" + strconv.Itoa(a.UID) }
 func (a Agent) service() string { return a.domain() + "/" + a.Label }
 
-// why: an unchanged agent is left loaded, so running setup again never restarts a working bridge.
 func Install(ctx context.Context, a Agent, run Runner) (Result, error) {
 	res := Result{Path: a.path()}
 	want := render(a)
 	old, err := os.ReadFile(res.Path)
 	switch {
 	case err == nil && bytes.Equal(old, want):
-		// why: a bootstrap that failed earlier leaves this plist written but unloaded.
 		if loaded(ctx, a, run) {
 			return res, nil
 		}
@@ -69,12 +67,10 @@ func Install(ctx context.Context, a Agent, run Runner) (Result, error) {
 		return res, err
 	}
 	res.Changed = true
-	// why: bootstrap refuses a label that is already loaded; bootout fails harmlessly when it is not.
 	_ = run(ctx, "launchctl", "bootout", a.service())
 	return res, run(ctx, "launchctl", "bootstrap", a.domain(), res.Path)
 }
 
-// why: a loaded agent that fails to unload keeps its plist, so a later --remove can still find and stop it.
 func Remove(ctx context.Context, a Agent, run Runner) (bool, error) {
 	if _, err := os.Stat(a.path()); errors.Is(err, os.ErrNotExist) {
 		return false, nil
