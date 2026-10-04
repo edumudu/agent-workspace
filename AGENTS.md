@@ -18,6 +18,7 @@ Claude Code and Codex load an `AGENTS.md` (here also `CLAUDE.md`, a symlink to i
 | [internal/app/](internal/app/AGENTS.md) | use cases and ports, cleanup execution, disk sizes |
 | [internal/daemon/](internal/daemon/AGENTS.md) | process files, event loop, sessions, attention and banners, launcher, naming, fallback, worktree scan and PRs, ports, cleanup schedule, shell and nvim methods |
 | [internal/rpc/](internal/rpc/AGENTS.md) | the socket protocol, methods, errors, build handshake, client |
+| [internal/serve/](internal/serve/AGENTS.md) | `agentws serve`: the HTTP and WebSocket API for the phone app, its routes, auth, stream frames, TLS |
 | [internal/tui/](internal/tui/AGENTS.md) | sidebar, card, limits bar, theme and defaults, review viewer, disk view, goldens |
 | [internal/adapters/](internal/adapters/AGENTS.md) | Claude and Codex adapters and their `setup`, notify, procs, fs, github, linear, sqlite |
 | [internal/adapters/git/](internal/adapters/git/AGENTS.md) | git CLI use, repo facts, worktree listing, review diffs, turn snapshots, hunks |
@@ -25,7 +26,8 @@ Claude Code and Codex load an `AGENTS.md` (here also `CLAUDE.md`, a symlink to i
 | [internal/adapters/setup/](internal/adapters/setup/AGENTS.md) | `.agentws.toml` setup recipes |
 | [internal/adapters/onboard/](internal/adapters/onboard/AGENTS.md) | the first-run walkthrough and `agentws setup nvim` |
 | [nvim/](nvim/AGENTS.md) | the Lua plugin |
-| [scripts/](scripts/AGENTS.md) | `lint-comments`, `lint-agents`, `tdd-check`, `mutate`, `bench-hook.sh`, `dev`, `install.sh` |
+| [scripts/](scripts/AGENTS.md) | `lint-comments`, `lint-agents`, `tdd-check`, `mutate`, `bench-hook.sh`, `dev`, `screenshot`, `web-screenshot`, `install.sh` |
+| [web/](web/AGENTS.md) | the PWA: toolchain, `make web`, the service worker, pairing |
 | [test/e2e/](test/e2e/AGENTS.md) | the core e2e suite and its fakes |
 | [test/integration/](test/integration/AGENTS.md) | daemon-with-real-adapters integration tests |
 
@@ -35,6 +37,7 @@ Claude Code and Codex load an `AGENTS.md` (here also `CLAUDE.md`, a symlink to i
 
 - `make build`: produces `./bin/agentws`.
 - `make test`: `go test ./...`.
+- `make web`: builds the PWA in `web/` into `internal/serve/dist` (needs Node 22.18+; see [web/](web/AGENTS.md)). `go build` works without it.
 - `make lint`: `golangci-lint` (including the `depguard` layer rules and the `gofmt` formatter check in `.golangci.yml`), then `scripts/lint-comments` and `scripts/lint-agents`.
 - `make bench`: benchmarks that guard the performance budgets.
 - `make mutate`: `gremlins` on `domain` and `app`, failing below 80% efficacy (see [scripts/](scripts/AGENTS.md)).

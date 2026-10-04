@@ -20,7 +20,7 @@ It is a feature for anyone running `agentws`, not one setup. How the phone reach
 ### New daemon methods
 
 - `transcript.page` (`{"session","before","limit"}` → `{"messages","before"}`) reads a page on the connection goroutine. An empty `before` asks for the newest page; the response's `before` is the start of its oldest message, to pass back for the page before it.
-- `transcript.watch` (`{"session","after"}`), with `after` the `Cursor` of the newest message the client holds, streams the messages after it like `subscribe` streams diffs. A worker per watched session tails the file with fsnotify and stops when the last watcher leaves. Nothing reads transcripts while no client watches, and the event loop never reads them.
+- `transcript.watch` (`{"session","after"}`), with `after` the `Cursor` of the newest message the client holds, streams the messages after it like `subscribe` streams diffs. A worker per watched session tails the file with fsnotify and stops when the last watcher leaves. Nothing reads transcripts while no client watches, and the event loop never reads them. `transcript.unwatch` (`{"watch"}`) ends one watch; a client keeps messages by `ID` and replaces a message when its `ID` comes again (a tool call finished by a later result).
 - `session.send` (`{"session","text"}` → `{"queued"}`) uses a text queue of its own, separate from `review.send`'s review-draft queue but dispatched by the same rule: one bracketed paste and Enter once the session is idle, done or waiting. A send to a busy session waits, and the app shows it as queued.
 - `session.interrupt` (`{"session"}`) sends Escape to the pane.
 - `session.prompt` (`{"session"}` → `{"text","choices"}`) and `session.answer` (`{"session","choice"}`) handle a permission dialog: the daemon captures the pane, the harness adapter turns the dialog into choices and maps a choice to its keys. This is tied to each harness's dialog layout and is tested against captured fixtures; a structured path through a blocking permission hook is left to a later ADR, because it cannot meet the `agentws hook` budget as it stands.
@@ -101,7 +101,7 @@ It is a feature for anyone running `agentws`, not one setup. How the phone reach
 - `serve` is remote control of the machine's agents. Device tokens are the only gate besides the network path, so the docs say not to expose it to the internet without a tunnel or proxy that adds its own authentication.
 - Permission answers depend on each harness's dialog layout until the hook-based path exists; an adapter test fails when a captured dialog no longer parses.
 - Transcript formats are not public APIs. A harness update can drop messages from the chat view until the parser catches up; the pane itself is unaffected.
-- `web/` brings Node into the build. The `tdd` job covers Go packages only; the web tests' place in it is still open.
+- `web/` brings Node into the build. Web tests have parity with Go tests in the `tdd` job (ADR 0048).
 
 ## Phases
 
@@ -111,3 +111,13 @@ It is a feature for anyone running `agentws`, not one setup. How the phone reach
 4. Chat: `session.send`, `session.interrupt`, `transcript.watch`, live updates.
 5. New sessions from the app, and permission answers.
 6. Web Push.
+
+## Amendment, 2026-10-04 (#183): who sends Web Push
+
+- The daemon sends pushes, not `serve`. `app.PushProvider` (`PublicKey`, `Send`) is wired into the daemon by `daemon.WithPush`, with the `adapters/webpush` implementation. `serve` may import only `rpc` and `domain`, so a port in `app` could not be used from it; and the daemon already holds what push needs: the banners after mute and coalescing (ADR 0016), the devices and their revocation, and the store.
+- So the VAPID pair is created by the daemon's adapter in `$AGENTWS_HOME/vapid` (JSON, mode 600) on first use, not by `serve`. Both run as the same user on the same host, so the file and its mode are as the decision above says.
+- New daemon methods: `push.key` (→ `{"public_key"}`) and `push.subscribe` (`{"device","endpoint","keys"}`). New endpoints: `GET /api/v1/push/key` and `POST /api/v1/push/subscribe` (the browser's `PushSubscription.toJSON()`), both behind the device token; `serve` adds the calling device's ID.
+- A subscription is stored on its device (`Device.Push`, inside the `devices` row), one per device, so revoking the device deletes it with no second table to keep in step. A push service answer of 404 or 410 clears it.
+- The payload is `{"title","body","url","tag"}`: the banner's title and body (falling back to `agentws` and the state word, never empty), `url` `/#/sessions/<id>` and `tag` the session ID, so a session's newer notification replaces its older one. The terminal-in-front check of the Mac banner does not apply to push.
+
+Rejected: `serve` subscribing to `notify.stream` and sending through an adapter injected from `cmd/agentws`. It keeps sending out of the daemon, but subscriptions would still have to be stored and dropped through new daemon methods, revocation and a gone subscription would cross the socket twice, and a push would be lost whenever `serve` is not running even though the daemon saw the banner.

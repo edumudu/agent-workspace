@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "failed",
+    "message": "setup /w/api: npm ci: exit status 1\nnpm ERR! missing lockfile"
+  }
+}

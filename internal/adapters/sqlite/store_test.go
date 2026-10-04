@@ -448,3 +448,17 @@ func TestDevicesPersistAndRevokedOnesAreDeleted(t *testing.T) {
 		t.Fatalf("after revoke %+v", snap.Devices)
 	}
 }
+
+func TestDevicePushSubscriptionPersistsWithItsDevice(t *testing.T) {
+	s, path := openTemp(t)
+	at := time.Date(2026, 10, 4, 9, 0, 0, 0, time.UTC)
+	sub := domain.PushSubscription{Endpoint: "https://web.push.apple.com/QGx3", P256dh: "BNcR", Auth: "tBHI"}
+	s.PutDevice(domain.Device{ID: "a2b3c4d5", Name: "phone", TokenHash: "abc123", Created: at, LastSeen: at, Push: &sub})
+	snap, err := reopen(t, s, path).Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(snap.Devices) != 1 || snap.Devices[0].Push == nil || *snap.Devices[0].Push != sub {
+		t.Fatalf("devices %+v", snap.Devices)
+	}
+}

@@ -1,0 +1,18 @@
+{
+  "id": "9f2c4a1b7d3e",
+  "text": "Bash command\n\ntouch notes.txt\n\nDo you want to proceed?",
+  "choices": [
+    {
+      "id": "1",
+      "label": "Yes"
+    },
+    {
+      "id": "2",
+      "label": "Yes, and don't ask again"
+    },
+    {
+      "id": "3",
+      "label": "No"
+    }
+  ]
+}

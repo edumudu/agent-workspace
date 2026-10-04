@@ -30,6 +30,7 @@ const (
 	MethodSessionFocus     = "session.focus"
 	MethodWorktreeAssign   = "worktree.assign"
 	MethodNewSession       = "session.new"
+	MethodSessionResolve   = "session.resolve"
 	MethodEndSession       = "session.end"
 	MethodResumeSession    = "session.resume"
 	MethodSessionRename    = "session.rename"
@@ -57,6 +58,9 @@ const (
 	MethodDeviceCheck      = "device.check"
 	MethodDeviceList       = "device.list"
 	MethodDeviceRevoke     = "device.revoke"
+	MethodPushKey          = "push.key"
+	MethodPushSubscribe    = "push.subscribe"
+	MethodPushUnsubscribe  = "push.unsubscribe"
 )
 
 type PairCodeParams struct {
@@ -104,6 +108,25 @@ type DeviceList struct {
 
 type DeviceRevokeParams struct {
 	ID string `json:"id"`
+}
+
+type PushKey struct {
+	PublicKey string `json:"public_key"`
+}
+
+type PushKeys struct {
+	P256dh string `json:"p256dh"`
+	Auth   string `json:"auth"`
+}
+
+type PushUnsubscribeParams struct {
+	Device string `json:"device"`
+}
+
+type PushSubscribeParams struct {
+	Device   string   `json:"device"`
+	Endpoint string   `json:"endpoint"`
+	Keys     PushKeys `json:"keys"`
 }
 
 type DiskView struct {
@@ -228,6 +251,19 @@ type NewSessionParams struct {
 	Model     string `json:"model,omitempty"`
 	Effort    string `json:"effort,omitempty"`
 	Prompt    string `json:"prompt,omitempty"`
+}
+
+type ResolveWorkItemParams struct {
+	Workspace string `json:"workspace,omitempty"`
+	WorkItem  string `json:"work_item"`
+}
+
+type WorkItemResolved struct {
+	Source    string `json:"source"`
+	Ref       string `json:"ref,omitempty"`
+	Title     string `json:"title,omitempty"`
+	Worktree  string `json:"worktree"`
+	Workspace string `json:"workspace"`
 }
 
 type LauncherEnqueueParams struct {
@@ -366,13 +402,14 @@ type Request struct {
 }
 
 type Response struct {
-	V      int             `json:"v"`
-	ID     uint64          `json:"id"`
-	Result json.RawMessage `json:"result,omitempty"`
-	Diff   *Diff           `json:"diff,omitempty"`
-	Notice *Notice         `json:"notice,omitempty"`
-	Error  *Error          `json:"error,omitempty"`
-	Build  string          `json:"build,omitempty"`
+	V          int              `json:"v"`
+	ID         uint64           `json:"id"`
+	Result     json.RawMessage  `json:"result,omitempty"`
+	Diff       *Diff            `json:"diff,omitempty"`
+	Notice     *Notice          `json:"notice,omitempty"`
+	Transcript *TranscriptEvent `json:"transcript,omitempty"`
+	Error      *Error           `json:"error,omitempty"`
+	Build      string           `json:"build,omitempty"`
 }
 
 type Notice struct {

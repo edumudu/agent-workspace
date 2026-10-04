@@ -23,7 +23,9 @@ import (
 	"github.com/giovaniif/agent-workspace/internal/adapters/setup"
 	"github.com/giovaniif/agent-workspace/internal/adapters/sqlite"
 	"github.com/giovaniif/agent-workspace/internal/adapters/tmux"
+	"github.com/giovaniif/agent-workspace/internal/adapters/webpush"
 	"github.com/giovaniif/agent-workspace/internal/app"
+	"github.com/giovaniif/agent-workspace/internal/domain"
 	"github.com/giovaniif/agent-workspace/internal/rpc"
 )
 
@@ -102,6 +104,8 @@ func Run(ctx context.Context, home string) (err error) {
 		WithTerminals(home, nvim.Editor{}),
 		WithHunks(gitadapter.Review{}),
 		WithOnboarding(onboard.FromEnv(home, self, os.Getenv)),
+		WithTranscripts(Transcripts(wsfs.Transcripts{}), wsfs.Transcripts{}),
+		WithPush(webpush.New(filepath.Join(home, "vapid"), nil)),
 	}
 	if hooks.prPoll > 0 {
 		opts = append(opts, WithWorktreePoll(DefaultWorktreePoll, hooks.prPoll))
@@ -126,6 +130,13 @@ func Run(ctx context.Context, home string) (err error) {
 		return err
 	}
 	return d.Serve(ctx, ln)
+}
+
+func Transcripts(files app.TranscriptFiles) app.Transcripts {
+	return app.Transcripts{Files: files, Parsers: map[domain.Harness]func() app.TranscriptParser{
+		domain.HarnessClaude: func() app.TranscriptParser { return &claude.TranscriptParser{} },
+		domain.HarnessCodex:  func() app.TranscriptParser { return &codex.TranscriptParser{} },
+	}}
 }
 
 func realDir(dir string) (string, error) {

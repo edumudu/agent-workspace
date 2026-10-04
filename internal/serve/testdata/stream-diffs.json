@@ -1,0 +1,207 @@
+[
+  {
+    "diff": {
+      "seq": 42,
+      "session": {
+        "ID": "s1",
+        "TaskID": "t1",
+        "Harness": "claude",
+        "Pane": "",
+        "Model": "",
+        "Effort": "",
+        "State": "permission",
+        "Ended": false,
+        "Unread": false,
+        "Focused": false,
+        "Muted": false,
+        "WorktreeIDs": [
+          "w1"
+        ],
+        "ResumeID": "",
+        "Transcript": "",
+        "Dir": "",
+        "Usage": {
+          "ContextLeftPercent": 0,
+          "HasContext": false,
+          "LimitUsedPercent": 0
+        },
+        "Limits": [
+          {
+            "Window": "five_hour",
+            "UsedPercent": 81,
+            "ResetsAt": 1791039600
+          }
+        ],
+        "LimitsAt": "2026-10-03T12:01:00Z",
+        "Switches": null,
+        "SwitchWarning": false,
+        "name": "fix the login redirect",
+        "where": "api@login",
+        "banner": "needs permission: Bash: make test",
+        "since": "2026-10-03T12:01:00Z"
+      },
+      "limits": [
+        {
+          "Harness": "claude",
+          "Window": "five_hour",
+          "LeftPercent": 19,
+          "ResetsAt": 1791039600,
+          "ReportedAt": "2026-10-03T12:01:00Z",
+          "label": "5h",
+          "low": true,
+          "stale_at": "2026-10-03T12:16:00Z"
+        },
+        {
+          "Harness": "codex",
+          "Window": "five_hour",
+          "LeftPercent": 90,
+          "ResetsAt": 0,
+          "ReportedAt": "2026-10-03T11:00:00Z",
+          "label": "5h",
+          "low": false,
+          "stale_at": "2026-10-03T11:15:00Z"
+        }
+      ]
+    }
+  },
+  {
+    "diff": {
+      "seq": 45,
+      "worktree": {
+        "ID": "w1",
+        "Repo": "api",
+        "Path": "",
+        "Branch": "login-v2",
+        "PR": null,
+        "SubtaskSlug": "",
+        "SessionID": "",
+        "Ports": null
+      }
+    }
+  },
+  {
+    "diff": {
+      "seq": 45,
+      "session": {
+        "ID": "s1",
+        "TaskID": "t1",
+        "Harness": "claude",
+        "Pane": "",
+        "Model": "",
+        "Effort": "",
+        "State": "permission",
+        "Ended": false,
+        "Unread": false,
+        "Focused": false,
+        "Muted": false,
+        "WorktreeIDs": [
+          "w1"
+        ],
+        "ResumeID": "",
+        "Transcript": "",
+        "Dir": "",
+        "Usage": {
+          "ContextLeftPercent": 0,
+          "HasContext": false,
+          "LimitUsedPercent": 0
+        },
+        "Limits": [
+          {
+            "Window": "five_hour",
+            "UsedPercent": 81,
+            "ResetsAt": 1791039600
+          }
+        ],
+        "LimitsAt": "2026-10-03T12:01:00Z",
+        "Switches": null,
+        "SwitchWarning": false,
+        "name": "fix the login redirect",
+        "where": "api@login-v2",
+        "banner": "needs permission: Bash: make test",
+        "since": "2026-10-03T12:01:00Z"
+      }
+    }
+  },
+  {
+    "diff": {
+      "seq": 46,
+      "sends": []
+    }
+  },
+  {
+    "diff": {
+      "seq": 47,
+      "removed_session": "s2",
+      "limits": [
+        {
+          "Harness": "claude",
+          "Window": "five_hour",
+          "LeftPercent": 19,
+          "ResetsAt": 1791039600,
+          "ReportedAt": "2026-10-03T12:01:00Z",
+          "label": "5h",
+          "low": true,
+          "stale_at": "2026-10-03T12:16:00Z"
+        }
+      ]
+    }
+  },
+  {
+    "diff": {
+      "seq": 48,
+      "task": {
+        "ID": "t1",
+        "Source": "text",
+        "Ref": "",
+        "Text": "fix the login redirect",
+        "IssueTitle": "",
+        "PRTitle": "",
+        "PinnedName": "login fix",
+        "URL": ""
+      }
+    }
+  },
+  {
+    "diff": {
+      "seq": 48,
+      "session": {
+        "ID": "s1",
+        "TaskID": "t1",
+        "Harness": "claude",
+        "Pane": "",
+        "Model": "",
+        "Effort": "",
+        "State": "permission",
+        "Ended": false,
+        "Unread": false,
+        "Focused": false,
+        "Muted": false,
+        "WorktreeIDs": [
+          "w1"
+        ],
+        "ResumeID": "",
+        "Transcript": "",
+        "Dir": "",
+        "Usage": {
+          "ContextLeftPercent": 0,
+          "HasContext": false,
+          "LimitUsedPercent": 0
+        },
+        "Limits": [
+          {
+            "Window": "five_hour",
+            "UsedPercent": 81,
+            "ResetsAt": 1791039600
+          }
+        ],
+        "LimitsAt": "2026-10-03T12:01:00Z",
+        "Switches": null,
+        "SwitchWarning": false,
+        "name": "login fix",
+        "where": "api@login-v2",
+        "banner": "needs permission: Bash: make test",
+        "since": "2026-10-03T12:01:00Z"
+      }
+    }
+  }
+]

@@ -95,6 +95,14 @@ Tests are named `*Cleanup*`: `go test ./internal/domain/... -run Cleanup` and `g
 
 `go test ./internal/daemon ./internal/app ./internal/domain -run 'Disk|Reclaimable|TotalSize|RemoveWorktree|CleanupWorktree|ShellToggle'`. `disk.view` returns `Cleanup.Plan` with a size per worktree (one status check per worktree, 4 at a time); `cleanup.worktree` runs `app.Cleanup.RemoveWorktree`. `AGENTWS_DEPS_STORE` names the shared deps store whose size the header shows (default: pnpm's store if present). See [ADR 0030](../../docs/adr/0030-worktrees-disk-view.md) and [internal/tui/](../tui/AGENTS.md).
 
+## Transcripts
+
+`go test ./internal/daemon/ ./internal/rpc/ ./internal/app/ ./internal/domain/ -run 'Transcript|ToolCalls|NewestPage'` and `go test -tags integration ./test/integration/ -run Transcript`. `WithTranscripts(app.Transcripts, app.TranscriptWatcher)` turns on `transcript.page`, `transcript.watch` and `transcript.unwatch` (otherwise `unknown_method`); `Run` passes `daemon.Transcripts(fs.Transcripts{})`, which picks the Claude or Codex parser by harness. The protocol is in [internal/rpc/](../rpc/AGENTS.md); see [ADR 0046](../../docs/adr/0046-remote-app.md).
+
+- **Page.** The loop only looks the session up; `app.Transcripts.Page` reads on the connection goroutine, backwards from `before` in windows that double from 256 KiB until they hold `limit` messages, and reads up to 1 MiB past the page to finish its running tool calls.
+- **Watch.** One tailer goroutine per watched session, created by the first `transcript.watch` and cancelled when its last watcher leaves (unwatch or a closed connection). The loop only records the watch and queues it to the tailer, under a mutex and without blocking; the tailer opens the file, answers, and pushes events itself, so the result and the events of one watch stay in order. It reads on each fsnotify change (`fs.Transcripts.Watch` watches the file, or its directory until the file exists), or every second if the watch cannot start. A later watcher gets the catch-up read broadcast first, then its own backlog from `after` (`TranscriptTail.Since`). A tail started at a cursor first parses up to 1 MiB before it, so a call whose result comes later is finished, not dropped.
+- **Moves.** When an emitted session's `Transcript` changes, the loop queues the new path to its tailer, which switches files and sends `reset`; when the session is forgotten, `closed`. Nothing reads a transcript while no client watches it.
+
 ## Pairing and devices
 
 `go test ./internal/domain/ ./internal/daemon/ ./cmd/agentws/ -run 'Pair|Device|Remote'`. The rules are in `domain` (`Pairing`, `NewPairCode`, `CheckDeviceToken`, `RevokeDevice`, `Device.Seen`); see [ADR 0046](../../docs/adr/0046-remote-app.md).
@@ -104,6 +112,15 @@ Tests are named `*Cleanup*`: `go test ./internal/domain/... -run Cleanup` and `g
 - **`device.check`** hashes the token and compares it in constant time with every device's hash. It records `LastSeen` at most once a minute, so a store write follows at most one check a minute per device.
 - **Revocation.** `device.revoke` deletes the device and emits a diff to every subscriber with only `revoked_device` set (no `State` field carries devices). `serve` (#176) holds one `subscribe` connection, opened before it accepts requests, and closes every open stream of that device when the diff arrives, well within a second. A stream's `device.check` and a revoke are ordered on the loop: a check after the revoke fails, and a revoke after the check reaches `serve` as a diff. Device IDs are random and never reused, so `serve` may keep a set of revoked IDs to close a stream whose check answered just before the diff was read.
 - Tokens never reach a log or the disk in clear: errors never quote them, and the CLI never prints one.
+
+## Web Push
+
+`go test ./internal/domain/ ./internal/app/ ./internal/adapters/webpush/ ./internal/adapters/sqlite/ ./internal/daemon/ ./internal/serve/ -run Push`. `WithPush(app.PushProvider)` turns on `push.key`, `push.subscribe` and the push worker; `Run` passes `webpush.New($AGENTWS_HOME/vapid, nil)`. See [ADR 0046](../../docs/adr/0046-remote-app.md).
+
+- **Keys.** The adapter keeps the VAPID pair as JSON in `$AGENTWS_HOME/vapid` (mode 600), created on the first `push.key` or send. A file it cannot read is an error and is left alone; move it away to get a new pair (every device must then enable notifications again).
+- **Subscriptions** live on the device (`Device.Push`, in the `devices` table's JSON), one per device: `push.subscribe` replaces the device's own and takes the endpoint off any other device that had it (the same phone paired again). `device.revoke` deletes the device and so its subscription; `push.unsubscribe` (the app's sign out) clears it.
+- **What is sent.** `announce` hands every banner that passes mute and the coalescer (the same ones `notify.stream` carries, ADR 0016) to a bounded queue as `domain.PushFor(banner)`: `{"title","body","url","tag"}`, with the title falling back to `agentws` and the body to the state word, so no push is silent; `url` is `/#/sessions/<id>` and `tag` the session ID. The terminal-in-front check does not apply: the phone is usually away from the terminal. A withdrawn banner is not withdrawn on the phone.
+- **Worker.** One goroutine reads the queue, takes the current subscriptions from the loop at send time (so a device revoked after the banner gets nothing), and calls `app.SendPush` with a 20 s cap. A 404 or 410 from the push service is `app.ErrPushGone`; the worker then clears that subscription from its device and stores it, only if the device still holds the same endpoint and keys (a renewed one survives). Other failures are logged (by host, never the endpoint URL) and not retried. A full queue drops the push.
 
 ## Shell and nvim
 
