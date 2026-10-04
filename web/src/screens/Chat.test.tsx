@@ -193,8 +193,12 @@ describe("the transcript", () => {
 
   it("drops an older page that lands after the session moved to another transcript file", async () => {
     const older = new Deferred<FakeRoute>();
+    let calls = 0;
     const server = new FakeServer()
-      .on("GET", newest, page([msg("b1", 1000)], 90))
+      .on("GET", newest, () => {
+        calls++;
+        return calls === 1 ? page([msg("b1", 1000)], 90) : page([msg("n1", 50)], 30);
+      })
       .on("GET", "/api/v1/sessions/s1/messages?before=90&limit=50", () => older.promise);
     const sockets = setup(server);
     live(sockets);
@@ -207,7 +211,7 @@ describe("the transcript", () => {
     expect(log.queryByText("message a1")).not.toBeInTheDocument();
     expect(log.queryByText("message b1")).not.toBeInTheDocument();
     expect(screen.queryByText("Start of the conversation")).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Load earlier messages" })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Load earlier messages" })).toBeInTheDocument();
   });
 
   it("asks for the newest page of the new file after a reset, so older pages load from there", async () => {
