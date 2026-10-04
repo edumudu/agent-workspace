@@ -204,4 +204,24 @@ describe("the permission card", () => {
     expect(await screen.findByRole("button", { name: "Yes, apply" })).toBeInTheDocument();
     expect(screen.queryByText(/already answered/i)).not.toBeInTheDocument();
   });
+
+  it("ignores the outcome of an answer sent for an earlier prompt once a new one is showing", async () => {
+    const gate = new Deferred<FakeRoute>();
+    let calls = 0;
+    const server = serverWith(() => {
+      calls++;
+      return { status: 200, body: calls === 1 ? bashPrompt : { id: "second", text: "Edit file\n\nDo you want to proceed?", choices: [{ id: "1", label: "Yes, apply" }] } };
+    }).on("POST", answerPath, () => gate.promise);
+    const sockets = setup(server);
+    live(sockets, asking);
+    await userEvent.click(await screen.findByRole("button", { name: "Yes" }));
+    move(sockets, {});
+    move(sockets, { State: "permission", since: "2026-10-03T12:09:00Z" });
+    await screen.findByRole("button", { name: "Yes, apply" });
+    await act(async () => {
+      gate.resolve({ status: 200, body: {} });
+    });
+    expect(screen.getByRole("button", { name: "Yes, apply" })).toBeInTheDocument();
+    expect(screen.queryByText(/^Answered:/)).not.toBeInTheDocument();
+  });
 });
