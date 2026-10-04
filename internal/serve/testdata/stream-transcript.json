@@ -1,0 +1,50 @@
+[
+  {
+    "transcript": {
+      "session": "s1",
+      "messages": [
+        {
+          "id": "a1",
+          "cursor": 80,
+          "turn": "p1",
+          "role": "assistant",
+          "text": "Looking at the redirect.",
+          "at": "2026-10-03T12:00:00Z"
+        }
+      ]
+    }
+  },
+  {
+    "transcript": {
+      "session": "s1",
+      "messages": [
+        {
+          "id": "c1",
+          "cursor": 120,
+          "turn": "p1",
+          "role": "tool",
+          "tool": {
+            "name": "Bash",
+            "summary": "go test ./...",
+            "status": "running"
+          },
+          "at": "2026-10-03T12:00:00Z"
+        }
+      ]
+    }
+  },
+  {
+    "transcript": {
+      "session": "s1",
+      "messages": [],
+      "reset": true
+    }
+  },
+  {
+    "transcript": {
+      "session": "s1",
+      "messages": [],
+      "closed": true
+    }
+  }
+]

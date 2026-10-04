@@ -1,0 +1,60 @@
+[
+  {
+    "diff": {
+      "seq": 42,
+      "session": {
+        "ID": "s1",
+        "TaskID": "t1",
+        "Harness": "claude",
+        "Pane": "",
+        "Model": "",
+        "Effort": "",
+        "State": "permission",
+        "Ended": false,
+        "Unread": false,
+        "Focused": false,
+        "Muted": false,
+        "WorktreeIDs": null,
+        "ResumeID": "",
+        "Transcript": "",
+        "Dir": "",
+        "Usage": {
+          "ContextLeftPercent": 0,
+          "HasContext": false,
+          "LimitUsedPercent": 0
+        },
+        "Limits": null,
+        "LimitsAt": "0001-01-01T00:00:00Z",
+        "Switches": null,
+        "SwitchWarning": false
+      }
+    }
+  },
+  {
+    "diff": {
+      "seq": 45,
+      "worktree": {
+        "ID": "w1",
+        "Repo": "api",
+        "Path": "",
+        "Branch": "login",
+        "PR": null,
+        "SubtaskSlug": "",
+        "SessionID": "",
+        "Ports": null
+      }
+    }
+  },
+  {
+    "diff": {
+      "seq": 46,
+      "sends": []
+    }
+  },
+  {
+    "diff": {
+      "seq": 47,
+      "removed_session": "s2"
+    }
+  }
+]
