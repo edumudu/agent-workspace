@@ -30,6 +30,7 @@ const (
 	MethodSessionFocus     = "session.focus"
 	MethodWorktreeAssign   = "worktree.assign"
 	MethodNewSession       = "session.new"
+	MethodSessionResolve   = "session.resolve"
 	MethodEndSession       = "session.end"
 	MethodResumeSession    = "session.resume"
 	MethodSessionRename    = "session.rename"
@@ -228,6 +229,19 @@ type NewSessionParams struct {
 	Model     string `json:"model,omitempty"`
 	Effort    string `json:"effort,omitempty"`
 	Prompt    string `json:"prompt,omitempty"`
+}
+
+type ResolveWorkItemParams struct {
+	Workspace string `json:"workspace,omitempty"`
+	WorkItem  string `json:"work_item"`
+}
+
+type WorkItemResolved struct {
+	Source    string `json:"source"`
+	Ref       string `json:"ref,omitempty"`
+	Title     string `json:"title,omitempty"`
+	Worktree  string `json:"worktree"`
+	Workspace string `json:"workspace"`
 }
 
 type LauncherEnqueueParams struct {
