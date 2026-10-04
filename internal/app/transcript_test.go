@@ -294,3 +294,24 @@ func TestTranscriptTailStartsOverWhenTheFileShrinks(t *testing.T) {
 		t.Fatalf("next read: %v restarted %v err %v", ids(msgs), tail.Restarted(), err)
 	}
 }
+
+func TestTranscriptTailKeepsARestartPendingUntilTheReplacementIsRead(t *testing.T) {
+	files := newMemFiles(transcriptPath, "u p1 hi\na a1 there\n")
+	tail, err := transcripts(files, 0, 0).Tail(domain.HarnessClaude, transcriptPath, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tail.Read(); err != nil {
+		t.Fatal(err)
+	}
+	files.files[transcriptPath] = []byte("u q1 new\n")
+	files.readErr = errors.New("read failed")
+	if msgs, err := tail.Read(); err == nil || msgs != nil || tail.Restarted() {
+		t.Fatalf("failed read: %v restarted %v err %v", ids(msgs), tail.Restarted(), err)
+	}
+	files.readErr = nil
+	msgs, err := tail.Read()
+	if err != nil || !reflect.DeepEqual(ids(msgs), []string{"q1"}) || !tail.Restarted() {
+		t.Fatalf("retried read: %v restarted %v err %v", ids(msgs), tail.Restarted(), err)
+	}
+}

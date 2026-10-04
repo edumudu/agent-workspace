@@ -54,9 +54,10 @@ func lineParsers() map[domain.Harness]func() app.TranscriptParser {
 }
 
 type memFiles struct {
-	mu    sync.Mutex
-	files map[string][]byte
-	reads int
+	mu      sync.Mutex
+	files   map[string][]byte
+	reads   int
+	readErr error
 }
 
 func newMemFiles(path, content string) *memFiles {
@@ -83,6 +84,9 @@ func (f *memFiles) ReadAt(path string, off, n int64) ([]byte, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.reads++
+	if f.readErr != nil {
+		return nil, f.readErr
+	}
 	b, ok := f.files[path]
 	if !ok {
 		return nil, fs.ErrNotExist
