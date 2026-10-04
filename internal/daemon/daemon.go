@@ -87,34 +87,35 @@ func (e SessionHooked) apply(s *state) rpc.Diff {
 }
 
 type state struct {
-	store        app.Store
-	seq          uint64
-	workspaces   map[string]domain.Workspace
-	tasks        map[string]domain.Task
-	worktrees    map[string]domain.Worktree
-	sessions     map[string]domain.Session
-	events       map[string][]domain.SessionEvent
-	subagents    []domain.Subagent
-	subs         map[*conn]uint64
-	noticeSubs   map[*conn]uint64
-	usage        map[string]*usageJob
-	attn         *attention
-	requestUsage func(sessionID, path string, force bool)
-	sendSwitches func(session domain.Session, sws []domain.Switch)
-	hints        worktreeHints
-	listeners    []domain.Listener
-	requestTurn  func(session string, dirs []string, sent *domain.ReviewDraft) bool
-	viewed       map[string]domain.ViewedMark
-	queue        []domain.LaunchItem
-	launched     map[string]bool
-	kickLauncher func()
-	scopes       map[string]domain.ReviewScope
-	drafts       map[string]domain.ReviewDraft
-	awaiting     map[string]domain.ReviewDraft
-	pasting      map[string]bool
-	sendDraft    func(session domain.Session, draft domain.ReviewDraft, prompt string)
-	pairing      domain.Pairing
-	devices      map[string]domain.Device
+	store           app.Store
+	seq             uint64
+	workspaces      map[string]domain.Workspace
+	tasks           map[string]domain.Task
+	worktrees       map[string]domain.Worktree
+	sessions        map[string]domain.Session
+	events          map[string][]domain.SessionEvent
+	subagents       []domain.Subagent
+	subs            map[*conn]uint64
+	noticeSubs      map[*conn]uint64
+	usage           map[string]*usageJob
+	attn            *attention
+	requestUsage    func(sessionID, path string, force bool)
+	sendSwitches    func(session domain.Session, sws []domain.Switch)
+	hints           worktreeHints
+	listeners       []domain.Listener
+	requestTurn     func(session string, dirs []string, sent *domain.ReviewDraft) bool
+	viewed          map[string]domain.ViewedMark
+	queue           []domain.LaunchItem
+	launched        map[string]bool
+	kickLauncher    func()
+	scopes          map[string]domain.ReviewScope
+	drafts          map[string]domain.ReviewDraft
+	awaiting        map[string]domain.ReviewDraft
+	pasting         map[string]bool
+	sendDraft       func(session domain.Session, draft domain.ReviewDraft, prompt string)
+	pairing         domain.Pairing
+	devices         map[string]domain.Device
+	transcriptMoved func(sessionID, path string, gone bool)
 }
 
 type Daemon struct {
@@ -138,6 +139,7 @@ type Daemon struct {
 	onboard  app.Onboarder
 	lc       launcherCfg
 	term     terminals
+	tx       *transcripts
 }
 
 func New(store app.Store, pid int, opts ...Option) (*Daemon, error) {
@@ -237,6 +239,9 @@ func (d *Daemon) query(f func(*state)) bool {
 
 func (d *Daemon) Serve(ctx context.Context, ln net.Listener) error {
 	d.ws.ctx = ctx
+	if d.tx != nil {
+		d.tx.ctx = ctx
+	}
 	go d.refreshWorkspacesEvery(ctx)
 	if d.st.attn != nil {
 		go d.st.attn.run(ctx)
@@ -304,9 +309,23 @@ func (d *Daemon) loop(ctx context.Context) {
 }
 
 func (s *state) emit(e Event) {
+	var id string
+	switch ev := e.(type) {
+	case SessionChanged:
+		id = ev.Session.ID
+	case SessionHooked:
+		id = ev.Session.ID
+	}
+	prev, had := s.sessions[id]
 	s.seq++
 	diff := e.apply(s)
 	diff.Seq = s.seq
+	if had && s.transcriptMoved != nil {
+		now, has := s.sessions[id]
+		if !has || now.Transcript != prev.Transcript {
+			s.transcriptMoved(id, now.Transcript, !has)
+		}
+	}
 	switch e.(type) {
 	case SessionChanged, SessionHooked:
 		if len(s.queue) > 0 {
@@ -389,6 +408,9 @@ func (d *Daemon) handle(c *conn) {
 			delete(s.subs, c)
 			delete(s.noticeSubs, c)
 		})
+		if d.tx != nil {
+			d.tx.dropConn(c)
+		}
 	}()
 	go c.write()
 	sc := bufio.NewScanner(c.nc)
@@ -512,6 +534,8 @@ func (d *Daemon) dispatch(c *conn, line []byte) (*rpc.Response, bool) {
 		return d.diskView(req)
 	case rpc.MethodCleanupWorktree:
 		return d.cleanupWorktree(req)
+	case rpc.MethodTranscriptPage, rpc.MethodTranscriptWatch, rpc.MethodTranscriptUnwatch:
+		return d.transcriptMethod(c, req)
 	case rpc.MethodPairCode, rpc.MethodPairRedeem, rpc.MethodDeviceCheck, rpc.MethodDeviceList, rpc.MethodDeviceRevoke:
 		return d.pairMethod(req)
 	default:
