@@ -216,7 +216,7 @@ func TestTranscriptIsNeverOpenedWithoutWatchers(t *testing.T) {
 	d, path := startTranscripts(t, files)
 	c := dial(t, path)
 	addSession(t, d, c, "a", transcriptA)
-	d.Post(daemon.SessionChanged{Session: domain.Session{ID: "a", Harness: domain.HarnessClaude, Pane: "%a", State: domain.StateWorking, Transcript: transcriptA + ".2"}})
+	d.Post(daemon.SessionChanged{Session: domain.Session{ID: "a", Harness: domain.HarnessClaude, Pane: "%a", State: domain.StateRunning, Transcript: transcriptA + ".2"}})
 	files.write(transcriptA, assistantLine("a1", "hi"))
 	time.Sleep(50 * time.Millisecond)
 	if touched, watches, _ := files.counts(); touched != 0 || watches != 0 {
@@ -230,7 +230,7 @@ func TestTranscriptIsNeverOpenedWithoutWatchers(t *testing.T) {
 	cancel()
 	waitFor(t, func() bool { _, _, active := files.counts(); return active == 0 })
 	touched, _, _ := files.counts()
-	d.Post(daemon.SessionChanged{Session: domain.Session{ID: "a", Harness: domain.HarnessClaude, Pane: "%a", State: domain.StateWorking, Transcript: transcriptA}})
+	d.Post(daemon.SessionChanged{Session: domain.Session{ID: "a", Harness: domain.HarnessClaude, Pane: "%a", State: domain.StateRunning, Transcript: transcriptA}})
 	files.write(transcriptA+".2", assistantLine("a2", "hi"))
 	time.Sleep(50 * time.Millisecond)
 	if after, _, _ := files.counts(); after != touched {
@@ -250,13 +250,13 @@ func TestTranscriptWatchersSwitchToTheNewFileWhenTheTranscriptChanges(t *testing
 	if err != nil || len(w.Messages) != 0 {
 		t.Fatalf("watch without a transcript: %+v %v", w.Messages, err)
 	}
-	d.Post(daemon.SessionChanged{Session: domain.Session{ID: "a", Harness: domain.HarnessClaude, Pane: "%a", State: domain.StateWorking, Transcript: transcriptA}})
+	d.Post(daemon.SessionChanged{Session: domain.Session{ID: "a", Harness: domain.HarnessClaude, Pane: "%a", State: domain.StateRunning, Transcript: transcriptA}})
 	if ev := nextEvent(t, w.Events); !ev.Reset || !reflect.DeepEqual(msgIDs(ev.Messages), []string{"u1"}) {
 		t.Fatalf("first transcript %+v", ev)
 	}
 	next := strings.Replace(transcriptA, "s1", "s2", 1)
 	files.write(next, userLine("v1", "resumed"))
-	d.Post(daemon.SessionChanged{Session: domain.Session{ID: "a", Harness: domain.HarnessClaude, Pane: "%a", State: domain.StateWorking, Transcript: next}})
+	d.Post(daemon.SessionChanged{Session: domain.Session{ID: "a", Harness: domain.HarnessClaude, Pane: "%a", State: domain.StateRunning, Transcript: next}})
 	if ev := nextEvent(t, w.Events); !ev.Reset || !reflect.DeepEqual(msgIDs(ev.Messages), []string{"v1"}) {
 		t.Fatalf("switched %+v", ev)
 	}
