@@ -39,6 +39,19 @@ linters:
               desc: tui talks only to rpc
             - pkg: github.com/giovaniif/agent-workspace/internal/daemon
               desc: tui talks only to rpc
+        serve:
+          files:
+            - "**/internal/serve/**"
+          list-mode: lax
+          allow:
+            - github.com/giovaniif/agent-workspace/internal/rpc
+            - github.com/giovaniif/agent-workspace/internal/domain
+            - github.com/giovaniif/agent-workspace/internal/serve
+          deny:
+            - pkg: github.com/giovaniif/agent-workspace/internal
+              desc: serve talks to the daemon only through rpc and may import domain types
+            - pkg: os/exec
+              desc: serve runs nothing; cmd/agentws starts the daemon
         no-exec-outside-adapters:
           files:
             - "**/internal/domain/**"
