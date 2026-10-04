@@ -95,6 +95,9 @@ export function SessionList({
       <header className="top">
         <Brand host={host} />
         <h1>Sessions</h1>
+        <a className="new-session" href="#/new">
+          New session
+        </a>
         <Limits snapshot={snapshot} now={now} />
       </header>
       <Connection snapshot={snapshot} now={now} onRetry={onRetry} />

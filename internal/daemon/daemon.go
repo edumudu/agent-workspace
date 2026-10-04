@@ -506,6 +506,8 @@ func (d *Daemon) dispatch(c *conn, line []byte) (*rpc.Response, bool) {
 		return d.focusSession(req)
 	case rpc.MethodNewSession:
 		return d.newSession(req)
+	case rpc.MethodSessionResolve:
+		return d.resolveWorkItem(req)
 	case rpc.MethodEndSession:
 		return d.endSession(req)
 	case rpc.MethodResumeSession:

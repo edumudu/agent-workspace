@@ -123,3 +123,52 @@ export function apiVersion(h: Hello): string {
   const v = String(h.api);
   return v.startsWith("v") ? v : "v" + v;
 }
+
+export type WorkspaceInfo = {
+  Root: string;
+  Kind: string;
+  LastUsed: string;
+};
+
+export type WorkspaceList = {
+  workspaces: WorkspaceInfo[];
+  last_used: string;
+};
+
+export type WorkItemResolved = {
+  source: string;
+  ref?: string;
+  title?: string;
+  worktree: string;
+  workspace: string;
+};
+
+export type NewSessionRequest = {
+  workspace?: string;
+  work_item: string;
+  harness: string;
+  model?: string;
+  effort?: string;
+  prompt?: string;
+};
+
+function authed(token: string, init: RequestInit = {}): RequestInit {
+  const headers: Record<string, string> = { Authorization: "Bearer " + token };
+  if (init.body !== undefined) {
+    headers["Content-Type"] = "application/json";
+  }
+  return { ...init, headers };
+}
+
+export function listWorkspaces(fetchFn: Fetch, token: string): Promise<WorkspaceList> {
+  return request<WorkspaceList>(fetchFn, "/api/v1/workspaces", authed(token));
+}
+
+export function resolveWorkItem(fetchFn: Fetch, token: string, workspace: string, item: string): Promise<WorkItemResolved> {
+  const query = new URLSearchParams({ workspace, item }).toString();
+  return request<WorkItemResolved>(fetchFn, "/api/v1/work-items/resolve?" + query, authed(token));
+}
+
+export function startSession(fetchFn: Fetch, token: string, body: NewSessionRequest): Promise<{ ID: string }> {
+  return request<{ ID: string }>(fetchFn, "/api/v1/sessions", authed(token, { method: "POST", body: JSON.stringify(body) }));
+}
