@@ -1,6 +1,6 @@
 :root {
   --text: #4c4f69;
-  --subtext: #6c6f85;
+  --subtext: #5c5f77;
   --overlay: #9ca0b0;
   --surface: #ccd0da;
   --mantle: #e6e9ef;
@@ -13,6 +13,7 @@
   --teal: #179299;
   --mauve: #8839ef;
   --deleted-bg: #f6d9de;
+  --on-accent: #ffffff;
   --sans: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
   --mono: "JetBrains Mono", ui-monospace, monospace;
   --radius: 12px;
@@ -178,7 +179,7 @@ button {
   border: 0;
   border-radius: 10px;
   background: var(--blue);
-  color: var(--base);
+  color: var(--on-accent);
   padding: 12px 16px;
 }
 
@@ -227,7 +228,8 @@ button.secondary {
 
 .error {
   background: var(--deleted-bg);
-  color: var(--red);
+  color: var(--text);
+  border-left: 4px solid var(--red);
   border-radius: 10px;
   padding: 12px 14px;
 }
@@ -250,4 +252,227 @@ code {
   background: var(--selected);
   border-radius: 5px;
   padding: 1px 6px;
+}
+
+.top {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.limits {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-family: var(--mono);
+  font-size: 13px;
+}
+
+.limit-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+}
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 500;
+  min-width: 3.2em;
+}
+
+.tag::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  background: var(--blue);
+}
+
+.tag-codex::before {
+  background: var(--teal);
+}
+
+.limit {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.bar {
+  width: 44px;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.fill {
+  display: block;
+  height: 100%;
+  background: var(--blue);
+}
+
+.fill.low {
+  background: var(--red);
+}
+
+.pct.low {
+  color: var(--red);
+  font-weight: 500;
+}
+
+.limit.stale,
+.stale-age,
+.reset {
+  color: var(--subtext);
+}
+
+.limit.stale .fill {
+  background: var(--overlay);
+}
+
+.connection {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: var(--selected);
+  border-radius: 10px;
+  padding: 8px 8px 8px 14px;
+  font-size: 14px;
+  min-height: 44px;
+}
+
+.connection.offline {
+  border-left: 4px solid var(--red);
+}
+
+.retry {
+  min-height: 44px;
+  padding: 8px 14px;
+  font-size: 14px;
+}
+
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.group h2 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text);
+  display: flex;
+  gap: 8px;
+}
+
+.group h2 .count {
+  color: var(--subtext);
+  font-weight: 500;
+}
+
+.group ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.session-card {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-height: 64px;
+  padding: 12px 14px 12px 16px;
+  background: var(--mantle);
+  border: 1px solid var(--surface);
+  border-left: 4px solid var(--overlay);
+  border-radius: var(--radius);
+  color: var(--text);
+  text-decoration: none;
+}
+
+.session-card:active {
+  background: var(--selected);
+}
+
+.session-card:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
+}
+
+.state-permission,
+.state-waiting {
+  border-left-color: var(--red);
+}
+
+.state-running {
+  border-left-color: var(--blue);
+}
+
+.state-done {
+  border-left-color: var(--green);
+}
+
+.card-top {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.card-top .name {
+  font-weight: 600;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.age {
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--subtext);
+}
+
+.badge {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--on-accent);
+  background: var(--blue);
+  border-radius: 6px;
+  padding: 0 6px;
+}
+
+.meta {
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--subtext);
+  overflow-wrap: anywhere;
+}
+
+.banner {
+  font-size: 14px;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+.back {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 44px;
+  color: var(--text);
+  font-weight: 600;
+  text-decoration: none;
+  align-self: flex-start;
 }

@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { App, type AppEnv } from "./App";
 import { loadAuth } from "./auth";
 import { FakeServer, MemoryStorage } from "./test/fake-server";
+import { FakeSockets } from "./test/fake-socket";
 
 const device = { id: "k3m9p2qx", name: "iPhone", created_at: "2026-10-03T10:00:00Z", last_seen: "2026-10-03T10:00:00Z" };
 const iPhone = "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)";
@@ -11,6 +12,7 @@ const iPhone = "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)";
 function setup(over: Partial<AppEnv> = {}) {
   const server = new FakeServer().on("GET", "/api/v1/hello", { status: 200, body: { api: "v1", build: "v0.12.0+abc" } });
   const storage = new MemoryStorage();
+  const sockets = new FakeSockets();
   const env: AppEnv = {
     fetch: server.fetch,
     storage,
@@ -18,9 +20,12 @@ function setup(over: Partial<AppEnv> = {}) {
     hash: "#pair=ABCD2345",
     host: "agentws.example.ts.net",
     userAgent: iPhone,
+    openStream: sockets.open,
+    now: () => Date.parse("2026-10-03T12:00:00Z"),
+    onHashChange: () => () => undefined,
     ...over,
   };
-  return { server, storage, env };
+  return { server, storage, env, sockets };
 }
 
 describe("in a browser tab", () => {
@@ -102,12 +107,14 @@ describe("in the installed app", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent(/Can't reach the server/);
   });
 
-  it("opens on the session list when a token is stored", () => {
-    const { storage, env } = setup();
+  it("opens on the session list when a token is stored and connects the stream with it", () => {
+    const { storage, env, sockets } = setup();
     storage.setItem("agentws.auth", JSON.stringify({ token: "t0k", device }));
     render(<App env={env} />);
     expect(screen.getByRole("heading", { name: "Sessions" })).toBeInTheDocument();
-    expect(screen.getByText("Paired as iPhone")).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("Connecting");
+    sockets.last.open();
+    expect(sockets.last.sent).toEqual([{ token: "t0k" }]);
   });
 
   it("asks to pair again when the stored token is unreadable", () => {

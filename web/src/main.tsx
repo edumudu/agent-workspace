@@ -16,6 +16,14 @@ const checkEvery = 5 * 60 * 1000;
 const installTimeout = 15 * 1000;
 const reloadedKey = "agentws.reloaded-for";
 const apiFetch = (input: string, init?: RequestInit) => fetch(input, init);
+const streamURL = (window.location.protocol === "https:" ? "wss://" : "ws://") + window.location.host + "/api/v1/stream";
+const openStream = () => new WebSocket(streamURL);
+const now = () => Date.now();
+const onHashChange = (listener: (hash: string) => void) => {
+  const changed = () => listener(window.location.hash);
+  window.addEventListener("hashchange", changed);
+  return () => window.removeEventListener("hashchange", changed);
+};
 
 function reloadOnceFor(build: string) {
   try {
@@ -97,6 +105,9 @@ if (root) {
           hash: window.location.hash,
           host: window.location.host,
           userAgent: navigator.userAgent,
+          openStream,
+          now,
+          onHashChange,
           push: browserPush(window),
         }}
       />

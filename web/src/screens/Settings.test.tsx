@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { App, type AppEnv } from "../App";
 import { loadAuth } from "../auth";
 import { FakeServer, MemoryStorage } from "../test/fake-server";
+import { FakeSockets } from "../test/fake-socket";
 
 const device = { id: "k3m9p2qx", name: "work phone", created_at: "2026-10-03T10:00:00Z", last_seen: "2026-10-03T10:00:00Z" };
 
@@ -18,6 +19,9 @@ function setup(hash: string) {
     hash,
     host: "agentws.example.ts.net",
     userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)",
+    openStream: new FakeSockets().open,
+    now: () => Date.parse("2026-10-03T12:00:00Z"),
+    onHashChange: () => () => undefined,
   };
   return { storage, env };
 }

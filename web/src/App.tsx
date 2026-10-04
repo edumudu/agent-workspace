@@ -3,10 +3,13 @@ import type { Fetch } from "./api";
 import { clearAuth, loadAuth, saveAuth, type Auth, type KeyValue } from "./auth";
 import { pairCodeFromHash } from "./display";
 import { disablePush, noPush, type PushEnv } from "./push";
+import { parseRoute } from "./route";
 import { Install } from "./screens/Install";
 import { Pair } from "./screens/Pair";
-import { Sessions } from "./screens/Sessions";
+import { SessionScreen } from "./screens/Session";
+import { SessionList } from "./screens/SessionList";
 import { Settings } from "./screens/Settings";
+import { useStream, useStreamClient, type OpenSocket } from "./stream";
 
 export type AppEnv = {
   fetch: Fetch;
@@ -15,53 +18,98 @@ export type AppEnv = {
   hash: string;
   host: string;
   userAgent: string;
+  openStream: OpenSocket;
+  retryDelay?: (attempt: number) => number;
+  now: () => number;
+  onHashChange: (listener: (hash: string) => void) => () => void;
   push?: PushEnv;
 };
 
-function useHash(initial: string): string {
-  const [hash, setHash] = useState(initial);
+function Tabs({ settings }: { settings: boolean }) {
+  return (
+    <nav className="tabs" aria-label="Screens">
+      <a href="#/" aria-current={settings ? undefined : "page"}>
+        Sessions
+      </a>
+      <a href="#/settings" aria-current={settings ? "page" : undefined}>
+        Settings
+      </a>
+    </nav>
+  );
+}
+
+function useNow(now: () => number, every: number): number {
+  const [value, setValue] = useState(now);
   useEffect(() => {
-    const changed = () => setHash(window.location.hash);
-    window.addEventListener("hashchange", changed);
-    return () => window.removeEventListener("hashchange", changed);
-  }, []);
-  return hash;
+    setValue(now());
+    const timer = setInterval(() => setValue(now()), every);
+    return () => clearInterval(timer);
+  }, [now, every]);
+  return value;
+}
+
+type ConnectedProps = { env: AppEnv; auth: Auth; onUnauthorized: () => void; onSignOut: () => Promise<void> };
+
+function Connected({ env, auth, onUnauthorized, onSignOut }: ConnectedProps) {
+  const client = useStreamClient({ open: env.openStream, token: auth.token, retryDelay: env.retryDelay, now: env.now });
+  const snapshot = useStream(client);
+  const [hash, setHash] = useState(env.hash);
+  const now = useNow(env.now, snapshot.status === "offline" ? 1000 : 30000);
+  const { onHashChange } = env;
+
+  useEffect(() => onHashChange(setHash), [onHashChange]);
+
+  useEffect(() => {
+    if (snapshot.status === "unauthorized") {
+      onUnauthorized();
+    }
+  }, [snapshot.status, onUnauthorized]);
+
+  const route = parseRoute(hash);
+  const retry = () => client.retryNow();
+  if (route.screen === "session") {
+    return <SessionScreen id={route.id} snapshot={snapshot} now={now} onRetry={retry} />;
+  }
+  if (hash === "#/settings") {
+    return (
+      <>
+        <Settings
+          auth={auth}
+          host={env.host}
+          installed={env.installed}
+          fetch={env.fetch}
+          push={env.push ?? noPush}
+          onSignOut={onSignOut}
+        />
+        <Tabs settings />
+      </>
+    );
+  }
+  return (
+    <>
+      <SessionList host={env.host} snapshot={snapshot} now={now} onRetry={retry} />
+      <Tabs settings={false} />
+    </>
+  );
 }
 
 export function App({ env }: { env: AppEnv }) {
   const [auth, setAuth] = useState<Auth | null>(() => loadAuth(env.storage));
-  const hash = useHash(env.hash);
-  const code = useMemo(() => pairCodeFromHash(hash), [hash]);
+  const code = useMemo(() => pairCodeFromHash(env.hash), [env.hash]);
+  const { storage } = env;
+  const unpair = useMemo(
+    () => () => {
+      clearAuth(storage);
+      setAuth(null);
+    },
+    [storage],
+  );
   if (auth) {
-    const settings = hash === "#/settings";
-    return (
-      <>
-        {settings ? (
-          <Settings
-            auth={auth}
-            host={env.host}
-            installed={env.installed}
-            fetch={env.fetch}
-            push={env.push ?? noPush}
-            onSignOut={async () => {
-              await disablePush(env.push ?? noPush, env.fetch, auth.token);
-              clearAuth(env.storage);
-              setAuth(null);
-            }}
-          />
-        ) : (
-          <Sessions auth={auth} host={env.host} />
-        )}
-        <nav className="tabs" aria-label="Screens">
-          <a href="#/" aria-current={settings ? undefined : "page"}>
-            Sessions
-          </a>
-          <a href="#/settings" aria-current={settings ? "page" : undefined}>
-            Settings
-          </a>
-        </nav>
-      </>
-    );
+    const signOut = async () => {
+      await disablePush(env.push ?? noPush, env.fetch, auth.token);
+      unpair();
+    };
+    return <Connected env={env} auth={auth} onUnauthorized={unpair} onSignOut={signOut} />;
   }
   if (!env.installed) {
     return <Install code={code} host={env.host} />;
