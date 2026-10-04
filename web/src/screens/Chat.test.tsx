@@ -97,7 +97,7 @@ describe("the transcript", () => {
     live(sockets);
     const log = within(screen.getByRole("log", { name: "Messages" }));
     expect(await log.findByText("fix the login redirect")).toBeInTheDocument();
-    expect(server.calls.find((c) => c.path === newest)?.headers.authorization).toBe("Bearer t0k");
+    expect(server.headers[server.calls.findIndex((c) => c.path === newest)].authorization).toBe("Bearer t0k");
     await waitFor(() => expect(watches(sockets)).toEqual([{ watch: "s1", after: 210 }]));
   });
 
@@ -238,9 +238,9 @@ describe("the composer", () => {
     await userEvent.type(box, "now add a test");
     await userEvent.click(screen.getByRole("button", { name: "Send" }));
     await waitFor(() => expect(box).toHaveValue(""));
-    const post = server.calls.find((c) => c.method === "POST");
-    expect(post?.body).toEqual({ text: "now add a test" });
-    expect(post?.headers.authorization).toBe("Bearer t0k");
+    const post = server.calls.findIndex((c) => c.method === "POST");
+    expect(server.calls[post]?.body).toEqual({ text: "now add a test" });
+    expect(server.headers[post].authorization).toBe("Bearer t0k");
   });
 
   it("does not send blank text", async () => {
@@ -341,9 +341,9 @@ describe("interrupt", () => {
     const dialog = within(screen.getByRole("alertdialog", { name: "Interrupt this session?" }));
     await userEvent.click(dialog.getByRole("button", { name: "Interrupt" }));
     await waitFor(() => expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument());
-    const call = server.calls.find((c) => c.path === "/api/v1/sessions/s1/interrupt");
-    expect(call?.method).toBe("POST");
-    expect(call?.headers.authorization).toBe("Bearer t0k");
+    const call = server.calls.findIndex((c) => c.path === "/api/v1/sessions/s1/interrupt");
+    expect(server.calls[call]?.method).toBe("POST");
+    expect(server.headers[call].authorization).toBe("Bearer t0k");
   });
 
   it("is offered only while the agent works", async () => {

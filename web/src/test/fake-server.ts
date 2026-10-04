@@ -1,6 +1,6 @@
 import type { Fetch } from "../api";
 
-export type FakeCall = { path: string; method: string; body: unknown; headers: Record<string, string> };
+export type FakeCall = { path: string; method: string; body: unknown };
 
 export type FakeRoute = { status: number; body?: unknown; raw?: string };
 
@@ -27,9 +27,9 @@ export class FakeServer {
   readonly fetch: Fetch = async (input, init) => {
     const method = init?.method ?? "GET";
     const body = typeof init?.body === "string" ? JSON.parse(init.body) : undefined;
-    const call = { path: input, method, body, headers: headersOf(init) };
+    const call = { path: input, method, body };
     this.calls.push(call);
-    this.headers.push(call.headers);
+    this.headers.push(headersOf(init));
     let route = this.routes.get(method + " " + input);
     if (route instanceof Error) {
       throw route;

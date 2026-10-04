@@ -58,8 +58,8 @@ describe("pair", () => {
   it("swaps the code and device name for a device and token", async () => {
     const server = new FakeServer().on("POST", "/api/v1/pair", { status: 200, body: { device, token: "t0k" } });
     await expect(pair(server.fetch, "ABCD2345", "iPhone")).resolves.toEqual({ device, token: "t0k" });
-    expect(server.calls).toMatchObject([{ path: "/api/v1/pair", method: "POST", body: { code: "ABCD2345", name: "iPhone" } }]);
-    expect(server.calls[0].headers.authorization).toBeUndefined();
+    expect(server.calls).toEqual([{ path: "/api/v1/pair", method: "POST", body: { code: "ABCD2345", name: "iPhone" } }]);
+    expect(server.headers[0].authorization).toBeUndefined();
   });
 
   it.each([
@@ -112,13 +112,14 @@ describe("session calls", () => {
     expect(page.messages.map((m) => m.id)).toEqual(["u1", "c1"]);
     expect(page.messages[1].tool).toEqual({ name: "Bash", summary: "go test ./...", status: "done" });
     await expect(messagesPage(authed(server), "s/1", 40)).resolves.toEqual({ messages: [], before: 0 });
-    expect(server.calls.map((c) => c.headers.authorization)).toEqual(["Bearer t0k", "Bearer t0k"]);
+    expect(server.headers.map((h) => h.authorization)).toEqual(["Bearer t0k", "Bearer t0k"]);
   });
 
   it("sends a message and reads whether it queued", async () => {
     const server = new FakeServer().on("POST", "/api/v1/sessions/s1/messages", { status: 200, body: golden("send.json") });
     await expect(sendMessage(authed(server), "s1", "run the tests")).resolves.toEqual({ id: "q7", queued: true });
-    expect(server.calls).toMatchObject([{ method: "POST", body: { text: "run the tests" }, headers: { authorization: "Bearer t0k" } }]);
+    expect(server.calls).toEqual([{ path: "/api/v1/sessions/s1/messages", method: "POST", body: { text: "run the tests" } }]);
+    expect(server.headers[0].authorization).toBe("Bearer t0k");
   });
 
   it("drops a queued send and interrupts the session", async () => {
@@ -127,7 +128,7 @@ describe("session calls", () => {
       .on("POST", "/api/v1/sessions/s1/interrupt", { status: 200, body: {} });
     await unsend(authed(server), "s1", "q7");
     await interrupt(authed(server), "s1");
-    expect(server.calls.map((c) => c.method + " " + c.path + " " + c.headers.authorization)).toEqual([
+    expect(server.calls.map((c, i) => c.method + " " + c.path + " " + server.headers[i].authorization)).toEqual([
       "DELETE /api/v1/sessions/s1/sends/q7 Bearer t0k",
       "POST /api/v1/sessions/s1/interrupt Bearer t0k",
     ]);

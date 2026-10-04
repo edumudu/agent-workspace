@@ -82,7 +82,7 @@ describe("Enable notifications", () => {
     expect(push.asked).toBe(1);
     expect(push.subscribedWith).toEqual([decodeKey(vapidKey)]);
     const sent = server.calls.findIndex((c) => c.path === "/api/v1/push/subscribe");
-    expect(server.calls[sent]).toMatchObject({ path: "/api/v1/push/subscribe", method: "POST", body: subscription });
+    expect(server.calls[sent]).toEqual({ path: "/api/v1/push/subscribe", method: "POST", body: subscription });
     expect(server.headers[sent].authorization).toBe("Bearer t0k");
     const key = server.calls.findIndex((c) => c.path === "/api/v1/push/key");
     expect(server.headers[key].authorization).toBe("Bearer t0k");
