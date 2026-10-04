@@ -76,6 +76,8 @@ func New(cfg Config) (*Server, error) {
 func (s *Server) routes() []route {
 	return []route{
 		{"GET /api/v1/workspaces", s.workspaces},
+		{"POST /api/v1/sessions", newSession},
+		{"GET /api/v1/work-items/resolve", resolveWorkItem},
 		{"GET /api/v1/sessions/{id}/messages", messages},
 		{"POST /api/v1/sessions/{id}/end", sessionAction(rpc.MethodEndSession, refParams)},
 		{"POST /api/v1/sessions/{id}/resume", sessionAction(rpc.MethodResumeSession, refParams)},
