@@ -197,12 +197,16 @@ button.secondary {
   width: 100%;
 }
 
+#root:has(.tabs) .screen {
+  padding-bottom: calc(96px + env(safe-area-inset-bottom));
+}
+
 .tabs {
-  position: sticky;
+  position: fixed;
+  left: 0;
+  right: 0;
   bottom: 0;
   display: flex;
-  max-width: 34rem;
-  margin: 0 auto;
   background: var(--mantle);
   border-top: 1px solid var(--surface);
   padding-bottom: env(safe-area-inset-bottom);
