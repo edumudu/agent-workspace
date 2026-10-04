@@ -67,7 +67,7 @@ describe("the Latte palette", () => {
 });
 
 describe("touch targets", () => {
-  it.each([".session-card", ".back", ".retry"])("%s is at least 44px tall", (selector) => {
+  it.each([".session-card", ".back", ".retry", ".new-session", ".choice"])("%s is at least 44px tall", (selector) => {
     expect(parseInt(rule(selector)["min-height"] ?? "0", 10)).toBeGreaterThanOrEqual(44);
   });
 });

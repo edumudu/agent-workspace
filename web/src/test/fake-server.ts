@@ -6,6 +6,7 @@ export type FakeRoute = { status: number; body?: unknown; raw?: string };
 
 export class FakeServer {
   readonly calls: FakeCall[] = [];
+  readonly authorizations: string[] = [];
   private routes = new Map<string, FakeRoute | Error>();
 
   on(method: string, path: string, route: FakeRoute | Error): this {
@@ -17,6 +18,7 @@ export class FakeServer {
     const method = init?.method ?? "GET";
     const body = typeof init?.body === "string" ? JSON.parse(init.body) : undefined;
     this.calls.push({ path: input, method, body });
+    this.authorizations.push(new Headers(init?.headers).get("Authorization") ?? "");
     const route = this.routes.get(method + " " + input);
     if (route instanceof Error) {
       throw route;
