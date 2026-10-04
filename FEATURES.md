@@ -85,12 +85,11 @@ One terminal tool for running Claude Code, Codex, and Oh My Pi (`omp`) sessions 
 
 ## P1
 
-- A PR board per session: checks with failing job names linked to their runs, review-bot comments since the last push, unresolved threads, merge readiness. It shows on the session card and as `agentws pr <session> [--json]`, which babysit-pr reads instead of polling `gh` (see ADR 0024).
-- A session card: task, PR, last agent action, what it's waiting on.
+- A PR board per session: checks with failing job names linked to their runs, review-bot comments since the last push, unresolved threads, merge readiness. It shows as `agentws pr <session> [--json]`, which babysit-pr reads instead of polling `gh` (see ADR 0024).
 - A subagent tree per session under its sidebar row, from the harness's subagent hooks. Claude only today; stop and steer controls are not offered because neither harness exposes them per subagent (see ADR 0019).
 - A Linear launcher: `L` takes one or more issue URLs and starts a worktree and session for each, up to `[launcher] max_parallel` (default 3) at once; the rest queue and start as sessions finish. See ADR 0031.
 - When Claude quota is low, offer to start queued work in Codex.
-- Mouse: click a card to select it and jump to its pane, click key hints and buttons, pick from lists, open review files, place the review cursor or drag a range, and scroll with the wheel. In tmux, click focuses a pane, dragging a border resizes, and the wheel scrolls agent history. Shift-drag (Option in some macOS terminals) keeps the terminal's own selection; `[ui] mouse = false` turns it all off (see ADR 0042).
+- Mouse: click a session to select it and jump to its pane, click key hints and buttons, pick from lists, open review files, place the review cursor or drag a range, and scroll with the wheel. In tmux, click focuses a pane, dragging a border resizes, and the wheel scrolls agent history. Shift-drag (Option in some macOS terminals) keeps the terminal's own selection; `[ui] mouse = false` turns it all off (see ADR 0042).
 - A first-run walkthrough: pick Claude, Codex or both, see each one's hook state and install it with a backup, follow Codex's trust step, and get the nvim snippet for the installed plugin. `S` or `agentws setup` reopens it (see ADR 0040).
 
 ## P2

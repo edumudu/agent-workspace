@@ -1,6 +1,6 @@
 # ADR 0014: Session card
 
-Status: accepted, 2026-09-29.
+Status: accepted, 2026-09-29. Amended 2026-10-04: the sidebar card was removed; the builder stays.
 
 ## Decision
 
@@ -12,7 +12,7 @@ Status: accepted, 2026-09-29.
   - `waiting`: the last assistant message's closing paragraph if it ends in `?`, else the notification message.
   - `done`: the closing question, if there is one.
   - Only events after the last user prompt count. The text is verbatim, cut to 3 lines with a trailing `…`.
-- The TUI renders the card for the selected session above the sidebar footer, from the events it already holds. It is hidden when the pane is under 24 rows or the help is open. Agent text is stripped of escape sequences and control characters before it is drawn.
+- The TUI no longer draws the card in the sidebar (removed in #203: the panel above the footer was not useful, and the session list gets its rows back). `BuildSessionCard` still feeds the review's agent column and `agentws pr`.
 
 ## Why
 
