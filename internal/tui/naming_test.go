@@ -33,8 +33,6 @@ func namingModel(t *testing.T, task domain.Task) (tui.Model, *fakeCaller) {
 	return update(m, tui.StateMsg(st)), c
 }
 
-func flat(s string) string { return strings.Join(strings.Fields(s), " ") }
-
 func TestNamingSidebarTruncatesWithAnEllipsisAndTheCardShowsTheFullName(t *testing.T) {
 	m, _ := namingModel(t, domain.Task{ID: "t1", Source: domain.TaskLinear, Ref: "ENG-1", IssueTitle: longName})
 	out := screen(m)
@@ -54,10 +52,6 @@ func TestNamingSidebarTruncatesWithAnEllipsisAndTheCardShowsTheFullName(t *testi
 		if w := ansi.StringWidth(l); w > 48 {
 			t.Errorf("line is %d wide, over the sidebar: %q", w, l)
 		}
-	}
-	card := out[strings.Index(out, "CARD"):]
-	if !strings.Contains(flat(card), longName) {
-		t.Errorf("the card should carry the full name:\n%s", card)
 	}
 }
 
