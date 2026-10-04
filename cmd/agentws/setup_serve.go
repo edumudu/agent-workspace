@@ -10,10 +10,10 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
-	"strings"
 
 	"github.com/giovaniif/agent-workspace/internal/adapters/launchd"
 	"github.com/giovaniif/agent-workspace/internal/adapters/systemd"
+	"github.com/giovaniif/agent-workspace/internal/domain"
 )
 
 const setupServeUsage = "usage: agentws setup serve [--remove] [--addr host:port] [--cert file --key file | --self-signed] [--url https://host]"
@@ -200,8 +200,8 @@ func serveProgram(program []string, given map[string]bool, addr, cert, key, url 
 		program = append(program, "--self-signed")
 	}
 	if given["url"] {
-		if strings.TrimSpace(url) == "" {
-			return nil, errors.New("--url needs a value")
+		if _, err := domain.PairURL(url, ""); err != nil {
+			return nil, fmt.Errorf("--url %q: %w", url, err)
 		}
 		program = append(program, "--url", url)
 	}
