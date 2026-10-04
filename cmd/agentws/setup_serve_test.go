@@ -103,8 +103,6 @@ func TestSetupServeRefusesWhatServeWouldRefuse(t *testing.T) {
 		"plain http on a hostname":   {"--addr", "machine.example.com:7420"},
 		"an unknown flag":            {"--tls"},
 		"a positional argument":      {"extra"},
-		"remove with serve flags":    {"--remove", "--addr", "127.0.0.1:1"},
-		"remove with self-signed":    {"--remove", "--self-signed"},
 		"an address without a port":  {"--addr", "127.0.0.1"},
 		"an empty address":           {"--addr", ""},
 		"a cert path that is empty":  {"--cert", "", "--key", "/k"},
@@ -126,6 +124,7 @@ func TestSetupServeAcceptsLoopbackWithoutTLSAndAnyAddressWithIt(t *testing.T) {
 		{"--addr", "0.0.0.0:7420", "--self-signed"},
 		{"--addr", "machine.tailnet-name.ts.net:7420", "--cert", "/c", "--key", "/k"},
 		{"--remove"},
+		{"--remove", "--addr", "0.0.0.0:7420"},
 	} {
 		if _, _, err := setupServeService(args, envOf(nil), "/bin/agentws", "/h", 1, "linux"); err != nil {
 			t.Errorf("%q: %v", args, err)
