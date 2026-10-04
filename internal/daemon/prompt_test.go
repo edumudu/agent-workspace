@@ -3,7 +3,9 @@ package daemon_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/giovaniif/agent-workspace/internal/adapters/claude"
@@ -92,10 +94,39 @@ func TestSessionPromptReturnsTheCodexDialogAndItsChoices(t *testing.T) {
 	}
 }
 
-func TestSessionPromptIsNotFoundWhenNoDialogIsShowing(t *testing.T) {
-	c, _ := promptSetup(t, domain.HarnessClaude, domain.StatePermission, "● working on it\n")
+func TestSessionPromptIsNotFoundWhenNoDialogIsShowingAndTheSessionIsNotAskingPermission(t *testing.T) {
+	c, _ := promptSetup(t, domain.HarnessClaude, domain.StateRunning, "● working on it\n")
 	if _, err := c.SessionPrompt(context.Background(), "a"); errorCode(t, err) != rpc.CodeNotFound {
 		t.Fatalf("error %v", err)
+	}
+}
+
+func TestSessionPromptReturnsTheRawPaneWhenPermissionIsPendingButTheDialogIsNotRecognized(t *testing.T) {
+	screen := "Allow this unusual request?\n  [a] allow  [d] deny\n"
+	c, _ := promptSetup(t, domain.HarnessClaude, domain.StatePermission, screen)
+	got, err := c.SessionPrompt(context.Background(), "a")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := rpc.Prompt{Choices: []rpc.PromptChoice{}, Raw: "Allow this unusual request?\n  [a] allow  [d] deny"}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("got %+v, want %+v", got, want)
+	}
+}
+
+func TestSessionPromptRawKeepsOnlyTheLastVisibleLinesWithoutTrailingBlanks(t *testing.T) {
+	var lines []string
+	for i := 1; i <= 60; i++ {
+		lines = append(lines, fmt.Sprintf("line %d", i))
+	}
+	c, _ := promptSetup(t, domain.HarnessClaude, domain.StatePermission, strings.Join(lines, "\n")+"\n\n   \n")
+	got, err := c.SessionPrompt(context.Background(), "a")
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw := strings.Split(got.Raw, "\n")
+	if len(raw) != 40 || raw[0] != "line 21" || raw[39] != "line 60" {
+		t.Fatalf("raw has %d lines from %q to %q", len(raw), raw[0], raw[len(raw)-1])
 	}
 }
 
