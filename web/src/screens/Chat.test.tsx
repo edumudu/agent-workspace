@@ -210,6 +210,23 @@ describe("the transcript", () => {
     expect(screen.getByRole("button", { name: "Load earlier messages" })).toBeInTheDocument();
   });
 
+  it("asks for the newest page of the new file after a reset, so older pages load from there", async () => {
+    let calls = 0;
+    const server = new FakeServer().on("GET", newest, () => {
+      calls++;
+      return calls === 1 ? page([msg("b1", 1000)], 90) : page([msg("n0", 20), msg("n1", 50)], 0);
+    });
+    const sockets = setup(server);
+    live(sockets);
+    const log = within(screen.getByRole("log", { name: "Messages" }));
+    await log.findByText("message b1");
+    sockets.last.push({ transcript: { session: "s1", messages: [msg("n1", 50)], reset: true } });
+    expect(await log.findByText("message n0")).toBeInTheDocument();
+    expect(screen.getByText("Start of the conversation")).toBeInTheDocument();
+    expect(log.queryByText("message b1")).not.toBeInTheDocument();
+    expect(watches(sockets)).toEqual([{ watch: "s1", after: 1000 }]);
+  });
+
   it("keeps the view at the bottom as messages arrive while the reader is there", async () => {
     const server = new FakeServer().on("GET", newest, page([msg("a1", 10), msg("a2", 20)]));
     const sockets = setup(server);
@@ -241,6 +258,21 @@ describe("the composer", () => {
     const post = server.calls.findIndex((c) => c.method === "POST");
     expect(server.calls[post]?.body).toEqual({ text: "now add a test" });
     expect(server.headers[post].authorization).toBe("Bearer t0k");
+  });
+
+  it("keeps what was typed while a send was on its way", async () => {
+    const posted = new Deferred<FakeRoute>();
+    const server = new FakeServer()
+      .on("GET", "/api/v1/sessions/s2/messages?limit=50", page([]))
+      .on("POST", "/api/v1/sessions/s2/messages", () => posted.promise);
+    const sockets = setup(server, "#/sessions/s2");
+    live(sockets);
+    const box = screen.getByRole("textbox", { name: "Message" });
+    await userEvent.type(box, "first");
+    await userEvent.click(screen.getByRole("button", { name: "Send" }));
+    await userEvent.type(box, " and more");
+    await act(async () => posted.resolve({ status: 200, body: { id: "q1", queued: false } }));
+    expect(box).toHaveValue("first and more");
   });
 
   it("does not send blank text", async () => {
