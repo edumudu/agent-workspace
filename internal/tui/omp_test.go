@@ -72,6 +72,48 @@ func TestNewSessionDialogCyclesOmpModelsWithArrows(t *testing.T) {
 	}
 }
 
+func TestNewSessionDialogClearsAnOmpModelBackToDefault(t *testing.T) {
+	m, c := ompModelDialog(t, []string{"alpha/one", "beta/two"})
+	m = pressCmd(m, keyRight)
+	m = pressCmd(m, keyLeft)
+	if out := screen(m); !strings.Contains(out, "‹ Default ›") || strings.Contains(out, "alpha/one") {
+		t.Fatalf("left should clear back to Default:\n%s", out)
+	}
+	if got := startedParams(t, m, c).Model; got != "" {
+		t.Fatalf("cleared model %q", got)
+	}
+}
+
+func TestNewSessionDialogClearsAChosenOmpModelWithBackspace(t *testing.T) {
+	m, c := ompModelDialog(t, []string{"alpha/one", "beta/two"})
+	m = pressCmd(pressCmd(m, keyRight), keyRight)
+	m = pressCmd(m, keyBack)
+	if out := screen(m); !strings.Contains(out, "‹ Default ›") || strings.Contains(out, "beta/two") {
+		t.Fatalf("backspace should clear a chosen model:\n%s", out)
+	}
+	if got := startedParams(t, m, c).Model; got != "" {
+		t.Fatalf("cleared model %q", got)
+	}
+}
+
+func TestNewSessionDialogOmpEffortIsDefaultAndClearsBack(t *testing.T) {
+	m, c := ompModelDialog(t, []string{"alpha/one"})
+	if got := labeledValue(screen(m), "Effort"); got != "‹ Default ›" {
+		t.Fatalf("omp effort %q", got)
+	}
+	m = pressCmd(pressCmd(m, keyTab), keyRight)
+	if out := screen(m); !strings.Contains(out, "‹ off ›") {
+		t.Fatalf("right should pick the first effort:\n%s", out)
+	}
+	m = pressCmd(m, keyBack)
+	if out := screen(m); !strings.Contains(out, "‹ Default ›") || strings.Contains(out, "‹ off ›") {
+		t.Fatalf("backspace should clear the effort:\n%s", out)
+	}
+	if got := startedParams(t, m, c).Effort; got != "" {
+		t.Fatalf("cleared effort %q", got)
+	}
+}
+
 func TestNewSessionDialogCompletesAnOmpModelAsYouType(t *testing.T) {
 	m, c := ompModelDialog(t, []string{"alpha/one", "beta/two", "beta/three"})
 	m = typeText(m, "beta")
@@ -91,7 +133,7 @@ func TestNewSessionDialogCompletesAnOmpModelAsYouType(t *testing.T) {
 		t.Fatalf("ctrl-n:\n%s", out)
 	}
 	m = pressCmd(m, keyCtrlE)
-	if out := screen(m); strings.Contains(out, "beta") || !strings.Contains(out, "‹ default ›") {
+	if out := screen(m); strings.Contains(out, "beta") || !strings.Contains(out, "‹ Default ›") {
 		t.Fatalf("ctrl-e should restore the arrows:\n%s", out)
 	}
 	m = typeText(m, "beta")
@@ -105,12 +147,22 @@ func TestNewSessionDialogCompletesAnOmpModelAsYouType(t *testing.T) {
 	}
 }
 
+func labeledValue(out, label string) string {
+	lines := strings.Split(out, "\n")
+	for i, line := range lines {
+		if strings.TrimSpace(ansi.Strip(line)) == label && i+1 < len(lines) {
+			return strings.TrimSpace(ansi.Strip(lines[i+1]))
+		}
+	}
+	return ""
+}
+
 func menuFloatsOver(out, item string) bool {
 	for _, line := range strings.Split(out, "\n") {
 		if strings.Contains(line, "╰") && strings.Contains(line, "shop") {
 			return true
 		}
-		if strings.Contains(line, "│") && strings.Contains(line, item) && strings.Contains(line, "default") {
+		if strings.Contains(line, "│") && strings.Contains(line, item) && strings.Contains(line, "Default") {
 			return true
 		}
 	}
@@ -264,7 +316,7 @@ func TestNewSessionDialogKeepsALongModelInsideItsColumn(t *testing.T) {
 	if strings.Contains(out, "TAIL") || !strings.Contains(out, "…") {
 		t.Fatalf("model spills out of its column:\n%s", out)
 	}
-	if !strings.Contains(out, "Effort") || !strings.Contains(out, "default") {
+	if !strings.Contains(out, "Effort") || !strings.Contains(out, "Default") {
 		t.Fatalf("effort column:\n%s", out)
 	}
 }
