@@ -198,6 +198,7 @@ type TranscriptTail struct {
 	calls     domain.ToolCalls
 	offset    int64
 	restarted bool
+	pending   bool
 }
 
 func (t Transcripts) Tail(h domain.Harness, path string, after int64) (*TranscriptTail, error) {
@@ -220,24 +221,27 @@ func (t Transcripts) Tail(h domain.Harness, path string, after int64) (*Transcri
 }
 
 func (tt *TranscriptTail) Read() ([]domain.Message, error) {
-	size, _, err := tt.t.size(tt.path)
 	tt.restarted = false
+	size, _, err := tt.t.size(tt.path)
 	if err != nil {
 		return nil, err
 	}
 	if size < tt.offset {
-		tt.offset, tt.parser, tt.calls, tt.restarted = 0, tt.newParser(), domain.ToolCalls{}, true
+		tt.offset, tt.parser, tt.calls, tt.pending = 0, tt.newParser(), domain.ToolCalls{}, true
 	}
-	if size <= tt.offset {
-		return nil, nil
+	var msgs []domain.Message
+	if size > tt.offset {
+		data, err := tt.t.Files.ReadAt(tt.path, tt.offset, size-tt.offset)
+		if err != nil {
+			return nil, err
+		}
+		var end int64
+		msgs, end = tt.parser.Parse(data, tt.offset)
+		tt.offset = end
+		msgs = tt.calls.Resolve(msgs)
 	}
-	data, err := tt.t.Files.ReadAt(tt.path, tt.offset, size-tt.offset)
-	if err != nil {
-		return nil, err
-	}
-	msgs, end := tt.parser.Parse(data, tt.offset)
-	tt.offset = end
-	return tt.calls.Resolve(msgs), nil
+	tt.restarted, tt.pending = tt.pending, false
+	return msgs, nil
 }
 
 func (tt *TranscriptTail) Restarted() bool {
