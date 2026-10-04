@@ -3,7 +3,9 @@ package daemon_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/giovaniif/agent-workspace/internal/adapters/claude"
@@ -76,8 +78,33 @@ func TestSessionPromptReturnsTheClaudeDialogAndItsChoices(t *testing.T) {
 			{ID: "3", Label: "No, and tell Claude what to do differently"},
 		},
 	}
+	if got.ID == "" {
+		t.Fatal("the prompt has no id")
+	}
+	got.ID = ""
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("got %+v, want %+v", got, want)
+	}
+}
+
+func TestSessionPromptIDChangesWithTheDialog(t *testing.T) {
+	first, _ := promptSetup(t, domain.HarnessClaude, domain.StatePermission, claudeDialog)
+	a, err := first.SessionPrompt(context.Background(), "a")
+	if err != nil {
+		t.Fatal(err)
+	}
+	other, _ := promptSetup(t, domain.HarnessClaude, domain.StatePermission, strings.ReplaceAll(claudeDialog, "touch notes.txt", "rm -rf build"))
+	b, err := other.SessionPrompt(context.Background(), "a")
+	if err != nil {
+		t.Fatal(err)
+	}
+	again, _ := promptSetup(t, domain.HarnessClaude, domain.StatePermission, claudeDialog)
+	c, err := again.SessionPrompt(context.Background(), "a")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if a.ID == b.ID || a.ID != c.ID {
+		t.Fatalf("ids %q %q %q", a.ID, b.ID, c.ID)
 	}
 }
 
@@ -92,10 +119,39 @@ func TestSessionPromptReturnsTheCodexDialogAndItsChoices(t *testing.T) {
 	}
 }
 
-func TestSessionPromptIsNotFoundWhenNoDialogIsShowing(t *testing.T) {
-	c, _ := promptSetup(t, domain.HarnessClaude, domain.StatePermission, "● working on it\n")
+func TestSessionPromptIsNotFoundWhenNoDialogIsShowingAndTheSessionIsNotAskingPermission(t *testing.T) {
+	c, _ := promptSetup(t, domain.HarnessClaude, domain.StateRunning, "● working on it\n")
 	if _, err := c.SessionPrompt(context.Background(), "a"); errorCode(t, err) != rpc.CodeNotFound {
 		t.Fatalf("error %v", err)
+	}
+}
+
+func TestSessionPromptReturnsTheRawPaneWhenPermissionIsPendingButTheDialogIsNotRecognized(t *testing.T) {
+	screen := "Allow this unusual request?\n  [a] allow  [d] deny\n"
+	c, _ := promptSetup(t, domain.HarnessClaude, domain.StatePermission, screen)
+	got, err := c.SessionPrompt(context.Background(), "a")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := rpc.Prompt{Choices: []rpc.PromptChoice{}, Raw: "Allow this unusual request?\n  [a] allow  [d] deny"}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("got %+v, want %+v", got, want)
+	}
+}
+
+func TestSessionPromptRawKeepsOnlyTheLastVisibleLinesWithoutTrailingBlanks(t *testing.T) {
+	var lines []string
+	for i := 1; i <= 60; i++ {
+		lines = append(lines, fmt.Sprintf("line %d", i))
+	}
+	c, _ := promptSetup(t, domain.HarnessClaude, domain.StatePermission, strings.Join(lines, "\n")+"\n\n   \n")
+	got, err := c.SessionPrompt(context.Background(), "a")
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw := strings.Split(got.Raw, "\n")
+	if len(raw) != 40 || raw[0] != "line 21" || raw[39] != "line 60" {
+		t.Fatalf("raw has %d lines from %q to %q", len(raw), raw[0], raw[len(raw)-1])
 	}
 }
 
@@ -165,5 +221,30 @@ func TestSessionAnswerIsNotFoundForAnUnknownSession(t *testing.T) {
 	c, _ := promptSetup(t, domain.HarnessClaude, domain.StatePermission, claudeDialog)
 	if err := c.SessionAnswer(context.Background(), "nope", "1"); errorCode(t, err) != rpc.CodeNotFound {
 		t.Fatalf("error %v", err)
+	}
+}
+
+func TestSessionAnswerForAPromptThatIsNoLongerTheOneShowingIsStaleAndSendsNothing(t *testing.T) {
+	c, host := promptSetup(t, domain.HarnessClaude, domain.StatePermission, claudeDialog)
+	err := c.Call(context.Background(), rpc.MethodSessionAnswer, rpc.AnswerParams{Session: "a", Choice: "1", Prompt: "not-the-showing-prompt"}, nil)
+	if errorCode(t, err) != rpc.CodeStale {
+		t.Fatalf("error %v", err)
+	}
+	if typed := host.typedNow(); len(typed) != 0 {
+		t.Fatalf("typed %q", typed)
+	}
+}
+
+func TestSessionAnswerForTheShowingPromptPressesTheKeys(t *testing.T) {
+	c, host := promptSetup(t, domain.HarnessClaude, domain.StatePermission, claudeDialog, claudeDialog)
+	shown, err := c.SessionPrompt(context.Background(), "a")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := c.Call(context.Background(), rpc.MethodSessionAnswer, rpc.AnswerParams{Session: "a", Choice: "3", Prompt: shown.ID}, nil); err != nil {
+		t.Fatal(err)
+	}
+	if got, want := host.typedNow(), []string{"%3 keys 3"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("typed %q, want %q", got, want)
 	}
 }

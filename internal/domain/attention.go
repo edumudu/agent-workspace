@@ -1,8 +1,6 @@
 package domain
 
 import (
-	"fmt"
-	"path"
 	"regexp"
 	"strings"
 	"sync"
@@ -72,14 +70,7 @@ func bannerTitle(s Session, name string, worktrees []Worktree) string {
 	if len(worktrees) == 0 {
 		return title
 	}
-	where := path.Base(worktrees[0].Repo)
-	if b := worktrees[0].Branch; b != "" {
-		where += "@" + cutRunes(b, maxBannerBranch)
-	}
-	if more := len(worktrees) - 1; more > 0 {
-		where += fmt.Sprintf(" +%d", more)
-	}
-	suffix := " · " + where
+	suffix := " · " + WorktreeLabel(worktrees)
 	room := MaxBannerTitle - utf8.RuneCountInString(suffix)
 	if room <= 0 {
 		return suffix

@@ -1,0 +1,26 @@
+{
+  "ID": "s1",
+  "TaskID": "t1",
+  "Harness": "claude",
+  "Pane": "",
+  "Model": "",
+  "Effort": "",
+  "State": "idle",
+  "Ended": true,
+  "Unread": false,
+  "Focused": false,
+  "Muted": false,
+  "WorktreeIDs": null,
+  "ResumeID": "",
+  "Transcript": "",
+  "Dir": "",
+  "Usage": {
+    "ContextLeftPercent": 0,
+    "HasContext": false,
+    "LimitUsedPercent": 0
+  },
+  "Limits": null,
+  "LimitsAt": "0001-01-01T00:00:00Z",
+  "Switches": null,
+  "SwitchWarning": false
+}

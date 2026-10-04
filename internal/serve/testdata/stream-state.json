@@ -1,0 +1,183 @@
+{
+  "state": {
+    "seq": 41,
+    "workspaces": [
+      {
+        "Root": "/home/me/api",
+        "Kind": "single",
+        "Repos": null,
+        "LastUsed": "2026-10-03T12:00:00Z"
+      }
+    ],
+    "tasks": [
+      {
+        "ID": "t1",
+        "Source": "text",
+        "Ref": "",
+        "Text": "fix the login redirect",
+        "IssueTitle": "",
+        "PRTitle": "",
+        "PinnedName": "",
+        "URL": ""
+      },
+      {
+        "ID": "t2",
+        "Source": "text",
+        "Ref": "",
+        "Text": "add retries to the client",
+        "IssueTitle": "",
+        "PRTitle": "",
+        "PinnedName": "",
+        "URL": ""
+      }
+    ],
+    "worktrees": [
+      {
+        "ID": "w1",
+        "Repo": "api",
+        "Path": "/home/me/.agentws/worktrees/api-login",
+        "Branch": "login",
+        "PR": null,
+        "SubtaskSlug": "",
+        "SessionID": "s1",
+        "Ports": null
+      }
+    ],
+    "sessions": [
+      {
+        "ID": "s1",
+        "TaskID": "t1",
+        "Harness": "claude",
+        "Pane": "",
+        "Model": "opus",
+        "Effort": "",
+        "State": "running",
+        "Ended": false,
+        "Unread": false,
+        "Focused": false,
+        "Muted": false,
+        "WorktreeIDs": [
+          "w1"
+        ],
+        "ResumeID": "",
+        "Transcript": "",
+        "Dir": "",
+        "Usage": {
+          "ContextLeftPercent": 0,
+          "HasContext": false,
+          "LimitUsedPercent": 0
+        },
+        "Limits": [
+          {
+            "Window": "five_hour",
+            "UsedPercent": 42,
+            "ResetsAt": 1791039600
+          },
+          {
+            "Window": "seven_day",
+            "UsedPercent": 85,
+            "ResetsAt": 0
+          }
+        ],
+        "LimitsAt": "2026-10-03T12:00:00Z",
+        "Switches": null,
+        "SwitchWarning": false,
+        "name": "fix the login redirect",
+        "where": "api@login",
+        "banner": "",
+        "since": "2026-10-03T12:00:00Z"
+      },
+      {
+        "ID": "s2",
+        "TaskID": "t2",
+        "Harness": "codex",
+        "Pane": "",
+        "Model": "",
+        "Effort": "",
+        "State": "done",
+        "Ended": false,
+        "Unread": true,
+        "Focused": false,
+        "Muted": false,
+        "WorktreeIDs": null,
+        "ResumeID": "",
+        "Transcript": "",
+        "Dir": "",
+        "Usage": {
+          "ContextLeftPercent": 0,
+          "HasContext": false,
+          "LimitUsedPercent": 0
+        },
+        "Limits": [
+          {
+            "Window": "five_hour",
+            "UsedPercent": 10,
+            "ResetsAt": 0
+          }
+        ],
+        "LimitsAt": "2026-10-03T11:00:00Z",
+        "Switches": null,
+        "SwitchWarning": false,
+        "name": "add retries",
+        "where": "",
+        "banner": "Added the retry to the client. (4m12s)",
+        "since": "2026-10-03T11:54:12Z"
+      }
+    ],
+    "limits": [
+      {
+        "Harness": "claude",
+        "Window": "five_hour",
+        "LeftPercent": 58,
+        "ResetsAt": 1791039600,
+        "ReportedAt": "2026-10-03T12:00:00Z",
+        "label": "5h",
+        "low": false,
+        "stale_at": "2026-10-03T12:15:00Z"
+      },
+      {
+        "Harness": "claude",
+        "Window": "seven_day",
+        "LeftPercent": 15,
+        "ResetsAt": 0,
+        "ReportedAt": "2026-10-03T12:00:00Z",
+        "label": "7d",
+        "low": true,
+        "stale_at": "2026-10-03T12:15:00Z"
+      },
+      {
+        "Harness": "codex",
+        "Window": "five_hour",
+        "LeftPercent": 90,
+        "ResetsAt": 0,
+        "ReportedAt": "2026-10-03T11:00:00Z",
+        "label": "5h",
+        "low": false,
+        "stale_at": "2026-10-03T11:15:00Z"
+      }
+    ],
+    "queue": [
+      {
+        "ID": "q1",
+        "Ref": "#42",
+        "URL": "",
+        "Workspace": "/home/me/api",
+        "Request": {
+          "Harness": "",
+          "Model": "",
+          "Effort": ""
+        },
+        "Starting": false,
+        "Err": ""
+      }
+    ],
+    "sends": [
+      {
+        "id": "m1",
+        "session": "s1",
+        "text": "and add a test",
+        "queued_at": "2026-10-03T12:00:00Z"
+      }
+    ]
+  }
+}
