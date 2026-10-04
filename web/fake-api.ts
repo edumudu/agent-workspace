@@ -138,6 +138,20 @@ function wsClose(code: number): Buffer {
 
 let offlineServed = false;
 
+type FakeSend = { id: string; session: string; text: string; queued_at: string };
+
+let fakeSends: FakeSend[] | null = null;
+let fakeSeq = 1;
+const liveSockets = new Set<Duplex>();
+
+function publishSends() {
+  fakeSeq++;
+  const frame = wsFrame(JSON.stringify({ diff: { seq: fakeSeq, sends: fakeSends ?? [] } }));
+  for (const socket of liveSockets) {
+    socket.write(frame);
+  }
+}
+
 function fakeStream(req: IncomingMessage, socket: Duplex) {
   const offline = process.env.AGENTWS_FAKE_STREAM === "offline";
   if (offline && offlineServed) {
@@ -153,12 +167,16 @@ function fakeStream(req: IncomingMessage, socket: Duplex) {
       return;
     }
     authed = true;
-    socket.write(wsFrame(JSON.stringify({ state: fakeStreamState() })));
+    const state = fakeStreamState();
+    fakeSends ??= state.sends;
+    socket.write(wsFrame(JSON.stringify({ state: { ...state, seq: fakeSeq, sends: fakeSends } })));
+    liveSockets.add(socket);
     if (offline) {
       offlineServed = true;
       setTimeout(() => socket.end(wsClose(1013)), 300);
     }
   });
+  socket.on("close", () => liveSockets.delete(socket));
   socket.on("error", () => undefined);
 }
 
@@ -195,18 +213,33 @@ export function fakeApi(build = "v0.12.0+demo"): Plugin {
           });
           return;
         }
-        const session = path.match(/^\/api\/v1\/sessions\/[^/]+\/(messages|interrupt|sends\/[^/]+)$/);
-        if (session && req.method === "GET" && session[1] === "messages") {
+        const session = path.match(/^\/api\/v1\/sessions\/([^/]+)\/(messages|interrupt|sends\/[^/]+)$/);
+        if (session && req.method === "GET" && session[2] === "messages") {
           const older = new URL(req.url ?? "", "http://fake").searchParams.has("before");
           setTimeout(() => send(res, 200, fakeMessages(older)), older ? 5000 : 0);
           return;
         }
-        if (session && req.method === "POST" && session[1] === "messages") {
-          await readJSON(req);
-          send(res, 200, { id: "m" + Date.now(), queued: true });
+        if (session && req.method === "POST" && session[2] === "messages") {
+          const body = await readJSON(req);
+          const queued = { id: "m" + Date.now(), session: decodeURIComponent(session[1]), text: String(body.text ?? ""), queued_at: new Date().toISOString() };
+          fakeSends = [...(fakeSends ?? []), queued];
+          publishSends();
+          send(res, 200, { id: queued.id, queued: true });
           return;
         }
-        if (session && ((req.method === "POST" && session[1] === "interrupt") || (req.method === "DELETE" && session[1].startsWith("sends/")))) {
+        if (session && req.method === "DELETE" && session[2].startsWith("sends/")) {
+          const id = decodeURIComponent(session[2].slice("sends/".length));
+          const before = fakeSends ?? [];
+          fakeSends = before.filter((q) => q.id !== id);
+          if (fakeSends.length === before.length) {
+            send(res, 404, { error: { code: "not_found", message: "no queued send " + id } });
+            return;
+          }
+          publishSends();
+          send(res, 200, {});
+          return;
+        }
+        if (session && req.method === "POST" && session[2] === "interrupt") {
           send(res, 200, {});
           return;
         }
