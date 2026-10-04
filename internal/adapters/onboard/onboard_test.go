@@ -55,14 +55,14 @@ func TestAFreshMachineHasNothingSetUp(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got.Done || got.Claude.Installed || got.Codex.Installed || got.Nvim.OnPath || got.Nvim.Configured {
+	if got.Done || got.Harnesses[domain.HarnessClaude].Installed || got.Harnesses[domain.HarnessCodex].Installed || got.Nvim.OnPath || got.Nvim.Configured {
 		t.Errorf("fresh machine = %+v", got)
 	}
-	if got.Claude.File != w.probe.ClaudeSettings || got.Codex.File != filepath.Join(w.probe.CodexHome, "hooks.json") {
-		t.Errorf("files = %q, %q", got.Claude.File, got.Codex.File)
+	if got.Harnesses[domain.HarnessClaude].File != w.probe.ClaudeSettings || got.Harnesses[domain.HarnessCodex].File != filepath.Join(w.probe.CodexHome, "hooks.json") {
+		t.Errorf("files = %q, %q", got.Harnesses[domain.HarnessClaude].File, got.Harnesses[domain.HarnessCodex].File)
 	}
-	if got.Claude.Backup != "" || got.Codex.Backup != "" {
-		t.Errorf("backups named for files that do not exist: %q, %q", got.Claude.Backup, got.Codex.Backup)
+	if got.Harnesses[domain.HarnessClaude].Backup != "" || got.Harnesses[domain.HarnessCodex].Backup != "" {
+		t.Errorf("backups named for files that do not exist: %q, %q", got.Harnesses[domain.HarnessClaude].Backup, got.Harnesses[domain.HarnessCodex].Backup)
 	}
 	if got.Nvim.ConfigFile != filepath.Join(w.probe.NvimConfigDir, "plugin", "agentws.lua") {
 		t.Errorf("nvim setup file = %q, want plugin/agentws.lua under the config dir", got.Nvim.ConfigFile)
@@ -97,7 +97,7 @@ func TestInstallSetsUpEachHarnessAndOnboardingSeesIt(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !got.Claude.Installed || !got.Codex.Installed {
+	if !got.Harnesses[domain.HarnessClaude].Installed || !got.Harnesses[domain.HarnessCodex].Installed {
 		t.Errorf("after install = %+v", got)
 	}
 	again, err := w.probe.Install(ctx, domain.HarnessClaude)
@@ -113,8 +113,8 @@ func TestABrokenConfigIsReportedNotOverwritten(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got.Claude.Err == "" || got.Claude.Installed {
-		t.Errorf("broken settings = %+v", got.Claude)
+	if got.Harnesses[domain.HarnessClaude].Err == "" || got.Harnesses[domain.HarnessClaude].Installed {
+		t.Errorf("broken settings = %+v", got.Harnesses[domain.HarnessClaude])
 	}
 	if _, err := w.probe.Install(context.Background(), domain.HarnessClaude); err == nil {
 		t.Error("install over broken JSON succeeded")
