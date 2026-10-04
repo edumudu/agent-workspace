@@ -280,6 +280,9 @@ func (m Model) pickers(keep *int, at int) []string {
 	effort := d.efforts[d.effort]
 	if effort == "" {
 		effort = defaultLabel(m.defaultEffort())
+		if m.chosenHarness() == domain.HarnessOmp {
+			effort = "Default"
+		}
 	}
 	cols := []struct {
 		f     field
@@ -368,7 +371,7 @@ func (m Model) modelPieces() []piece {
 	}
 	label := d.model
 	if label == "" {
-		label = defaultLabel(m.defaultModel())
+		label = "Default"
 	}
 	return []piece{{s.bold, "‹ " + label + " ›"}}
 }

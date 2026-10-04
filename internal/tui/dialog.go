@@ -597,6 +597,14 @@ func (m Model) dialogKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 			d.modelBackspace()
 			break
 		}
+		if d.field == fieldModel && d.model != "" {
+			d.model, d.saved = "", ""
+			break
+		}
+		if d.field == fieldEffort && d.effort > 0 {
+			d.effort = 0
+			break
+		}
 		if t := d.text(); t != nil && *t != "" {
 			r := []rune(*t)
 			*t = string(r[:len(r)-1])
