@@ -93,18 +93,40 @@ func TestSubscribePushReplacesTheDevicesOwnSubscription(t *testing.T) {
 	}
 }
 
-func TestDropPushEndpointClearsOnlyTheDevicesHoldingIt(t *testing.T) {
+func TestDropPushSubscriptionClearsOnlyTheDevicesHoldingIt(t *testing.T) {
 	gone, kept := goodSub("https://p.example/gone"), goodSub("https://p.example/kept")
 	devices := []Device{{ID: "a", Push: &gone}, {ID: "b", Push: &kept}, {ID: "c"}}
-	changed := DropPushEndpoint(devices, "https://p.example/gone")
+	changed := DropPushSubscription(devices, gone)
 	if len(changed) != 1 || changed[0].ID != "a" || changed[0].Push != nil {
 		t.Fatalf("changed %+v", changed)
 	}
 	if devices[0].Push == nil {
 		t.Fatal("the input slice was modified")
 	}
-	if changed := DropPushEndpoint(devices, "https://p.example/none"); len(changed) != 0 {
+	if changed := DropPushSubscription(devices, goodSub("https://p.example/none")); len(changed) != 0 {
 		t.Fatalf("unknown endpoint changed %+v", changed)
+	}
+}
+
+func TestDropPushSubscriptionKeepsANewerSubscriptionOnTheSameEndpoint(t *testing.T) {
+	sent := goodSub("https://p.example/1")
+	renewed := PushSubscription{Endpoint: sent.Endpoint, P256dh: goodP256dh, Auth: pushKey(16, 9)}
+	if changed := DropPushSubscription([]Device{{ID: "a", Push: &renewed}}, sent); len(changed) != 0 {
+		t.Fatalf("the renewed subscription was dropped: %+v", changed)
+	}
+}
+
+func TestUnsubscribePushClearsTheDevicesSubscription(t *testing.T) {
+	sub := goodSub("https://p.example/1")
+	changed, ok := UnsubscribePush([]Device{{ID: "a", Push: &sub}, {ID: "b"}}, "a")
+	if !ok || len(changed) != 1 || changed[0].ID != "a" || changed[0].Push != nil {
+		t.Fatalf("changed %+v ok %v", changed, ok)
+	}
+	if changed, ok := UnsubscribePush([]Device{{ID: "b"}}, "b"); !ok || len(changed) != 0 {
+		t.Fatalf("a device with no subscription: changed %+v ok %v", changed, ok)
+	}
+	if _, ok := UnsubscribePush([]Device{{ID: "b"}}, "zz"); ok {
+		t.Fatal("an unknown device was found")
 	}
 }
 

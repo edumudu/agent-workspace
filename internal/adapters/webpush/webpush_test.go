@@ -114,6 +114,9 @@ func newPushService(t *testing.T) *pushService {
 		p.requests = append(p.requests, received{header: r.Header.Clone(), body: body, path: r.URL.Path})
 		status := p.status
 		p.mu.Unlock()
+		if status >= 300 && status < 400 {
+			w.Header().Set("Location", "/elsewhere")
+		}
 		w.WriteHeader(status)
 	}))
 	t.Cleanup(p.Close)
@@ -272,5 +275,45 @@ func TestWebPushTreatsNotFoundAndGoneAsAGoneSubscription(t *testing.T) {
 		if err := s.Send(context.Background(), sub, msg); err != nil {
 			t.Fatalf("status %d: %v", code, err)
 		}
+	}
+}
+
+func (p *pushService) count() int {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return len(p.requests)
+}
+
+func TestWebPushFollowsNoRedirect(t *testing.T) {
+	svc := newPushService(t)
+	svc.setStatus(http.StatusTemporaryRedirect)
+	s := webpush.New(filepath.Join(t.TempDir(), "vapid"), svc.Client())
+	err := s.Send(context.Background(), newBrowser(t).subscription(svc.URL+"/push/abc"), domain.PushMessage{Title: "t", Body: "b"})
+	if err == nil || errors.Is(err, app.ErrPushGone) {
+		t.Fatalf("a redirect was taken as %v", err)
+	}
+	if n := svc.count(); n != 1 {
+		t.Fatalf("the push service got %d requests", n)
+	}
+}
+
+func TestWebPushReachesNoLoopbackOrPrivateAddressByDefault(t *testing.T) {
+	var hits int
+	var mu sync.Mutex
+	internal := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		mu.Lock()
+		hits++
+		mu.Unlock()
+		w.WriteHeader(http.StatusCreated)
+	}))
+	t.Cleanup(internal.Close)
+	s := webpush.New(filepath.Join(t.TempDir(), "vapid"), nil)
+	if err := s.Send(context.Background(), newBrowser(t).subscription(internal.URL+"/admin"), domain.PushMessage{Title: "t", Body: "b"}); err == nil {
+		t.Fatal("a push to a loopback address was sent")
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	if hits != 0 {
+		t.Fatalf("the loopback server got %d requests", hits)
 	}
 }

@@ -37,7 +37,7 @@ func TestSendPushReportsGoneSubscriptionsAndKeepsSending(t *testing.T) {
 		{Endpoint: "https://p.example/gone"}, {Endpoint: "https://p.example/broken"}, {Endpoint: "https://p.example/ok"},
 	}
 	gone, err := app.SendPush(context.Background(), p, subs, domain.PushMessage{Title: "t", Body: "b"})
-	if !reflect.DeepEqual(gone, []string{"https://p.example/gone"}) {
+	if !reflect.DeepEqual(gone, []domain.PushSubscription{{Endpoint: "https://p.example/gone"}}) {
 		t.Fatalf("gone %v", gone)
 	}
 	if err == nil || errors.Is(err, app.ErrPushGone) {

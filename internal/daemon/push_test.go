@@ -220,3 +220,22 @@ func TestPushMethodsAreUnknownWithoutAProvider(t *testing.T) {
 		t.Fatalf("push.subscribe: %v", err)
 	}
 }
+
+func TestPushUnsubscribeStopsPushesToThatDevice(t *testing.T) {
+	store := &memStore{}
+	r := newPushRig(t, store)
+	phone := r.pairedDevice(t, "phone", "https://push.example/phone")
+	r.pairedDevice(t, "ipad", "https://push.example/ipad")
+	if err := r.c.Call(context.Background(), rpc.MethodPushUnsubscribe, rpc.PushUnsubscribeParams{Device: phone}, nil); err != nil {
+		t.Fatal(err)
+	}
+	r.sentinelPushes(t, "https://push.example/ipad")
+	for _, d := range store.devices() {
+		if d.ID == phone && d.Push != nil {
+			t.Fatalf("the phone still stores %+v", d.Push)
+		}
+	}
+	if err := r.c.Call(context.Background(), rpc.MethodPushUnsubscribe, rpc.PushUnsubscribeParams{Device: "nosuchid"}, nil); errCode(err) != rpc.CodeNotFound {
+		t.Fatalf("unknown device: %v", err)
+	}
+}

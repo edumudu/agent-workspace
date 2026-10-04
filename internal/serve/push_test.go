@@ -63,3 +63,16 @@ func TestServePushSubscribeRefusesABodyThatIsNoSubscription(t *testing.T) {
 		t.Fatalf("daemon refusal: status %d %s", status, out)
 	}
 }
+
+func TestServePushUnsubscribeDropsTheCallingDevicesSubscription(t *testing.T) {
+	f := newFakeDaemon()
+	f.devices[goodToken] = phone
+	_, ts := startServer(t, f, serve.Config{URL: publicURL})
+	status, body := do(t, ts, "POST", "/api/v1/push/unsubscribe", goodToken, "")
+	if status != http.StatusOK || strings.TrimSpace(string(body)) != "{}" {
+		t.Fatalf("status %d %s", status, body)
+	}
+	if got := f.paramsOf(rpc.MethodPushUnsubscribe); len(got) != 1 || string(got[0]) != `{"device":"k3m9p2qx"}` {
+		t.Fatalf("push.unsubscribe params %s", got)
+	}
+}

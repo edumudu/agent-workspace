@@ -32,12 +32,19 @@ class FakePush implements PushEnv {
     this.subscribedWith.push(key);
     return subscription;
   };
+
+  unsubscribed = 0;
+
+  unsubscribe = async () => {
+    this.unsubscribed++;
+  };
 }
 
 function setup(over: Partial<AppEnv> = {}) {
   const server = new FakeServer()
     .on("GET", "/api/v1/push/key", { status: 200, body: { public_key: vapidKey } })
-    .on("POST", "/api/v1/push/subscribe", { status: 200, body: {} });
+    .on("POST", "/api/v1/push/subscribe", { status: 200, body: {} })
+    .on("POST", "/api/v1/push/unsubscribe", { status: 200, body: {} });
   const storage = new MemoryStorage();
   storage.setItem("agentws.auth", JSON.stringify({ token: "t0k", device }));
   const push = new FakePush();
@@ -107,6 +114,27 @@ describe("Enable notifications", () => {
     render(<App env={env} />);
     expect(screen.getByText(/cannot show notifications/)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Enable notifications" })).not.toBeInTheDocument();
+  });
+});
+
+describe("Sign out", () => {
+  it("drops this device's push subscription on the server and in the browser before forgetting the token", async () => {
+    const { server, push, env } = setup();
+    render(<App env={env} />);
+    await userEvent.click(screen.getByRole("button", { name: "Sign out" }));
+    expect(await screen.findByRole("heading", { name: "Pair this device" })).toBeInTheDocument();
+    const i = server.calls.findIndex((c) => c.path === "/api/v1/push/unsubscribe");
+    expect(server.calls[i]?.method).toBe("POST");
+    expect(server.headers[i].authorization).toBe("Bearer t0k");
+    expect(push.unsubscribed).toBe(1);
+  });
+
+  it("still signs out when the server cannot be reached", async () => {
+    const { server, env } = setup();
+    server.on("POST", "/api/v1/push/unsubscribe", new TypeError("Failed to fetch"));
+    render(<App env={env} />);
+    await userEvent.click(screen.getByRole("button", { name: "Sign out" }));
+    expect(await screen.findByRole("heading", { name: "Pair this device" })).toBeInTheDocument();
   });
 });
 
