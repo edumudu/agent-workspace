@@ -1,0 +1,90 @@
+[
+  {
+    "ID": "1238",
+    "Cursor": 1444,
+    "Turn": "1238",
+    "Role": "user",
+    "Text": "list the files in api and add a notes file for #42",
+    "Tool": null,
+    "At": "2026-09-29T10:00:06.222Z"
+  },
+  {
+    "ID": "call_ls",
+    "Cursor": 2553,
+    "Turn": "1238",
+    "Role": "tool",
+    "Text": "main.go",
+    "Tool": {
+      "Name": "shell_command",
+      "Summary": "Shell ls",
+      "Status": "done"
+    },
+    "At": "2026-09-29T10:00:11.407Z"
+  },
+  {
+    "ID": "call_fail",
+    "Cursor": 4306,
+    "Turn": "1238",
+    "Role": "tool",
+    "Text": "",
+    "Tool": {
+      "Name": "shell_command",
+      "Summary": "Shell false",
+      "Status": "failed"
+    },
+    "At": "2026-09-29T10:00:16.592Z"
+  },
+  {
+    "ID": "call_patch",
+    "Cursor": 6093,
+    "Turn": "1238",
+    "Role": "tool",
+    "Text": "Success. Updated the following files:\nA notes.txt",
+    "Tool": {
+      "Name": "apply_patch",
+      "Summary": "Edit notes.txt",
+      "Status": "done"
+    },
+    "At": "2026-09-29T10:00:21.777Z"
+  },
+  {
+    "ID": "7744",
+    "Cursor": 7889,
+    "Turn": "1238",
+    "Role": "assistant",
+    "Text": "Listed the files and added notes.txt.",
+    "Tool": null,
+    "At": "2026-09-29T10:00:26.962Z"
+  },
+  {
+    "ID": "8561",
+    "Cursor": 8738,
+    "Turn": "8561",
+    "Role": "user",
+    "Text": "now run the web tests",
+    "Tool": null,
+    "At": "2026-09-29T10:00:29.073Z"
+  },
+  {
+    "ID": "call_web",
+    "Cursor": 9442,
+    "Turn": "8561",
+    "Role": "tool",
+    "Text": "",
+    "Tool": {
+      "Name": "shell",
+      "Summary": "Shell npm test --prefix ../web",
+      "Status": "running"
+    },
+    "At": "2026-09-29T10:00:33.221Z"
+  },
+  {
+    "ID": "9442",
+    "Cursor": 9559,
+    "Turn": "8561",
+    "Role": "system",
+    "Text": "Interrupted",
+    "Tool": null,
+    "At": "2026-09-29T10:00:34.258Z"
+  }
+]

@@ -342,6 +342,9 @@ func (s *state) hook(h rpc.Hook, now time.Time) {
 	if id := domain.ResumeIDFromHook(h.Payload); id != "" {
 		next.ResumeID = id
 	}
+	if p := domain.TranscriptFromHook(h.Payload); p != "" {
+		next.Transcript = p
+	}
 	if domain.Harness(h.Harness) == domain.HarnessCodex {
 		next = s.codexObservation(h, kind, session, next)
 	}
