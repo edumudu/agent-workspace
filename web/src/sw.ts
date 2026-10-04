@@ -1,4 +1,5 @@
 import { buildFromWorkerLocation, cacheName, precacheList, requestKind, staleCaches } from "./sw-cache";
+import { appURL, notificationFor, openFromNotification, payloadOf } from "./sw-push";
 
 declare const self: ServiceWorkerGlobalScope;
 
@@ -45,4 +46,15 @@ self.addEventListener("fetch", (event) => {
     return;
   }
   event.respondWith(fromCache(request, kind === "shell" ? "/" : request));
+});
+
+self.addEventListener("push", (event) => {
+  const { title, options } = notificationFor(payloadOf(event.data));
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const data = event.notification.data as { url?: unknown } | null;
+  event.waitUntil(openFromNotification(self.clients, self.location.origin, appURL(data?.url)));
 });

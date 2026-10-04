@@ -279,6 +279,45 @@ button:disabled {
   background: var(--overlay);
 }
 
+button.secondary {
+  background: var(--mantle);
+  color: var(--red);
+  border: 1px solid var(--surface);
+}
+
+.card button {
+  margin-top: 12px;
+  width: 100%;
+}
+
+#root:has(.tabs) .screen {
+  padding-bottom: calc(96px + env(safe-area-inset-bottom));
+}
+
+.tabs {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  background: var(--mantle);
+  border-top: 1px solid var(--surface);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.tabs a {
+  flex: 1;
+  text-align: center;
+  padding: 14px 0;
+  color: var(--subtext);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.tabs a[aria-current="page"] {
+  color: var(--blue);
+}
+
 .error {
   background: var(--deleted-bg);
   color: var(--text);

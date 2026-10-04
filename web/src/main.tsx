@@ -10,6 +10,7 @@ import { hello } from "./api";
 import { App } from "./App";
 import { buildOfWorker, checkBuild, workerURL } from "./build";
 import { isInstalled } from "./display";
+import { browserPush } from "./push";
 
 const checkEvery = 5 * 60 * 1000;
 const installTimeout = 15 * 1000;
@@ -107,6 +108,7 @@ if (root) {
           openStream,
           now,
           onHashChange,
+          push: browserPush(window),
         }}
       />
     </StrictMode>,

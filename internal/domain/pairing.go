@@ -132,6 +132,7 @@ type Device struct {
 	TokenHash string
 	Created   time.Time
 	LastSeen  time.Time
+	Push      *PushSubscription
 }
 
 func HashDeviceToken(token string) string {

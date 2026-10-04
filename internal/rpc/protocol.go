@@ -58,6 +58,9 @@ const (
 	MethodDeviceCheck      = "device.check"
 	MethodDeviceList       = "device.list"
 	MethodDeviceRevoke     = "device.revoke"
+	MethodPushKey          = "push.key"
+	MethodPushSubscribe    = "push.subscribe"
+	MethodPushUnsubscribe  = "push.unsubscribe"
 )
 
 type PairCodeParams struct {
@@ -105,6 +108,25 @@ type DeviceList struct {
 
 type DeviceRevokeParams struct {
 	ID string `json:"id"`
+}
+
+type PushKey struct {
+	PublicKey string `json:"public_key"`
+}
+
+type PushKeys struct {
+	P256dh string `json:"p256dh"`
+	Auth   string `json:"auth"`
+}
+
+type PushUnsubscribeParams struct {
+	Device string `json:"device"`
+}
+
+type PushSubscribeParams struct {
+	Device   string   `json:"device"`
+	Endpoint string   `json:"endpoint"`
+	Keys     PushKeys `json:"keys"`
 }
 
 type DiskView struct {

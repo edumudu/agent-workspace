@@ -96,7 +96,7 @@ describe("starting a session from the phone", () => {
     expect(screen.getByLabelText("Model")).toHaveValue("");
     expect(screen.getByLabelText("Effort")).toHaveValue("");
     expect(screen.getByRole("button", { name: "Start session" })).toBeDisabled();
-    expect(new Set(server.authorizations)).toEqual(new Set(["Bearer t0k"]));
+    expect(new Set(server.headers.map((h) => h.authorization))).toEqual(new Set(["Bearer t0k"]));
   });
 
   it("defaults to what this phone used last", async () => {
