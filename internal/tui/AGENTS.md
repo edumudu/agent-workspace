@@ -27,7 +27,7 @@ The client layout's left pane runs `agentws tui`, 48 columns wide; a `window-res
 
 ## Config
 
-Colors are Catppuccin Latte, overridden per key in the `[theme]` table of `$AGENTWS_HOME/config.toml` (`text`, `subtext`, `overlay`, `surface`, `mantle`, `base`, `blue`, `peach`, `green`, `red`, `teal`, `mauve`, `selected`, `added_bg`, `deleted_bg`), read once at startup. Review syntax colors come from the same keys. The same file holds `[defaults.claude]` and `[defaults.codex]` tables with `model` and `effort`, the starting values for the new-session dialog (`tui.LoadDefaults`).
+Colors are Catppuccin Latte, overridden per key in the `[theme]` table of `$AGENTWS_HOME/config.toml` (`text`, `subtext`, `overlay`, `surface`, `mantle`, `base`, `blue`, `peach`, `green`, `red`, `teal`, `mauve`, `selected`, `added_bg`, `deleted_bg`), read once at startup. Review syntax colors come from the same keys. The same file holds `[defaults.claude]`, `[defaults.codex]` and `[defaults.omp]` tables with `model` and `effort`, the starting values for the new-session dialog (`tui.LoadDefaults`).
 
 ## Mouse
 
