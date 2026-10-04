@@ -22,6 +22,7 @@ import (
 	"github.com/giovaniif/agent-workspace/internal/adapters/setup"
 	"github.com/giovaniif/agent-workspace/internal/adapters/sqlite"
 	"github.com/giovaniif/agent-workspace/internal/adapters/tmux"
+	"github.com/giovaniif/agent-workspace/internal/adapters/webpush"
 	"github.com/giovaniif/agent-workspace/internal/app"
 	"github.com/giovaniif/agent-workspace/internal/domain"
 	"github.com/giovaniif/agent-workspace/internal/rpc"
@@ -103,6 +104,7 @@ func Run(ctx context.Context, home string) (err error) {
 		WithHunks(gitadapter.Review{}),
 		WithOnboarding(onboard.FromEnv(home, self, os.Getenv)),
 		WithTranscripts(Transcripts(wsfs.Transcripts{}), wsfs.Transcripts{}),
+		WithPush(webpush.New(filepath.Join(home, "vapid"), nil)),
 	}
 	if hooks.prPoll > 0 {
 		opts = append(opts, WithWorktreePoll(DefaultWorktreePoll, hooks.prPoll))
