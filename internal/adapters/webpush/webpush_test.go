@@ -158,7 +158,7 @@ func verifyVAPID(t *testing.T, header, publicKey, audience string) {
 	if err := json.Unmarshal(claimsJSON, &claims); err != nil {
 		t.Fatal(err)
 	}
-	if claims.Aud != audience || !(strings.HasPrefix(claims.Sub, "https://") || strings.HasPrefix(claims.Sub, "mailto:")) {
+	if claims.Aud != audience || (!strings.HasPrefix(claims.Sub, "https://") && !strings.HasPrefix(claims.Sub, "mailto:")) {
 		t.Fatalf("claims %+v, want aud %s", claims, audience)
 	}
 	raw, _ := base64.RawURLEncoding.DecodeString(publicKey)
