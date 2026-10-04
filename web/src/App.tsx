@@ -4,6 +4,7 @@ import { clearAuth, loadAuth, saveAuth, type Auth, type KeyValue } from "./auth"
 import { pairCodeFromHash } from "./display";
 import { parseRoute } from "./route";
 import { Install } from "./screens/Install";
+import { NewSession } from "./screens/NewSession";
 import { Pair } from "./screens/Pair";
 import { SessionScreen } from "./screens/Session";
 import { SessionList } from "./screens/SessionList";
@@ -49,6 +50,9 @@ function Connected({ env, auth, onUnauthorized }: { env: AppEnv; auth: Auth; onU
 
   const route = parseRoute(hash);
   const retry = () => client.retryNow();
+  if (route.screen === "new") {
+    return <NewSession env={env} token={auth.token} onRetry={retry} />;
+  }
   if (route.screen === "session") {
     return <SessionScreen id={route.id} snapshot={snapshot} now={now} onRetry={retry} />;
   }

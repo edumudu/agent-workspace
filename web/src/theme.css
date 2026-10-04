@@ -150,7 +150,9 @@ label {
   font-weight: 500;
 }
 
-input {
+input,
+select,
+textarea {
   font: inherit;
   color: var(--text);
   background: var(--base);
@@ -160,7 +162,97 @@ input {
   min-height: 48px;
 }
 
-input:focus {
+textarea {
+  min-height: 88px;
+  resize: vertical;
+}
+
+fieldset.harness {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+fieldset.harness legend {
+  font-weight: 500;
+  margin-bottom: 6px;
+  padding: 0;
+}
+
+.choice {
+  flex: 1;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 48px;
+  background: var(--base);
+  border: 1px solid var(--surface);
+  border-radius: 10px;
+  padding: 0 14px;
+}
+
+.choice input {
+  min-height: 0;
+  padding: 0;
+}
+
+.new-session {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: flex-start;
+  min-height: 44px;
+  padding: 8px 16px;
+  border-radius: 10px;
+  background: var(--blue);
+  color: var(--on-accent);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.resolution:empty {
+  display: none;
+}
+
+.resolved {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 4px 12px;
+  margin: 0;
+  padding: 12px 14px;
+  background: var(--mantle);
+  border: 1px solid var(--surface);
+  border-radius: 10px;
+}
+
+.resolved dt {
+  color: var(--subtext);
+}
+
+.resolved dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.mono {
+  font-family: var(--mono);
+}
+
+.error pre {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 13px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
   outline: 2px solid var(--blue);
   outline-offset: 1px;
 }
