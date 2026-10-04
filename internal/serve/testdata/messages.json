@@ -1,0 +1,26 @@
+{
+  "messages": [
+    {
+      "id": "u1",
+      "cursor": 96,
+      "turn": "p1",
+      "role": "user",
+      "text": "fix the login redirect",
+      "at": "2026-10-03T12:00:00Z"
+    },
+    {
+      "id": "c1",
+      "cursor": 210,
+      "turn": "p1",
+      "role": "tool",
+      "text": "PASS",
+      "tool": {
+        "name": "Bash",
+        "summary": "go test ./...",
+        "status": "done"
+      },
+      "at": "2026-10-03T12:00:00Z"
+    }
+  ],
+  "before": 40
+}

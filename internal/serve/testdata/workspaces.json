@@ -1,0 +1,19 @@
+{
+  "workspaces": [
+    {
+      "Root": "/home/me/api",
+      "Kind": "single",
+      "Repos": [
+        {
+          "Name": "api",
+          "Path": "/home/me/api",
+          "DefaultBranch": "main",
+          "Branch": "main",
+          "ChangedFiles": 0
+        }
+      ],
+      "LastUsed": "2026-10-03T12:00:00Z"
+    }
+  ],
+  "last_used": "/home/me/api"
+}

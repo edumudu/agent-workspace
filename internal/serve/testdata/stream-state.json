@@ -1,0 +1,90 @@
+{
+  "state": {
+    "seq": 41,
+    "workspaces": [
+      {
+        "Root": "/home/me/api",
+        "Kind": "single",
+        "Repos": null,
+        "LastUsed": "2026-10-03T12:00:00Z"
+      }
+    ],
+    "tasks": [
+      {
+        "ID": "t1",
+        "Source": "text",
+        "Ref": "",
+        "Text": "fix the login redirect",
+        "IssueTitle": "",
+        "PRTitle": "",
+        "PinnedName": "",
+        "URL": ""
+      }
+    ],
+    "worktrees": [
+      {
+        "ID": "w1",
+        "Repo": "api",
+        "Path": "/home/me/.agentws/worktrees/api-login",
+        "Branch": "login",
+        "PR": null,
+        "SubtaskSlug": "",
+        "SessionID": "s1",
+        "Ports": null
+      }
+    ],
+    "sessions": [
+      {
+        "ID": "s1",
+        "TaskID": "t1",
+        "Harness": "claude",
+        "Pane": "",
+        "Model": "opus",
+        "Effort": "",
+        "State": "running",
+        "Ended": false,
+        "Unread": false,
+        "Focused": false,
+        "Muted": false,
+        "WorktreeIDs": [
+          "w1"
+        ],
+        "ResumeID": "",
+        "Transcript": "",
+        "Dir": "",
+        "Usage": {
+          "ContextLeftPercent": 0,
+          "HasContext": false,
+          "LimitUsedPercent": 0
+        },
+        "Limits": null,
+        "LimitsAt": "0001-01-01T00:00:00Z",
+        "Switches": null,
+        "SwitchWarning": false
+      }
+    ],
+    "queue": [
+      {
+        "ID": "q1",
+        "Ref": "#42",
+        "URL": "",
+        "Workspace": "/home/me/api",
+        "Request": {
+          "Harness": "",
+          "Model": "",
+          "Effort": ""
+        },
+        "Starting": false,
+        "Err": ""
+      }
+    ],
+    "sends": [
+      {
+        "id": "m1",
+        "session": "s1",
+        "text": "and add a test",
+        "queued_at": "2026-10-03T12:00:00Z"
+      }
+    ]
+  }
+}

@@ -211,6 +211,20 @@ func (c *Client) SendReview(ctx context.Context, session string) (domain.ReviewD
 	return out, err
 }
 
+func (c *Client) SessionSend(ctx context.Context, session, text string) (SessionSent, error) {
+	var out SessionSent
+	err := c.Call(ctx, MethodSessionSend, SessionSendParams{Session: session, Text: text}, &out)
+	return out, err
+}
+
+func (c *Client) SessionUnsend(ctx context.Context, session, id string) error {
+	return c.Call(ctx, MethodSessionUnsend, SessionUnsendParams{Session: session, ID: id}, nil)
+}
+
+func (c *Client) SessionInterrupt(ctx context.Context, session string) error {
+	return c.Call(ctx, MethodSessionInterrupt, SessionTarget{Session: session}, nil)
+}
+
 func (c *Client) ApplyHunk(ctx context.Context, p HunkParams) error {
 	return c.Call(ctx, MethodReviewHunk, p, nil)
 }
