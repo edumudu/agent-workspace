@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { ApiError, apiVersion, hello, pair } from "./api";
 import { FakeServer } from "./test/fake-server";
@@ -25,6 +26,31 @@ describe("hello", () => {
   it("names the API version with a v whatever the server sends", () => {
     expect(apiVersion({ api: "v1", build: "x" })).toBe("v1");
     expect(apiVersion({ api: 1 as unknown as string, build: "x" })).toBe("v1");
+  });
+});
+
+describe("the server's golden responses", () => {
+  const golden = (name: string) => JSON.parse(readFileSync(new URL("../../internal/serve/testdata/" + name, import.meta.url), "utf8"));
+
+  it("reads hello", async () => {
+    const server = new FakeServer().on("GET", "/api/v1/hello", { status: 200, body: golden("hello.json") });
+    const h = await hello(server.fetch);
+    expect(apiVersion(h)).toBe("v1");
+    expect(h.build).toBe("v0.12.0+test");
+  });
+
+  it("reads a pairing", async () => {
+    const server = new FakeServer().on("POST", "/api/v1/pair", { status: 200, body: golden("pair.json") });
+    const paired = await pair(server.fetch, "ABCD2345", "phone");
+    expect(paired.token).toBe("dGhlLXRva2Vu");
+    expect(paired.device).toEqual({ id: "k3m9p2qx", name: "phone", created_at: "2026-10-03T12:00:00Z", last_seen: "2026-10-03T12:00:00Z" });
+  });
+
+  it("reads an error", async () => {
+    const server = new FakeServer().on("POST", "/api/v1/pair", { status: 401, body: golden("error.json") });
+    const err = await failure(pair(server.fetch, "ABCD2345", "phone"));
+    expect(err.code).toBe("unauthorized");
+    expect(err.message).toBe("the pairing code is wrong or has expired");
   });
 });
 

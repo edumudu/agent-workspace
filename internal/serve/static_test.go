@@ -135,3 +135,30 @@ func TestStaticServesTheEmbeddedBuildAfterMakeWeb(t *testing.T) {
 		t.Fatalf("GET /sw.js = %d, want the built service worker", res.StatusCode)
 	}
 }
+
+func TestStaticSitsBehindTheAPI(t *testing.T) {
+	srv, err := serve.New(serve.Config{Build: "v0.12.0+test"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	h := srv.Handler(serve.Static(built()))
+	call := func(path string) *http.Response {
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, path, nil))
+		return rec.Result()
+	}
+	if res := call("/"); res.StatusCode != http.StatusOK || body(t, res) != appHTML {
+		t.Fatalf("GET / = %d, want the app", res.StatusCode)
+	}
+	if res := call("/sessions/abc"); body(t, res) != appHTML {
+		t.Fatal("GET /sessions/abc did not serve the app")
+	}
+	res := call("/api/v1/hello")
+	if got := body(t, res); res.StatusCode != http.StatusOK || !strings.Contains(got, "\"build\":\"v0.12.0+test\"") {
+		t.Fatalf("GET /api/v1/hello = %d %q, want the API's hello", res.StatusCode, got)
+	}
+	res = call("/api/v1/nope")
+	if got := body(t, res); res.StatusCode != http.StatusNotFound || !strings.Contains(got, "\"not_found\"") {
+		t.Fatalf("GET /api/v1/nope = %d %q, want the API's JSON not_found", res.StatusCode, got)
+	}
+}
