@@ -4,7 +4,7 @@ project_name: agentws
 
 before:
   hooks:
-    - make web
+    - env -u GITHUB_TOKEN -u GH_TOKEN make web
 
 builds:
   - main: ./cmd/agentws
