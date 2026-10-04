@@ -140,6 +140,7 @@ function Chat({ id, client, api, status, children }: { id: string; client: Strea
   const atBottom = useRef(true);
   const anchor = useRef<{ height: number; top: number } | null>(null);
   const loadingOlder = useRef(false);
+  const generation = useRef(0);
   const latest = useRef(t);
   latest.current = t;
   const { fetch, token } = api;
@@ -170,6 +171,9 @@ function Chat({ id, client, api, status, children }: { id: string; client: Strea
         if (frame.transcript && frame.transcript.session === id) {
           const tf = frame.transcript;
           setWatchError("");
+          if (tf.reset) {
+            generation.current++;
+          }
           setT((cur) => withFrame(cur, tf));
         } else if (frame.error && frame.watch === id) {
           setWatchError(frame.error.message);
@@ -211,9 +215,14 @@ function Chat({ id, client, api, status, children }: { id: string; client: Strea
     }
     loadingOlder.current = true;
     setOlder("loading");
+    const gen = generation.current;
     messagesPage({ fetch, token }, id, cur.before ?? undefined).then(
       (page) => {
         loadingOlder.current = false;
+        if (gen !== generation.current) {
+          setOlder("idle");
+          return;
+        }
         const el = logRef.current;
         if (el) {
           anchor.current = { height: el.scrollHeight, top: el.scrollTop };
@@ -223,7 +232,7 @@ function Chat({ id, client, api, status, children }: { id: string; client: Strea
       },
       () => {
         loadingOlder.current = false;
-        setOlder("failed");
+        setOlder(gen !== generation.current ? "idle" : "failed");
       },
     );
   }, [fetch, token, id]);
