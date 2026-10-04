@@ -242,9 +242,9 @@ func (t *tailer) run(ctx context.Context, path string) {
 			if !ok {
 				r.changes = nil
 			}
-			r.broadcast(rpc.TranscriptEvent{}, r.read())
+			r.catchUp()
 		case <-tick:
-			r.broadcast(rpc.TranscriptEvent{}, r.read())
+			r.catchUp()
 		case <-t.kick:
 			if !r.apply(t.take()) {
 				return
@@ -288,7 +288,7 @@ func (r *tailRun) join(key watchKey, after int64) {
 			msgs = r.read()
 		}
 	default:
-		r.broadcast(rpc.TranscriptEvent{}, r.read())
+		r.catchUp()
 		msgs, err = r.tail.Since(after)
 	}
 	if err != nil {
@@ -350,6 +350,15 @@ func (r *tailRun) read() []domain.Message {
 		log.Printf("[transcript] %s: %v", r.path, err)
 	}
 	return msgs
+}
+
+func (r *tailRun) catchUp() {
+	msgs := r.read()
+	if r.tail != nil && r.tail.Restarted() {
+		r.broadcastAll(rpc.TranscriptEvent{Reset: true}, msgs)
+		return
+	}
+	r.broadcast(rpc.TranscriptEvent{}, msgs)
 }
 
 func (r *tailRun) broadcast(head rpc.TranscriptEvent, msgs []domain.Message) {

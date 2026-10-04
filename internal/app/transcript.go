@@ -197,6 +197,7 @@ type TranscriptTail struct {
 	parser    TranscriptParser
 	calls     domain.ToolCalls
 	offset    int64
+	restarted bool
 }
 
 func (t Transcripts) Tail(h domain.Harness, path string, after int64) (*TranscriptTail, error) {
@@ -220,8 +221,15 @@ func (t Transcripts) Tail(h domain.Harness, path string, after int64) (*Transcri
 
 func (tt *TranscriptTail) Read() ([]domain.Message, error) {
 	size, _, err := tt.t.size(tt.path)
-	if err != nil || size <= tt.offset {
+	tt.restarted = false
+	if err != nil {
 		return nil, err
+	}
+	if size < tt.offset {
+		tt.offset, tt.parser, tt.calls, tt.restarted = 0, tt.newParser(), domain.ToolCalls{}, true
+	}
+	if size <= tt.offset {
+		return nil, nil
 	}
 	data, err := tt.t.Files.ReadAt(tt.path, tt.offset, size-tt.offset)
 	if err != nil {
@@ -230,6 +238,10 @@ func (tt *TranscriptTail) Read() ([]domain.Message, error) {
 	msgs, end := tt.parser.Parse(data, tt.offset)
 	tt.offset = end
 	return tt.calls.Resolve(msgs), nil
+}
+
+func (tt *TranscriptTail) Restarted() bool {
+	return tt.restarted
 }
 
 func (tt *TranscriptTail) Since(after int64) ([]domain.Message, error) {

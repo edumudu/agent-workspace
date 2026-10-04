@@ -72,6 +72,10 @@ func (Transcripts) Watch(ctx context.Context, path string) (<-chan struct{}, err
 				case onFile && (ev.Has(fsnotify.Remove) || ev.Has(fsnotify.Rename)):
 					if w.Add(dir) == nil {
 						onFile = false
+						if w.Add(path) == nil {
+							onFile = true
+							_ = w.Remove(dir)
+						}
 					}
 				}
 				select {
