@@ -83,6 +83,9 @@ func (s *Server) routes() []route {
 		{"POST /api/v1/sessions/{id}/resume", sessionAction(rpc.MethodResumeSession, refParams)},
 		{"POST /api/v1/sessions/{id}/mute", sessionAction(rpc.MethodSessionMute, muteParams)},
 		{"POST /api/v1/sessions/{id}/rename", sessionAction(rpc.MethodSessionRename, renameParams)},
+		{"POST /api/v1/sessions/{id}/messages", sessionAction(rpc.MethodSessionSend, sendParams)},
+		{"DELETE /api/v1/sessions/{id}/sends/{send}", sessionAction(rpc.MethodSessionUnsend, unsendParams)},
+		{"POST /api/v1/sessions/{id}/interrupt", sessionAction(rpc.MethodSessionInterrupt, targetParams)},
 		{"GET /api/v1/push/key", pushKey},
 		{"POST /api/v1/push/subscribe", pushSubscribe},
 		{"POST /api/v1/push/unsubscribe", pushUnsubscribe},
@@ -258,6 +261,27 @@ func renameParams(r *http.Request, id string) (any, error) {
 		return nil, err
 	}
 	return rpc.SessionRenameParams{ID: id, Name: body.Name}, nil
+}
+
+func sendParams(r *http.Request, id string) (any, error) {
+	var body struct {
+		Text string `json:"text"`
+	}
+	if err := decodeBody(r, &body); err != nil {
+		return nil, err
+	}
+	if !domain.SendableText(body.Text) {
+		return nil, &rpc.Error{Code: rpc.CodeBadRequest, Message: `send {"text": "<message>"} with some text`}
+	}
+	return rpc.SessionSendParams{Session: id, Text: body.Text}, nil
+}
+
+func unsendParams(r *http.Request, id string) (any, error) {
+	return rpc.SessionUnsendParams{Session: id, ID: r.PathValue("send")}, nil
+}
+
+func targetParams(_ *http.Request, id string) (any, error) {
+	return rpc.SessionTarget{Session: id}, nil
 }
 
 func decodeBody(r *http.Request, out any) error {

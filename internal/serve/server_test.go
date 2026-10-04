@@ -36,6 +36,7 @@ var (
 		rpc.MethodEndSession, rpc.MethodResumeSession, rpc.MethodSessionMute, rpc.MethodSessionRename,
 		rpc.MethodTranscriptPage, rpc.MethodTranscriptWatch, rpc.MethodNewSession, rpc.MethodSessionResolve,
 		rpc.MethodPushKey, rpc.MethodPushSubscribe, rpc.MethodPushUnsubscribe,
+		rpc.MethodSessionSend, rpc.MethodSessionUnsend, rpc.MethodSessionInterrupt,
 	}
 )
 
@@ -50,6 +51,9 @@ var authedEndpoints = []authedEndpoint{
 	{"POST", "/api/v1/sessions/s1/resume", ""},
 	{"POST", "/api/v1/sessions/s1/mute", `{"muted":true}`},
 	{"POST", "/api/v1/sessions/s1/rename", `{"name":"api"}`},
+	{"POST", "/api/v1/sessions/s1/messages", `{"text":"run the tests"}`},
+	{"DELETE", "/api/v1/sessions/s1/sends/q1", ""},
+	{"POST", "/api/v1/sessions/s1/interrupt", ""},
 	{"POST", "/api/v1/sessions", `{"work_item":"x","harness":"claude"}`},
 	{"GET", "/api/v1/work-items/resolve?item=x", ""},
 	{"GET", "/api/v1/push/key", ""},
@@ -560,5 +564,75 @@ func TestServeMessagesRefusesAQueryThatIsNotANumber(t *testing.T) {
 	}
 	if slices.Contains(f.methods(), rpc.MethodTranscriptPage) {
 		t.Fatal("a bad query reached transcript.page")
+	}
+}
+
+func TestServeSendMessageAnswersWithTheSendIDAndWhetherItQueued(t *testing.T) {
+	f := newFakeDaemon()
+	f.devices[goodToken] = phone
+	f.results[rpc.MethodSessionSend] = rpc.SessionSent{ID: "q7", Queued: true}
+	_, ts := startServer(t, f, serve.Config{URL: publicURL})
+	status, body := do(t, ts, "POST", "/api/v1/sessions/s1/messages", goodToken, `{"text":"run the tests"}`)
+	if status != http.StatusOK {
+		t.Fatalf("status %d %s", status, body)
+	}
+	golden(t, "send.json", body)
+	params := f.paramsOf(rpc.MethodSessionSend)
+	if len(params) != 1 || string(params[0]) != `{"session":"s1","text":"run the tests"}` {
+		t.Fatalf("session.send params %s", params)
+	}
+}
+
+func TestServeSendMessageRefusesABodyWithoutText(t *testing.T) {
+	f := newFakeDaemon()
+	f.devices[goodToken] = phone
+	_, ts := startServer(t, f, serve.Config{URL: publicURL})
+	for _, body := range []string{`{}`, `{"text":"   "}`, `nope`} {
+		status, out := do(t, ts, "POST", "/api/v1/sessions/s1/messages", goodToken, body)
+		if status != http.StatusBadRequest || errorCode(t, out) != rpc.CodeBadRequest {
+			t.Fatalf("%s: status %d %s", body, status, out)
+		}
+	}
+	if slices.Contains(f.methods(), rpc.MethodSessionSend) {
+		t.Fatal("a bad body reached session.send")
+	}
+}
+
+func TestServeSendMessageUnsendDropsAQueuedSend(t *testing.T) {
+	f := newFakeDaemon()
+	f.devices[goodToken] = phone
+	_, ts := startServer(t, f, serve.Config{URL: publicURL})
+	status, body := do(t, ts, "DELETE", "/api/v1/sessions/s1/sends/q7", goodToken, "")
+	if status != http.StatusOK || strings.TrimSpace(string(body)) != "{}" {
+		t.Fatalf("status %d %s", status, body)
+	}
+	params := f.paramsOf(rpc.MethodSessionUnsend)
+	if len(params) != 1 || string(params[0]) != `{"session":"s1","id":"q7"}` {
+		t.Fatalf("session.unsend params %s", params)
+	}
+}
+
+func TestServeSendMessageUnsendOfASendAlreadyPastedIsNotFound(t *testing.T) {
+	f := newFakeDaemon()
+	f.devices[goodToken] = phone
+	f.errs[rpc.MethodSessionUnsend] = &rpc.Error{Code: rpc.CodeNotFound, Message: "no queued send q7"}
+	_, ts := startServer(t, f, serve.Config{URL: publicURL})
+	status, body := do(t, ts, "DELETE", "/api/v1/sessions/s1/sends/q7", goodToken, "")
+	if status != http.StatusNotFound || errorCode(t, body) != rpc.CodeNotFound || !strings.Contains(string(body), "no queued send q7") {
+		t.Fatalf("status %d %s", status, body)
+	}
+}
+
+func TestServeInterruptCallsSessionInterrupt(t *testing.T) {
+	f := newFakeDaemon()
+	f.devices[goodToken] = phone
+	_, ts := startServer(t, f, serve.Config{URL: publicURL})
+	status, body := do(t, ts, "POST", "/api/v1/sessions/s1/interrupt", goodToken, "")
+	if status != http.StatusOK || strings.TrimSpace(string(body)) != "{}" {
+		t.Fatalf("status %d %s", status, body)
+	}
+	params := f.paramsOf(rpc.MethodSessionInterrupt)
+	if len(params) != 1 || string(params[0]) != `{"session":"s1"}` {
+		t.Fatalf("session.interrupt params %s", params)
 	}
 }

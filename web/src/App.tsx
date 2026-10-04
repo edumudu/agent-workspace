@@ -56,7 +56,8 @@ function Connected({ env, auth, onUnauthorized, onSignOut }: ConnectedProps) {
   const snapshot = useStream(client);
   const [hash, setHash] = useState(env.hash);
   const now = useNow(env.now, snapshot.status === "offline" ? 1000 : 30000);
-  const { onHashChange } = env;
+  const { onHashChange, fetch } = env;
+  const api = useMemo(() => ({ fetch, token: auth.token }), [fetch, auth.token]);
 
   useEffect(() => onHashChange(setHash), [onHashChange]);
 
@@ -72,7 +73,7 @@ function Connected({ env, auth, onUnauthorized, onSignOut }: ConnectedProps) {
     return <NewSession env={env} token={auth.token} />;
   }
   if (route.screen === "session") {
-    return <SessionScreen id={route.id} snapshot={snapshot} now={now} onRetry={retry} />;
+    return <SessionScreen key={route.id} id={route.id} snapshot={snapshot} now={now} onRetry={retry} client={client} api={api} />;
   }
   if (hash === "#/settings") {
     return (

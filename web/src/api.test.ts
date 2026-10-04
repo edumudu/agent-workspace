@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { ApiError, apiVersion, hello, pair } from "./api";
+import { ApiError, apiVersion, hello, interrupt, messagesPage, pair, sendMessage, unsend } from "./api";
 import { FakeServer } from "./test/fake-server";
 
 const device = { id: "k3m9p2qx", name: "iPhone", created_at: "2026-10-03T10:00:00Z", last_seen: "2026-10-03T10:00:00Z" };
@@ -59,6 +59,7 @@ describe("pair", () => {
     const server = new FakeServer().on("POST", "/api/v1/pair", { status: 200, body: { device, token: "t0k" } });
     await expect(pair(server.fetch, "ABCD2345", "iPhone")).resolves.toEqual({ device, token: "t0k" });
     expect(server.calls).toEqual([{ path: "/api/v1/pair", method: "POST", body: { code: "ABCD2345", name: "iPhone" } }]);
+    expect(server.headers[0].authorization).toBeUndefined();
   });
 
   it.each([
@@ -95,5 +96,49 @@ describe("pair", () => {
     const err = await failure(pair(server.fetch, "ABCD2345", "iPhone"));
     expect(err.code).toBe("failed");
     expect(err.message).toContain("Bad Gateway");
+  });
+});
+
+describe("session calls", () => {
+  const golden = (name: string) => JSON.parse(readFileSync(new URL("../../internal/serve/testdata/" + name, import.meta.url), "utf8"));
+  const authed = (server: FakeServer) => ({ fetch: server.fetch, token: "t0k" });
+
+  it("pages a transcript with the device token, newest page first", async () => {
+    const server = new FakeServer()
+      .on("GET", "/api/v1/sessions/s%2F1/messages?limit=50", { status: 200, body: golden("messages.json") })
+      .on("GET", "/api/v1/sessions/s%2F1/messages?before=40&limit=50", { status: 200, body: { messages: [], before: 0 } });
+    const page = await messagesPage(authed(server), "s/1");
+    expect(page.before).toBe(40);
+    expect(page.messages.map((m) => m.id)).toEqual(["u1", "c1"]);
+    expect(page.messages[1].tool).toEqual({ name: "Bash", summary: "go test ./...", status: "done" });
+    await expect(messagesPage(authed(server), "s/1", 40)).resolves.toEqual({ messages: [], before: 0 });
+    expect(server.headers.map((h) => h.authorization)).toEqual(["Bearer t0k", "Bearer t0k"]);
+  });
+
+  it("sends a message and reads whether it queued", async () => {
+    const server = new FakeServer().on("POST", "/api/v1/sessions/s1/messages", { status: 200, body: golden("send.json") });
+    await expect(sendMessage(authed(server), "s1", "run the tests")).resolves.toEqual({ id: "q7", queued: true });
+    expect(server.calls).toEqual([{ path: "/api/v1/sessions/s1/messages", method: "POST", body: { text: "run the tests" } }]);
+    expect(server.headers[0].authorization).toBe("Bearer t0k");
+  });
+
+  it("drops a queued send and interrupts the session", async () => {
+    const server = new FakeServer()
+      .on("DELETE", "/api/v1/sessions/s1/sends/q7", { status: 200, body: {} })
+      .on("POST", "/api/v1/sessions/s1/interrupt", { status: 200, body: {} });
+    await unsend(authed(server), "s1", "q7");
+    await interrupt(authed(server), "s1");
+    expect(server.calls.map((c, i) => c.method + " " + c.path + " " + server.headers[i].authorization)).toEqual([
+      "DELETE /api/v1/sessions/s1/sends/q7 Bearer t0k",
+      "POST /api/v1/sessions/s1/interrupt Bearer t0k",
+    ]);
+  });
+
+  it("reports a send that already went out as not_found", async () => {
+    const server = new FakeServer().on("DELETE", "/api/v1/sessions/s1/sends/q7", {
+      status: 404,
+      body: { error: { code: "not_found", message: "no queued send q7" } },
+    });
+    expect((await failure(unsend(authed(server), "s1", "q7"))).code).toBe("not_found");
   });
 });

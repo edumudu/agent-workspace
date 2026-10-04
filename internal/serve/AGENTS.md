@@ -31,6 +31,9 @@ Every response is JSON with `Cache-Control: no-store`. An error is `{"error":{"c
 | `POST /api/v1/sessions/{id}/resume` | yes | `session.resume` | → the resumed `Session` |
 | `POST /api/v1/sessions/{id}/mute` | yes | `session.mute` | `{"muted":bool}` (required) → `{}` |
 | `POST /api/v1/sessions/{id}/rename` | yes | `session.rename` | `{"name"}` → `{}` |
+| `POST /api/v1/sessions/{id}/messages` | yes | `session.send` | `{"text"}` (not blank) → `{"id","queued"}`; a queued send shows in the stream's `sends` until it is pasted |
+| `DELETE /api/v1/sessions/{id}/sends/{send}` | yes | `session.unsend` | → `{}`; `not_found` once the send has gone out (it left `sends`) |
+| `POST /api/v1/sessions/{id}/interrupt` | yes | `session.interrupt` | → `{}` |
 | `GET /api/v1/push/key` | yes | `push.key` | → `{"public_key"}`, the VAPID public key (base64url), for `pushManager.subscribe` |
 | `POST /api/v1/push/subscribe` | yes | `push.subscribe` | the browser's `PushSubscription.toJSON()` (`{"endpoint","keys":{"p256dh","auth"}}`) → `{}`; stored with the calling device |
 | `POST /api/v1/push/unsubscribe` | yes | `push.unsubscribe` | → `{}`; drops the calling device's subscription (the app's sign out) |

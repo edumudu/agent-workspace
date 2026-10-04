@@ -58,6 +58,9 @@ describe("the Latte palette", () => {
     ["subtext", "base"],
     ["subtext", "mantle"],
     ["red", "base"],
+    ["on-accent", "red"],
+    ["link", "base"],
+    ["link", "mantle"],
     ["on-accent", "blue"],
   ])("%s text on %s meets 4.5:1", (fg, bg) => {
     expect(palette[fg], fg).toBeDefined();
@@ -67,7 +70,15 @@ describe("the Latte palette", () => {
 });
 
 describe("touch targets", () => {
-  it.each([".session-card", ".back", ".retry", ".new-session", ".choice"])("%s is at least 44px tall", (selector) => {
+  it.each([".session-card", ".back", ".retry", ".new-session", ".choice", ".interrupt", ".queued-action", ".load-older", ".tool summary"])("%s is at least 44px tall", (selector) => {
     expect(parseInt(rule(selector)["min-height"] ?? "0", 10)).toBeGreaterThanOrEqual(44);
+  });
+});
+
+describe("the chat layout", () => {
+  it("scrolls a long queue of sends instead of pushing the composer off the screen", () => {
+    const queued = rule(".queued");
+    expect(queued["max-height"]).toMatch(/vh|dvh/);
+    expect(queued["overflow-y"]).toBe("auto");
   });
 });

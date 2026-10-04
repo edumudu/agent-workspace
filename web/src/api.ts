@@ -1,3 +1,5 @@
+import type { Message } from "./stream";
+
 export type Hello = {
   api: string;
   build: string;
@@ -83,6 +85,41 @@ export function pair(fetchFn: Fetch, code: string, name: string): Promise<Paired
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ code, name }),
   });
+}
+
+export type Authed = { fetch: Fetch; token: string };
+
+export type MessagesPage = { messages: Message[]; before: number };
+
+export type Sent = { id: string; queued: boolean };
+
+function sessionPath(session: string, rest: string): string {
+  return "/api/v1/sessions/" + encodeURIComponent(session) + rest;
+}
+
+function authedRequest<T>(a: Authed, path: string, method = "GET", body?: unknown): Promise<T> {
+  const headers: Record<string, string> = { Authorization: "Bearer " + a.token };
+  if (body !== undefined) {
+    headers["Content-Type"] = "application/json";
+  }
+  return request<T>(a.fetch, path, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) });
+}
+
+export function messagesPage(a: Authed, session: string, before?: number, limit = 50): Promise<MessagesPage> {
+  const query = (before ? "before=" + before + "&" : "") + "limit=" + limit;
+  return authedRequest<MessagesPage>(a, sessionPath(session, "/messages?" + query));
+}
+
+export function sendMessage(a: Authed, session: string, text: string): Promise<Sent> {
+  return authedRequest<Sent>(a, sessionPath(session, "/messages"), "POST", { text });
+}
+
+export async function unsend(a: Authed, session: string, id: string): Promise<void> {
+  await authedRequest<unknown>(a, sessionPath(session, "/sends/" + encodeURIComponent(id)), "DELETE");
+}
+
+export async function interrupt(a: Authed, session: string): Promise<void> {
+  await authedRequest<unknown>(a, sessionPath(session, "/interrupt"), "POST");
 }
 
 export type PushKey = {
