@@ -2,7 +2,10 @@ package daemon
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
+	"strings"
 	"time"
 
 	"github.com/giovaniif/agent-workspace/internal/app"
@@ -12,6 +15,7 @@ import (
 
 const (
 	promptCaptureLines   = 80
+	promptRawLines       = 40
 	promptCaptureTimeout = 3 * time.Second
 )
 
@@ -34,15 +38,36 @@ func (d *Daemon) promptTarget(req rpc.Request, id string) (domain.Session, app.P
 	return session, prompter, nil, true
 }
 
-func (d *Daemon) capturePrompt(session domain.Session, prompter app.PermissionPrompter) (app.PermissionPrompt, bool, error) {
+func (d *Daemon) capturePrompt(session domain.Session, prompter app.PermissionPrompter) (app.PermissionPrompt, string, bool, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), promptCaptureTimeout)
 	defer cancel()
 	screen, err := d.hs.host.Capture(ctx, app.PaneID(session.Pane), promptCaptureLines)
 	if err != nil {
-		return app.PermissionPrompt{}, false, err
+		return app.PermissionPrompt{}, "", false, err
 	}
 	prompt, ok := prompter.PermissionPrompt(screen)
-	return prompt, ok, nil
+	return prompt, screen, ok, nil
+}
+
+func promptID(prompt app.PermissionPrompt) string {
+	h := sha256.New()
+	h.Write([]byte(prompt.Text))
+	for _, c := range prompt.Choices {
+		h.Write([]byte{0})
+		h.Write([]byte(c.ID + "\x00" + c.Label))
+	}
+	return hex.EncodeToString(h.Sum(nil))[:12]
+}
+
+func visiblePane(screen string) string {
+	lines := strings.Split(strings.TrimRight(screen, " \t\r\n"), "\n")
+	if len(lines) > promptRawLines {
+		lines = lines[len(lines)-promptRawLines:]
+	}
+	for len(lines) > 0 && strings.TrimSpace(lines[0]) == "" {
+		lines = lines[1:]
+	}
+	return strings.TrimRight(strings.Join(lines, "\n"), " \t\r\n")
 }
 
 func (d *Daemon) sessionPrompt(req rpc.Request) (*rpc.Response, bool) {
@@ -54,14 +79,17 @@ func (d *Daemon) sessionPrompt(req rpc.Request) (*rpc.Response, bool) {
 	if resp != nil || !ok {
 		return resp, ok
 	}
-	prompt, found, err := d.capturePrompt(session, prompter)
+	prompt, screen, found, err := d.capturePrompt(session, prompter)
 	if err != nil {
 		return errorResponse(req.ID, rpc.CodeFailed, err.Error()), true
 	}
 	if !found {
+		if raw := visiblePane(screen); raw != "" && d.stillAwaitsPermission(session.ID) {
+			return result(req.ID, rpc.Prompt{Choices: []rpc.PromptChoice{}, Raw: raw}), true
+		}
 		return errorResponse(req.ID, rpc.CodeNotFound, "no permission dialog is showing"), true
 	}
-	out := rpc.Prompt{Text: prompt.Text, Choices: make([]rpc.PromptChoice, 0, len(prompt.Choices))}
+	out := rpc.Prompt{ID: promptID(prompt), Text: prompt.Text, Choices: make([]rpc.PromptChoice, 0, len(prompt.Choices))}
 	for _, c := range prompt.Choices {
 		out.Choices = append(out.Choices, rpc.PromptChoice{ID: c.ID, Label: c.Label})
 	}
@@ -82,12 +110,15 @@ func (d *Daemon) sessionAnswer(req rpc.Request) (*rpc.Response, bool) {
 	if !d.stillAwaitsPermission(session.ID) {
 		return errorResponse(req.ID, rpc.CodeStale, "session is no longer waiting for a permission"), true
 	}
-	prompt, found, err := d.capturePrompt(session, prompter)
+	prompt, _, found, err := d.capturePrompt(session, prompter)
 	if err != nil {
 		return errorResponse(req.ID, rpc.CodeFailed, err.Error()), true
 	}
 	if !found {
 		return errorResponse(req.ID, rpc.CodeNotFound, "no permission dialog is showing"), true
+	}
+	if p.Prompt != "" && p.Prompt != promptID(prompt) {
+		return errorResponse(req.ID, rpc.CodeStale, "the permission dialog changed since it was shown"), true
 	}
 	for _, c := range prompt.Choices {
 		if c.ID != p.Choice {

@@ -34,6 +34,8 @@ Every response is JSON with `Cache-Control: no-store`. An error is `{"error":{"c
 | `POST /api/v1/sessions/{id}/messages` | yes | `session.send` | `{"text"}` (not blank) → `{"id","queued"}`; a queued send shows in the stream's `sends` until it is pasted |
 | `DELETE /api/v1/sessions/{id}/sends/{send}` | yes | `session.unsend` | → `{}`; `not_found` once the send has gone out (it left `sends`) |
 | `POST /api/v1/sessions/{id}/interrupt` | yes | `session.interrupt` | → `{}` |
+| `GET /api/v1/sessions/{id}/prompt` | yes | `session.prompt` | → `{"id","text","choices":[{"id","label"}],"raw"}` (`id` identifies the dialog shown: a hash of its text and choices); `raw` (the last 40 visible pane lines, with empty `text` and `choices`) comes when the session is in `permission` but its dialog is not recognized; `not_found` when no dialog is showing |
+| `POST /api/v1/sessions/{id}/answer` | yes | `session.answer` | `{"choice","prompt"}` (a choice `id` from the prompt, not blank; `prompt` is the prompt `id` that was shown) → `{}`; `stale` (409) when the session is no longer in `permission` or the dialog showing is not the `prompt` given, in which case nothing was sent |
 | `GET /api/v1/push/key` | yes | `push.key` | → `{"public_key"}`, the VAPID public key (base64url), for `pushManager.subscribe` |
 | `POST /api/v1/push/subscribe` | yes | `push.subscribe` | the browser's `PushSubscription.toJSON()` (`{"endpoint","keys":{"p256dh","auth"}}`) → `{}`; stored with the calling device |
 | `POST /api/v1/push/unsubscribe` | yes | `push.unsubscribe` | → `{}`; drops the calling device's subscription (the app's sign out) |

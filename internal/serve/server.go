@@ -86,6 +86,8 @@ func (s *Server) routes() []route {
 		{"POST /api/v1/sessions/{id}/messages", sessionAction(rpc.MethodSessionSend, sendParams)},
 		{"DELETE /api/v1/sessions/{id}/sends/{send}", sessionAction(rpc.MethodSessionUnsend, unsendParams)},
 		{"POST /api/v1/sessions/{id}/interrupt", sessionAction(rpc.MethodSessionInterrupt, targetParams)},
+		{"GET /api/v1/sessions/{id}/prompt", sessionAction(rpc.MethodSessionPrompt, promptParams)},
+		{"POST /api/v1/sessions/{id}/answer", sessionAction(rpc.MethodSessionAnswer, answerParams)},
 		{"GET /api/v1/push/key", pushKey},
 		{"POST /api/v1/push/subscribe", pushSubscribe},
 		{"POST /api/v1/push/unsubscribe", pushUnsubscribe},
@@ -274,6 +276,24 @@ func sendParams(r *http.Request, id string) (any, error) {
 		return nil, &rpc.Error{Code: rpc.CodeBadRequest, Message: `send {"text": "<message>"} with some text`}
 	}
 	return rpc.SessionSendParams{Session: id, Text: body.Text}, nil
+}
+
+func promptParams(_ *http.Request, id string) (any, error) {
+	return rpc.PromptParams{Session: id}, nil
+}
+
+func answerParams(r *http.Request, id string) (any, error) {
+	var body struct {
+		Choice string `json:"choice"`
+		Prompt string `json:"prompt"`
+	}
+	if err := decodeBody(r, &body); err != nil {
+		return nil, err
+	}
+	if strings.TrimSpace(body.Choice) == "" {
+		return nil, &rpc.Error{Code: rpc.CodeBadRequest, Message: `answer {"choice": "<id from the prompt>"}`}
+	}
+	return rpc.AnswerParams{Session: id, Choice: body.Choice, Prompt: body.Prompt}, nil
 }
 
 func unsendParams(r *http.Request, id string) (any, error) {

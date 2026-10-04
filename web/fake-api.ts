@@ -213,7 +213,7 @@ export function fakeApi(build = "v0.12.0+demo"): Plugin {
           });
           return;
         }
-        const session = path.match(/^\/api\/v1\/sessions\/([^/]+)\/(messages|interrupt|sends\/[^/]+)$/);
+        const session = path.match(/^\/api\/v1\/sessions\/([^/]+)\/(messages|interrupt|prompt|answer|sends\/[^/]+)$/);
         if (session && req.method === "GET" && session[2] === "messages") {
           const older = new URL(req.url ?? "", "http://fake").searchParams.has("before");
           setTimeout(() => send(res, 200, fakeMessages(older)), older ? 5000 : 0);
@@ -236,6 +236,30 @@ export function fakeApi(build = "v0.12.0+demo"): Plugin {
             return;
           }
           publishSends();
+          send(res, 200, {});
+          return;
+        }
+        if (session && req.method === "GET" && session[2] === "prompt") {
+          if (process.env.AGENTWS_FAKE_PROMPT === "raw") {
+            send(res, 200, { text: "", choices: [], raw: "Allow this unusual request?\n  [a] allow  [d] deny" });
+            return;
+          }
+          send(res, 200, {
+            text: "Bash command\n\nmake test\n\nDo you want to proceed?",
+            choices: [
+              { id: "1", label: "Yes" },
+              { id: "2", label: "Yes, and don't ask again for make commands" },
+              { id: "3", label: "No, and tell Claude what to do differently" },
+            ],
+          });
+          return;
+        }
+        if (session && req.method === "POST" && session[2] === "answer") {
+          const body = await readJSON(req);
+          if (body.choice === "3") {
+            send(res, 409, { error: { code: "stale", message: "session is no longer waiting for a permission" } });
+            return;
+          }
           send(res, 200, {});
           return;
         }
