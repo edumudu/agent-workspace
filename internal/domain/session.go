@@ -57,6 +57,7 @@ type Session struct {
 	Muted         bool
 	WorktreeIDs   []string
 	ResumeID      string
+	Transcript    string
 	Dir           string
 	Usage         Usage
 	Limits        []RateLimit

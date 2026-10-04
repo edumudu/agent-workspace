@@ -437,6 +437,32 @@ func TestCodexHookReportsModelAtOnceAndEffortAndUsageFromTheRollout(t *testing.T
 	}
 }
 
+func TestHookTranscriptPathSetsTheSessionTranscriptAndALaterOneReplacesIt(t *testing.T) {
+	d, path := start(t, &memStore{})
+	c := dial(t, path)
+	ctx := context.Background()
+	sub, err := c.Subscribe(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	d.Post(daemon.SessionChanged{Session: domain.Session{ID: "a", Harness: domain.HarnessClaude, Pane: "%3", State: domain.StateIdle}})
+	next(t, sub.Diffs)
+	for _, step := range []struct{ event, payload, want string }{
+		{"SessionStart", `{"session_id":"s1","transcript_path":"/home/dev/.claude/projects/api/s1.jsonl"}`, "/home/dev/.claude/projects/api/s1.jsonl"},
+		{"UserPromptSubmit", `{"session_id":"s1"}`, "/home/dev/.claude/projects/api/s1.jsonl"},
+		{"SessionStart", `{"session_id":"s2","transcript_path":"/home/dev/.claude/projects/api/s2.jsonl"}`, "/home/dev/.claude/projects/api/s2.jsonl"},
+	} {
+		hook := rpc.Hook{Harness: "claude", Event: step.event, Pane: "%3", At: time.Now(), Payload: json.RawMessage(step.payload)}
+		if err := c.Call(ctx, rpc.MethodHook, hook, nil); err != nil {
+			t.Fatal(err)
+		}
+		diff := next(t, sub.Diffs)
+		if diff.Session == nil || diff.Session.Transcript != step.want {
+			t.Fatalf("after %s: diff %+v, want transcript %q", step.event, diff.Session, step.want)
+		}
+	}
+}
+
 func TestCodexHookWithAnUnreadableRolloutStillMovesTheState(t *testing.T) {
 	d, path := start(t, &memStore{})
 	c := dial(t, path)
