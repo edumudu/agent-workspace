@@ -87,7 +87,41 @@ export function fakeStreamState(now = Date.now()) {
     ],
     limits: [quota("claude", "five_hour", "5h", 38, 130), quota("claude", "seven_day", "7d", 19, 3 * 24 * 60), quota("codex", "five_hour", "5h", 77, 200)],
     queue: [],
-    sends: [],
+    sends: [
+      { id: "m1", session: "s3", text: "then add a test for the backoff", queued_at: ago(2) },
+      { id: "m2", session: "s3", text: "and update the README", queued_at: ago(1) },
+    ],
+  };
+}
+
+function fakeMessage(id: string, cursor: number, role: string, text: string, at: string, tool?: { name: string; summary: string; status: string }) {
+  return { id, cursor, turn: "p1", role, text, ...(tool ? { tool } : {}), at };
+}
+
+export function fakeMessages(older: boolean, now = Date.now()) {
+  const at = new Date(now - 5 * minute).toISOString();
+  if (older) {
+    return {
+      messages: [
+        fakeMessage("o1", 400, "user", "the client gives up on the first 503; add retries", at),
+        fakeMessage("o2", 900, "assistant", "I'll start by finding where the client sends requests.", at),
+        fakeMessage("o3", 1400, "tool", "", at, { name: "Grep", summary: "Grep http.NewRequest", status: "done" }),
+        fakeMessage("o4", 2200, "tool", "", at, { name: "Read", summary: "Read internal/client/client.go", status: "done" }),
+        fakeMessage("o5", 3000, "assistant", "`Do` sends once and returns the first error. I'll wrap it in a retry loop.", at),
+      ],
+      before: 0,
+    };
+  }
+  return {
+    messages: [
+      fakeMessage("n1", 4300, "tool", "", at, { name: "Edit", summary: "Edit internal/client/client.go", status: "done" }),
+      fakeMessage("n2", 5100, "tool", "ok  \tgithub.com/acme/api/internal/client\t0.41s\nok  \tgithub.com/acme/api/internal/server\t0.22s", at, { name: "Bash", summary: "Bash go test ./...", status: "done" }),
+      fakeMessage("n3", 5600, "tool", "golangci-lint: errcheck: Error return value of `resp.Body.Close` is not checked", at, { name: "Bash", summary: "Bash make lint", status: "failed" }),
+      fakeMessage("n4", 6400, "assistant", "The tests pass. Lint flagged one unchecked `Close`; fixing it now.\n\n- retries **3 times** on 502, 503 and 504\n- backs off 200 ms, doubling\n- honours `Retry-After`", at),
+      fakeMessage("n5", 7000, "tool", "", at, { name: "Edit", summary: "Edit internal/client/client.go", status: "done" }),
+      fakeMessage("n6", 7600, "tool", "", at, { name: "Bash", summary: "Bash make lint && go test ./...", status: "running" }),
+    ],
+    before: 4000,
   };
 }
 
@@ -159,6 +193,21 @@ export function fakeApi(build = "v0.12.0+demo"): Plugin {
             device: { id: "k3m9p2qx", name: String(body.name ?? "phone"), created_at: now, last_seen: now },
             token: "demo-token",
           });
+          return;
+        }
+        const session = path.match(/^\/api\/v1\/sessions\/[^/]+\/(messages|interrupt|sends\/[^/]+)$/);
+        if (session && req.method === "GET" && session[1] === "messages") {
+          const older = new URL(req.url ?? "", "http://fake").searchParams.has("before");
+          setTimeout(() => send(res, 200, fakeMessages(older)), older ? 5000 : 0);
+          return;
+        }
+        if (session && req.method === "POST" && session[1] === "messages") {
+          await readJSON(req);
+          send(res, 200, { id: "m" + Date.now(), queued: true });
+          return;
+        }
+        if (session && ((req.method === "POST" && session[1] === "interrupt") || (req.method === "DELETE" && session[1].startsWith("sends/")))) {
+          send(res, 200, {});
           return;
         }
         if (path.startsWith("/api/")) {
