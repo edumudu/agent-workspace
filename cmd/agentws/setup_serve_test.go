@@ -243,3 +243,20 @@ func TestSetupServeLifecycleOnLaunchd(t *testing.T) {
 	manager := newFakeServiceManager(t, "launchctl")
 	serveLifecycle(t, "darwin", filepath.Join(home, "Library", "LaunchAgents", "dev.agentws.serve.plist"), manager)
 }
+
+func TestSetupServePassesTheUrlThroughAfterTheOtherFlags(t *testing.T) {
+	svc, _, err := setupServeService([]string{"--url", "https://agent.example.com", "--self-signed", "--addr", "0.0.0.0:7420"}, envOf(nil), "/bin/agentws", "/h", 1, "linux")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []string{"/bin/agentws", "serve", "--addr", "0.0.0.0:7420", "--self-signed", "--url", "https://agent.example.com"}
+	if !reflect.DeepEqual(svc.unit.Program, want) {
+		t.Fatalf("program %q", svc.unit.Program)
+	}
+}
+
+func TestSetupServeRefusesAnEmptyUrl(t *testing.T) {
+	if _, _, err := setupServeService([]string{"--url", " "}, envOf(nil), "/bin/agentws", "/h", 1, "linux"); err == nil {
+		t.Fatal("an empty --url was accepted")
+	}
+}
