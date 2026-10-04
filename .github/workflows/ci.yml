@@ -17,6 +17,15 @@ jobs:
         with:
           version: v2.14.0
           install-only: true
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: make web
+      - run: npm test
+        working-directory: web
+      - run: AGENTWS_WEB_BUILT=1 go test ./internal/serve/ -run Static
       - run: make build
       - run: ./bin/agentws version
       - run: make lint
@@ -37,6 +46,11 @@ jobs:
       - uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: web/package-lock.json
       - run: brew list tmux >/dev/null 2>&1 || brew install tmux
       - run: brew list neovim >/dev/null 2>&1 || brew install neovim
       - run: cp scripts/tdd-check "$RUNNER_TEMP/" && "$RUNNER_TEMP/tdd-check" "origin/${{ github.base_ref }}" "${{ github.event.pull_request.head.sha }}"

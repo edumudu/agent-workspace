@@ -2,6 +2,10 @@ version: 2
 
 project_name: agentws
 
+before:
+  hooks:
+    - make web
+
 builds:
   - main: ./cmd/agentws
     binary: agentws
