@@ -34,7 +34,7 @@ var (
 	allowed = []string{
 		rpc.MethodDeviceCheck, rpc.MethodPairRedeem, rpc.MethodSubscribe, rpc.MethodWorkspaceList,
 		rpc.MethodEndSession, rpc.MethodResumeSession, rpc.MethodSessionMute, rpc.MethodSessionRename,
-		rpc.MethodTranscriptPage, rpc.MethodTranscriptWatch,
+		rpc.MethodTranscriptPage, rpc.MethodTranscriptWatch, rpc.MethodNewSession, rpc.MethodSessionResolve,
 	}
 )
 
@@ -49,6 +49,8 @@ var authedEndpoints = []authedEndpoint{
 	{"POST", "/api/v1/sessions/s1/resume", ""},
 	{"POST", "/api/v1/sessions/s1/mute", `{"muted":true}`},
 	{"POST", "/api/v1/sessions/s1/rename", `{"name":"api"}`},
+	{"POST", "/api/v1/sessions", `{"work_item":"x","harness":"claude"}`},
+	{"GET", "/api/v1/work-items/resolve?item=x", ""},
 }
 
 func startServer(t *testing.T, f *fakeDaemon, cfg serve.Config) (*serve.Server, *httptest.Server) {
