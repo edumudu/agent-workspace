@@ -115,6 +115,7 @@ type state struct {
 	sendDraft    func(session domain.Session, draft domain.ReviewDraft, prompt string)
 	sends        []domain.QueuedSend
 	inFlight     map[string]sendFlight
+	booting      map[string]bool
 	pasteSend    func(session domain.Session, q domain.QueuedSend)
 	pairing      domain.Pairing
 	devices      map[string]domain.Device
@@ -166,6 +167,7 @@ func New(store app.Store, pid int, opts ...Option) (*Daemon, error) {
 		awaiting:   map[string]domain.ReviewDraft{},
 		pasting:    map[string]bool{},
 		inFlight:   map[string]sendFlight{},
+		booting:    map[string]bool{},
 		devices:    map[string]domain.Device{},
 	}
 	for _, dev := range snap.Devices {
@@ -362,6 +364,9 @@ func (s *state) hook(h rpc.Hook, now time.Time) {
 	}
 	s.announce(next, effects)
 	s.sendSwitches(next, toSend)
+	if kind == domain.EventSessionStart || kind == domain.EventUserPromptSubmit {
+		delete(s.booting, session.ID)
+	}
 	s.settleSend(session.ID)
 	s.dispatchDraft(next)
 	s.dispatchSend(next)
