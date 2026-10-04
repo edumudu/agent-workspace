@@ -260,3 +260,16 @@ func TestSetupServeRefusesAnEmptyUrl(t *testing.T) {
 		t.Fatal("an empty --url was accepted")
 	}
 }
+
+func TestSetupServeRefusesAUrlThatRemotePairWouldRefuse(t *testing.T) {
+	for _, url := range []string{"http://agent.example.com", "https://agent.example.com/#pair", "ftp://agent.example.com"} {
+		if _, _, err := setupServeService([]string{"--url", url}, envOf(nil), "/bin/agentws", "/h", 1, "linux"); err == nil {
+			t.Errorf("%q was accepted", url)
+		}
+	}
+	for _, url := range []string{"agent.example.com", "https://agent.example.com/"} {
+		if _, _, err := setupServeService([]string{"--url", url}, envOf(nil), "/bin/agentws", "/h", 1, "linux"); err != nil {
+			t.Errorf("%q: %v", url, err)
+		}
+	}
+}
