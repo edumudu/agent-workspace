@@ -409,3 +409,55 @@ func TestServeStreamReportsAFailedWatch(t *testing.T) {
 		t.Fatalf("frame %+v (%v)", frame, err)
 	}
 }
+
+func closesOf(f *fakeDaemon) int {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.closes
+}
+
+func TestServeStreamClosesOnARevocationWhileItsWritesAreStalledAndTheRevocationWatcherReconnects(t *testing.T) {
+	f := newFakeDaemon()
+	f.devices[goodToken] = phone
+	_, ts := startServer(t, f, serve.Config{URL: publicURL})
+	dropSubscriptions(f)
+	c := openStream(t, ts, goodToken)
+	next(t, c)
+	big := strings.Repeat("x", 2<<20)
+	for i := range 12 {
+		f.broadcast(rpc.Diff{Seq: uint64(70 + i), Task: &domain.Task{ID: "t1", Source: domain.TaskText, Text: big}})
+	}
+	before := closesOf(f)
+	f.broadcast(rpc.Diff{Seq: 90, RevokedDevice: phone.ID})
+	deadline := time.Now().Add(500 * time.Millisecond)
+	for closesOf(f) == before {
+		if time.Now().After(deadline) {
+			t.Fatal("a stream whose client stopped reading kept its daemon connection after its device was revoked")
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+}
+
+func TestServeStreamGoesAwayWhenServeStopsBeforeTheToken(t *testing.T) {
+	f := newFakeDaemon()
+	srv, err := serve.New(serve.Config{URL: publicURL, Dial: f.dial, Build: "v0.12.0+test"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	if err := srv.Start(ctx); err != nil {
+		t.Fatal(err)
+	}
+	ts := httptest.NewServer(srv.Handler(nil))
+	t.Cleanup(ts.Close)
+	c, _, err := dialStream(t, ts, publicURL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(50 * time.Millisecond)
+	cancel()
+	if code, reason := closedWith(t, c, 2*time.Second); code != websocket.StatusGoingAway {
+		t.Fatalf("closed with %d %q", code, reason)
+	}
+}
