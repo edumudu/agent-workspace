@@ -56,7 +56,7 @@ Dependency rule: `domain` ← `app` ← `adapters`/`daemon`, and `tui` → `rpc`
 | Daemon process, event loop, workspaces, sessions, naming, launcher, fallback, attention, worktrees and PRs, ports, cleanup schedule, review sends, shell and nvim | [internal/daemon/AGENTS.md](internal/daemon/AGENTS.md) |
 | Domain rules: state machine, discovery, attribution, review | [internal/domain/AGENTS.md](internal/domain/AGENTS.md) |
 | Use cases, ports, cleanup execution, disk sizes | [internal/app/AGENTS.md](internal/app/AGENTS.md) |
-| Sidebar, card, limits bar, theme, review viewer, disk view | [internal/tui/AGENTS.md](internal/tui/AGENTS.md) |
+| Sidebar, limits bar, theme, review viewer, disk view | [internal/tui/AGENTS.md](internal/tui/AGENTS.md) |
 | Remote API for the phone app (`agentws serve`) | [internal/serve/AGENTS.md](internal/serve/AGENTS.md) |
 | Harness adapters, notify, procs, fs, github, linear, sqlite | [internal/adapters/AGENTS.md](internal/adapters/AGENTS.md) |
 | Repo facts, worktree listing, review diffs, turns, hunks | [internal/adapters/git/AGENTS.md](internal/adapters/git/AGENTS.md) |

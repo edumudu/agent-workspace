@@ -11,7 +11,7 @@ Status: accepted, 2026-09-30.
 - After `session.new` creates a task for a Linear or PR link, a worker resolves the title (10 s timeout) and the loop merges it into the task as it is at that moment (`domain.WithTitle`), so a pin made while the lookup ran is kept. A failed lookup is logged and changes nothing. Existing tasks are not looked up again.
 - A PR that appears later needs no lookup: worktree detection already fills `Worktree.PR`, and `NameFor` puts it before the issue title on the next render.
 - `session.rename` (`{"id","name"}`) pins a name on the session's task and `session.unpin` (`{"id"}`) clears it, both by `domain.PinName`. A blank name to `session.rename` is `bad_request`. The TUI's `R` opens a prompt on the status line, filled with the current name (`ctrl+u` clears it, `enter` pins, `esc` cancels, a blank name is not sent). `A` calls `session.unpin` when the task is pinned.
-- The sidebar row truncates the name with an ellipsis at the pane width, keeping the harness tag. The card shows the name in full, wrapped (`SessionCard.Name`).
+- The sidebar row truncates the name with an ellipsis at the pane width, keeping the harness tag. The full name is on the review's agent column (`SessionCard.Name`); the sidebar card that used to show it was removed (ADR 0014).
 
 ## Why
 

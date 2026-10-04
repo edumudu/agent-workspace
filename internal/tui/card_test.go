@@ -5,8 +5,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/charmbracelet/x/exp/golden"
-
 	"github.com/giovaniif/agent-workspace/internal/domain"
 	"github.com/giovaniif/agent-workspace/internal/rpc"
 	"github.com/giovaniif/agent-workspace/internal/tui"
@@ -42,59 +40,45 @@ func selectSession(t *testing.T, m tui.Model, id string) tui.Model {
 	return m
 }
 
-func TestSessionCardShowsTaskPRsActionsAndWhatItWaitsOn(t *testing.T) {
+func TestTheSidebarHasNoCardPanel(t *testing.T) {
 	st := cardFixture()
+	st.Worktrees[4].PR.State = domain.PROpen
 	m := selectSession(t, newModel(&st, nil), "s05")
 	out := screen(m)
-	card := out[strings.Index(out, "CARD"):]
-	for _, want := range []string{
-		"#42 task number 3", "#3604",
-		"git status", "go test ./...", "go vet",
-		"Bash: rm -rf build", "make clean", "make all…",
-	} {
-		if !strings.Contains(card, want) {
-			t.Errorf("card missing %q:\n%s", want, card)
+	for _, absent := range []string{"CARD", "PRs ", "last  ", "git status", "Bash: rm -rf build", "asks permission"} {
+		if strings.Contains(out, absent) {
+			t.Errorf("sidebar still shows %q:\n%s", absent, out)
 		}
 	}
-	for _, absent := range []string{"go build", "make install", "make deploy"} {
-		if strings.Contains(card, absent) {
-			t.Errorf("card has %q:\n%s", absent, card)
-		}
-	}
-	if strings.Index(card, "git status") > strings.Index(card, "go vet") {
-		t.Errorf("actions are not newest first:\n%s", card)
-	}
 }
 
-func TestSessionCardFollowsTheSelectionAndLiveEvents(t *testing.T) {
-	st := fixture(2, 1)
-	st.Events = []domain.SessionEvent{toolEvent("s01", "Read", "a.go"), toolEvent("s02", "Read", "b.go")}
-	m := newModel(&st, nil)
-	if out := screen(m); !strings.Contains(out, "Read a.go") || strings.Contains(out, "Read b.go") {
-		t.Fatalf("first session's card:\n%s", out)
-	}
-	m = press(m, "j")
-	if out := screen(m); !strings.Contains(out, "Read b.go") || strings.Contains(out, "Read a.go") {
-		t.Fatalf("second session's card:\n%s", out)
-	}
-	s := st.Sessions[1]
-	ev := toolEvent("s02", "Bash", "make")
-	m = update(m, tui.DiffMsg(rpc.Diff{Seq: 1, Session: &s, Event: &ev}))
-	if out := screen(m); !strings.Contains(out, "last  make") || !strings.Contains(out, "Read b.go") {
-		t.Fatalf("card after a live event:\n%s", out)
-	}
-}
-
-func TestNoCardWithoutSessions(t *testing.T) {
-	if out := screen(newModel(nil, nil)); strings.Contains(out, "CARD") {
-		t.Fatalf("empty sidebar has a card:\n%s", out)
-	}
-}
-
-func TestGoldenSessionCard(t *testing.T) {
+func TestTheHelpFooterStaysWithASelectedSession(t *testing.T) {
 	st := cardFixture()
-	m := selectSession(t, newModel(&st, nil), "s05")
-	golden.RequireEqual(t, screen(m))
+	out := screen(selectSession(t, newModel(&st, nil), "s05"))
+	lines := strings.Split(out, "\n")
+	n := len(lines)
+	if !strings.Contains(lines[n-2], "n new  r review  t shell  e nvim  ? keys") {
+		t.Errorf("hint line = %q", lines[n-2])
+	}
+	if !strings.Contains(lines[n-1], "5 sessions") || !strings.Contains(lines[n-1], "next waiting") {
+		t.Errorf("status line = %q", lines[n-1])
+	}
+}
+
+func TestTheSessionListUsesTheRowsTheCardTookUp(t *testing.T) {
+	st := fixture(20, 1)
+	for _, cmd := range []string{"go build", "go vet", "go test ./..."} {
+		st.Events = append(st.Events, toolEvent("s01", "Bash", cmd))
+	}
+	rows := 0
+	for _, l := range strings.Split(screen(newModel(&st, nil)), "\n") {
+		if strings.Contains(l, " change") {
+			rows++
+		}
+	}
+	if rows < 16 {
+		t.Fatalf("%d session rows fit in a 40-row sidebar, want at least 16", rows)
+	}
 }
 
 func TestTheFooterLeavesTheSessionListItsRows(t *testing.T) {
