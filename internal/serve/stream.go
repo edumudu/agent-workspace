@@ -128,8 +128,9 @@ func (s *Server) runStream(ctx context.Context, cancel context.CancelCauseFunc, 
 		return CloseUnauthorized, errRevoked.Error()
 	}
 	defer unregister()
+	diffs := s.relay(ctx, sub.Diffs)
 	if err := st.write(ctx, Frame{State: filterState(sub.State)}); err != nil {
-		return websocket.StatusInternalError, "write failed"
+		return writeFailed(ctx)
 	}
 	go func() {
 		cancel(st.readLoop(st.readCtx, ctx))
@@ -138,34 +139,72 @@ func (s *Server) runStream(ctx context.Context, cancel context.CancelCauseFunc, 
 		select {
 		case <-ctx.Done():
 			return closeFor(context.Cause(ctx))
-		case diff, ok := <-sub.Diffs:
+		case out, ok := <-diffs:
 			if !ok {
 				return websocket.StatusTryAgainLater, errDaemonGone.Error()
 			}
-			if diff.RevokedDevice != "" {
-				s.streams.revoke(diff.RevokedDevice)
-			}
-			out, keep := filterDiff(diff)
-			if !keep {
-				continue
-			}
 			if err := st.write(ctx, Frame{Diff: out}); err != nil {
-				return websocket.StatusInternalError, "write failed"
+				return writeFailed(ctx)
 			}
 		}
 	}
 }
 
+func writeFailed(ctx context.Context) (websocket.StatusCode, string) {
+	if ctx.Err() != nil {
+		return closeFor(context.Cause(ctx))
+	}
+	return websocket.StatusInternalError, "write failed"
+}
+
+func (s *Server) relay(ctx context.Context, in <-chan rpc.Diff) <-chan *StreamDiff {
+	out := make(chan *StreamDiff)
+	go func() {
+		defer close(out)
+		var queue []*StreamDiff
+		for {
+			var send chan<- *StreamDiff
+			var head *StreamDiff
+			if len(queue) > 0 {
+				send, head = out, queue[0]
+			}
+			select {
+			case <-ctx.Done():
+				return
+			case diff, ok := <-in:
+				if !ok {
+					return
+				}
+				if diff.RevokedDevice != "" {
+					s.streams.revoke(diff.RevokedDevice)
+				}
+				if d, keep := filterDiff(diff); keep {
+					queue = append(queue, d)
+				}
+			case send <- head:
+				queue = queue[1:]
+			}
+		}
+	}()
+	return out
+}
+
 func (s *Server) authenticate(ctx context.Context, st *stream) (Daemon, rpc.Subscription, rpc.Device, websocket.StatusCode, string) {
 	var none rpc.Subscription
-	readCtx, cancelRead := context.WithCancel(ctx)
-	defer cancelRead()
+	stopping := context.AfterFunc(ctx, func() {
+		_ = st.conn.Close(closeFor(context.Cause(ctx)))
+	})
 	late := time.AfterFunc(s.cfg.AuthTimeout, func() {
 		_ = st.conn.Close(CloseUnauthorized, "no token within "+s.cfg.AuthTimeout.String())
 	})
-	_, data, err := st.conn.Read(readCtx)
+	_, data, err := st.conn.Read(st.readCtx)
+	serving := stopping()
 	if !late.Stop() {
 		return nil, none, rpc.Device{}, CloseUnauthorized, "no token in time"
+	}
+	if !serving {
+		code, reason := closeFor(context.Cause(ctx))
+		return nil, none, rpc.Device{}, code, reason
 	}
 	if err != nil {
 		return nil, none, rpc.Device{}, websocket.StatusNormalClosure, errClientGone.Error()
