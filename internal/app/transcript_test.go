@@ -255,3 +255,21 @@ func TestTranscriptTailSinceGivesALaterWatcherTheBacklogAndFinishesItsCalls(t *t
 		t.Fatalf("read %+v", msgs)
 	}
 }
+
+func TestTranscriptTailSinceStopsAtWhatTheTailHasRead(t *testing.T) {
+	body := "u p1 hi\na a1 there\n"
+	files := newMemFiles(transcriptPath, body)
+	tail, err := transcripts(files, 0, 0).Tail(domain.HarnessClaude, transcriptPath, int64(len(body)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	files.append(transcriptPath, "a a2 unread\n")
+	backlog, err := tail.Since(lineEnd(body, "u p1 hi\n"))
+	if err != nil || !reflect.DeepEqual(ids(backlog), []string{"a1"}) {
+		t.Fatalf("backlog %v %v", ids(backlog), err)
+	}
+	msgs, err := tail.Read()
+	if err != nil || !reflect.DeepEqual(ids(msgs), []string{"a2"}) {
+		t.Fatalf("read %v %v", ids(msgs), err)
+	}
+}
