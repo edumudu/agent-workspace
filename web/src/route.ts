@@ -1,6 +1,9 @@
-export type Route = { screen: "list" } | { screen: "session"; id: string };
+export type Route = { screen: "list" } | { screen: "new" } | { screen: "session"; id: string };
 
 export function parseRoute(hash: string): Route {
+  if (hash === "#/new") {
+    return { screen: "new" };
+  }
   const m = hash.match(/^#\/sessions\/([^/?#]+)$/);
   if (!m) {
     return { screen: "list" };

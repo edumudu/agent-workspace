@@ -5,6 +5,7 @@ import { pairCodeFromHash } from "./display";
 import { disablePush, noPush, type PushEnv } from "./push";
 import { parseRoute } from "./route";
 import { Install } from "./screens/Install";
+import { NewSession } from "./screens/NewSession";
 import { Pair } from "./screens/Pair";
 import { SessionScreen } from "./screens/Session";
 import { SessionList } from "./screens/SessionList";
@@ -68,6 +69,9 @@ function Connected({ env, auth, onUnauthorized, onSignOut }: ConnectedProps) {
 
   const route = parseRoute(hash);
   const retry = () => client.retryNow();
+  if (route.screen === "new") {
+    return <NewSession env={env} token={auth.token} />;
+  }
   if (route.screen === "session") {
     return <SessionScreen key={route.id} id={route.id} snapshot={snapshot} now={now} onRetry={retry} client={client} api={api} />;
   }

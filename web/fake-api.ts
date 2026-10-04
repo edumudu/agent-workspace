@@ -210,6 +210,42 @@ export function fakeApi(build = "v0.12.0+demo"): Plugin {
           send(res, 200, {});
           return;
         }
+        if (req.method === "GET" && path === "/api/v1/workspaces") {
+          send(res, 200, {
+            workspaces: [
+              { Root: "/home/me/api", Kind: "single", Repos: [], LastUsed: "2026-10-03T12:00:00Z" },
+              { Root: "/home/me/web", Kind: "single", Repos: [], LastUsed: "2026-10-01T12:00:00Z" },
+            ],
+            last_used: "/home/me/api",
+          });
+          return;
+        }
+        if (req.method === "GET" && path === "/api/v1/work-items/resolve") {
+          const query = new URL(req.url ?? "", "http://fake").searchParams;
+          const item = query.get("item") ?? "";
+          const workspace = query.get("workspace") ?? "";
+          if (item.startsWith("http") && !item.includes("linear.app")) {
+            send(res, 400, { error: { code: "bad_request", message: "unsupported link: use a Linear issue or GitHub pull request URL" } });
+            return;
+          }
+          if (item.includes("linear.app")) {
+            send(res, 200, { source: "linear", ref: "ENG-12", title: "Fix the login redirect", worktree: "eng-12", workspace });
+            return;
+          }
+          send(res, 200, { source: "text", title: item, worktree: item.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""), workspace });
+          return;
+        }
+        if (req.method === "POST" && path === "/api/v1/sessions") {
+          const body = await readJSON(req);
+          if (String(body.work_item ?? "").includes("broken")) {
+            send(res, 500, {
+              error: { code: "failed", message: "setup /home/me/.agentws/worktrees/api/broken: npm ci: exit status 1\nnpm ERR! code EUSAGE\nnpm ERR! missing lockfile" },
+            });
+            return;
+          }
+          send(res, 200, fakeSession("s9", { name: String(body.work_item ?? ""), State: "running" }));
+          return;
+        }
         if (path.startsWith("/api/")) {
           send(res, 404, { error: { code: "not_found", message: "not in the fake API" } });
           return;

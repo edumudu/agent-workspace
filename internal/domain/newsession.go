@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"errors"
 	"net/url"
 	"path"
 	"regexp"
@@ -45,6 +46,18 @@ func ParseWorkItem(input string) Task {
 		return Task{Source: TaskPR, Ref: parts[1] + "#" + parts[3], URL: input}
 	}
 	return text
+}
+
+func CheckWorkItem(input string) (Task, error) {
+	input = strings.TrimSpace(input)
+	if input == "" {
+		return Task{}, errors.New("work item is empty")
+	}
+	task := ParseWorkItem(input)
+	if task.Source == TaskText && (strings.HasPrefix(input, "http://") || strings.HasPrefix(input, "https://")) {
+		return Task{}, errors.New("unsupported link: use a Linear issue or GitHub pull request URL")
+	}
+	return task, nil
 }
 
 func TaskSlug(t Task) string {
