@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Fetch } from "../api";
 import type { Auth } from "../auth";
-import { enablePush, type PushEnv } from "../push";
+import { disablePush, enablePush, type PushEnv } from "../push";
 import { Brand } from "./Brand";
 
-type Notify = { state: "idle" } | { state: "busy" } | { state: "on" } | { state: "denied" } | { state: "failed"; message: string };
+type Notify = { state: "idle" } | { state: "checking" } | { state: "busy" } | { state: "on" } | { state: "denied" } | { state: "failed"; message: string };
 
 export type SettingsProps = {
   auth: Auth;
@@ -16,7 +16,34 @@ export type SettingsProps = {
 };
 
 export function Settings({ auth, host, installed, fetch, push, onSignOut }: SettingsProps) {
-  const [notify, setNotify] = useState<Notify>(() => (push.supported && push.permission() === "denied" ? { state: "denied" } : { state: "idle" }));
+  const [notify, setNotify] = useState<Notify>(() => {
+    if (!push.supported) {
+      return { state: "idle" };
+    }
+    const permission = push.permission();
+    if (permission === "denied") {
+      return { state: "denied" };
+    }
+    return permission === "granted" ? { state: "checking" } : { state: "idle" };
+  });
+
+  useEffect(() => {
+    if (notify.state !== "checking") {
+      return;
+    }
+    let live = true;
+    push
+      .subscribed()
+      .catch(() => false)
+      .then((on) => {
+        if (live) {
+          setNotify({ state: on ? "on" : "idle" });
+        }
+      });
+    return () => {
+      live = false;
+    };
+  }, [notify.state, push]);
 
   async function enable() {
     setNotify({ state: "busy" });
@@ -25,6 +52,12 @@ export function Settings({ auth, host, installed, fetch, push, onSignOut }: Sett
     } catch (err) {
       setNotify({ state: "failed", message: err instanceof Error ? err.message : String(err) });
     }
+  }
+
+  async function disable() {
+    setNotify({ state: "busy" });
+    await disablePush(push, fetch, auth.token);
+    setNotify({ state: "idle" });
   }
 
   return (
@@ -69,9 +102,15 @@ export function Settings({ auth, host, installed, fetch, push, onSignOut }: Sett
                 {notify.message}
               </p>
             )}
-            <button type="button" onClick={enable} disabled={notify.state === "busy"}>
-              Enable notifications
-            </button>
+            {notify.state === "on" ? (
+              <button type="button" className="secondary" onClick={disable}>
+                Turn off
+              </button>
+            ) : (
+              <button type="button" onClick={enable} disabled={notify.state === "busy" || notify.state === "checking"}>
+                Enable notifications
+              </button>
+            )}
           </>
         )}
       </section>
