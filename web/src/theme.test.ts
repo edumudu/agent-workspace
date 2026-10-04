@@ -58,6 +58,7 @@ describe("the Latte palette", () => {
     ["subtext", "base"],
     ["subtext", "mantle"],
     ["red", "base"],
+    ["on-accent", "red"],
     ["on-accent", "blue"],
   ])("%s text on %s meets 4.5:1", (fg, bg) => {
     expect(palette[fg], fg).toBeDefined();
@@ -67,7 +68,7 @@ describe("the Latte palette", () => {
 });
 
 describe("touch targets", () => {
-  it.each([".session-card", ".back", ".retry"])("%s is at least 44px tall", (selector) => {
+  it.each([".session-card", ".back", ".retry", ".interrupt", ".queued-action", ".load-older", ".tool summary"])("%s is at least 44px tall", (selector) => {
     expect(parseInt(rule(selector)["min-height"] ?? "0", 10)).toBeGreaterThanOrEqual(44);
   });
 });
