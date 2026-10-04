@@ -71,6 +71,7 @@ var harnessTable = []HarnessSpec{
 			"tool_result":             EventPostToolUse,
 			"tool_approval_requested": EventPermissionRequest,
 			"tool_approval_resolved":  EventWaitingForInput,
+			"agent_end":               EventStop,
 			"session_stop":            EventStop,
 			"session_shutdown":        EventSessionEnd,
 		},

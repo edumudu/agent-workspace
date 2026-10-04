@@ -181,6 +181,7 @@ export default function (pi: any) {
 	for (const name of events) {
 		pi.on(name, (event: any, ctx: any) => {
 			if (name === "tool_approval_resolved" && event?.approved !== false) return;
+			if (name === "agent_end" && event?.willContinue) return;
 			const sent = send(name, {
 				session_id: ctx?.sessionManager?.getSessionId?.(),
 				cwd: ctx?.cwd,
