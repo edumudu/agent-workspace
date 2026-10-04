@@ -17,7 +17,7 @@ const workspaces = {
 };
 const resolveURL = (workspace: string, item: string) => "/api/v1/work-items/resolve?" + new URLSearchParams({ workspace, item }).toString();
 
-function setup(options: { remembered?: unknown } = {}) {
+function setup(options: { remembered?: unknown; workspacesDown?: boolean } = {}) {
   window.location.hash = "#/new";
   const sockets = new FakeSockets();
   const storage = new MemoryStorage();
@@ -27,7 +27,7 @@ function setup(options: { remembered?: unknown } = {}) {
   }
   const server = new FakeServer()
     .on("GET", "/api/v1/hello", { status: 200, body: { api: "v1", build: "v0.12.0+abc" } })
-    .on("GET", "/api/v1/workspaces", { status: 200, body: workspaces });
+    .on("GET", "/api/v1/workspaces", options.workspacesDown ? { status: 503, body: { error: { code: "unavailable", message: "daemon is down" } } } : { status: 200, body: workspaces });
   const env: AppEnv = {
     fetch: server.fetch,
     storage,
@@ -191,5 +191,14 @@ describe("starting a session from the phone", () => {
     expect(alert).toHaveTextContent("npm ERR! missing lockfile");
     expect(window.location.hash).toBe("#/new");
     expect(screen.getByRole("button", { name: "Start session" })).toBeEnabled();
+  });
+
+  it("reloads the workspaces when Retry now is pressed after they failed to load", async () => {
+    const { server } = setup({ workspacesDown: true });
+    expect(await screen.findByRole("alert")).toHaveTextContent("Could not load workspaces: daemon is down");
+    server.on("GET", "/api/v1/workspaces", { status: 200, body: workspaces });
+    await userEvent.click(screen.getByRole("button", { name: "Retry now" }));
+    await waitFor(() => expect(screen.getByLabelText("Workspace")).toHaveValue("/home/me/api"));
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 });
