@@ -286,6 +286,7 @@ function PermissionCard({ api, session }: { api: Authed; session: Session }) {
   const [phase, setPhase] = useState<Phase>({ kind: "idle" });
   const [attempt, setAttempt] = useState(0);
   const [error, setError] = useState("");
+  const generation = useRef(0);
   const { fetch, token } = api;
   const id = session.ID;
 
@@ -294,6 +295,7 @@ function PermissionCard({ api, session }: { api: Authed; session: Session }) {
       setPhase((p) => (p.kind === "ready" || p.kind === "unparsed" || p.kind === "answering" ? { kind: "gone" } : p.kind === "loading" || p.kind === "failed" ? { kind: "idle" } : p));
       return;
     }
+    generation.current++;
     let alive = true;
     setPhase({ kind: "loading" });
     setError("");
@@ -316,12 +318,18 @@ function PermissionCard({ api, session }: { api: Authed; session: Session }) {
   }, [fetch, token, id, asking, session.since, attempt]);
 
   const choose = async (prompt: Prompt, choice: string) => {
+    const gen = generation.current;
     setPhase({ kind: "answering", prompt, choice });
     setError("");
     try {
       await answerPrompt({ fetch, token }, id, choice, prompt.id);
-      setPhase({ kind: "answered", label: prompt.choices.find((c) => c.id === choice)?.label ?? choice });
+      if (gen === generation.current) {
+        setPhase({ kind: "answered", label: prompt.choices.find((c) => c.id === choice)?.label ?? choice });
+      }
     } catch (err) {
+      if (gen !== generation.current) {
+        return;
+      }
       if (err instanceof ApiError && (err.code === "stale" || err.code === "not_found")) {
         setPhase({ kind: "gone" });
       } else {
