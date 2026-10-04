@@ -12,6 +12,7 @@ import (
 
 	"github.com/giovaniif/agent-workspace/internal/adapters/claude"
 	"github.com/giovaniif/agent-workspace/internal/adapters/codex"
+	"github.com/giovaniif/agent-workspace/internal/adapters/omp"
 	"github.com/giovaniif/agent-workspace/internal/domain"
 )
 
@@ -26,6 +27,8 @@ type Probe struct {
 	Bin            string
 	ClaudeSettings string
 	CodexHome      string
+	OmpAgentDir    string
+	ompDirErr      error
 	NvimConfigDir  string
 	PluginDirs     []string
 	LookPath       func(string) (string, error)
@@ -39,6 +42,7 @@ func FromEnv(home, bin string, env func(string) string) Probe {
 		}
 		return fallback
 	}
+	ompDir, ompErr := omp.AgentDir(env)
 	claudeDir := or(env("CLAUDE_CONFIG_DIR"), filepath.Join(user, ".claude"))
 	data := or(env("XDG_DATA_HOME"), filepath.Join(user, ".local", "share"))
 	return Probe{
@@ -46,6 +50,8 @@ func FromEnv(home, bin string, env func(string) string) Probe {
 		Bin:            bin,
 		ClaudeSettings: filepath.Join(claudeDir, "settings.json"),
 		CodexHome:      or(env("CODEX_HOME"), filepath.Join(user, ".codex")),
+		OmpAgentDir:    ompDir,
+		ompDirErr:      ompErr,
 		NvimConfigDir:  filepath.Join(or(env("XDG_CONFIG_HOME"), filepath.Join(user, ".config")), "nvim"),
 		PluginDirs: []string{
 			filepath.Join(data, "agentws", "nvim"),
@@ -61,10 +67,13 @@ func (p Probe) Onboarding(context.Context) (domain.Onboarding, error) {
 		return domain.Onboarding{}, err
 	}
 	return domain.Onboarding{
-		Done:   err == nil,
-		Claude: p.claudeSetup(),
-		Codex:  p.codexSetup(),
-		Nvim:   p.nvimSetup(),
+		Done: err == nil,
+		Harnesses: map[domain.Harness]domain.HarnessSetup{
+			domain.HarnessClaude: p.claudeSetup(),
+			domain.HarnessCodex:  p.codexSetup(),
+			domain.HarnessOmp:    p.ompSetup(),
+		},
+		Nvim: p.nvimSetup(),
 	}, nil
 }
 
@@ -88,6 +97,14 @@ func (p Probe) Install(_ context.Context, h domain.Harness) (domain.HarnessSetup
 		s := p.codexSetup()
 		s.Backup = res.Backup
 		return s, nil
+	case domain.HarnessOmp:
+		if p.ompDirErr != nil {
+			return domain.HarnessSetup{}, p.ompDirErr
+		}
+		if _, err := omp.Setup(p.ompConfig()); err != nil {
+			return domain.HarnessSetup{}, err
+		}
+		return p.ompSetup(), nil
 	}
 	return domain.HarnessSetup{}, errors.New("no setup for harness " + string(h))
 }
@@ -123,6 +140,23 @@ func (p Probe) codexSetup() domain.HarnessSetup {
 		s.Backup = file + ".agentws-<time>.bak"
 	}
 	ok, err := codex.Installed(p.codexConfig())
+	s.Installed = ok
+	if err != nil {
+		s.Err = err.Error()
+	}
+	return s
+}
+
+func (p Probe) ompConfig() omp.SetupConfig {
+	return omp.SetupConfig{Dir: p.OmpAgentDir, Command: p.Bin}
+}
+
+func (p Probe) ompSetup() domain.HarnessSetup {
+	if p.ompDirErr != nil {
+		return domain.HarnessSetup{Err: p.ompDirErr.Error()}
+	}
+	s := domain.HarnessSetup{File: omp.HookFile(p.OmpAgentDir)}
+	ok, err := omp.Installed(p.ompConfig())
 	s.Installed = ok
 	if err != nil {
 		s.Err = err.Error()

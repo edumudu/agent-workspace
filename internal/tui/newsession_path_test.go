@@ -12,8 +12,6 @@ import (
 	"github.com/giovaniif/agent-workspace/internal/tui"
 )
 
-var keyUp = tea.KeyPressMsg{Code: tea.KeyUp}
-
 var folders = map[string][]domain.Child{
 	"/":              {{Name: "code", Path: "/code"}, {Name: "home", Path: "/home"}},
 	"/code":          {{Name: "shop", Path: "/code/shop"}},
