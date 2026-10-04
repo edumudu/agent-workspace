@@ -48,9 +48,13 @@ type Session struct {
 	TaskID        string
 	Harness       Harness
 	Pane          string
-	Model         string
-	Effort        string
-	State         AgentState
+	Model          string
+	Effort         string
+	StartedAt      time.Time
+	StartModel     string
+	StartEffort    string
+	StartWorkspace string
+	State          AgentState
 	Ended         bool
 	Unread        bool
 	Focused       bool
@@ -144,4 +148,18 @@ func (s Session) DetachWorktree(id string) Session {
 		s.Dir = ""
 	}
 	return s
+}
+
+func LastCreatedSession(all []Session) (Session, bool) {
+	var best Session
+	found := false
+	for _, s := range all {
+		if s.StartedAt.IsZero() {
+			continue
+		}
+		if !found || s.StartedAt.After(best.StartedAt) {
+			best, found = s, true
+		}
+	}
+	return best, found
 }
