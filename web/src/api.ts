@@ -115,6 +115,10 @@ export function pushSubscribe(fetchFn: Fetch, token: string, subscription: PushS
   );
 }
 
+export function pushUnsubscribe(fetchFn: Fetch, token: string): Promise<unknown> {
+  return request<unknown>(fetchFn, "/api/v1/push/unsubscribe", authorized(token, { method: "POST" }));
+}
+
 export function apiVersion(h: Hello): string {
   const v = String(h.api);
   return v.startsWith("v") ? v : "v" + v;

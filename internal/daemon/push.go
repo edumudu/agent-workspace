@@ -56,8 +56,8 @@ func (d *Daemon) deliverPush(ctx context.Context, msg domain.PushMessage) {
 	if err != nil {
 		log.Printf("push: %v", err)
 	}
-	for _, endpoint := range gone {
-		d.query(func(s *state) { s.putDevices(domain.DropPushEndpoint(sorted(s.devices), endpoint)) })
+	for _, sent := range gone {
+		d.query(func(s *state) { s.putDevices(domain.DropPushSubscription(sorted(s.devices), sent)) })
 	}
 }
 
@@ -79,6 +79,9 @@ func (d *Daemon) pushMethod(req rpc.Request) (*rpc.Response, bool) {
 		}
 		return result(req.ID, rpc.PushKey{PublicKey: key}), true
 	}
+	if req.Method == rpc.MethodPushUnsubscribe {
+		return d.pushUnsubscribe(req)
+	}
 	var p rpc.PushSubscribeParams
 	if err := json.Unmarshal(req.Params, &p); err != nil {
 		return errorResponse(req.ID, rpc.CodeBadRequest, "push.subscribe params: "+err.Error()), true
@@ -91,6 +94,24 @@ func (d *Daemon) pushMethod(req rpc.Request) (*rpc.Response, bool) {
 	ok := d.query(func(s *state) {
 		var changed []domain.Device
 		if changed, found = domain.SubscribePush(sorted(s.devices), p.Device, sub); found {
+			s.putDevices(changed)
+		}
+	})
+	if !found {
+		return errorResponse(req.ID, rpc.CodeNotFound, "no device "+p.Device), ok
+	}
+	return result(req.ID, struct{}{}), ok
+}
+
+func (d *Daemon) pushUnsubscribe(req rpc.Request) (*rpc.Response, bool) {
+	var p rpc.PushUnsubscribeParams
+	if err := json.Unmarshal(req.Params, &p); err != nil {
+		return errorResponse(req.ID, rpc.CodeBadRequest, "push.unsubscribe params: "+err.Error()), true
+	}
+	var found bool
+	ok := d.query(func(s *state) {
+		var changed []domain.Device
+		if changed, found = domain.UnsubscribePush(sorted(s.devices), p.Device); found {
 			s.putDevices(changed)
 		}
 	})

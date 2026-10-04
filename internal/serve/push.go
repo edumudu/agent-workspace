@@ -38,3 +38,10 @@ func pushSubscribe(r *http.Request, d Daemon) (any, error) {
 	}
 	return struct{}{}, nil
 }
+
+func pushUnsubscribe(r *http.Request, d Daemon) (any, error) {
+	if err := d.Call(r.Context(), rpc.MethodPushUnsubscribe, rpc.PushUnsubscribeParams{Device: deviceOf(r).ID}, nil); err != nil {
+		return nil, err
+	}
+	return struct{}{}, nil
+}

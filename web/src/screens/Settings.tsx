@@ -12,7 +12,7 @@ export type SettingsProps = {
   installed: boolean;
   fetch: Fetch;
   push: PushEnv;
-  onSignOut: () => void;
+  onSignOut: () => void | Promise<void>;
 };
 
 export function Settings({ auth, host, installed, fetch, push, onSignOut }: SettingsProps) {

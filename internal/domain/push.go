@@ -71,15 +71,29 @@ func SubscribePush(devices []Device, id string, sub PushSubscription) ([]Device,
 	return append([]Device{*target}, others...), true
 }
 
-func DropPushEndpoint(devices []Device, endpoint string) []Device {
+func DropPushSubscription(devices []Device, sent PushSubscription) []Device {
 	var changed []Device
 	for _, d := range devices {
-		if d.Push != nil && d.Push.Endpoint == endpoint {
+		if d.Push != nil && *d.Push == sent {
 			d.Push = nil
 			changed = append(changed, d)
 		}
 	}
 	return changed
+}
+
+func UnsubscribePush(devices []Device, id string) ([]Device, bool) {
+	for _, d := range devices {
+		if d.ID != id {
+			continue
+		}
+		if d.Push == nil {
+			return nil, true
+		}
+		d.Push = nil
+		return []Device{d}, true
+	}
+	return nil, false
 }
 
 func PushTargets(devices []Device) []PushSubscription {

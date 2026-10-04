@@ -6,11 +6,14 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
+	"net/netip"
 	"net/url"
 	"os"
 	"path/filepath"
 	"sync"
+	"syscall"
 	"time"
 
 	wp "github.com/SherClockHolmes/webpush-go"
@@ -39,9 +42,38 @@ type Sender struct {
 
 func New(path string, client *http.Client) *Sender {
 	if client == nil {
-		client = &http.Client{Timeout: sendTimeout}
+		client = publicClient()
 	}
-	return &Sender{path: path, client: client}
+	c := *client
+	c.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
+	return &Sender{path: path, client: &c}
+}
+
+var sharedAddressSpace = netip.MustParsePrefix("100.64.0.0/10")
+
+func publicClient() *http.Client {
+	dialer := &net.Dialer{Timeout: sendTimeout, Control: refuseInternal}
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	transport.Proxy = nil
+	transport.DialContext = dialer.DialContext
+	return &http.Client{Timeout: sendTimeout, Transport: transport}
+}
+
+func refuseInternal(_, address string, _ syscall.RawConn) error {
+	host, _, err := net.SplitHostPort(address)
+	if err != nil {
+		return err
+	}
+	ip, err := netip.ParseAddr(host)
+	if err != nil {
+		return err
+	}
+	ip = ip.Unmap()
+	if ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() ||
+		ip.IsInterfaceLocalMulticast() || ip.IsMulticast() || ip.IsUnspecified() || sharedAddressSpace.Contains(ip) {
+		return fmt.Errorf("refusing to push to the non-public address %s", ip)
+	}
+	return nil
 }
 
 func (s *Sender) PublicKey() (string, error) {

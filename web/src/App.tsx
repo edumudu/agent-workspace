@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { Fetch } from "./api";
 import { clearAuth, loadAuth, saveAuth, type Auth, type KeyValue } from "./auth";
 import { pairCodeFromHash } from "./display";
-import { noPush, type PushEnv } from "./push";
+import { disablePush, noPush, type PushEnv } from "./push";
 import { Install } from "./screens/Install";
 import { Pair } from "./screens/Pair";
 import { Sessions } from "./screens/Sessions";
@@ -43,7 +43,8 @@ export function App({ env }: { env: AppEnv }) {
             installed={env.installed}
             fetch={env.fetch}
             push={env.push ?? noPush}
-            onSignOut={() => {
+            onSignOut={async () => {
+              await disablePush(env.push ?? noPush, env.fetch, auth.token);
               clearAuth(env.storage);
               setAuth(null);
             }}

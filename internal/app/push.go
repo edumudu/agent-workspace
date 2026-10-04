@@ -15,19 +15,19 @@ type PushProvider interface {
 	Send(ctx context.Context, sub domain.PushSubscription, msg domain.PushMessage) error
 }
 
-func SendPush(ctx context.Context, p PushProvider, subs []domain.PushSubscription, msg domain.PushMessage) ([]string, error) {
+func SendPush(ctx context.Context, p PushProvider, subs []domain.PushSubscription, msg domain.PushMessage) ([]domain.PushSubscription, error) {
 	errs := make([]error, len(subs))
 	var wg sync.WaitGroup
 	for i, sub := range subs {
 		wg.Go(func() { errs[i] = p.Send(ctx, sub, msg) })
 	}
 	wg.Wait()
-	var gone []string
+	var gone []domain.PushSubscription
 	var failed []error
 	for i, err := range errs {
 		switch {
 		case errors.Is(err, ErrPushGone):
-			gone = append(gone, subs[i].Endpoint)
+			gone = append(gone, subs[i])
 		case err != nil:
 			failed = append(failed, err)
 		}

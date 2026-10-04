@@ -83,6 +83,7 @@ func (s *Server) routes() []route {
 		{"POST /api/v1/sessions/{id}/rename", sessionAction(rpc.MethodSessionRename, renameParams)},
 		{"GET /api/v1/push/key", pushKey},
 		{"POST /api/v1/push/subscribe", pushSubscribe},
+		{"POST /api/v1/push/unsubscribe", pushUnsubscribe},
 	}
 }
 

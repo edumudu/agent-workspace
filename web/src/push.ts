@@ -1,10 +1,11 @@
-import { pushKey, pushSubscribe, type Fetch, type PushSubscriptionBody } from "./api";
+import { pushKey, pushSubscribe, pushUnsubscribe, type Fetch, type PushSubscriptionBody } from "./api";
 
 export type PushEnv = {
   supported: boolean;
   permission: () => NotificationPermission;
   requestPermission: () => Promise<NotificationPermission>;
   subscribe: (applicationServerKey: Uint8Array) => Promise<PushSubscriptionBody>;
+  unsubscribe: () => Promise<void>;
 };
 
 export const noPush: PushEnv = {
@@ -12,6 +13,7 @@ export const noPush: PushEnv = {
   permission: () => "denied",
   requestPermission: async () => "denied",
   subscribe: () => Promise.reject(new Error("this browser has no push")),
+  unsubscribe: async () => undefined,
 };
 
 export function decodeKey(base64url: string): Uint8Array {
@@ -36,6 +38,10 @@ export async function enablePush(push: PushEnv, fetchFn: Fetch, token: string): 
   const subscription = await push.subscribe(decodeKey(key.public_key));
   await pushSubscribe(fetchFn, token, subscription);
   return "on";
+}
+
+export async function disablePush(push: PushEnv, fetchFn: Fetch, token: string): Promise<void> {
+  await Promise.allSettled([pushUnsubscribe(fetchFn, token), push.unsubscribe()]);
 }
 
 function sameKey(a: ArrayBuffer | null | undefined, b: Uint8Array): boolean {
@@ -67,6 +73,11 @@ export function browserPush(win: Window & typeof globalThis): PushEnv {
         applicationServerKey: key as Uint8Array<ArrayBuffer>,
       });
       return created.toJSON();
+    },
+    unsubscribe: async () => {
+      const registration = await win.navigator.serviceWorker.getRegistration();
+      const existing = await registration?.pushManager.getSubscription();
+      await existing?.unsubscribe();
     },
   };
 }

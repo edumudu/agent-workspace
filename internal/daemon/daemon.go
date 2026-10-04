@@ -562,7 +562,7 @@ func (d *Daemon) dispatch(c *conn, line []byte) (*rpc.Response, bool) {
 		return d.transcriptMethod(c, req)
 	case rpc.MethodPairCode, rpc.MethodPairRedeem, rpc.MethodDeviceCheck, rpc.MethodDeviceList, rpc.MethodDeviceRevoke:
 		return d.pairMethod(req)
-	case rpc.MethodPushKey, rpc.MethodPushSubscribe:
+	case rpc.MethodPushKey, rpc.MethodPushSubscribe, rpc.MethodPushUnsubscribe:
 		return d.pushMethod(req)
 	default:
 		return errorResponse(req.ID, rpc.CodeUnknownMethod, "unknown method "+req.Method), true
