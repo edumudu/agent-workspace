@@ -4,7 +4,7 @@ import type { Auth } from "../auth";
 import { disablePush, enablePush, type PushEnv } from "../push";
 import { Brand } from "./Brand";
 
-type Notify = { state: "idle" } | { state: "checking" } | { state: "busy" } | { state: "on" } | { state: "denied" } | { state: "failed"; message: string };
+type Notify = { state: "idle" } | { state: "checking" } | { state: "busy" } | { state: "on"; error?: string } | { state: "denied" } | { state: "failed"; message: string };
 
 export type SettingsProps = {
   auth: Auth;
@@ -56,8 +56,8 @@ export function Settings({ auth, host, installed, fetch, push, onSignOut }: Sett
 
   async function disable() {
     setNotify({ state: "busy" });
-    await disablePush(push, fetch, auth.token);
-    setNotify({ state: "idle" });
+    const error = await disablePush(push, fetch, auth.token);
+    setNotify(error === null ? { state: "idle" } : { state: "on", error });
   }
 
   return (
@@ -96,6 +96,11 @@ export function Settings({ auth, host, installed, fetch, push, onSignOut }: Sett
             {notify.state === "on" && <p>Notifications are on for this device.</p>}
             {notify.state === "denied" && (
               <p className="error">Notifications are blocked. Allow them for agentws in your device's settings, then try again.</p>
+            )}
+            {notify.state === "on" && notify.error && (
+              <p className="error" role="alert">
+                {notify.error}
+              </p>
             )}
             {notify.state === "failed" && (
               <p className="error" role="alert">

@@ -42,8 +42,12 @@ export async function enablePush(push: PushEnv, fetchFn: Fetch, token: string): 
   return "on";
 }
 
-export async function disablePush(push: PushEnv, fetchFn: Fetch, token: string): Promise<void> {
-  await Promise.allSettled([pushUnsubscribe(fetchFn, token), push.unsubscribe()]);
+export async function disablePush(push: PushEnv, fetchFn: Fetch, token: string): Promise<string | null> {
+  const [, browser] = await Promise.allSettled([pushUnsubscribe(fetchFn, token), push.unsubscribe()]);
+  if (browser.status === "fulfilled") {
+    return null;
+  }
+  return browser.reason instanceof Error ? browser.reason.message : String(browser.reason);
 }
 
 function sameKey(a: ArrayBuffer | null | undefined, b: Uint8Array): boolean {
