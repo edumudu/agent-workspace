@@ -6,14 +6,95 @@ import "@fontsource/jetbrains-mono/latin-500.css";
 import "./theme.css";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
+import { hello } from "./api";
+import { App } from "./App";
+import { buildOfWorker, checkBuild, workerURL } from "./build";
+import { isInstalled } from "./display";
+
+const checkEvery = 5 * 60 * 1000;
+const installTimeout = 15 * 1000;
+const reloadedKey = "agentws.reloaded-for";
+const apiFetch = (input: string, init?: RequestInit) => fetch(input, init);
+
+function reloadOnceFor(build: string) {
+  try {
+    if (window.sessionStorage.getItem(reloadedKey) === build) {
+      return;
+    }
+    window.sessionStorage.setItem(reloadedKey, build);
+  } catch {
+    return;
+  }
+  window.location.reload();
+}
+
+async function installWorker(build: string): Promise<void> {
+  if (!("serviceWorker" in navigator)) {
+    return;
+  }
+  const registration = await navigator.serviceWorker.register(workerURL(build), { scope: "/" });
+  const ready = () => registration.active?.state === "activated" && buildOfWorker(registration.active.scriptURL) === build;
+  if (ready()) {
+    return;
+  }
+  await new Promise<void>((resolve) => {
+    const timer = window.setTimeout(resolve, installTimeout);
+    const watch = (worker: ServiceWorker | null) =>
+      worker?.addEventListener("statechange", () => {
+        if (ready()) {
+          window.clearTimeout(timer);
+          resolve();
+        }
+      });
+    watch(registration.installing ?? registration.waiting);
+    registration.addEventListener("updatefound", () => watch(registration.installing));
+  });
+}
+
+function watchBuild() {
+  if (!import.meta.env.PROD) {
+    return;
+  }
+  let reported = "";
+  const check = () =>
+    checkBuild({
+      hello: async () => {
+        const h = await hello(apiFetch);
+        reported = h.build;
+        return h;
+      },
+      servedBuild: () => buildOfWorker(navigator.serviceWorker?.controller?.scriptURL),
+      install: installWorker,
+      reload: () => reloadOnceFor(reported),
+    }).catch(() => undefined);
+  void check();
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") {
+      void check();
+    }
+  });
+  window.setInterval(() => {
+    if (document.visibilityState === "visible") {
+      void check();
+    }
+  }, checkEvery);
+}
 
 const root = document.getElementById("root");
 if (root) {
   createRoot(root).render(
     <StrictMode>
-      <main className="screen">
-        <h1>agentws</h1>
-      </main>
+      <App
+        env={{
+          fetch: apiFetch,
+          storage: window.localStorage,
+          installed: isInstalled(window),
+          hash: window.location.hash,
+          host: window.location.host,
+          userAgent: navigator.userAgent,
+        }}
+      />
     </StrictMode>,
   );
 }
+watchBuild();
