@@ -12,7 +12,7 @@ Tests: `go test ./internal/serve/ ./cmd/agentws/ -run Serve` (an in-memory daemo
 ## Listening
 
 - `serve.Options{Addr, Cert, Key, SelfSigned, CertDir}`; `Check` is the rule: plain HTTP only on a loopback address (`localhost`, `127.0.0.0/8`, `::1`), whatever the other flags. `--cert` and `--key` go together; `--self-signed` replaces them.
-- `--self-signed` keeps `cert.pem` and `key.pem` (600) in `$AGENTWS_HOME/serve`, valid 5 years, for `localhost`, `127.0.0.1`, `::1`, `host.docker.internal`, the hostname and the `--addr` host. It is reused while it has 30 days left and covers the address, so a proxy that trusts it keeps working across restarts.
+- `--self-signed` keeps `cert.pem` and `key.pem` (600) in `$AGENTWS_HOME/serve`, valid 5 years, for `localhost`, `127.0.0.1`, `::1`, `host.docker.internal`, the hostname and the `--addr` host. It is reused while it has 30 days left and covers the address, so a proxy that trusts it keeps working across restarts. When serve replaces it (a new `--addr` host, or near expiry), the proxy must be set to trust the new one.
 - `Server.Start(ctx)` opens the revocation `subscribe` connection; call it before serving. It fails when the daemon cannot be reached, and resubscribes every second after the daemon restarts. Cancelling `ctx` closes every open stream with 1001.
 
 ## HTTP API (`/api/v1`)
@@ -49,4 +49,4 @@ The `/` fallback: `Handler(fallback)` mounts `fallback` at `/` (the embedded PWA
 - Then the server sends `{"state":{"seq","workspaces","tasks","worktrees","sessions","queue","sends"}}` and one `{"diff":{...}}` per change that touches those: a diff sets `seq` and one of `workspace`, `task`, `worktree`, `session`, `queue` (whole list), `sends` (whole list), `removed_workspace`, `removed_worktree`, `removed_session`. Events, subagents, review drafts and comments are dropped, so `seq` has gaps. Worktrees come without `Ports`.
 - An unknown client frame gets `{"error":{"code":"bad_request","message"}}` and the stream stays open.
 - Close codes: 4401 unauthorized or revoked, 1013 the daemon went away (reconnect), 1001 serve is stopping, 1011 a write failed.
-- Revocation: the `revoked_device` diff on the `Start` connection cancels every open stream of that device, which closes with 4401 at once, and records the ID so a check that answered just before the diff still fails.
+- Revocation: a stream subscribes before it runs `device.check` on the same connection, so the daemon's loop orders them: a revoke before the check fails it, a revoke after reaches the stream's own subscription as a `revoked_device` diff. Either that diff or the one on the `Start` connection cancels every open stream of that device (4401 at once) and records the ID, so REST checks that answered just before it still fail. The stream does not depend on the `Start` connection, which may be reconnecting after a daemon restart.

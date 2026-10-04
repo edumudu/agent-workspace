@@ -96,7 +96,7 @@ func (s *Server) checkOrigin(r *http.Request) error {
 }
 
 func (s *Server) runStream(ctx context.Context, cancel context.CancelCauseFunc, st *stream) (websocket.StatusCode, string) {
-	d, device, code, reason := s.authenticate(ctx, st)
+	d, sub, device, code, reason := s.authenticate(ctx, st)
 	if d == nil {
 		return code, reason
 	}
@@ -106,10 +106,6 @@ func (s *Server) runStream(ctx context.Context, cancel context.CancelCauseFunc, 
 		return CloseUnauthorized, errRevoked.Error()
 	}
 	defer unregister()
-	sub, err := d.Subscribe(ctx)
-	if err != nil {
-		return websocket.StatusInternalError, apiError(err).Message
-	}
 	if err := st.write(ctx, Frame{State: filterState(sub.State)}); err != nil {
 		return websocket.StatusInternalError, "write failed"
 	}
@@ -124,6 +120,9 @@ func (s *Server) runStream(ctx context.Context, cancel context.CancelCauseFunc, 
 			if !ok {
 				return websocket.StatusTryAgainLater, errDaemonGone.Error()
 			}
+			if diff.RevokedDevice != "" {
+				s.streams.revoke(diff.RevokedDevice)
+			}
 			out, keep := filterDiff(diff)
 			if !keep {
 				continue
@@ -135,7 +134,8 @@ func (s *Server) runStream(ctx context.Context, cancel context.CancelCauseFunc, 
 	}
 }
 
-func (s *Server) authenticate(ctx context.Context, st *stream) (Daemon, rpc.Device, websocket.StatusCode, string) {
+func (s *Server) authenticate(ctx context.Context, st *stream) (Daemon, rpc.Subscription, rpc.Device, websocket.StatusCode, string) {
+	var none rpc.Subscription
 	readCtx, cancelRead := context.WithCancel(ctx)
 	defer cancelRead()
 	late := time.AfterFunc(s.cfg.AuthTimeout, func() {
@@ -143,29 +143,34 @@ func (s *Server) authenticate(ctx context.Context, st *stream) (Daemon, rpc.Devi
 	})
 	_, data, err := st.conn.Read(readCtx)
 	if !late.Stop() {
-		return nil, rpc.Device{}, CloseUnauthorized, "no token in time"
+		return nil, none, rpc.Device{}, CloseUnauthorized, "no token in time"
 	}
 	if err != nil {
-		return nil, rpc.Device{}, websocket.StatusNormalClosure, errClientGone.Error()
+		return nil, none, rpc.Device{}, websocket.StatusNormalClosure, errClientGone.Error()
 	}
 	var first clientFrame
 	if json.Unmarshal(data, &first) != nil || first.Token == "" {
-		return nil, rpc.Device{}, CloseUnauthorized, `the first frame must be {"token": "<device token>"}`
+		return nil, none, rpc.Device{}, CloseUnauthorized, `the first frame must be {"token": "<device token>"}`
 	}
 	d, err := s.dial(ctx)
 	if err != nil {
-		return nil, rpc.Device{}, websocket.StatusTryAgainLater, apiError(err).Message
+		return nil, none, rpc.Device{}, websocket.StatusTryAgainLater, apiError(err).Message
+	}
+	sub, err := d.Subscribe(ctx)
+	if err != nil {
+		_ = d.Close()
+		return nil, none, rpc.Device{}, websocket.StatusTryAgainLater, apiError(err).Message
 	}
 	device, err := s.check(ctx, d, first.Token)
 	if err != nil {
 		_ = d.Close()
 		e := apiError(err)
 		if e.Code == rpc.CodeUnauthorized {
-			return nil, rpc.Device{}, CloseUnauthorized, e.Message
+			return nil, none, rpc.Device{}, CloseUnauthorized, e.Message
 		}
-		return nil, rpc.Device{}, websocket.StatusTryAgainLater, e.Message
+		return nil, none, rpc.Device{}, websocket.StatusTryAgainLater, e.Message
 	}
-	return d, device, 0, ""
+	return d, sub, device, 0, ""
 }
 
 func (st *stream) readLoop(readCtx, ctx context.Context) error {
