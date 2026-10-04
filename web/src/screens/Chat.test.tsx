@@ -191,6 +191,25 @@ describe("the transcript", () => {
     expect(screen.getByText("Start of the conversation")).toBeInTheDocument();
   });
 
+  it("drops an older page that lands after the session moved to another transcript file", async () => {
+    const older = new Deferred<FakeRoute>();
+    const server = new FakeServer()
+      .on("GET", newest, page([msg("b1", 1000)], 90))
+      .on("GET", "/api/v1/sessions/s1/messages?before=90&limit=50", () => older.promise);
+    const sockets = setup(server);
+    live(sockets);
+    const log = within(screen.getByRole("log", { name: "Messages" }));
+    await log.findByText("message b1");
+    await userEvent.click(screen.getByRole("button", { name: "Load earlier messages" }));
+    sockets.last.push({ transcript: { session: "s1", messages: [msg("n1", 50)], reset: true } });
+    await act(async () => older.resolve(page([msg("a1", 10)], 0)));
+    expect(log.getByText("message n1")).toBeInTheDocument();
+    expect(log.queryByText("message a1")).not.toBeInTheDocument();
+    expect(log.queryByText("message b1")).not.toBeInTheDocument();
+    expect(screen.queryByText("Start of the conversation")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Load earlier messages" })).toBeInTheDocument();
+  });
+
   it("keeps the view at the bottom as messages arrive while the reader is there", async () => {
     const server = new FakeServer().on("GET", newest, page([msg("a1", 10), msg("a2", 20)]));
     const sockets = setup(server);
