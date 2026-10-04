@@ -84,6 +84,9 @@ func (s *Server) routes() []route {
 		{"POST /api/v1/sessions/{id}/messages", sessionAction(rpc.MethodSessionSend, sendParams)},
 		{"DELETE /api/v1/sessions/{id}/sends/{send}", sessionAction(rpc.MethodSessionUnsend, unsendParams)},
 		{"POST /api/v1/sessions/{id}/interrupt", sessionAction(rpc.MethodSessionInterrupt, targetParams)},
+		{"GET /api/v1/push/key", pushKey},
+		{"POST /api/v1/push/subscribe", pushSubscribe},
+		{"POST /api/v1/push/unsubscribe", pushUnsubscribe},
 	}
 }
 
@@ -145,11 +148,12 @@ func (s *Server) authed(h func(r *http.Request, d Daemon) (any, error)) http.Han
 			return
 		}
 		defer func() { _ = d.Close() }()
-		if _, err := s.check(r.Context(), d, token); err != nil {
+		dev, err := s.check(r.Context(), d, token)
+		if err != nil {
 			writeError(w, err)
 			return
 		}
-		out, err := h(r, d)
+		out, err := h(r.WithContext(context.WithValue(r.Context(), deviceKey{}, dev)), d)
 		if err != nil {
 			writeError(w, err)
 			return

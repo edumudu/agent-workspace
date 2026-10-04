@@ -29,7 +29,6 @@ type attention struct {
 	notifier  app.Notifier
 	fg        app.Foreground
 	sounds    map[domain.AgentState]string
-	co        *domain.Coalescer
 	queue     chan queuedBanner
 	terminal  atomic.Pointer[string]
 	posted    map[string]bool
@@ -46,7 +45,6 @@ func WithNotifier(n app.Notifier, fg app.Foreground, sounds map[domain.AgentStat
 			notifier:  n,
 			fg:        fg,
 			sounds:    sounds,
-			co:        domain.NewCoalescer(),
 			queue:     make(chan queuedBanner, bannerQueue),
 			posted:    map[string]bool{},
 			removals:  map[string]bool{},
@@ -88,7 +86,7 @@ func (a *attention) deliver(ctx context.Context, q queuedBanner) {
 }
 
 func (s *state) announce(session domain.Session, effects []domain.Effect) {
-	if s.attn == nil {
+	if s.attn == nil && s.pushes == nil {
 		return
 	}
 	name := s.sessionName(session)
@@ -103,11 +101,15 @@ func (s *state) announce(session domain.Session, effects []domain.Effect) {
 			Session: session, Name: name, Effect: e,
 			Worktrees: worktrees, Events: s.events[session.ID], Now: time.Now(),
 		})
-		if !ok || !s.attn.co.Allow(session.ID, time.Now()) {
+		if !ok || !s.co.Allow(session.ID, time.Now()) {
+			continue
+		}
+		b.Group = session.ID
+		s.queuePush(b)
+		if s.attn == nil {
 			continue
 		}
 		b.Sound = s.attn.sounds[b.State]
-		b.Group = session.ID
 		if s.attn.enqueue(queuedBanner{banner: b, focused: session.Focused}) {
 			s.attn.posted[session.ID] = true
 		}

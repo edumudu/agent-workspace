@@ -122,6 +122,40 @@ export async function interrupt(a: Authed, session: string): Promise<void> {
   await authedRequest<unknown>(a, sessionPath(session, "/interrupt"), "POST");
 }
 
+export type PushKey = {
+  public_key: string;
+};
+
+export type PushSubscriptionBody = {
+  endpoint?: string;
+  expirationTime?: number | null;
+  keys?: Record<string, string>;
+};
+
+function authorized(token: string, init: RequestInit = {}): RequestInit {
+  return { ...init, headers: { ...(init.headers as Record<string, string> | undefined), Authorization: "Bearer " + token } };
+}
+
+export function pushKey(fetchFn: Fetch, token: string): Promise<PushKey> {
+  return request<PushKey>(fetchFn, "/api/v1/push/key", authorized(token));
+}
+
+export function pushSubscribe(fetchFn: Fetch, token: string, subscription: PushSubscriptionBody): Promise<unknown> {
+  return request<unknown>(
+    fetchFn,
+    "/api/v1/push/subscribe",
+    authorized(token, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(subscription),
+    }),
+  );
+}
+
+export function pushUnsubscribe(fetchFn: Fetch, token: string): Promise<unknown> {
+  return request<unknown>(fetchFn, "/api/v1/push/unsubscribe", authorized(token, { method: "POST" }));
+}
+
 export function apiVersion(h: Hello): string {
   const v = String(h.api);
   return v.startsWith("v") ? v : "v" + v;

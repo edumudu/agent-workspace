@@ -12,5 +12,5 @@
     "noEmit": true,
     "types": []
   },
-  "include": ["src/sw.ts", "src/sw-cache.ts"]
+  "include": ["src/sw.ts", "src/sw-cache.ts", "src/sw-push.ts"]
 }
