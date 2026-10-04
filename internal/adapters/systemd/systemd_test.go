@@ -189,6 +189,38 @@ func TestSystemdRemoveKeepsTheUnitWhenItWillNotStop(t *testing.T) {
 	}
 }
 
+func TestSystemdInstallEscapesTheLogPath(t *testing.T) {
+	dir := t.TempDir()
+	u := unit(dir)
+	u.Log = `/home/me/100%/a\b/serve.log`
+	if _, err := systemd.Install(context.Background(), u, (&systemctl{}).run); err != nil {
+		t.Fatal(err)
+	}
+	raw, _ := os.ReadFile(filepath.Join(dir, "agentws-serve.service"))
+	if want := `StandardOutput=append:/home/me/100%%/a\\b/serve.log`; !strings.Contains(string(raw), want) {
+		t.Fatalf("unit lacks %q:\n%s", want, raw)
+	}
+}
+
+func TestSystemdInstallRefusesLineBreaksAndNULsInAnyValue(t *testing.T) {
+	for name, mutate := range map[string]func(*systemd.Unit){
+		"program": func(u *systemd.Unit) { u.Program = []string{"/bin/agentws", "a\nb"} },
+		"env":     func(u *systemd.Unit) { u.Env = map[string]string{"X": "a\rb"} },
+		"log":     func(u *systemd.Unit) { u.Log = "/tmp/a\x00b" },
+	} {
+		dir := t.TempDir()
+		u := unit(dir)
+		mutate(&u)
+		s := &systemctl{}
+		if _, err := systemd.Install(context.Background(), u, s.run); err == nil {
+			t.Errorf("%s: a control character was written", name)
+		}
+		if _, err := os.Stat(filepath.Join(dir, "agentws-serve.service")); err == nil || len(s.calls) != 0 {
+			t.Errorf("%s: a unit was written or systemctl ran", name)
+		}
+	}
+}
+
 func TestSystemdRemoveWithoutAUnitIsANoop(t *testing.T) {
 	s := &systemctl{}
 	removed, err := systemd.Remove(context.Background(), unit(t.TempDir()), s.run)
