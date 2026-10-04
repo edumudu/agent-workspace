@@ -51,7 +51,7 @@ function Connected({ env, auth, onUnauthorized }: { env: AppEnv; auth: Auth; onU
   const route = parseRoute(hash);
   const retry = () => client.retryNow();
   if (route.screen === "new") {
-    return <NewSession env={env} token={auth.token} onRetry={retry} />;
+    return <NewSession env={env} token={auth.token} />;
   }
   if (route.screen === "session") {
     return <SessionScreen id={route.id} snapshot={snapshot} now={now} onRetry={retry} />;

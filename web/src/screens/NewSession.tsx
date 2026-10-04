@@ -18,7 +18,7 @@ function message(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
 }
 
-export function NewSession({ env, token, onRetry }: { env: AppEnv; token: string; onRetry: () => void }) {
+export function NewSession({ env, token }: { env: AppEnv; token: string }) {
   const [remembered] = useState(() => loadChoices(env.storage));
   const [workspaces, setWorkspaces] = useState<Workspaces>({ state: "loading" });
   const [workspace, setWorkspace] = useState(remembered.workspace);
@@ -30,6 +30,7 @@ export function NewSession({ env, token, onRetry }: { env: AppEnv; token: string
   const [resolution, setResolution] = useState<Resolution>({ state: "idle" });
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState("");
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     let live = true;
@@ -46,7 +47,7 @@ export function NewSession({ env, token, onRetry }: { env: AppEnv; token: string
     return () => {
       live = false;
     };
-  }, [env.fetch, token]);
+  }, [env.fetch, token, attempt]);
 
   useEffect(() => {
     if (!item.trim() || !workspace) {
@@ -109,7 +110,10 @@ export function NewSession({ env, token, onRetry }: { env: AppEnv; token: string
       {workspaces.state === "failed" ? (
         <div className="error" role="alert">
           <p>{"Could not load workspaces: " + workspaces.message}</p>
-          <button type="button" className="retry" onClick={onRetry}>
+          <button type="button" className="retry" onClick={() => {
+              setWorkspaces({ state: "loading" });
+              setAttempt((n) => n + 1);
+            }}>
             Retry now
           </button>
         </div>
