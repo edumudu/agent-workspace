@@ -1,0 +1,17 @@
+{
+  "text": "Bash command\n\ntouch notes.txt\n\nDo you want to proceed?",
+  "choices": [
+    {
+      "id": "1",
+      "label": "Yes"
+    },
+    {
+      "id": "2",
+      "label": "Yes, and don't ask again"
+    },
+    {
+      "id": "3",
+      "label": "No"
+    }
+  ]
+}

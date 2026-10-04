@@ -37,6 +37,7 @@ var (
 		rpc.MethodTranscriptPage, rpc.MethodTranscriptWatch, rpc.MethodNewSession, rpc.MethodSessionResolve,
 		rpc.MethodPushKey, rpc.MethodPushSubscribe, rpc.MethodPushUnsubscribe,
 		rpc.MethodSessionSend, rpc.MethodSessionUnsend, rpc.MethodSessionInterrupt,
+		rpc.MethodSessionPrompt, rpc.MethodSessionAnswer,
 	}
 )
 
@@ -54,6 +55,8 @@ var authedEndpoints = []authedEndpoint{
 	{"POST", "/api/v1/sessions/s1/messages", `{"text":"run the tests"}`},
 	{"DELETE", "/api/v1/sessions/s1/sends/q1", ""},
 	{"POST", "/api/v1/sessions/s1/interrupt", ""},
+	{"GET", "/api/v1/sessions/s1/prompt", ""},
+	{"POST", "/api/v1/sessions/s1/answer", `{"choice":"1"}`},
 	{"POST", "/api/v1/sessions", `{"work_item":"x","harness":"claude"}`},
 	{"GET", "/api/v1/work-items/resolve?item=x", ""},
 	{"GET", "/api/v1/push/key", ""},
