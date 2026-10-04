@@ -25,6 +25,10 @@ export function loadAuth(storage: KeyValue): Auth | null {
   }
 }
 
+export function clearAuth(storage: KeyValue): void {
+  storage.removeItem(authKey);
+}
+
 export function saveAuth(storage: KeyValue, paired: Paired): Auth {
   const auth = { token: paired.token, device: paired.device };
   storage.setItem(authKey, JSON.stringify(auth));

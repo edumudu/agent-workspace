@@ -92,12 +92,18 @@ func streamState() rpc.State {
 	return rpc.State{
 		Seq:        41,
 		Workspaces: []domain.Workspace{{Root: "/home/me/api", Kind: domain.WorkspaceSingle, LastUsed: at}},
-		Tasks:      []domain.Task{{ID: "t1", Source: domain.TaskText, Text: "fix the login redirect"}},
+		Tasks: []domain.Task{{ID: "t1", Source: domain.TaskText, Text: "fix the login redirect"},
+			{ID: "t2", Source: domain.TaskText, Text: "add retries to the client"}},
 		Worktrees: []domain.Worktree{{ID: "w1", Repo: "api", Path: "/home/me/.agentws/worktrees/api-login", Branch: "login",
 			SessionID: "s1", Ports: []domain.Port{{Port: 5173, PID: 4242}}}},
 		Sessions: []domain.Session{{ID: "s1", TaskID: "t1", Harness: domain.HarnessClaude, Model: "opus", State: domain.StateRunning,
-			WorktreeIDs: []string{"w1"}}},
-		Events:    []domain.SessionEvent{{SessionID: "s1", Kind: domain.EventUserPromptSubmit, At: at}},
+			WorktreeIDs: []string{"w1"}, Limits: []domain.RateLimit{{Window: "five_hour", UsedPercent: 42, ResetsAt: at.Add(3 * time.Hour).Unix()},
+				{Window: "seven_day", UsedPercent: 85}}, LimitsAt: at},
+			{ID: "s2", TaskID: "t2", Harness: domain.HarnessCodex, State: domain.StateDone, Unread: true,
+				Limits: []domain.RateLimit{{Window: "five_hour", UsedPercent: 10}}, LimitsAt: at.Add(-time.Hour)}},
+		Events: []domain.SessionEvent{{SessionID: "s1", Kind: domain.EventUserPromptSubmit, At: at},
+			{SessionID: "s2", Kind: domain.EventUserPromptSubmit, At: at.Add(-10 * time.Minute)},
+			{SessionID: "s2", Kind: domain.EventStop, Text: "Added the retry to the client.", At: at.Add(-5*time.Minute - 48*time.Second)}},
 		Subagents: []domain.Subagent{{SessionID: "s1", ID: "a1"}},
 		Queue:     []domain.LaunchItem{{ID: "q1", Ref: "#42", Workspace: "/home/me/api"}},
 		Drafts:    []domain.ReviewDraft{{Session: "s1"}},
@@ -187,16 +193,19 @@ func TestServeStreamSendsTheFilteredStateThenItsDiffs(t *testing.T) {
 	c := openStream(t, ts, goodToken)
 	golden(t, "stream-state.json", next(t, c))
 
-	session := domain.Session{ID: "s1", TaskID: "t1", Harness: domain.HarnessClaude, State: domain.StatePermission}
+	at := time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC)
+	session := domain.Session{ID: "s1", TaskID: "t1", Harness: domain.HarnessClaude, State: domain.StatePermission, WorktreeIDs: []string{"w1"},
+		Limits: []domain.RateLimit{{Window: "five_hour", UsedPercent: 81, ResetsAt: at.Add(3 * time.Hour).Unix()}}, LimitsAt: at.Add(time.Minute)}
 	sends := []domain.QueuedSend{}
-	f.broadcast(rpc.Diff{Seq: 42, Event: &domain.SessionEvent{SessionID: "s1", Kind: domain.EventPermissionRequest}, Session: &session})
+	f.broadcast(rpc.Diff{Seq: 42, Event: &domain.SessionEvent{SessionID: "s1", Kind: domain.EventPermissionRequest, Tool: "Bash", Detail: "make test", At: at.Add(time.Minute)}, Session: &session})
 	f.broadcast(rpc.Diff{Seq: 43, Subagent: &domain.Subagent{SessionID: "s1", ID: "a2"}})
 	f.broadcast(rpc.Diff{Seq: 44, Draft: &domain.ReviewDraft{Session: "s1"}})
-	f.broadcast(rpc.Diff{Seq: 45, Worktree: &domain.Worktree{ID: "w1", Repo: "api", Branch: "login", Ports: []domain.Port{{Port: 8080}}}})
+	f.broadcast(rpc.Diff{Seq: 45, Worktree: &domain.Worktree{ID: "w1", Repo: "api", Branch: "login-v2", Ports: []domain.Port{{Port: 8080}}}})
 	f.broadcast(rpc.Diff{Seq: 46, Sends: &sends})
 	f.broadcast(rpc.Diff{Seq: 47, RemovedSession: "s2"})
+	f.broadcast(rpc.Diff{Seq: 48, Task: &domain.Task{ID: "t1", Source: domain.TaskText, Text: "fix the login redirect", PinnedName: "login fix"}})
 	var frames []json.RawMessage
-	for range 4 {
+	for range 7 {
 		frames = append(frames, next(t, c))
 	}
 	all, _ := json.Marshal(frames)
@@ -459,5 +468,26 @@ func TestServeStreamGoesAwayWhenServeStopsBeforeTheToken(t *testing.T) {
 	cancel()
 	if code, reason := closedWith(t, c, 2*time.Second); code != websocket.StatusGoingAway {
 		t.Fatalf("closed with %d %q", code, reason)
+	}
+}
+
+func TestServeStreamGivesAMutedSessionItsBannerLine(t *testing.T) {
+	f := newFakeDaemon()
+	f.devices[goodToken] = phone
+	at := time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC)
+	f.state = rpc.State{
+		Sessions: []domain.Session{{ID: "s1", Harness: domain.HarnessClaude, State: domain.StateWaiting, Muted: true}},
+		Events: []domain.SessionEvent{{SessionID: "s1", Kind: domain.EventUserPromptSubmit, At: at},
+			{SessionID: "s1", Kind: domain.EventWaitingForInput, Text: "Pick a port", At: at.Add(time.Minute)}},
+	}
+	_, ts := startServer(t, f, serve.Config{URL: publicURL})
+	c := openStream(t, ts, goodToken)
+	var frame serve.Frame
+	if err := json.Unmarshal(next(t, c), &frame); err != nil {
+		t.Fatal(err)
+	}
+	got := frame.State.Sessions[0]
+	if got.Banner != "waiting: Pick a port" || got.Since == nil || !got.Since.Equal(at.Add(time.Minute)) {
+		t.Fatalf("banner %q since %v", got.Banner, got.Since)
 	}
 }

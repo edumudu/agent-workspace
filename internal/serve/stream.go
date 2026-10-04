@@ -31,7 +31,8 @@ type StreamState struct {
 	Workspaces []domain.Workspace  `json:"workspaces"`
 	Tasks      []domain.Task       `json:"tasks"`
 	Worktrees  []domain.Worktree   `json:"worktrees"`
-	Sessions   []domain.Session    `json:"sessions"`
+	Sessions   []StreamSession     `json:"sessions"`
+	Limits     []StreamQuota       `json:"limits"`
 	Queue      []domain.LaunchItem `json:"queue"`
 	Sends      []domain.QueuedSend `json:"sends"`
 }
@@ -44,7 +45,8 @@ type StreamDiff struct {
 	Workspace        *domain.Workspace    `json:"workspace,omitempty"`
 	Task             *domain.Task         `json:"task,omitempty"`
 	Worktree         *domain.Worktree     `json:"worktree,omitempty"`
-	Session          *domain.Session      `json:"session,omitempty"`
+	Session          *StreamSession       `json:"session,omitempty"`
+	Limits           *[]StreamQuota       `json:"limits,omitempty"`
 	Queue            *[]domain.LaunchItem `json:"queue,omitempty"`
 	Sends            *[]domain.QueuedSend `json:"sends,omitempty"`
 }
@@ -128,8 +130,9 @@ func (s *Server) runStream(ctx context.Context, cancel context.CancelCauseFunc, 
 		return CloseUnauthorized, errRevoked.Error()
 	}
 	defer unregister()
-	diffs := s.relay(ctx, sub.Diffs)
-	if err := st.write(ctx, Frame{State: filterState(sub.State)}); err != nil {
+	v, state := newView(sub.State)
+	diffs := s.relay(ctx, v, sub.Diffs)
+	if err := st.write(ctx, Frame{State: state}); err != nil {
 		return writeFailed(ctx)
 	}
 	go func() {
@@ -157,7 +160,7 @@ func writeFailed(ctx context.Context) (websocket.StatusCode, string) {
 	return websocket.StatusInternalError, "write failed"
 }
 
-func (s *Server) relay(ctx context.Context, in <-chan rpc.Diff) <-chan *StreamDiff {
+func (s *Server) relay(ctx context.Context, v *view, in <-chan rpc.Diff) <-chan *StreamDiff {
 	out := make(chan *StreamDiff)
 	go func() {
 		defer close(out)
@@ -178,9 +181,7 @@ func (s *Server) relay(ctx context.Context, in <-chan rpc.Diff) <-chan *StreamDi
 				if diff.RevokedDevice != "" {
 					s.streams.revoke(diff.RevokedDevice)
 				}
-				if d, keep := filterDiff(diff); keep {
-					queue = append(queue, d)
-				}
+				queue = append(queue, v.apply(diff)...)
 			case send <- head:
 				queue = queue[1:]
 			}
@@ -351,43 +352,6 @@ func closeFor(cause error) (websocket.StatusCode, string) {
 	default:
 		return websocket.StatusInternalError, cause.Error()
 	}
-}
-
-func filterState(st rpc.State) *StreamState {
-	worktrees := make([]domain.Worktree, 0, len(st.Worktrees))
-	for _, wt := range st.Worktrees {
-		worktrees = append(worktrees, withoutPorts(wt))
-	}
-	return &StreamState{
-		Seq:        st.Seq,
-		Workspaces: orEmpty(st.Workspaces),
-		Tasks:      orEmpty(st.Tasks),
-		Worktrees:  worktrees,
-		Sessions:   orEmpty(st.Sessions),
-		Queue:      orEmpty(st.Queue),
-		Sends:      orEmpty(st.Sends),
-	}
-}
-
-func filterDiff(d rpc.Diff) (*StreamDiff, bool) {
-	out := &StreamDiff{
-		Seq:              d.Seq,
-		RemovedWorkspace: d.RemovedWorkspace,
-		RemovedWorktree:  d.RemovedWorktree,
-		RemovedSession:   d.RemovedSession,
-		Workspace:        d.Workspace,
-		Task:             d.Task,
-		Session:          d.Session,
-		Queue:            d.Queue,
-		Sends:            d.Sends,
-	}
-	if d.Worktree != nil {
-		wt := withoutPorts(*d.Worktree)
-		out.Worktree = &wt
-	}
-	keep := out.RemovedWorkspace != "" || out.RemovedWorktree != "" || out.RemovedSession != "" ||
-		out.Workspace != nil || out.Task != nil || out.Worktree != nil || out.Session != nil || out.Queue != nil || out.Sends != nil
-	return out, keep
 }
 
 func withoutPorts(wt domain.Worktree) domain.Worktree {
