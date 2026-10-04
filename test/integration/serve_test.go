@@ -39,7 +39,8 @@ func startServeDaemon(t *testing.T) (string, *rpc.Client) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	d, err := daemon.New(store, os.Getpid(), daemon.WithWorkspaces(wsfs.FS{}, gitadapter.Inspector{}))
+	d, err := daemon.New(store, os.Getpid(), daemon.WithWorkspaces(wsfs.FS{}, gitadapter.Inspector{}),
+		daemon.WithTranscripts(daemon.Transcripts(wsfs.Transcripts{}), wsfs.Transcripts{}))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -143,6 +144,9 @@ func TestServeAgainstARealDaemonPairsAnswersAndClosesARevokedStream(t *testing.T
 	if status, _ := request(t, ts, "POST", "/api/v1/sessions/nope/end", paired.Token, ""); status != http.StatusNotFound {
 		t.Fatalf("ending an unknown session: %d", status)
 	}
+	if status, body := request(t, ts, "GET", "/api/v1/sessions/nope/messages?limit=10", paired.Token, ""); status != http.StatusNotFound || !strings.Contains(string(body), `"not_found"`) {
+		t.Fatalf("messages of an unknown session: %d %s", status, body)
+	}
 
 	wsURL := "ws" + strings.TrimPrefix(ts.URL, "http") + "/api/v1/stream"
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -166,6 +170,17 @@ func TestServeAgainstARealDaemonPairsAnswersAndClosesARevokedStream(t *testing.T
 	var frame serve.Frame
 	if err := json.Unmarshal(data, &frame); err != nil || frame.State == nil || frame.State.Sessions == nil {
 		t.Fatalf("first frame %s (%v)", data, err)
+	}
+	watch, _ := json.Marshal(map[string]any{"watch": "nope", "after": 0})
+	if err := conn.Write(ctx, websocket.MessageText, watch); err != nil {
+		t.Fatal(err)
+	}
+	if _, data, err = conn.Read(ctx); err != nil {
+		t.Fatal(err)
+	}
+	frame = serve.Frame{}
+	if err := json.Unmarshal(data, &frame); err != nil || frame.Watch != "nope" || frame.Error == nil || frame.Error.Code != rpc.CodeNotFound {
+		t.Fatalf("watching an unknown session: %s (%v)", data, err)
 	}
 
 	if err := c.Call(context.Background(), rpc.MethodDeviceRevoke, rpc.DeviceRevokeParams{ID: paired.Device.ID}, nil); err != nil {
