@@ -174,6 +174,20 @@ describe("Notification state in Settings", () => {
     expect(screen.queryByText(/are on for this device/)).not.toBeInTheDocument();
   });
 
+  it("stays on with Turn off and an error when the browser refuses to unsubscribe", async () => {
+    const { push, env } = setup();
+    push.current = "granted";
+    push.existing = true;
+    push.unsubscribe = async () => {
+      throw new Error("unsubscribe failed");
+    };
+    render(<App env={env} />);
+    await userEvent.click(await screen.findByRole("button", { name: "Turn off" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("unsubscribe failed");
+    expect(screen.getByRole("button", { name: "Turn off" })).toBeEnabled();
+    expect(screen.queryByRole("button", { name: "Enable notifications" })).not.toBeInTheDocument();
+  });
+
   it("shows blocked, not on, when permission is denied", () => {
     const { push, env } = setup();
     push.current = "denied";
