@@ -7,7 +7,7 @@ Tests: `go test ./internal/serve/ ./cmd/agentws/ -run Serve` (an in-memory daemo
 ## Layers
 
 - depguard: `internal/serve` imports only `rpc` and `domain` from `internal/`, plus the standard library and `github.com/coder/websocket`. No `os/exec`: `cmd/agentws/serve.go` parses the flags, reads `[serve] url`, and passes a `Dial` that starts the daemon the way the TUI does (`rpc.Connect` with `spawn`).
-- `serve.Daemon` is the slice of `*rpc.Client` serve uses (`Call`, `Subscribe`, `Close`). Every HTTP request dials its own connection and closes it; every stream holds its own connection, so a slow phone never stalls another client's reader.
+- `serve.Daemon` is the slice of `*rpc.Client` serve uses (`Call`, `Subscribe`, `WatchTranscript`, `Close`). Every HTTP request dials its own connection and closes it; every stream holds its own connection, so a slow phone never stalls another client's reader.
 
 ## Listening
 
@@ -24,6 +24,7 @@ Every response is JSON with `Cache-Control: no-store`. An error is `{"error":{"c
 | `GET /api/v1/hello` | no | none | → `{"api":"v1","build"}` (serve's build, which is the daemon's) |
 | `POST /api/v1/pair` | no | `pair.redeem` | `{"code","name"}` → `{"device":{"id","name","created_at","last_seen"},"token"}` |
 | `GET /api/v1/workspaces` | yes | `workspace.list` | → `{"workspaces":[Workspace],"last_used"}` |
+| `GET /api/v1/sessions/{id}/messages?before=&limit=` | yes | `transcript.page` | → `{"messages":[Message],"before"}`; both query values optional integers |
 | `POST /api/v1/sessions/{id}/end` | yes | `session.end` | → the ended `Session` |
 | `POST /api/v1/sessions/{id}/resume` | yes | `session.resume` | → the resumed `Session` |
 | `POST /api/v1/sessions/{id}/mute` | yes | `session.mute` | `{"muted":bool}` (required) → `{}` |
@@ -31,7 +32,7 @@ Every response is JSON with `Cache-Control: no-store`. An error is `{"error":{"c
 
 - Auth is `Authorization: Bearer <token>`, checked with `device.check` on the request's own connection before the method runs, and then against the set of revoked device IDs.
 - `pair` passes the caller's address as `addr`: `RemoteAddr`, or the last `X-Forwarded-For` entry (else `X-Real-IP`) when the peer is a loopback or private address, which is where a proxy in front of serve sits. A forged header from a direct client is ignored.
-- Domain structs (`Workspace`, `Session`, ...) encode with their Go field names, as in the socket protocol; the goldens pin them.
+- Domain structs (`Workspace`, `Session`, ...) encode with their Go field names, as in the socket protocol; the goldens pin them. A `Message` is `rpc.Message`: `{"id","cursor","turn","role","text","tool":{"name","summary","status"},"at"}`; keep messages by `id` and replace by `id` (see [internal/rpc/](../rpc/AGENTS.md)).
 - Bodies are capped at 64 KiB.
 
 ### Adding an endpoint
@@ -47,6 +48,8 @@ The `/` fallback: `Handler(fallback)` mounts `fallback` at `/` (the embedded PWA
 - The `Origin` header must equal the public URL's origin (`--url`, else `[serve] url`; a URL without a scheme means `https`; default ports are ignored). Another or a missing `Origin`, or no public URL, is refused with 403 before the upgrade.
 - The first client frame must be `{"token":"<device token>"}` within 5 s. A wrong, missing or late token closes the socket with code 4401.
 - Then the server sends `{"state":{"seq","workspaces","tasks","worktrees","sessions","queue","sends"}}` and one `{"diff":{...}}` per change that touches those: a diff sets `seq` and one of `workspace`, `task`, `worktree`, `session`, `queue` (whole list), `sends` (whole list), `removed_workspace`, `removed_worktree`, `removed_session`. Events, subagents, review drafts and comments are dropped, so `seq` has gaps. Worktrees come without `Ports`.
+- `{"watch":"<session>","after":<cursor>}` adds a session's messages (`after` is the largest `cursor` the client holds, 0 for all) through `transcript.watch` on the stream's connection. Frames: `{"transcript":{"session","messages":[...]}}` first with the messages after the cursor, then one per change; `"reset":true` means the session moved to another transcript file (drop its cursor; the messages that follow start the new file), and `"closed":true` means the session is gone and the watch ended. Watching a session again replaces its watch; at most 32 per stream.
+- `{"unwatch":"<session>"}` ends it; closing the stream ends all of them. A failed watch gets `{"error":{"code","message"},"watch":"<session>"}`.
 - An unknown client frame gets `{"error":{"code":"bad_request","message"}}` and the stream stays open.
 - Close codes: 4401 unauthorized or revoked, 1013 the daemon went away (reconnect), 1001 serve is stopping, 1011 a write failed.
 - Revocation: a stream subscribes before it runs `device.check` on the same connection, so the daemon's loop orders them: a revoke before the check fails it, a revoke after reaches the stream's own subscription as a `revoked_device` diff. Either that diff or the one on the `Start` connection cancels every open stream of that device (4401 at once) and records the ID, so REST checks that answered just before it still fail. The stream does not depend on the `Start` connection, which may be reconnecting after a daemon restart.

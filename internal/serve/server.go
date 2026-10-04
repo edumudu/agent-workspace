@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -25,6 +26,7 @@ const (
 type Daemon interface {
 	Call(ctx context.Context, method string, params, out any) error
 	Subscribe(ctx context.Context) (rpc.Subscription, error)
+	WatchTranscript(ctx context.Context, session string, after int64) (rpc.TranscriptWatch, error)
 	Close() error
 }
 
@@ -74,6 +76,7 @@ func New(cfg Config) (*Server, error) {
 func (s *Server) routes() []route {
 	return []route{
 		{"GET /api/v1/workspaces", s.workspaces},
+		{"GET /api/v1/sessions/{id}/messages", messages},
 		{"POST /api/v1/sessions/{id}/end", sessionAction(rpc.MethodEndSession, refParams)},
 		{"POST /api/v1/sessions/{id}/resume", sessionAction(rpc.MethodResumeSession, refParams)},
 		{"POST /api/v1/sessions/{id}/mute", sessionAction(rpc.MethodSessionMute, muteParams)},
@@ -179,6 +182,31 @@ func (s *Server) workspaces(r *http.Request, d Daemon) (any, error) {
 	if out.Workspaces == nil {
 		out.Workspaces = []domain.Workspace{}
 	}
+	return out, nil
+}
+
+func messages(r *http.Request, d Daemon) (any, error) {
+	p := rpc.TranscriptPageParams{Session: r.PathValue("id")}
+	q := r.URL.Query()
+	if v := q.Get("before"); v != "" {
+		n, err := strconv.ParseInt(v, 10, 64)
+		if err != nil {
+			return nil, &rpc.Error{Code: rpc.CodeBadRequest, Message: "before is a byte offset: " + v}
+		}
+		p.Before = n
+	}
+	if v := q.Get("limit"); v != "" {
+		n, err := strconv.Atoi(v)
+		if err != nil {
+			return nil, &rpc.Error{Code: rpc.CodeBadRequest, Message: "limit is a number of messages: " + v}
+		}
+		p.Limit = n
+	}
+	var out rpc.TranscriptPage
+	if err := d.Call(r.Context(), rpc.MethodTranscriptPage, p, &out); err != nil {
+		return nil, err
+	}
+	out.Messages = orEmpty(out.Messages)
 	return out, nil
 }
 

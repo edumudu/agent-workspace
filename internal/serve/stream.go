@@ -18,6 +18,7 @@ const (
 	CloseUnauthorized  websocket.StatusCode = 4401
 	streamReadLimit                         = 64 << 10
 	streamWriteTimeout                      = 10 * time.Second
+	maxWatches                              = 32
 )
 
 var (
@@ -49,19 +50,38 @@ type StreamDiff struct {
 }
 
 type Frame struct {
-	State *StreamState `json:"state,omitempty"`
-	Diff  *StreamDiff  `json:"diff,omitempty"`
-	Error *rpc.Error   `json:"error,omitempty"`
+	State      *StreamState     `json:"state,omitempty"`
+	Diff       *StreamDiff      `json:"diff,omitempty"`
+	Transcript *TranscriptFrame `json:"transcript,omitempty"`
+	Error      *rpc.Error       `json:"error,omitempty"`
+	Watch      string           `json:"watch,omitempty"`
+}
+
+type TranscriptFrame struct {
+	Session  string        `json:"session"`
+	Messages []rpc.Message `json:"messages"`
+	Reset    bool          `json:"reset,omitempty"`
+	Closed   bool          `json:"closed,omitempty"`
 }
 
 type clientFrame struct {
-	Token string `json:"token"`
+	Token   string  `json:"token"`
+	Watch   *string `json:"watch"`
+	After   int64   `json:"after"`
+	Unwatch *string `json:"unwatch"`
 }
 
 type stream struct {
 	conn    *websocket.Conn
 	readCtx context.Context
+	d       Daemon
 	writeMu sync.Mutex
+	watchMu sync.Mutex
+	watches map[string]*watch
+}
+
+type watch struct {
+	cancel context.CancelFunc
 }
 
 func (s *Server) stream(w http.ResponseWriter, r *http.Request) {
@@ -101,6 +121,8 @@ func (s *Server) runStream(ctx context.Context, cancel context.CancelCauseFunc, 
 		return code, reason
 	}
 	defer func() { _ = d.Close() }()
+	st.d = d
+	defer st.unwatchAll()
 	unregister, ok := s.streams.add(device.ID, cancel)
 	if !ok {
 		return CloseUnauthorized, errRevoked.Error()
@@ -186,11 +208,85 @@ func (st *stream) readLoop(readCtx, ctx context.Context) error {
 }
 
 func (st *stream) handle(ctx context.Context, data []byte) error {
-	var f map[string]json.RawMessage
+	var f clientFrame
 	if json.Unmarshal(data, &f) != nil {
 		return st.write(ctx, Frame{Error: &rpc.Error{Code: rpc.CodeBadRequest, Message: "frames are JSON objects"}})
 	}
-	return st.write(ctx, Frame{Error: &rpc.Error{Code: rpc.CodeBadRequest, Message: "unknown frame"}})
+	switch {
+	case f.Watch != nil && *f.Watch != "":
+		return st.watch(ctx, *f.Watch, f.After)
+	case f.Unwatch != nil && *f.Unwatch != "":
+		st.unwatch(*f.Unwatch, nil)
+		return nil
+	}
+	return st.write(ctx, Frame{Error: &rpc.Error{Code: rpc.CodeBadRequest, Message: `send {"watch": "<session>", "after": <cursor>} or {"unwatch": "<session>"}`}})
+}
+
+func (st *stream) watch(ctx context.Context, session string, after int64) error {
+	st.watchMu.Lock()
+	if old := st.watches[session]; old == nil && len(st.watches) >= maxWatches {
+		st.watchMu.Unlock()
+		return st.write(ctx, Frame{Watch: session, Error: &rpc.Error{Code: rpc.CodeBadRequest, Message: "too many watched sessions on one stream"}})
+	} else if old != nil {
+		old.cancel()
+	}
+	wctx, cancel := context.WithCancel(ctx)
+	w := &watch{cancel: cancel}
+	if st.watches == nil {
+		st.watches = map[string]*watch{}
+	}
+	st.watches[session] = w
+	st.watchMu.Unlock()
+	go st.forward(wctx, w, session, after)
+	return nil
+}
+
+func (st *stream) forward(ctx context.Context, w *watch, session string, after int64) {
+	defer st.unwatch(session, w)
+	tw, err := st.d.WatchTranscript(ctx, session, after)
+	if err != nil {
+		if ctx.Err() == nil {
+			_ = st.write(ctx, Frame{Watch: session, Error: apiError(err)})
+		}
+		return
+	}
+	if st.write(ctx, Frame{Transcript: &TranscriptFrame{Session: session, Messages: orEmpty(tw.Messages)}}) != nil {
+		return
+	}
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case ev, ok := <-tw.Events:
+			if !ok {
+				return
+			}
+			out := &TranscriptFrame{Session: session, Messages: orEmpty(ev.Messages), Reset: ev.Reset, Closed: ev.Closed}
+			if st.write(ctx, Frame{Transcript: out}) != nil || ev.Closed {
+				return
+			}
+		}
+	}
+}
+
+func (st *stream) unwatch(session string, only *watch) {
+	st.watchMu.Lock()
+	defer st.watchMu.Unlock()
+	w := st.watches[session]
+	if w == nil || (only != nil && w != only) {
+		return
+	}
+	w.cancel()
+	delete(st.watches, session)
+}
+
+func (st *stream) unwatchAll() {
+	st.watchMu.Lock()
+	defer st.watchMu.Unlock()
+	for session, w := range st.watches {
+		w.cancel()
+		delete(st.watches, session)
+	}
 }
 
 func (st *stream) write(ctx context.Context, f Frame) error {
