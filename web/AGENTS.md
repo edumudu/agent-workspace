@@ -6,7 +6,7 @@ The phone app: a PWA that `agentws serve` embeds and serves at `/` (ADR [0046](.
 
 - `npm ci` once, then `npm test` (Vitest, jsdom) and `npm run typecheck`.
 - `make web` (from the repo root) builds into `internal/serve/dist`. The shell is written as `app.html`; the committed `index.html` there is the placeholder a Node-less `go build` embeds. Then `make build` gives a binary that serves the app.
-- `npm run dev` runs Vite; `AGENTWS_API=http://127.0.0.1:7420 npm run dev` proxies `/api` (and the stream) to a running `agentws serve`. `npm run fake` uses the fake API in `fake-api.ts` instead. The dev server binds every interface and accepts `.ts.net` hosts.
+- `npm run dev` runs Vite; `AGENTWS_API=http://127.0.0.1:7420 npm run dev` proxies `/api` (and the stream) to a running `agentws serve`; add `AGENTWS_API_INSECURE=1` to accept its `--self-signed` certificate. `npm run fake` uses the fake API in `fake-api.ts` instead. The dev server binds every interface and accepts `.ts.net` hosts.
 - `npm run icons` redraws the PNG icons in `public/` from `public/icon.svg` with Playwright.
 - `scripts/web-screenshot` (see [scripts/](../scripts/AGENTS.md)) takes the PR screenshots.
 

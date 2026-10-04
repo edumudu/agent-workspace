@@ -37,8 +37,8 @@ async function installWorker(build: string): Promise<void> {
   if (ready()) {
     return;
   }
-  await new Promise<void>((resolve) => {
-    const timer = window.setTimeout(resolve, installTimeout);
+  await new Promise<void>((resolve, reject) => {
+    const timer = window.setTimeout(() => reject(new Error("the worker for " + build + " did not activate")), installTimeout);
     const watch = (worker: ServiceWorker | null) =>
       worker?.addEventListener("statechange", () => {
         if (ready()) {
@@ -55,18 +55,20 @@ function watchBuild() {
   if (!import.meta.env.PROD) {
     return;
   }
-  let reported = "";
-  const check = () =>
-    checkBuild({
-      hello: async () => {
-        const h = await hello(apiFetch);
-        reported = h.build;
-        return h;
-      },
+  let running: Promise<unknown> | null = null;
+  const check = () => {
+    running ??= checkBuild({
+      hello: () => hello(apiFetch),
       servedBuild: () => buildOfWorker(navigator.serviceWorker?.controller?.scriptURL),
       install: installWorker,
-      reload: () => reloadOnceFor(reported),
-    }).catch(() => undefined);
+      reload: reloadOnceFor,
+    })
+      .catch(() => undefined)
+      .finally(() => {
+        running = null;
+      });
+    return running;
+  };
   void check();
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible") {

@@ -51,7 +51,7 @@ export default defineConfig({
   server: {
     host: true,
     allowedHosts: [".ts.net"],
-    proxy: api ? { "/api": { target: api, ws: true, secure: false } } : undefined,
+    proxy: api ? { "/api": { target: api, ws: true, secure: process.env.AGENTWS_API_INSECURE !== "1" } } : undefined,
   },
   test: {
     environment: "jsdom",

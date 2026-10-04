@@ -4,7 +4,7 @@ export type BuildDeps = {
   hello: () => Promise<Hello>;
   servedBuild: () => string | null;
   install: (build: string) => Promise<void>;
-  reload: () => void;
+  reload: (build: string) => void;
 };
 
 export type BuildCheck = "first" | "current" | "reloading";
@@ -30,6 +30,6 @@ export async function checkBuild(deps: BuildDeps): Promise<{ hello: Hello; resul
   if (served === null) {
     return { hello: h, result: "first" };
   }
-  deps.reload();
+  deps.reload(h.build);
   return { hello: h, result: "reloading" };
 }

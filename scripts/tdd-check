@@ -173,7 +173,7 @@ if [ -n "$web_units" ]; then
   if [ ! -f web/package.json ]; then
     echo "tdd: no web/package.json on base, so these web tests cannot pass there:" $web_units
   else
-    read -r -a web_install <<<"${TDD_WEB_INSTALL:-npm ci --no-audit --no-fund}"
+    read -r -a web_install <<<"${TDD_WEB_INSTALL:-npm ci --no-audit --no-fund --ignore-scripts}"
     read -r -a web_test <<<"${TDD_WEB_TEST:-npx vitest run}"
     if ! (cd web && "${web_install[@]}"); then
       echo "tdd: FAIL. ${web_install[*]} failed in web on base"

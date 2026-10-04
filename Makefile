@@ -31,6 +31,6 @@ dev:
 	SEED=$(SEED) FAKES=$(FAKES) ./scripts/dev
 
 web:
-	cd web && npm ci --no-audit --no-fund
+	cd web && npm ci --no-audit --no-fund --ignore-scripts
 	find internal/serve/dist -mindepth 1 ! -name index.html -delete
 	cd web && npm run build
