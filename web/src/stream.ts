@@ -146,10 +146,10 @@ export type StreamDiff = {
 export type Message = {
   id: string;
   cursor: number;
-  turn: number;
-  role: string;
-  text: string;
-  tool?: { name: string; summary: string; status: string };
+  turn?: string;
+  role: "user" | "assistant" | "tool" | "system" | (string & {});
+  text?: string;
+  tool?: { name: string; summary?: string; status: "running" | "done" | "failed" | (string & {}) };
   at: string;
 };
 
