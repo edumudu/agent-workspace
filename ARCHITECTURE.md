@@ -27,13 +27,14 @@ internal/adapters/...  tmux, git, github, linear, claude, codex, sqlite, notify,
 internal/daemon        socket server, event loop, workers; wires adapters into app
 internal/rpc           protocol types + client (used by tui, hook, cli, nvim)
 internal/tui           Bubble Tea models; talks only to rpc.Client
+internal/serve         agentws serve: HTTP and WebSocket API for the phone app; talks only to rpc
 nvim/                  Lua plugin
 scripts/               repo tooling: lint-comments, lint-agents, tdd-check, mutate, bench-hook, dev
 test/e2e               testscript suite with fake claude, codex and gh
 test/integration       the daemon with its real adapters
 ```
 
-Dependency rule: `domain` ← `app` ← `adapters`/`daemon`, and `tui` → `rpc` only. `golangci-lint depguard` enforces it (rules in `.golangci.yml`), so breaking it fails CI. `tui` may import `domain` types.
+Dependency rule: `domain` ← `app` ← `adapters`/`daemon`, and `tui` → `rpc` only, as does `serve`. `golangci-lint depguard` enforces it (rules in `.golangci.yml`), so breaking it fails CI. `tui` may import `domain` types.
 
 - **Domain** holds every rule as a pure, table-tested function: the session state machine (`Session.Apply`), naming, banners, cleanup decisions, quotas and fallback, discovery, worktree attribution, ports, disk and review.
 - **App** holds the use cases and the port interfaces the adapters implement; its tests use in-memory fakes.
@@ -56,6 +57,7 @@ Dependency rule: `domain` ← `app` ← `adapters`/`daemon`, and `tui` → `rpc`
 | Domain rules: state machine, discovery, attribution, review | [internal/domain/AGENTS.md](internal/domain/AGENTS.md) |
 | Use cases, ports, cleanup execution, disk sizes | [internal/app/AGENTS.md](internal/app/AGENTS.md) |
 | Sidebar, card, limits bar, theme, review viewer, disk view | [internal/tui/AGENTS.md](internal/tui/AGENTS.md) |
+| Remote API for the phone app (`agentws serve`) | [internal/serve/AGENTS.md](internal/serve/AGENTS.md) |
 | Harness adapters, notify, procs, fs, github, linear, sqlite | [internal/adapters/AGENTS.md](internal/adapters/AGENTS.md) |
 | Repo facts, worktree listing, review diffs, turns, hunks | [internal/adapters/git/AGENTS.md](internal/adapters/git/AGENTS.md) |
 | tmux server and keys | [internal/adapters/tmux/AGENTS.md](internal/adapters/tmux/AGENTS.md) |
