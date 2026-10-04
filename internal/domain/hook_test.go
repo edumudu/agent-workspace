@@ -41,7 +41,7 @@ func TestHookEventNamesMapToHarnessEvents(t *testing.T) {
 		{HarnessOmp, "session_stop", EventStop, true},
 		{HarnessOmp, "session_shutdown", EventSessionEnd, true},
 		{HarnessOmp, "turn_end", "", false},
-		{HarnessOmp, "agent_end", "", false},
+		{HarnessOmp, "agent_end", EventStop, true},
 		{HarnessOmp, "session_switch", "", false},
 		{HarnessOmp, "Stop", "", false},
 		{"other", "Stop", "", false},

@@ -224,6 +224,8 @@ const fromToolCall = run("tool_call", { toolName: "bash", input: { command: "ls"
 console.log("tool_call returned " + typeof fromToolCall);
 await run("tool_approval_resolved", { approved: true });
 await run("tool_approval_resolved", { approved: false, reason: "no" });
+await run("agent_end", { willContinue: true });
+await run("agent_end", {});
 await run("session_stop", { last_assistant_message: { content: [{ type: "text", text: "all done" }] } });
 await new Promise(r => setTimeout(r, 300));
 console.log(calls.map(c => c[0]).join(","));
@@ -250,12 +252,13 @@ func TestHookFileSendsTheEventsUnderBun(t *testing.T) {
 	if err != nil {
 		t.Fatalf("bun: %v\n%s", err, out)
 	}
-	if want := "tool_call returned undefined\nagent_start,session_shutdown,session_start,session_stop,tool_approval_requested,tool_approval_resolved,tool_call,tool_result\n"; string(out) != want {
+	if want := "tool_call returned undefined\nagent_end,agent_start,session_shutdown,session_start,session_stop,tool_approval_requested,tool_approval_resolved,tool_call,tool_result\n"; string(out) != want {
 		t.Errorf("bun printed %q, want %q", out, want)
 	}
 	lines := strings.Split(strings.TrimSpace(read(t, log)), "\n")
 	slices.Sort(lines)
 	want := []string{
+		`omp agent_end {"session_id":"s-1","cwd":"/work/api","model":"anthropic/sonnet","effort":"high"}`,
 		`omp session_stop {"session_id":"s-1","cwd":"/work/api","model":"anthropic/sonnet","effort":"high","last_assistant_message":"all done"}`,
 		`omp tool_approval_resolved {"session_id":"s-1","cwd":"/work/api","model":"anthropic/sonnet","effort":"high","message":"no"}`,
 		`omp tool_call {"session_id":"s-1","cwd":"/work/api","model":"anthropic/sonnet","effort":"high","tool_name":"bash","tool_input":{"command":"ls"}}`,

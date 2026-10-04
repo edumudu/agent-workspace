@@ -2,7 +2,7 @@
 import { spawn } from "node:child_process";
 
 const agentws = "/opt/agent's bin/agentws";
-const events = ["agent_start", "session_shutdown", "session_start", "session_stop", "tool_approval_requested", "tool_approval_resolved", "tool_call", "tool_result"];
+const events = ["agent_end", "agent_start", "session_shutdown", "session_start", "session_stop", "tool_approval_requested", "tool_approval_resolved", "tool_call", "tool_result"];
 
 function text(message: any): string | undefined {
 	if (!message) return undefined;
@@ -29,6 +29,7 @@ export default function (pi: any) {
 	for (const name of events) {
 		pi.on(name, (event: any, ctx: any) => {
 			if (name === "tool_approval_resolved" && event?.approved !== false) return;
+			if (name === "agent_end" && event?.willContinue) return;
 			const sent = send(name, {
 				session_id: ctx?.sessionManager?.getSessionId?.(),
 				cwd: ctx?.cwd,

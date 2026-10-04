@@ -52,14 +52,13 @@ func TestOmpSessionLaunchesAndMovesOnItsOwnHookNames(t *testing.T) {
 		t.Fatalf("after agent_start: state %s model %q effort %q", got.State, got.Model, got.Effort)
 	}
 	fire("turn_end", `{}`)
-	fire("agent_end", `{}`)
 	fire("tool_approval_requested", `{"tool_name":"bash"}`)
 	if got := nextSession(t, sub.Diffs); got.State != domain.StatePermission {
-		t.Fatalf("turn_end or agent_end moved the session: state %s", got.State)
+		t.Fatalf("after approval: state %s", got.State)
 	}
-	fire("session_stop", `{"last_assistant_message":"Added it."}`)
+	fire("agent_end", `{}`)
 	if got := nextSession(t, sub.Diffs); got.State != domain.StateDone {
-		t.Fatalf("after session_stop: state %s", got.State)
+		t.Fatalf("after agent_end: state %s", got.State)
 	}
 }
 
