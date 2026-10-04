@@ -1,10 +1,13 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { Fetch } from "./api";
-import { loadAuth, saveAuth, type Auth, type KeyValue } from "./auth";
+import { clearAuth, loadAuth, saveAuth, type Auth, type KeyValue } from "./auth";
 import { pairCodeFromHash } from "./display";
+import { parseRoute } from "./route";
 import { Install } from "./screens/Install";
 import { Pair } from "./screens/Pair";
-import { Sessions } from "./screens/Sessions";
+import { SessionScreen } from "./screens/Session";
+import { SessionList } from "./screens/SessionList";
+import { useStream, useStreamClient, type OpenSocket } from "./stream";
 
 export type AppEnv = {
   fetch: Fetch;
@@ -13,13 +16,58 @@ export type AppEnv = {
   hash: string;
   host: string;
   userAgent: string;
+  openStream: OpenSocket;
+  retryDelay?: (attempt: number) => number;
+  now: () => number;
+  onHashChange: (listener: (hash: string) => void) => () => void;
 };
+
+function useNow(now: () => number, every: number): number {
+  const [value, setValue] = useState(now);
+  useEffect(() => {
+    setValue(now());
+    const timer = setInterval(() => setValue(now()), every);
+    return () => clearInterval(timer);
+  }, [now, every]);
+  return value;
+}
+
+function Connected({ env, auth, onUnauthorized }: { env: AppEnv; auth: Auth; onUnauthorized: () => void }) {
+  const client = useStreamClient({ open: env.openStream, token: auth.token, retryDelay: env.retryDelay, now: env.now });
+  const snapshot = useStream(client);
+  const [hash, setHash] = useState(env.hash);
+  const now = useNow(env.now, snapshot.status === "offline" ? 1000 : 30000);
+  const { onHashChange } = env;
+
+  useEffect(() => onHashChange(setHash), [onHashChange]);
+
+  useEffect(() => {
+    if (snapshot.status === "unauthorized") {
+      onUnauthorized();
+    }
+  }, [snapshot.status, onUnauthorized]);
+
+  const route = parseRoute(hash);
+  const retry = () => client.retryNow();
+  if (route.screen === "session") {
+    return <SessionScreen id={route.id} snapshot={snapshot} now={now} onRetry={retry} />;
+  }
+  return <SessionList host={env.host} snapshot={snapshot} now={now} onRetry={retry} />;
+}
 
 export function App({ env }: { env: AppEnv }) {
   const [auth, setAuth] = useState<Auth | null>(() => loadAuth(env.storage));
   const code = useMemo(() => pairCodeFromHash(env.hash), [env.hash]);
+  const { storage } = env;
+  const unpair = useMemo(
+    () => () => {
+      clearAuth(storage);
+      setAuth(null);
+    },
+    [storage],
+  );
   if (auth) {
-    return <Sessions auth={auth} host={env.host} />;
+    return <Connected env={env} auth={auth} onUnauthorized={unpair} />;
   }
   if (!env.installed) {
     return <Install code={code} host={env.host} />;
