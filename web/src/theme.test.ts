@@ -1,7 +1,9 @@
 import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
-const css = readFileSync(new URL("./theme.css", import.meta.url), "utf8");
+const css = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "theme.css"), "utf8");
 
 function tokens(): Record<string, string> {
   const root = css.match(/:root\s*{([^}]*)}/)?.[1] ?? "";

@@ -7,7 +7,7 @@ const golden = (name: string) => JSON.parse(readFileSync(new URL("../../internal
 const goldenState = (): StreamState => (golden("stream-state.json") as Frame).state as StreamState;
 const goldenDiffs = (): Frame[] => golden("stream-diffs.json") as Frame[];
 
-function started(retryDelay = () => 5) {
+function started(retryDelay: (attempt: number) => number = () => 5) {
   const sockets = new FakeSockets();
   const client = new StreamClient({ open: sockets.open, token: "t0k", retryDelay });
   client.start();
