@@ -24,6 +24,7 @@ type PromptChoice struct {
 type Prompt struct {
 	Text    string         `json:"text"`
 	Choices []PromptChoice `json:"choices"`
+	Raw     string         `json:"raw,omitempty"`
 }
 
 func (c *Client) SessionPrompt(ctx context.Context, session string) (Prompt, error) {
