@@ -46,7 +46,9 @@ async function installWorker(build: string): Promise<void> {
           resolve();
         }
       });
-    watch(registration.installing ?? registration.waiting);
+    for (const worker of [registration.installing, registration.waiting, registration.active]) {
+      watch(worker);
+    }
     registration.addEventListener("updatefound", () => watch(registration.installing));
   });
 }
