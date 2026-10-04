@@ -14,6 +14,7 @@ func TestServePromptReturnsTheDialogAndItsChoices(t *testing.T) {
 	f := newFakeDaemon()
 	f.devices[goodToken] = phone
 	f.results[rpc.MethodSessionPrompt] = rpc.Prompt{
+		ID:      "9f2c4a1b7d3e",
 		Text:    "Bash command\n\ntouch notes.txt\n\nDo you want to proceed?",
 		Choices: []rpc.PromptChoice{{ID: "1", Label: "Yes"}, {ID: "2", Label: "Yes, and don't ask again"}, {ID: "3", Label: "No"}},
 	}
@@ -89,5 +90,19 @@ func TestServeAnswerRefusesABodyWithoutAChoice(t *testing.T) {
 	}
 	if slices.Contains(f.methods(), rpc.MethodSessionAnswer) {
 		t.Fatal("a bad body reached session.answer")
+	}
+}
+
+func TestServeAnswerPassesThePromptItAnswersSoTheDaemonCanRefuseAnotherOne(t *testing.T) {
+	f := newFakeDaemon()
+	f.devices[goodToken] = phone
+	_, ts := startServer(t, f, serve.Config{URL: publicURL})
+	status, body := do(t, ts, "POST", "/api/v1/sessions/s1/answer", goodToken, `{"choice":"2","prompt":"9f2c4a1b7d3e"}`)
+	if status != http.StatusOK {
+		t.Fatalf("status %d %s", status, body)
+	}
+	params := f.paramsOf(rpc.MethodSessionAnswer)
+	if len(params) != 1 || string(params[0]) != `{"session":"s1","choice":"2","prompt":"9f2c4a1b7d3e"}` {
+		t.Fatalf("session.answer params %s", params)
 	}
 }

@@ -114,7 +114,7 @@ describe("the permission card", () => {
     live(sockets, asking);
     await userEvent.click(await screen.findByRole("button", { name: "Yes, and don't ask again" }));
     await waitFor(() => expect(posts(server, answerPath)).toHaveLength(1));
-    expect(posts(server, answerPath)[0].body).toEqual({ choice: "2" });
+    expect(posts(server, answerPath)[0].body).toEqual({ choice: "2", prompt: "9f2c4a1b7d3e" });
     expect(await screen.findByText("Answered: Yes, and don't ask again")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Yes" })).not.toBeInTheDocument();
   });
