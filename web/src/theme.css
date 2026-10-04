@@ -7,6 +7,7 @@
   --base: #eff1f5;
   --selected: #dce0e8;
   --blue: #1e66f5;
+  --link: #1858d4;
   --peach: #fe640b;
   --green: #40a02b;
   --red: #d20f39;
@@ -655,7 +656,7 @@ code {
 }
 
 .msg-assistant a {
-  color: var(--blue);
+  color: var(--link);
 }
 
 .msg-system {
@@ -811,6 +812,8 @@ code {
   list-style: none;
   margin: 0;
   padding: 0;
+  max-height: 30dvh;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 6px;

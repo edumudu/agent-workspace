@@ -147,9 +147,10 @@ function Chat({ id, client, api, status, children }: { id: string; client: Strea
 
   useEffect(() => {
     let alive = true;
+    const gen = generation.current;
     messagesPage({ fetch, token }, id).then(
       (page) => {
-        if (alive) {
+        if (alive && gen === generation.current) {
           setLoadError("");
           setT((cur) => withPage(cur, page));
         }
@@ -173,6 +174,7 @@ function Chat({ id, client, api, status, children }: { id: string; client: Strea
           setWatchError("");
           if (tf.reset) {
             generation.current++;
+            setAttempt((n) => n + 1);
           }
           setT((cur) => withFrame(cur, tf));
         } else if (frame.error && frame.watch === id) {
@@ -304,9 +306,10 @@ function Composer({ session, api, sends }: { session: Session; api: Authed; send
     }
     setPosting(true);
     setError("");
+    const sent = draft;
     try {
-      await sendMessage(api, session.ID, draft);
-      setDraft("");
+      await sendMessage(api, session.ID, sent);
+      setDraft((cur) => (cur === sent ? "" : cur));
     } catch (err) {
       setError(errorText(err));
     } finally {
