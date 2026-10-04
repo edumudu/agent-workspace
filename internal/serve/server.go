@@ -81,6 +81,8 @@ func (s *Server) routes() []route {
 		{"POST /api/v1/sessions/{id}/resume", sessionAction(rpc.MethodResumeSession, refParams)},
 		{"POST /api/v1/sessions/{id}/mute", sessionAction(rpc.MethodSessionMute, muteParams)},
 		{"POST /api/v1/sessions/{id}/rename", sessionAction(rpc.MethodSessionRename, renameParams)},
+		{"GET /api/v1/push/key", pushKey},
+		{"POST /api/v1/push/subscribe", pushSubscribe},
 	}
 }
 
@@ -142,11 +144,12 @@ func (s *Server) authed(h func(r *http.Request, d Daemon) (any, error)) http.Han
 			return
 		}
 		defer func() { _ = d.Close() }()
-		if _, err := s.check(r.Context(), d, token); err != nil {
+		dev, err := s.check(r.Context(), d, token)
+		if err != nil {
 			writeError(w, err)
 			return
 		}
-		out, err := h(r, d)
+		out, err := h(r.WithContext(context.WithValue(r.Context(), deviceKey{}, dev)), d)
 		if err != nil {
 			writeError(w, err)
 			return
