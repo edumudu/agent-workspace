@@ -99,6 +99,8 @@ type state struct {
 	noticeSubs      map[*conn]uint64
 	usage           map[string]*usageJob
 	attn            *attention
+	co              *domain.Coalescer
+	pushes          chan domain.PushMessage
 	requestUsage    func(sessionID, path string, force bool)
 	sendSwitches    func(session domain.Session, sws []domain.Switch)
 	hints           worktreeHints
@@ -144,6 +146,7 @@ type Daemon struct {
 	lc       launcherCfg
 	term     terminals
 	tx       *transcripts
+	push     app.PushProvider
 }
 
 func New(store app.Store, pid int, opts ...Option) (*Daemon, error) {
@@ -171,6 +174,7 @@ func New(store app.Store, pid int, opts ...Option) (*Daemon, error) {
 		inFlight:   map[string]sendFlight{},
 		booting:    map[string]bool{},
 		devices:    map[string]domain.Device{},
+		co:         domain.NewCoalescer(),
 	}
 	for _, dev := range snap.Devices {
 		st.devices[dev.ID] = dev
@@ -252,6 +256,9 @@ func (d *Daemon) Serve(ctx context.Context, ln net.Listener) error {
 	go d.refreshWorkspacesEvery(ctx)
 	if d.st.attn != nil {
 		go d.st.attn.run(ctx)
+	}
+	if d.push != nil {
+		go d.runPush(ctx)
 	}
 	go d.watchWorktrees(ctx)
 	go d.watchPorts(ctx)
@@ -555,6 +562,8 @@ func (d *Daemon) dispatch(c *conn, line []byte) (*rpc.Response, bool) {
 		return d.transcriptMethod(c, req)
 	case rpc.MethodPairCode, rpc.MethodPairRedeem, rpc.MethodDeviceCheck, rpc.MethodDeviceList, rpc.MethodDeviceRevoke:
 		return d.pairMethod(req)
+	case rpc.MethodPushKey, rpc.MethodPushSubscribe:
+		return d.pushMethod(req)
 	default:
 		return errorResponse(req.ID, rpc.CodeUnknownMethod, "unknown method "+req.Method), true
 	}
