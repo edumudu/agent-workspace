@@ -137,7 +137,7 @@ func (s *state) sendInFlight(session string) bool {
 }
 
 func (s *state) sendBusy(session string) bool {
-	return s.pasting[session] || s.sendInFlight(session)
+	return s.pasting[session] || s.booting[session] || s.sendInFlight(session)
 }
 
 func (s *state) settleSend(session string) {
@@ -163,6 +163,7 @@ func (s *state) startSend(session domain.Session, q domain.QueuedSend) {
 
 func (s *state) dropSends(session string) {
 	delete(s.inFlight, session)
+	delete(s.booting, session)
 	if next, changed := domain.DropSends(s.sends, session); changed {
 		s.emit(SendsChanged{Sends: next})
 	}
@@ -206,4 +207,28 @@ func (s *state) sendFailed(q domain.QueuedSend) {
 		s.emit(SendsChanged{Sends: domain.RequeueSend(s.sends, q)})
 		s.dispatchDraft(session)
 	}
+}
+
+func (s *state) queueFirstPrompt(session domain.Session, text string) {
+	q := domain.QueuedSend{ID: newSendID(), Session: session.ID, Text: text, QueuedAt: time.Now()}
+	s.booting[session.ID] = true
+	s.emit(SendsChanged{Sends: append(slices.Clone(s.sends), q)})
+}
+
+func (d *Daemon) releaseFirstPromptAfterGrace(sessionID string) {
+	grace := d.sess.firstPromptGrace
+	if grace <= 0 {
+		grace = defaultFirstPromptGrace
+	}
+	time.AfterFunc(grace, func() {
+		d.query(func(s *state) {
+			if !s.booting[sessionID] {
+				return
+			}
+			delete(s.booting, sessionID)
+			if session, ok := s.sessions[sessionID]; ok {
+				s.dispatchSend(session)
+			}
+		})
+	})
 }

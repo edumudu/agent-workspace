@@ -227,6 +227,7 @@ type NewSessionParams struct {
 	Harness   string `json:"harness"`
 	Model     string `json:"model,omitempty"`
 	Effort    string `json:"effort,omitempty"`
+	Prompt    string `json:"prompt,omitempty"`
 }
 
 type LauncherEnqueueParams struct {

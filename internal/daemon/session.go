@@ -19,11 +19,19 @@ type sessionDeps struct {
 	worktreeHome string
 	addMu        sync.Mutex
 	resumeMu     sync.Mutex
+
+	firstPromptGrace time.Duration
+}
+
+const defaultFirstPromptGrace = 15 * time.Second
+
+func WithFirstPromptGrace(grace time.Duration) Option {
+	return func(d *Daemon) { d.sess.firstPromptGrace = grace }
 }
 
 func WithSessions(worktrees app.WorktreeAdder, setup app.SetupFunc, worktreeHome string) Option {
 	return func(d *Daemon) {
-		d.sess = sessionDeps{worktrees: worktrees, setup: setup, worktreeHome: worktreeHome}
+		d.sess = sessionDeps{worktrees: worktrees, setup: setup, worktreeHome: worktreeHome, firstPromptGrace: d.sess.firstPromptGrace}
 	}
 }
 
@@ -117,6 +125,7 @@ func (d *Daemon) startSession(p rpc.NewSessionParams, prompt string) (domain.Ses
 		}
 		return domain.Session{}, &rpc.Error{Code: rpc.CodeFailed, Message: err.Error()}, true
 	}
+	queued := false
 	ok = d.query(func(s *state) {
 		if in.isNew {
 			s.emit(TaskChanged{Task: in.task})
@@ -126,11 +135,18 @@ func (d *Daemon) startSession(p rpc.NewSessionParams, prompt string) (domain.Ses
 			s.emit(WorktreeChanged{Worktree: *started.Worktree})
 		}
 		s.emit(SessionChanged{Session: started.Session})
+		if domain.SendableText(p.Prompt) {
+			s.queueFirstPrompt(started.Session, p.Prompt)
+			queued = true
+		}
 		if ws, found := s.workspaces[in.ws.Root]; found {
 			ws.LastUsed = d.ws.now()
 			s.emit(WorkspaceChanged{Workspace: ws})
 		}
 	})
+	if queued {
+		d.releaseFirstPromptAfterGrace(started.Session.ID)
+	}
 	return started.Session, nil, ok
 }
 
