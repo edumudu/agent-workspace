@@ -25,6 +25,7 @@ type picker struct {
 	// why: a harness with no model list takes the id typed here instead.
 	typed bool
 	text  string
+	query string
 }
 
 func (m Model) openPicker(kind domain.SwitchKind) Model {
@@ -38,8 +39,18 @@ func (m Model) openPicker(kind domain.SwitchKind) Model {
 		return m
 	}
 	choices := domain.SwitchChoices(s.Harness, kind)
+	if len(choices) == 0 && kind == domain.SwitchModel {
+		choices = m.opts.ModelChoices[s.Harness]
+	}
 	m.picker = &picker{sessionID: s.ID, harness: s.Harness, kind: kind, choices: choices, typed: len(choices) == 0}
 	return m
+}
+
+func (p picker) shown() []string {
+	if p.typed || p.kind != domain.SwitchModel || p.query == "" {
+		return p.choices
+	}
+	return matchingModels(p.choices, p.query)
 }
 
 func (m Model) pickerKey(k string) (tea.Model, tea.Cmd) {
@@ -47,22 +58,41 @@ func (m Model) pickerKey(k string) (tea.Model, tea.Cmd) {
 	if p.typed {
 		return m.typedPickerKey(p, k)
 	}
+	vis := p.shown()
 	switch k {
 	case "ctrl+c":
 		return m, tea.Quit
 	case "esc":
 		m.picker = nil
 	case "j", "down":
-		p.cursor = min(p.cursor+1, len(p.choices)-1)
+		if n := len(vis); n > 0 {
+			p.cursor = min(p.cursor+1, n-1)
+		}
 		m.picker = &p
 	case "k", "up":
 		p.cursor = max(p.cursor-1, 0)
 		m.picker = &p
 	case "enter":
-		return m.applyChoice(p, p.choices[p.cursor])
+		if p.cursor < 0 || p.cursor >= len(vis) {
+			return m, nil
+		}
+		return m.applyChoice(p, vis[p.cursor])
+	case "backspace":
+		if p.kind == domain.SwitchModel && p.query != "" {
+			r := []rune(p.query)
+			p.query = string(r[:len(r)-1])
+			p.cursor = 0
+			m.picker = &p
+		}
 	default:
-		if len(k) == 1 && k[0] >= '1' && k[0] <= '9' && int(k[0]-'1') < len(p.choices) {
-			return m.applyChoice(p, p.choices[k[0]-'1'])
+		if p.kind == domain.SwitchModel && len(k) == 1 && k[0] >= ' ' && (p.query != "" || k[0] < '1' || k[0] > '9') {
+			p.query += k
+			p.cursor = 0
+			m.picker = &p
+			return m, nil
+		}
+		if len(k) == 1 && k[0] >= '1' && k[0] <= '9' && int(k[0]-'1') < len(vis) {
+			return m.applyChoice(p, vis[k[0]-'1'])
 		}
 	}
 	return m, nil
@@ -118,7 +148,14 @@ func (m Model) pickerLines() []string {
 			m.line(true, []piece{{s.bold, "▌" + p.text}, {s.text, "▏"}}, nil),
 			"", m.line(false, []piece{{s.dim, " type a model id · ⏎ apply · esc cancel"}}, nil))
 	}
-	for i, c := range p.choices {
+	if p.query != "" && p.kind == domain.SwitchModel {
+		out = append(out, m.line(true, []piece{{s.bold, " " + p.query}, {s.text, "▏"}}, nil))
+	}
+	choices := p.shown()
+	if len(choices) == 0 {
+		out = append(out, m.line(false, []piece{{s.dim, " no match"}}, nil))
+	}
+	for i, c := range choices {
 		label := piece{s.text, fmt.Sprintf(" %d  %s", i+1, c)}
 		if i == p.cursor {
 			label = piece{s.bold, fmt.Sprintf("▌%d  %s", i+1, c)}
