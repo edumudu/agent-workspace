@@ -2,6 +2,8 @@ package daemon
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"strings"
 	"time"
@@ -47,6 +49,16 @@ func (d *Daemon) capturePrompt(session domain.Session, prompter app.PermissionPr
 	return prompt, screen, ok, nil
 }
 
+func promptID(prompt app.PermissionPrompt) string {
+	h := sha256.New()
+	h.Write([]byte(prompt.Text))
+	for _, c := range prompt.Choices {
+		h.Write([]byte{0})
+		h.Write([]byte(c.ID + "\x00" + c.Label))
+	}
+	return hex.EncodeToString(h.Sum(nil))[:12]
+}
+
 func visiblePane(screen string) string {
 	lines := strings.Split(strings.TrimRight(screen, " \t\r\n"), "\n")
 	if len(lines) > promptRawLines {
@@ -77,7 +89,7 @@ func (d *Daemon) sessionPrompt(req rpc.Request) (*rpc.Response, bool) {
 		}
 		return errorResponse(req.ID, rpc.CodeNotFound, "no permission dialog is showing"), true
 	}
-	out := rpc.Prompt{Text: prompt.Text, Choices: make([]rpc.PromptChoice, 0, len(prompt.Choices))}
+	out := rpc.Prompt{ID: promptID(prompt), Text: prompt.Text, Choices: make([]rpc.PromptChoice, 0, len(prompt.Choices))}
 	for _, c := range prompt.Choices {
 		out.Choices = append(out.Choices, rpc.PromptChoice{ID: c.ID, Label: c.Label})
 	}
@@ -104,6 +116,9 @@ func (d *Daemon) sessionAnswer(req rpc.Request) (*rpc.Response, bool) {
 	}
 	if !found {
 		return errorResponse(req.ID, rpc.CodeNotFound, "no permission dialog is showing"), true
+	}
+	if p.Prompt != "" && p.Prompt != promptID(prompt) {
+		return errorResponse(req.ID, rpc.CodeStale, "the permission dialog changed since it was shown"), true
 	}
 	for _, c := range prompt.Choices {
 		if c.ID != p.Choice {

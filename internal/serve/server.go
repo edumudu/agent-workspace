@@ -285,6 +285,7 @@ func promptParams(_ *http.Request, id string) (any, error) {
 func answerParams(r *http.Request, id string) (any, error) {
 	var body struct {
 		Choice string `json:"choice"`
+		Prompt string `json:"prompt"`
 	}
 	if err := decodeBody(r, &body); err != nil {
 		return nil, err
@@ -292,7 +293,7 @@ func answerParams(r *http.Request, id string) (any, error) {
 	if strings.TrimSpace(body.Choice) == "" {
 		return nil, &rpc.Error{Code: rpc.CodeBadRequest, Message: `answer {"choice": "<id from the prompt>"}`}
 	}
-	return rpc.AnswerParams{Session: id, Choice: body.Choice}, nil
+	return rpc.AnswerParams{Session: id, Choice: body.Choice, Prompt: body.Prompt}, nil
 }
 
 func unsendParams(r *http.Request, id string) (any, error) {

@@ -319,7 +319,7 @@ function PermissionCard({ api, session }: { api: Authed; session: Session }) {
     setPhase({ kind: "answering", prompt, choice });
     setError("");
     try {
-      await answerPrompt({ fetch, token }, id, choice);
+      await answerPrompt({ fetch, token }, id, choice, prompt.id);
       setPhase({ kind: "answered", label: prompt.choices.find((c) => c.id === choice)?.label ?? choice });
     } catch (err) {
       if (err instanceof ApiError && (err.code === "stale" || err.code === "not_found")) {

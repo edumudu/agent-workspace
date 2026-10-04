@@ -128,6 +128,7 @@ export type PromptChoice = {
 };
 
 export type Prompt = {
+  id?: string;
   text: string;
   choices: PromptChoice[];
   raw?: string;
@@ -137,8 +138,8 @@ export function getPrompt(a: Authed, session: string): Promise<Prompt> {
   return authedRequest<Prompt>(a, sessionPath(session, "/prompt"));
 }
 
-export async function answerPrompt(a: Authed, session: string, choice: string): Promise<void> {
-  await authedRequest<unknown>(a, sessionPath(session, "/answer"), "POST", { choice });
+export async function answerPrompt(a: Authed, session: string, choice: string, prompt?: string): Promise<void> {
+  await authedRequest<unknown>(a, sessionPath(session, "/answer"), "POST", prompt ? { choice, prompt } : { choice });
 }
 
 export type PushKey = {

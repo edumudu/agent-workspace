@@ -14,6 +14,7 @@ type PromptParams struct {
 type AnswerParams struct {
 	Session string `json:"session"`
 	Choice  string `json:"choice"`
+	Prompt  string `json:"prompt,omitempty"`
 }
 
 type PromptChoice struct {
@@ -22,6 +23,7 @@ type PromptChoice struct {
 }
 
 type Prompt struct {
+	ID      string         `json:"id,omitempty"`
 	Text    string         `json:"text"`
 	Choices []PromptChoice `json:"choices"`
 	Raw     string         `json:"raw,omitempty"`
