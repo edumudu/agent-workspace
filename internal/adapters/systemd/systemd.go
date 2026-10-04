@@ -41,7 +41,10 @@ func (u Unit) path() string { return filepath.Join(u.Dir, u.file()) }
 
 func Install(ctx context.Context, u Unit, run Runner) (Result, error) {
 	res := Result{Path: u.path()}
-	want := render(u)
+	want, err := render(u)
+	if err != nil {
+		return res, err
+	}
 	old, err := os.ReadFile(res.Path)
 	switch {
 	case err == nil && bytes.Equal(old, want):
@@ -92,11 +95,22 @@ func Remove(ctx context.Context, u Unit, run Runner) (bool, error) {
 	return true, run(ctx, "systemctl", "--user", "daemon-reload")
 }
 
+var logEscaper = strings.NewReplacer(`\`, `\\`, `%`, `%%`)
+
 var escaper = strings.NewReplacer(`\`, `\\`, `"`, `\"`, `%`, `%%`, `$`, `$$`)
 
 func quote(s string) string { return `"` + escaper.Replace(s) + `"` }
 
-func render(u Unit) []byte {
+func render(u Unit) ([]byte, error) {
+	values := append([]string{u.Name, u.Log}, u.Program...)
+	for k, v := range u.Env {
+		values = append(values, k, v)
+	}
+	for _, v := range values {
+		if strings.ContainsAny(v, "\r\n\x00") {
+			return nil, fmt.Errorf("a unit value has a line break or NUL: %q", v)
+		}
+	}
 	var b bytes.Buffer
 	b.WriteString("[Unit]\nDescription=" + u.Name + "\nAfter=network-online.target\n\n[Service]\n")
 	quoted := make([]string, len(u.Program))
@@ -114,8 +128,8 @@ func render(u Unit) []byte {
 	}
 	b.WriteString("Restart=always\nRestartSec=2\n")
 	if u.Log != "" {
-		b.WriteString("StandardOutput=append:" + u.Log + "\nStandardError=append:" + u.Log + "\n")
+		b.WriteString("StandardOutput=append:" + logEscaper.Replace(u.Log) + "\nStandardError=append:" + logEscaper.Replace(u.Log) + "\n")
 	}
 	b.WriteString("\n[Install]\nWantedBy=default.target\n")
-	return b.Bytes()
+	return b.Bytes(), nil
 }
