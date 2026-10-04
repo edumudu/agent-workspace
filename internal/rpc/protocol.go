@@ -49,6 +49,9 @@ const (
 	MethodCleanupRun       = "cleanup.run"
 	MethodDiskView         = "disk.view"
 	MethodCleanupWorktree  = "cleanup.worktree"
+	MethodSessionSend      = "session.send"
+	MethodSessionUnsend    = "session.unsend"
+	MethodSessionInterrupt = "session.interrupt"
 	MethodPairCode         = "pair.code"
 	MethodPairRedeem       = "pair.redeem"
 	MethodDeviceCheck      = "device.check"
@@ -147,6 +150,25 @@ type ReviewSendParams struct {
 	Session string `json:"session"`
 }
 
+type SessionSendParams struct {
+	Session string `json:"session"`
+	Text    string `json:"text"`
+}
+
+type SessionSent struct {
+	ID     string `json:"id"`
+	Queued bool   `json:"queued"`
+}
+
+type SessionUnsendParams struct {
+	Session string `json:"session"`
+	ID      string `json:"id"`
+}
+
+type SessionTarget struct {
+	Session string `json:"session"`
+}
+
 type HunkParams struct {
 	Session  string            `json:"session"`
 	Worktree string            `json:"worktree"`
@@ -205,6 +227,7 @@ type NewSessionParams struct {
 	Harness   string `json:"harness"`
 	Model     string `json:"model,omitempty"`
 	Effort    string `json:"effort,omitempty"`
+	Prompt    string `json:"prompt,omitempty"`
 }
 
 type LauncherEnqueueParams struct {
@@ -343,13 +366,14 @@ type Request struct {
 }
 
 type Response struct {
-	V      int             `json:"v"`
-	ID     uint64          `json:"id"`
-	Result json.RawMessage `json:"result,omitempty"`
-	Diff   *Diff           `json:"diff,omitempty"`
-	Notice *Notice         `json:"notice,omitempty"`
-	Error  *Error          `json:"error,omitempty"`
-	Build  string          `json:"build,omitempty"`
+	V          int              `json:"v"`
+	ID         uint64           `json:"id"`
+	Result     json.RawMessage  `json:"result,omitempty"`
+	Diff       *Diff            `json:"diff,omitempty"`
+	Notice     *Notice          `json:"notice,omitempty"`
+	Transcript *TranscriptEvent `json:"transcript,omitempty"`
+	Error      *Error           `json:"error,omitempty"`
+	Build      string           `json:"build,omitempty"`
 }
 
 type Notice struct {
@@ -382,6 +406,7 @@ type State struct {
 	Subagents  []domain.Subagent     `json:"subagents"`
 	Queue      []domain.LaunchItem   `json:"queue"`
 	Drafts     []domain.ReviewDraft  `json:"drafts"`
+	Sends      []domain.QueuedSend   `json:"sends"`
 }
 
 type Diff struct {
@@ -399,6 +424,7 @@ type Diff struct {
 	Queue            *[]domain.LaunchItem  `json:"queue,omitempty"`
 	Draft            *domain.ReviewDraft   `json:"draft,omitempty"`
 	Comment          *domain.ReviewComment `json:"comment,omitempty"`
+	Sends            *[]domain.QueuedSend  `json:"sends,omitempty"`
 }
 
 func Home() (string, error) {

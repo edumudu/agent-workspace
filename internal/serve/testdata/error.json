@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "unauthorized",
+    "message": "the pairing code is wrong or has expired"
+  }
+}
