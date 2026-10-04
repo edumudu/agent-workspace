@@ -318,3 +318,94 @@ func TestServeStreamSubscribesBeforeItChecksTheToken(t *testing.T) {
 		t.Fatalf("stream calls %v, want subscribe then device.check, so a revoke between them still reaches the stream", got)
 	}
 }
+
+func waitWatch(t *testing.T, f *fakeDaemon, session string, n int) *fakeWatch {
+	t.Helper()
+	deadline := time.Now().Add(2 * time.Second)
+	for {
+		if ws := f.watchesOf(session); len(ws) >= n {
+			return ws[n-1]
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("no watch %d of %s", n, session)
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+}
+
+func cancelled(w *fakeWatch, within time.Duration) bool {
+	select {
+	case <-w.ctx.Done():
+		return true
+	case <-time.After(within):
+		return false
+	}
+}
+
+func TestServeStreamWatchAddsASessionsMessages(t *testing.T) {
+	f := newFakeDaemon()
+	f.devices[goodToken] = phone
+	f.initial["s1"] = []rpc.Message{{ID: "a1", Cursor: 80, Turn: "p1", Role: "assistant", Text: "Looking at the redirect.", At: paired}}
+	_, ts := startServer(t, f, serve.Config{URL: publicURL})
+	c := openStream(t, ts, goodToken)
+	next(t, c)
+	send(t, c, map[string]any{"watch": "s1", "after": 64})
+	w := waitWatch(t, f, "s1", 1)
+	if w.after != 64 {
+		t.Fatalf("watch after %d", w.after)
+	}
+	w.events <- rpc.TranscriptEvent{Messages: []rpc.Message{{ID: "c1", Cursor: 120, Turn: "p1", Role: "tool", At: paired,
+		Tool: &rpc.MessageTool{Name: "Bash", Summary: "go test ./...", Status: "running"}}}}
+	w.events <- rpc.TranscriptEvent{Reset: true}
+	w.events <- rpc.TranscriptEvent{Closed: true}
+	var frames []json.RawMessage
+	for range 4 {
+		frames = append(frames, next(t, c))
+	}
+	all, _ := json.Marshal(frames)
+	golden(t, "stream-transcript.json", all)
+}
+
+func TestServeStreamUnwatchAndCloseEndTheDaemonWatch(t *testing.T) {
+	f := newFakeDaemon()
+	f.devices[goodToken] = phone
+	_, ts := startServer(t, f, serve.Config{URL: publicURL})
+	c := openStream(t, ts, goodToken)
+	next(t, c)
+	send(t, c, map[string]any{"watch": "s1", "after": 0})
+	first := waitWatch(t, f, "s1", 1)
+	next(t, c)
+	send(t, c, map[string]any{"watch": "s1", "after": 300})
+	second := waitWatch(t, f, "s1", 2)
+	if !cancelled(first, time.Second) {
+		t.Fatal("watching a session again kept the old watch")
+	}
+	next(t, c)
+	send(t, c, map[string]any{"unwatch": "s1"})
+	if !cancelled(second, time.Second) {
+		t.Fatal("unwatch kept the daemon watch")
+	}
+	send(t, c, map[string]any{"watch": "s2", "after": 0})
+	third := waitWatch(t, f, "s2", 1)
+	next(t, c)
+	_ = c.Close(websocket.StatusNormalClosure, "")
+	if !cancelled(third, time.Second) {
+		t.Fatal("closing the stream kept the daemon watch")
+	}
+}
+
+func TestServeStreamReportsAFailedWatch(t *testing.T) {
+	f := newFakeDaemon()
+	f.devices[goodToken] = phone
+	f.errs[rpc.MethodTranscriptWatch] = &rpc.Error{Code: rpc.CodeNotFound, Message: "no session s9"}
+	_, ts := startServer(t, f, serve.Config{URL: publicURL})
+	c := openStream(t, ts, goodToken)
+	next(t, c)
+	send(t, c, map[string]any{"watch": "s9", "after": 0})
+	golden(t, "stream-watch-error.json", next(t, c))
+	send(t, c, map[string]any{"watch": "", "after": 0})
+	var frame serve.Frame
+	if err := json.Unmarshal(next(t, c), &frame); err != nil || frame.Error == nil || frame.Error.Code != rpc.CodeBadRequest {
+		t.Fatalf("frame %+v (%v)", frame, err)
+	}
+}

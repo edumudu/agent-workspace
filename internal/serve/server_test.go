@@ -34,6 +34,7 @@ var (
 	allowed = []string{
 		rpc.MethodDeviceCheck, rpc.MethodPairRedeem, rpc.MethodSubscribe, rpc.MethodWorkspaceList,
 		rpc.MethodEndSession, rpc.MethodResumeSession, rpc.MethodSessionMute, rpc.MethodSessionRename,
+		rpc.MethodTranscriptPage, rpc.MethodTranscriptWatch,
 	}
 )
 
@@ -43,6 +44,7 @@ type authedEndpoint struct {
 
 var authedEndpoints = []authedEndpoint{
 	{"GET", "/api/v1/workspaces", ""},
+	{"GET", "/api/v1/sessions/s1/messages", ""},
 	{"POST", "/api/v1/sessions/s1/end", ""},
 	{"POST", "/api/v1/sessions/s1/resume", ""},
 	{"POST", "/api/v1/sessions/s1/mute", `{"muted":true}`},
@@ -510,5 +512,47 @@ func TestServeLeavesNonAPIPathsToTheFallback(t *testing.T) {
 	h.ServeHTTP(rec, httptest.NewRequest("GET", "/api/v2/hello", nil))
 	if rec.Code != http.StatusNotFound || errorCode(t, rec.Body.Bytes()) != rpc.CodeNotFound {
 		t.Fatalf("unknown API path: %d %s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestServeMessagesPagesTheSessionsTranscript(t *testing.T) {
+	f := newFakeDaemon()
+	f.devices[goodToken] = phone
+	f.results[rpc.MethodTranscriptPage] = rpc.TranscriptPage{Before: 40, Messages: []rpc.Message{
+		{ID: "u1", Cursor: 96, Turn: "p1", Role: "user", Text: "fix the login redirect", At: paired},
+		{ID: "c1", Cursor: 210, Turn: "p1", Role: "tool", Text: "PASS", At: paired,
+			Tool: &rpc.MessageTool{Name: "Bash", Summary: "go test ./...", Status: "done"}},
+	}}
+	_, ts := startServer(t, f, serve.Config{URL: publicURL})
+	status, body := do(t, ts, "GET", "/api/v1/sessions/s1/messages?before=120&limit=25", goodToken, "")
+	if status != http.StatusOK {
+		t.Fatalf("status %d %s", status, body)
+	}
+	golden(t, "messages.json", body)
+	params := f.paramsOf(rpc.MethodTranscriptPage)
+	if len(params) != 1 || string(params[0]) != `{"session":"s1","before":120,"limit":25}` {
+		t.Fatalf("transcript.page params %s", params)
+	}
+	if status, body := do(t, ts, "GET", "/api/v1/sessions/s2/messages", goodToken, ""); status != http.StatusOK {
+		t.Fatalf("newest page: %d %s", status, body)
+	}
+	params = f.paramsOf(rpc.MethodTranscriptPage)
+	if len(params) != 2 || string(params[1]) != `{"session":"s2"}` {
+		t.Fatalf("transcript.page params for the newest page %s", params)
+	}
+}
+
+func TestServeMessagesRefusesAQueryThatIsNotANumber(t *testing.T) {
+	f := newFakeDaemon()
+	f.devices[goodToken] = phone
+	_, ts := startServer(t, f, serve.Config{URL: publicURL})
+	for _, q := range []string{"?before=abc", "?limit=ten", "?before=1.5"} {
+		status, body := do(t, ts, "GET", "/api/v1/sessions/s1/messages"+q, goodToken, "")
+		if status != http.StatusBadRequest || errorCode(t, body) != rpc.CodeBadRequest {
+			t.Fatalf("%s: status %d %s", q, status, body)
+		}
+	}
+	if slices.Contains(f.methods(), rpc.MethodTranscriptPage) {
+		t.Fatal("a bad query reached transcript.page")
 	}
 }

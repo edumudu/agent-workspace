@@ -26,6 +26,15 @@ type fakeDaemon struct {
 	subs    map[*fakeConn][]chan rpc.Diff
 	dials   int
 	closes  int
+	watches []*fakeWatch
+	initial map[string][]rpc.Message
+}
+
+type fakeWatch struct {
+	session string
+	after   int64
+	events  chan rpc.TranscriptEvent
+	ctx     context.Context
 }
 
 func newFakeDaemon() *fakeDaemon {
@@ -34,6 +43,7 @@ func newFakeDaemon() *fakeDaemon {
 		results: map[string]any{},
 		errs:    map[string]*rpc.Error{},
 		subs:    map[*fakeConn][]chan rpc.Diff{},
+		initial: map[string][]rpc.Message{},
 	}
 }
 
@@ -147,4 +157,30 @@ func (c *fakeConn) Close() error {
 	}
 	delete(f.subs, c)
 	return nil
+}
+
+func (c *fakeConn) WatchTranscript(ctx context.Context, session string, after int64) (rpc.TranscriptWatch, error) {
+	f := c.f
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	raw, _ := json.Marshal(rpc.TranscriptWatchParams{Session: session, After: after})
+	f.calls = append(f.calls, call{Method: rpc.MethodTranscriptWatch, Params: raw})
+	if rerr := f.errs[rpc.MethodTranscriptWatch]; rerr != nil {
+		return rpc.TranscriptWatch{}, rerr
+	}
+	w := &fakeWatch{session: session, after: after, events: make(chan rpc.TranscriptEvent, 16), ctx: ctx}
+	f.watches = append(f.watches, w)
+	return rpc.TranscriptWatch{Messages: f.initial[session], Events: w.events}, nil
+}
+
+func (f *fakeDaemon) watchesOf(session string) []*fakeWatch {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var out []*fakeWatch
+	for _, w := range f.watches {
+		if w.session == session {
+			out = append(out, w)
+		}
+	}
+	return out
 }
