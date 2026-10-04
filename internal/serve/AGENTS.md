@@ -41,7 +41,13 @@ Every response is JSON with `Cache-Control: no-store`. An error is `{"error":{"c
 2. Add one line to `Server.routes()`: a Go 1.22 pattern (`"POST /api/v1/sessions/{id}/send"`) and a `func(r *http.Request, d Daemon) (any, error)`. Routes there are authenticated; return a value to encode or an error (an `*rpc.Error` keeps its code). `sessionAction(method, params)` covers "decode a body, add the session id, call one method, pass the result through".
 3. Add the method to `allowed` in `server_test.go` and the endpoint to `authedEndpoints`, so the token and allowlist tests cover it, and add a row to the table above.
 
-The `/` fallback: `Handler(fallback)` mounts `fallback` at `/` (the embedded PWA); `Handler(nil)` serves the API only.
+The `/` fallback: `Handler(fallback)` mounts `fallback` at `/`; `Handler(nil)` serves the API only. `cmd/agentws/serve.go` passes `Static(Dist())`, the embedded PWA.
+
+## The embedded web app (`static.go`)
+
+- `Dist()` is `dist/` embedded with `//go:embed all:dist`. `make web` builds [web/](../../web/AGENTS.md) into it and writes the shell as `app.html`; the committed `index.html` is the placeholder a Node-less `go build` embeds ("run make web"). See [ADR 0048](../../docs/adr/0048-web-toolchain-and-tdd-parity.md).
+- `Static(fsys)` serves `app.html` (else the placeholder) for `/` and for any extensionless path that is not a file (client routes), `no-cache`; `assets/*` is hashed and `immutable`; other files (`sw.js`, the manifest, icons) are `no-cache`; `/api` and below are 404, though behind `Handler` the API's own JSON `not_found` answers first. Only `GET` and `HEAD`.
+- Tests: `go test ./internal/serve/ -run Static`; after `make web`, `AGENTWS_WEB_BUILT=1` also checks the embedded build.
 
 ## Stream (`GET /api/v1/stream`, WebSocket)
 

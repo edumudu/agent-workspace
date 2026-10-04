@@ -3,6 +3,8 @@ package main
 import (
 	"bytes"
 	"io"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -77,5 +79,22 @@ func TestServeFlagsDefaultToLoopbackAndTheConfiguredURL(t *testing.T) {
 	f, err = parseServe([]string{"--addr", "0.0.0.0:7420", "--cert", "c.pem", "--key", "k.pem"}, home, io.Discard)
 	if err != nil || f.opts.Cert != "c.pem" || f.opts.Key != "k.pem" {
 		t.Fatalf("flags %+v, err %v", f, err)
+	}
+}
+
+func TestServeServesTheEmbeddedWebAppAtRoot(t *testing.T) {
+	srv, err := serve.New(serve.Config{Build: "test"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	rec := httptest.NewRecorder()
+	serveHandler(srv).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/", nil))
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), "<!doctype html>") {
+		t.Fatalf("GET / = %d %q, want the embedded web app", rec.Code, rec.Body.String())
+	}
+	rec = httptest.NewRecorder()
+	serveHandler(srv).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/v1/hello", nil))
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), "\"api\":\"v1\"") {
+		t.Fatalf("GET /api/v1/hello = %d %q, want the API", rec.Code, rec.Body.String())
 	}
 }
