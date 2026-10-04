@@ -134,14 +134,14 @@ mouse = false
 
 `agentws serve` serves a phone app (a PWA) for the sessions on this machine: which one needs you, the chat view over each, and new sessions ([ADR 0046](docs/adr/0046-remote-app.md)). `agentws remote pair` prints a QR code that pairs a phone. How the phone reaches the machine is up to you; `agentws` only exposes HTTPS. A PWA needs a certificate the phone trusts, so plain HTTP is served on loopback only and `serve` refuses it on any other address.
 
-Keep it running with `agentws setup serve`, which takes the same flags as `serve`:
+Keep it running with `agentws setup serve`, which takes the same flags as `serve` (`--addr`, `--cert`, `--key`, `--self-signed`, `--url`):
 
 ```sh
 agentws setup serve --addr 0.0.0.0:7420 --cert ~/machine.crt --key ~/machine.key
 agentws setup serve --remove
 ```
 
-On Linux it writes the systemd user unit `~/.config/systemd/user/agentws-serve.service`, on macOS the launchd agent `~/Library/LaunchAgents/dev.agentws.serve.plist`. Either starts at login with the `PATH` and `AGENTWS_HOME` of the shell that ran it, restarts if `serve` exits, and logs to `$AGENTWS_HOME/serve.log`. The same arguments again change nothing; different ones back up the old file as `.bak` and rewrite it; `--remove` stops the service and deletes the file. Re-run it after `agentws` moves, since the unit holds the binary's path. On a Linux box without a desktop session, `loginctl enable-linger $USER` keeps the user service running when nobody is logged in.
+On Linux it writes the systemd user unit `~/.config/systemd/user/agentws-serve.service`, on macOS the launchd agent `~/Library/LaunchAgents/dev.agentws.serve.plist`. Either starts at login with the `PATH` and `AGENTWS_HOME` of the shell that ran it, restarts if `serve` exits, and logs to `$AGENTWS_HOME/serve.log`. The same arguments again change nothing; different ones back up the old file as `.bak` and rewrite it; `--remove` stops the service and deletes the file. Re-run it after `agentws` moves, since the unit holds the binary's path. A systemd user service stops when your last session ends unless lingering is on, so on a Linux box you reach only over SSH run `loginctl enable-linger $USER` yourself once; `setup serve` does not do it.
 
 **Do not expose `serve` to the internet unless a layer in front of it adds its own authentication.** Pairing protects the app from strangers on a network you already trust, not from the open internet: anyone who can reach the port can try pairing codes and probe the API. Use one of the setups below.
 

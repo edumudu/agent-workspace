@@ -10,12 +10,13 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 
 	"github.com/giovaniif/agent-workspace/internal/adapters/launchd"
 	"github.com/giovaniif/agent-workspace/internal/adapters/systemd"
 )
 
-const setupServeUsage = "usage: agentws setup serve [--remove] [--addr host:port] [--cert file --key file | --self-signed]"
+const setupServeUsage = "usage: agentws setup serve [--remove] [--addr host:port] [--cert file --key file | --self-signed] [--url https://host]"
 
 const (
 	serveUnitName   = "agentws-serve"
@@ -110,6 +111,7 @@ func setupServeService(args []string, env func(string) string, self, userHome st
 	cert := fs.String("cert", "", "")
 	key := fs.String("key", "", "")
 	selfSigned := fs.Bool("self-signed", false, "")
+	url := fs.String("url", "", "")
 	if err := fs.Parse(args); err != nil {
 		return serveService{}, false, err
 	}
@@ -125,7 +127,7 @@ func setupServeService(args []string, env func(string) string, self, userHome st
 	program := []string{self, "serve"}
 	if !*remove {
 		var err error
-		if program, err = serveProgram(program, given, *addr, *cert, *key, *selfSigned); err != nil {
+		if program, err = serveProgram(program, given, *addr, *cert, *key, *url, *selfSigned); err != nil {
 			return serveService{}, false, err
 		}
 	}
@@ -157,7 +159,7 @@ func setupServeService(args []string, env func(string) string, self, userHome st
 	}}, *remove, nil
 }
 
-func serveProgram(program []string, given map[string]bool, addr, cert, key string, selfSigned bool) ([]string, error) {
+func serveProgram(program []string, given map[string]bool, addr, cert, key, url string, selfSigned bool) ([]string, error) {
 	tls := selfSigned
 	if given["addr"] {
 		host, port, err := net.SplitHostPort(addr)
@@ -196,6 +198,12 @@ func serveProgram(program []string, given map[string]bool, addr, cert, key strin
 	}
 	if selfSigned {
 		program = append(program, "--self-signed")
+	}
+	if given["url"] {
+		if strings.TrimSpace(url) == "" {
+			return nil, errors.New("--url needs a value")
+		}
+		program = append(program, "--url", url)
 	}
 	return program, nil
 }
