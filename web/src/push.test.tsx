@@ -31,13 +31,19 @@ class FakePush implements PushEnv {
 
   subscribe = async (key: Uint8Array) => {
     this.subscribedWith.push(key);
+    this.existing = true;
     return subscription;
   };
+
+  existing = false;
+
+  subscribed = async () => this.existing;
 
   unsubscribed = 0;
 
   unsubscribe = async () => {
     this.unsubscribed++;
+    this.existing = false;
   };
 }
 
@@ -118,6 +124,77 @@ describe("Enable notifications", () => {
     render(<App env={env} />);
     expect(screen.getByText(/cannot show notifications/)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Enable notifications" })).not.toBeInTheDocument();
+  });
+});
+
+describe("Notification state in Settings", () => {
+  it("shows on, with Turn off and no Enable, when permission is granted and a subscription exists", async () => {
+    const { push, env } = setup();
+    push.current = "granted";
+    push.existing = true;
+    render(<App env={env} />);
+    expect(await screen.findByText("Notifications are on for this device.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Turn off" })).toBeEnabled();
+    expect(screen.queryByRole("button", { name: "Enable notifications" })).not.toBeInTheDocument();
+  });
+
+  it("shows Enable when permission is granted but there is no subscription", async () => {
+    const { push, env } = setup();
+    push.current = "granted";
+    render(<App env={env} />);
+    expect(await screen.findByRole("button", { name: "Enable notifications" })).toBeEnabled();
+    expect(screen.queryByText(/are on for this device/)).not.toBeInTheDocument();
+  });
+
+  it("does not look for a subscription before permission is granted", () => {
+    const { push, env } = setup();
+    push.existing = true;
+    render(<App env={env} />);
+    expect(screen.getByRole("button", { name: "Enable notifications" })).toBeEnabled();
+    expect(screen.queryByRole("button", { name: "Turn off" })).not.toBeInTheDocument();
+  });
+
+  it("swaps Enable for Turn off after enabling", async () => {
+    const { env } = setup();
+    render(<App env={env} />);
+    await userEvent.click(screen.getByRole("button", { name: "Enable notifications" }));
+    expect(await screen.findByRole("button", { name: "Turn off" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Enable notifications" })).not.toBeInTheDocument();
+  });
+
+  it("turns off on the server and in the browser, then offers Enable again", async () => {
+    const { server, push, env } = setup();
+    push.current = "granted";
+    push.existing = true;
+    render(<App env={env} />);
+    await userEvent.click(await screen.findByRole("button", { name: "Turn off" }));
+    expect(await screen.findByRole("button", { name: "Enable notifications" })).toBeEnabled();
+    expect(server.calls.some((c) => c.path === "/api/v1/push/unsubscribe" && c.method === "POST")).toBe(true);
+    expect(push.unsubscribed).toBe(1);
+    expect(screen.queryByText(/are on for this device/)).not.toBeInTheDocument();
+  });
+
+  it("stays on with Turn off and an error when the browser refuses to unsubscribe", async () => {
+    const { push, env } = setup();
+    push.current = "granted";
+    push.existing = true;
+    push.unsubscribe = async () => {
+      throw new Error("unsubscribe failed");
+    };
+    render(<App env={env} />);
+    await userEvent.click(await screen.findByRole("button", { name: "Turn off" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("unsubscribe failed");
+    expect(screen.getByRole("button", { name: "Turn off" })).toBeEnabled();
+    expect(screen.queryByRole("button", { name: "Enable notifications" })).not.toBeInTheDocument();
+  });
+
+  it("shows blocked, not on, when permission is denied", () => {
+    const { push, env } = setup();
+    push.current = "denied";
+    push.existing = true;
+    render(<App env={env} />);
+    expect(screen.getByText(/Notifications are blocked/)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Turn off" })).not.toBeInTheDocument();
   });
 });
 

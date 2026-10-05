@@ -40,6 +40,8 @@ type Options struct {
 	Disk            Disker
 	DialogPopup     rpc.ClientPopupParams
 	HarnessDefaults map[domain.Harness]Defaults
+	ModelChoices    map[domain.Harness][]string
+	RefreshModels   tea.Cmd
 	NewSessionOnly  bool
 	LaunchDir       string
 	Home            string
@@ -58,6 +60,10 @@ type StateMsg rpc.State
 type DiffMsg rpc.Diff
 
 type TickMsg struct{}
+
+type ModelsMsg struct {
+	Choices map[domain.Harness][]string
+}
 
 type TopBarMsg struct {
 	Claude string
@@ -147,7 +153,29 @@ func New(opts Options) Model {
 
 func (m Model) Selected() string { return m.selected }
 
-func (m Model) Init() tea.Cmd { return m.tick() }
+func (m Model) Init() tea.Cmd {
+	if m.opts.RefreshModels == nil {
+		return m.tick()
+	}
+	return tea.Batch(m.tick(), m.opts.RefreshModels)
+}
+
+func (m Model) applyModels(choices map[domain.Harness][]string) Model {
+	m.opts.ModelChoices = choices
+	if m.dialog != nil {
+		m.dialog.modelLists = choices
+	}
+	p := m.picker
+	if p != nil && p.kind == domain.SwitchModel && domain.Spec(p.harness).Models == nil {
+		p.choices = nil
+		if choices != nil {
+			p.choices = choices[p.harness]
+		}
+		p.typed = len(p.choices) == 0
+		p.cursor = 0
+	}
+	return m
+}
 
 func (m Model) tick() tea.Cmd {
 	if m.opts.Tick <= 0 {
@@ -160,6 +188,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
+	case ModelsMsg:
+		m = m.applyModels(msg.Choices)
 	case StateMsg:
 		m.load(rpc.State(msg))
 		if m.opts.NewSessionOnly && m.dialog == nil {

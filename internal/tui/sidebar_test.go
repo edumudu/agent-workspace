@@ -95,18 +95,6 @@ func TestTaskHeaderShowsTheRefAndTitleWithoutASeparator(t *testing.T) {
 	}
 }
 
-func TestTheCardLeavesOutANameThatRepeatsTheTitle(t *testing.T) {
-	st := rpc.State{
-		Tasks:    []domain.Task{{ID: "t1", Text: "style-improvements"}},
-		Sessions: []domain.Session{{ID: "s1", TaskID: "t1", Harness: domain.HarnessClaude}},
-	}
-	out := screen(newModel(&st, nil))
-	card := out[strings.Index(out, "CARD"):]
-	if strings.Count(card, "style-improvements") != 1 || strings.Contains(card, "name ") {
-		t.Fatalf("card repeats the name:\n%s", card)
-	}
-}
-
 func TestMouseWheelScrollsTheListWithoutMovingTheSelection(t *testing.T) {
 	st := fixture(20, 1)
 	m := newModel(&st, nil)
@@ -179,17 +167,5 @@ func TestManyPortsLeaveTheSessionNameVisible(t *testing.T) {
 	row := lineWith(t, screen(newModel(&st, nil)), ":8000")
 	if !strings.Contains(row, "session 1") || !strings.Contains(row, ":8000") || !strings.Contains(row, "+") {
 		t.Fatalf("session row = %q, want the name, the first ports and a count of the rest", row)
-	}
-}
-
-func TestTheCardLeavesOutANameThatRepeatsTheTitleAfterARef(t *testing.T) {
-	st := rpc.State{
-		Tasks:    []domain.Task{{ID: "t1", Ref: "#7", IssueTitle: "fix login"}},
-		Sessions: []domain.Session{{ID: "s1", TaskID: "t1", Harness: domain.HarnessClaude}},
-	}
-	out := screen(newModel(&st, nil))
-	card := out[strings.Index(out, "CARD"):]
-	if strings.Contains(card, "name ") {
-		t.Fatalf("card repeats the title as the name:\n%s", card)
 	}
 }

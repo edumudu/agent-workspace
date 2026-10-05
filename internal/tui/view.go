@@ -18,7 +18,7 @@ var spinner = []string{"◐", "◓", "◑", "◒"}
 
 type styles struct {
 	text, sub, dim, bold, brand, header, need lipgloss.Style
-	blue, peach, teal, green                  lipgloss.Style
+	blue, peach, teal, green, mauve           lipgloss.Style
 	bar, badge                                lipgloss.Style
 	selectedBg, base                          lipgloss.Style
 }
@@ -37,11 +37,23 @@ func newStyles(t Theme) styles {
 		peach:      fg(t.Peach),
 		teal:       fg(t.Teal),
 		green:      fg(t.Green),
+		mauve:      fg(t.Mauve),
 		bar:        fg(t.Blue),
 		badge:      lipgloss.NewStyle().Foreground(lipgloss.Color(t.Base)).Background(lipgloss.Color(t.Blue)).Bold(true),
 		selectedBg: lipgloss.NewStyle().Background(lipgloss.Color(t.Selected)),
 		base:       lipgloss.NewStyle().Background(lipgloss.Color(t.Base)),
 	}
+}
+
+func (m Model) harnessTag(h domain.Harness, pad string) piece {
+	st := m.styles.blue
+	switch h {
+	case domain.HarnessCodex:
+		st = m.styles.teal
+	case domain.HarnessOmp:
+		st = m.styles.mauve
+	}
+	return piece{st.Bold(true), pad + domain.Spec(h).Tag + pad}
 }
 
 type piece struct {
@@ -135,8 +147,9 @@ func (m Model) mainScreen() (lines, owners []string) {
 	}
 	lines = append(lines, m.rule("SESSIONS", right))
 
+	head := len(lines)
 	body, selRow, bodyOwners := m.body()
-	footer := append(m.cardLines(), m.footer()...)
+	footer := m.footer()
 	room := max(m.height-len(lines)-len(footer), 0)
 	off := m.listOffset(selRow, len(body), room)
 	for len(bodyOwners) < len(body) {
@@ -156,6 +169,9 @@ func (m Model) mainScreen() (lines, owners []string) {
 	for len(owners) < len(lines) {
 		owners = append(owners, "")
 	}
+	if m.dialog != nil {
+		lines, owners = m.overlayMenu(lines, owners, head+m.dialog.menuAt-off, m.dialog.menuCol)
+	}
 	return lines, owners
 }
 
@@ -173,7 +189,7 @@ func (m Model) listOffset(selRow, rows, room int) int {
 func (m Model) listGeometry() (owners []string, off int) {
 	top := 1 + len(m.limitLines()) + 2
 	body, selRow, owners := m.body()
-	room := max(m.height-top-len(m.cardLines())-len(m.footer()), 0)
+	room := max(m.height-top-len(m.footer()), 0)
 	return owners, m.listOffset(selRow, len(body), room)
 }
 
@@ -215,7 +231,10 @@ func (m Model) body() ([]string, int, []string) {
 	}
 	if m.picker != nil {
 		owners := []string{"", ""}
-		for i := range m.picker.choices {
+		if m.picker.query != "" && !m.picker.typed && m.picker.kind == domain.SwitchModel {
+			owners = append(owners, "")
+		}
+		for i := range m.picker.shown() {
 			owners = append(owners, ownPick+strconv.Itoa(i))
 		}
 		return m.pickerLines(), 0, owners
@@ -258,10 +277,7 @@ func (m Model) sessionLines(e entry, sel bool) []string {
 		bar = piece{s.bar, "▌"}
 	}
 	x := e.session
-	tag := piece{s.blue, "CC"}
-	if x.Harness == domain.HarnessCodex {
-		tag = piece{s.teal, "CX"}
-	}
+	tag := m.harnessTag(x.Harness, "")
 	name := domain.NameFor(e.task, entryPRs(e))
 	if name == "" {
 		name = x.ID
@@ -450,122 +466,6 @@ func count(n int, noun string) string {
 		return fmt.Sprintf("1 %s", noun)
 	}
 	return fmt.Sprintf("%d %ss", n, noun)
-}
-
-const minCardHeight = 24
-
-func (m Model) cardLines() []string {
-	i := m.index(m.selected)
-	if i < 0 || m.help || m.height < minCardHeight {
-		return nil
-	}
-	s := m.styles
-	e := m.entries[i]
-	card := domain.BuildSessionCard(e.task, e.session, e.worktrees, m.events[e.session.ID])
-	out := []string{"", m.rule("CARD", nil)}
-
-	var title []string
-	for _, part := range []string{card.Ref, card.Title} {
-		if part != "" {
-			title = append(title, part)
-		}
-	}
-	label := strings.Join(title, " ")
-	if label == "" {
-		label = e.session.ID
-	}
-	out = append(out, m.wrapped(" ", s.bold, label)...)
-	if name := cleanText(card.Name); name != label && name != cleanText(card.Title) {
-		out = append(out, m.nameLines(name)...)
-	}
-
-	if len(card.PRs) > 0 {
-		chips := []piece{{s.dim, " PRs "}}
-		for _, pr := range card.PRs {
-			chips = append(chips, piece{s.blue, fmt.Sprintf("#%d ", pr.Number)})
-		}
-		out = append(out, m.line(false, chips, nil))
-		out = append(out, m.prBoardLines(card.PRs)...)
-	}
-	for j, action := range card.Actions {
-		lead := "       "
-		if j == 0 {
-			lead = " last  "
-		}
-		out = append(out, m.line(false, []piece{{s.dim, lead}, {s.sub, cleanText(action)}}, nil))
-	}
-	if card.Waiting != "" {
-		reason := "waiting on you"
-		if e.session.State == domain.StatePermission {
-			reason = "asks permission"
-		}
-		out = append(out, m.line(false, []piece{{s.need, " ✳ " + reason}}, nil))
-		for _, line := range strings.Split(card.Waiting, "\n") {
-			out = append(out, m.line(false, []piece{{s.text, "   " + cleanText(line)}}, nil))
-		}
-	}
-	return out
-}
-
-func (m Model) prBoardLines(prs []domain.PullRequest) []string {
-	s := m.styles
-	var out []string
-	for _, pr := range prs {
-		if pr.State == "" {
-			continue
-		}
-		head := fmt.Sprintf(" #%d ", pr.Number)
-		switch {
-		case pr.State != domain.PROpen:
-			out = append(out, m.line(false, []piece{{s.blue, head}, {s.dim, strings.ToLower(string(pr.State))}}, nil))
-			continue
-		case pr.ReadyToMerge():
-			out = append(out, m.line(false, []piece{{s.blue, head}, {s.green, "ready to merge"}}, nil))
-		default:
-			out = append(out, m.line(false, []piece{{s.blue, head}, {s.need, "blocked"}}, nil))
-			for _, b := range pr.Blockers() {
-				out = append(out, m.line(false, []piece{{s.sub, "   " + b}}, nil))
-			}
-		}
-		for _, f := range pr.Failing {
-			out = append(out, m.line(false, []piece{{s.peach, "   ✗ " + link(f.URL, cleanText(f.Name))}}, nil))
-		}
-		if pr.BotComments > 0 {
-			out = append(out, m.line(false, []piece{{s.dim, "   " + count(pr.BotComments, "bot comment") + " since push"}}, nil))
-		}
-	}
-	return out
-}
-
-func (m Model) nameLines(name string) []string {
-	if name == "" {
-		return nil
-	}
-	return m.wrapped(" name  ", m.styles.text, name)
-}
-
-func (m Model) wrapped(lead string, st lipgloss.Style, text string) []string {
-	var out []string
-	for i, part := range strings.Split(ansi.Wrap(text, max(m.width-len(lead), 1), ""), "\n") {
-		prefix := strings.Repeat(" ", len(lead))
-		if i == 0 {
-			prefix = lead
-		}
-		out = append(out, m.line(false, []piece{{m.styles.dim, prefix}, {st, part}}, nil))
-	}
-	return out
-}
-
-func link(url, text string) string {
-	if !strings.HasPrefix(url, "https://") && !strings.HasPrefix(url, "http://") {
-		return text
-	}
-	for _, r := range url {
-		if r < ' ' || r == 0x7f {
-			return text
-		}
-	}
-	return ansi.SetHyperlink(url) + text + ansi.ResetHyperlink()
 }
 
 func cleanText(s string) string {

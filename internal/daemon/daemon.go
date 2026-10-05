@@ -373,12 +373,15 @@ func (s *state) hook(h rpc.Hook, now time.Time) {
 	if p := domain.TranscriptFromHook(h.Payload); p != "" {
 		next.Transcript = p
 	}
-	if domain.Harness(h.Harness) == domain.HarnessCodex {
-		next = s.codexObservation(h, kind, session, next)
-	}
 	at := h.At
 	if at.IsZero() {
 		at = time.Now()
+	}
+	switch domain.Harness(h.Harness) {
+	case domain.HarnessCodex:
+		next = s.codexObservation(h, kind, session, next)
+	case domain.HarnessOmp:
+		next = next.Report(ompReport(h.Payload, at))
 	}
 	next, toSend := next.Dispatch(time.Now())
 	ev := domain.SessionEventFromHook(kind, at, h.Payload)
@@ -666,6 +669,15 @@ func (c *conn) write() {
 			return
 		}
 	}
+}
+
+func ompReport(payload []byte, at time.Time) domain.StatusReport {
+	var p struct {
+		Model  string `json:"model"`
+		Effort string `json:"effort"`
+	}
+	_ = json.Unmarshal(payload, &p)
+	return domain.StatusReport{Model: p.Model, Effort: p.Effort, At: at}
 }
 
 func (s *state) codexObservation(h rpc.Hook, kind domain.HarnessEventKind, before, next domain.Session) domain.Session {

@@ -15,10 +15,10 @@ The client layout's left pane runs `agentws tui`, 48 columns wide; a `window-res
 
 `agentws tui` opens two connections: one subscribes and feeds diffs to the Bubble Tea program, the other makes calls such as `client.focus_main`, so a burst of diffs never delays a keypress. The model keeps the snapshot in maps and rebuilds the sidebar rows only when a diff arrives; grouping and order come from `domain.Sidebar` (sessions that need you first in each task group). Keys only move the selection, and `View` renders from memory. One 200 ms ticker drives every running spinner and the clock. The renderer runs at 120 fps: at the default 60 a key can wait a whole 16 ms frame before it is drawn.
 
-- `M` and `E` open the model and effort pickers; the choice is sent as `session.switch`, and the sidebar shows unconfirmed switches as `→ value` and a `!` when a harness did not confirm one.
-- The selected session's card (task, PR chips, last 3 tool calls, what it waits on) is built by `domain.BuildSessionCard` from the events the model holds; see [ADR 0014](../../docs/adr/0014-session-card.md). The sidebar cuts long names with an ellipsis; the card shows the full name.
+- `M` and `E` open the model and effort pickers; the choice is sent as `session.switch`, and the sidebar shows unconfirmed switches as `→ value` and a `!` when a harness did not confirm one. The new-session model control is the same for every harness: ←/→ cycle `‹ model ›`. Only omp also takes typed text, and that opens a menu on the finished screen, as wide as the longest model, above the field when the rows below would be cut. ctrl-n and ctrl-p move, ctrl-y or enter accepts into the `‹ ›` control, and ctrl-e drops what was typed and restores that control (the nvim insert-completion keys). `M` filters omp's catalog as you type, and enter on no match applies the typed id. The catalog arrives after the first frame. A long id is cut at its column so it does not run into the next one.
+- The sidebar has no card panel: under the list there is only the footer (key hints, then counts and `next waiting`). `domain.BuildSessionCard` still feeds the review's agent column; see [ADR 0014](../../docs/adr/0014-session-card.md). The sidebar cuts long names with an ellipsis; the review's agent column shows the full name.
 - Under the top bar, one row per harness shows its quota windows (percent used, reset clock time; see ADR 0036), derived from the sessions' `Limits` by `domain.Quotas`; red below 20% left, dimmed with an age when older than 15 minutes, absent without data. See [ADR 0017](../../docs/adr/0017-usage-and-limits-bar.md).
-- A session is one row; only the selected one adds a line with model, effort and worktree count. Worktrees have no rows of their own (they are in the card, the review and `w`).
+- A session is one row; only the selected one adds a line with model, effort and worktree count. Worktrees have no rows of their own (they are in the review and `w`).
 - Running subagents show under their session as a tree (`domain.SubagentTree`, at most 8 rows); finished ones collapse into one `✓ N subagents done` line on the selected session. `o` hides them.
 - The mouse wheel scrolls the list without moving the selection; the next key that moves the selection brings it back into view, and a click selects a row without moving it.
 - Ports show on the session row and the status line. `K` asks (`y`) before killing the selected session's dev servers.
@@ -27,7 +27,7 @@ The client layout's left pane runs `agentws tui`, 48 columns wide; a `window-res
 
 ## Config
 
-Colors are Catppuccin Latte, overridden per key in the `[theme]` table of `$AGENTWS_HOME/config.toml` (`text`, `subtext`, `overlay`, `surface`, `mantle`, `base`, `blue`, `peach`, `green`, `red`, `teal`, `mauve`, `selected`, `added_bg`, `deleted_bg`), read once at startup. Review syntax colors come from the same keys. The same file holds `[defaults.claude]` and `[defaults.codex]` tables with `model` and `effort`, the starting values for the new-session dialog (`tui.LoadDefaults`).
+Colors are Catppuccin Latte, overridden per key in the `[theme]` table of `$AGENTWS_HOME/config.toml` (`text`, `subtext`, `overlay`, `surface`, `mantle`, `base`, `blue`, `peach`, `green`, `red`, `teal`, `mauve`, `selected`, `added_bg`, `deleted_bg`), read once at startup. Review syntax colors come from the same keys. The same file holds `[defaults.claude]`, `[defaults.codex]` and `[defaults.omp]` tables with `model` and `effort`, the starting values for the new-session dialog (`tui.LoadDefaults`).
 
 ## Mouse
 
