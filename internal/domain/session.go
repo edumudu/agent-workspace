@@ -44,30 +44,30 @@ type Effect struct {
 }
 
 type Session struct {
-	ID            string
-	TaskID        string
-	Harness       Harness
-	Pane          string
+	ID             string
+	TaskID         string
+	Harness        Harness
+	Pane           string
 	Model          string
 	Effort         string
-	StartedAt      time.Time
-	StartModel     string
-	StartEffort    string
-	StartWorkspace string
+	StartedAt      time.Time `json:",omitzero"`
+	StartModel     string    `json:",omitempty"`
+	StartEffort    string    `json:",omitempty"`
+	StartWorkspace string    `json:",omitempty"`
 	State          AgentState
-	Ended         bool
-	Unread        bool
-	Focused       bool
-	Muted         bool
-	WorktreeIDs   []string
-	ResumeID      string
-	Transcript    string
-	Dir           string
-	Usage         Usage
-	Limits        []RateLimit
-	LimitsAt      time.Time
-	Switches      []Switch
-	SwitchWarning bool
+	Ended          bool
+	Unread         bool
+	Focused        bool
+	Muted          bool
+	WorktreeIDs    []string
+	ResumeID       string
+	Transcript     string
+	Dir            string
+	Usage          Usage
+	Limits         []RateLimit
+	LimitsAt       time.Time
+	Switches       []Switch
+	SwitchWarning  bool
 }
 
 func (s Session) Apply(ev HarnessEvent) (Session, []Effect) {
