@@ -89,6 +89,25 @@ func TestNewSessionDialogReopensOnTheLastCreatedChoices(t *testing.T) {
 	}
 }
 
+func TestNewSessionDialogRestoresTheEffortChoicesOfTheLastCreatedHarness(t *testing.T) {
+	st := withWorkspaces(fixture(1, 0))
+	st.Sessions = []domain.Session{
+		{ID: "omp", Harness: domain.HarnessOmp, StartEffort: "off", StartWorkspace: "/src/api", StartedAt: time.Date(2026, 9, 20, 0, 0, 0, 0, time.UTC)},
+	}
+	c := &fakeCaller{}
+	m := tui.New(tui.Options{Theme: tui.Latte(), Now: clock, Calls: c})
+	m = update(m, tea.WindowSizeMsg{Width: 48, Height: 40})
+	m = update(m, tui.StateMsg(st))
+	m = typeText(press(m, "n"), "fix the login bug")
+	m = pressCmd(pressCmd(pressCmd(pressCmd(m, keyTab), keyTab), keyTab), keyTab)
+	m = pressCmd(m, keyRight)
+	got := startedParams(t, m, c)
+	want := rpc.NewSessionParams{Workspace: "/src/api", WorkItem: "fix the login bug", Harness: "omp", Effort: "minimal"}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("params %+v, want %+v", got, want)
+	}
+}
+
 func TestModelSwitchDialogKeepsAModelTheUserPicked(t *testing.T) {
 	m, c := defaultsDialog(t)
 	m = pressCmd(pressCmd(pressCmd(m, keyTab), keyTab), keyTab)
