@@ -162,6 +162,7 @@ func sessionsOf(all map[string]domain.Session) []domain.Session {
 func (d *dialog) seedCreated(s domain.Session) {
 	if i := slices.Index(harnessChoices, string(s.Harness)); i >= 0 {
 		d.harness = i
+		d.efforts = effortsFor(s.Harness)
 	}
 	d.model = s.StartModel
 	d.selectWorkspace(s.StartWorkspace)
